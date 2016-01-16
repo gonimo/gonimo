@@ -1,12 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PolyKinds         #-}
-{-# LANGUAGE TypeFamilies      #-}
-{-# LANGUAGE TypeOperators     #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Gonimo.WebAPI where
 
 import Data.Text (Text)

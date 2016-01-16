@@ -57,7 +57,17 @@ executable gonimo-back
   -- other-modules:       
   
   -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:    
+  default-extensions: ConstraintKinds
+                    , DataKinds
+                    , DeriveGeneric
+                    , GADTs
+                    , GeneralizedNewtypeDeriving
+                    , OverloadedStrings
+                    , PolyKinds
+                    , TypeFamilies
+                    , TypeOperators
+                    , ScopedTypeVariables
+                    , FlexibleContexts
   
   -- Other library packages from which modules are imported.
   build-depends:       aeson
