@@ -7,6 +7,7 @@
 module Gonimo.Server.Effects.API (
   Server
   , sendEmail
+  , ServerConstraint
   ) where
 
 import Network.Mail.Mime (Mail)
