@@ -8,22 +8,15 @@ module Gonimo.Server.Effects.API (
   Server
   , sendEmail
   , ServerConstraint
+  , ServerError
   ) where
 
 import Network.Mail.Mime (Mail)
 import Control.Monad.Freer (Eff, send, Member)
 import Control.Monad.Freer.Exception (Exc)
 import Control.Exception.Base (SomeException)
+import Gonimo.Server.Effects.API.Internal
 
-data Server v where 
-  SendEmail :: !Mail -> Server ()
-
-data ServerError =
-  SystemException SomeException
-
--- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
-type ServerConstraint r = (Member (Server) r,
-                         Member (Exc ServerError) r)
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
-sendEmail = send . SendEmail
+sendEmail = sendServer . SendEmail

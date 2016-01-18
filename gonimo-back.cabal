@@ -78,6 +78,7 @@ executable gonimo-back
                      , mime-mail >= 0.4.11
                      , servant
                      , servant-server
+                     , smtp-mail
                      , text >= 1.2.1.3
                      , time >= 1.5.0.1
                      , transformers >= 0.4.2.0
