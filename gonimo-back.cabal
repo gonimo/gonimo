@@ -48,14 +48,13 @@ build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
-
 executable gonimo-back
   -- .hs or .lhs file containing the Main module.
   main-is:             Main.hs
   
   -- Modules included in this executable, other than Main.
-  other-modules:   Gonimo.Server.Effects.API
-                 , Gonimo.Server.Effects.API.Internal
+  other-modules:   Gonimo.Server.Effects
+                 , Gonimo.Server.Effects.Internal
                  , Gonimo.Server.Effects.TestServer
                  , Gonimo.WebAPI
   
@@ -87,6 +86,8 @@ executable gonimo-back
                      , transformers >= 0.4.2.0
                      , wai
                      , warp
+                     , neat-interpolation
+                     , text-show
   
   -- Directories containing source files.
   hs-source-dirs:      src

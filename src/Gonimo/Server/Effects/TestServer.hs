@@ -1,7 +1,8 @@
 module Gonimo.Server.Effects.TestServer (
-  runErrorServer) where
+  runErrorServer
+  , ServerEffects) where
 
-import Gonimo.Server.Effects.API.Internal
+import Gonimo.Server.Effects.Internal
 import Control.Exception.Base (try)
 import Network.Mail.SMTP (sendMail)
 import Data.Bifunctor (first)
@@ -18,6 +19,8 @@ import Data.Monoid ((<>))
 import qualified Data.Text.IO as T
 
 
+type ServerEffects = Eff '[Exc ServerError, Server]
+
 runErrorServer :: Eff (Exc ServerError ': '[Server]) w  -> IO (Either ServerError w)
 runErrorServer = runServer . runError
 
@@ -25,7 +28,7 @@ runServer :: forall w . Eff '[Server] (Either ServerError w) -> IO (Either Serve
 runServer (Val v) = return v
 runServer (E u' q) = case decomp u' of
   Right (SendEmail mail)         -> execIO q $ sendMail "localhost" mail
-  Right (DebugPrint message)     -> execIO q $ T.putStrLn message 
+  Right (LogMessage message)     -> execIO q $ T.putStrLn message 
   Left  _                        -> error impossibleMessage
   
 execIO :: Arrs '[Server] (Either ServerError b) (Either ServerError w)

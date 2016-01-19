@@ -1,4 +1,4 @@
-module Gonimo.Server.Effects.API.Internal (
+module Gonimo.Server.Effects.Internal (
   EServer
   , Server(..)
   , ServerError(..)
@@ -11,20 +11,24 @@ import Control.Exception.Base (SomeException)
 import Control.Monad.Freer.Exception (throwError, Exc(..))
 import Control.Monad.Freer (send, Member, Eff)
 import Data.Text (Text)
+import GHC.Generics
+import TextShow
+import TextShow.Generic
 
 -- Tidy up the following Server definition
 type EServer a =  Server (Either ServerError a)
 
 data Server v where 
   SendEmail :: !Mail -> EServer ()
-  DebugPrint :: !Text -> EServer ()
+  LogMessage :: !Text -> EServer ()
 
 data ServerError =
-  SystemException SomeException deriving Show
+  SystemException SomeException deriving (Show, Generic)
+
+instance TextShow ServerError
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
-type ServerConstraint r = (Member (Server) r,
-                         Member (Exc ServerError) r)
+type ServerConstraint r = (Member Server r, Member (Exc ServerError) r)
 
 
 -- Send a server operation, that is an operation that might fail:
