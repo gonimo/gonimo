@@ -16,7 +16,12 @@ import Control.Monad.Freer (Eff, send, Member)
 import Control.Monad.Freer.Exception (Exc)
 import Control.Exception.Base (SomeException)
 import Gonimo.Server.Effects.API.Internal
+import Data.Text (Text)
 
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
+
+
+debugPrint :: ServerConstraint r => Text -> Eff r ()
+debugPrint = sendServer . DebugPrint

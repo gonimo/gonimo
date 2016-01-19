@@ -1,5 +1,6 @@
 module Gonimo.Server.Effects.API.Internal (
-  Server(..)
+  EServer
+  , Server(..)
   , ServerError(..)
   , ServerConstraint
   , sendServer
@@ -9,15 +10,17 @@ import Network.Mail.Mime (Mail)
 import Control.Exception.Base (SomeException)
 import Control.Monad.Freer.Exception (throwError, Exc(..))
 import Control.Monad.Freer (send, Member, Eff)
+import Data.Text (Text)
 
 -- Tidy up the following Server definition
 type EServer a =  Server (Either ServerError a)
 
 data Server v where 
   SendEmail :: !Mail -> EServer ()
+  DebugPrint :: !Text -> EServer ()
 
 data ServerError =
-  SystemException SomeException
+  SystemException SomeException deriving Show
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
 type ServerConstraint r = (Member (Server) r,
