@@ -80,6 +80,9 @@ executable gonimo-back
                      , freer
                      , mime-mail >= 0.4.11
                      , neat-interpolation
+                     , persistent
+                     , persistent-postgresql
+                     , persistent-template
                      , servant
                      , servant-docs
                      , servant-server

@@ -48,12 +48,6 @@ sendInvitation _ _ _ = undefined
 createFamily :: AuthToken -> FamilyId
 createFamily _ = undefined
 
-getSenders :: FamilyId -> AuthToken -> [Sender]
-getSenders _ _ = undefined
-
-
-
-
 getCoffee :: EitherT ServantErr IO Coffee
 getCoffee = left $ ServantErr { errReasonPhrase = "I am a tea pot!"
                               , errHTTPCode = 418

@@ -14,6 +14,7 @@ import Data.Text (Text)
 import GHC.Generics
 import TextShow
 import TextShow.Generic
+import Gonimo.Types
 
 -- Tidy up the following Server definition
 type EServer a =  Server (Either ServerError a)
@@ -21,11 +22,12 @@ type EServer a =  Server (Either ServerError a)
 data Server v where 
   SendEmail :: !Mail -> EServer ()
   LogMessage :: !Text -> EServer ()
+  -- db stuff:
+  insertAccount :: !Account -> EServer AccountId
 
 data ServerError =
   SystemException SomeException deriving (Show, Generic)
 
-instance TextShow ServerError
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
 type ServerConstraint r = (Member Server r, Member (Exc ServerError) r)

@@ -8,58 +8,7 @@ import GHC.Generics (Generic)
 import Data.Aeson.Types (FromJSON, ToJSON)
 import Data.Proxy
 import Data.Time.Calendar (Day)
-
-type EmailAddress = Text
-type FamilyId = Int
-type SenderName = Text
-type InvitationId = Int
-type InvitationSecret = Text
-type SenderId = Int
-type InboxId = Int
-
-data Invitation = Invitation {
-    invitationSecret :: InvitationSecret
-  , familyId :: FamilyId
-  , created :: Day
-  , transmittedBy :: InvitationDelivery
-  } deriving (Show, Generic)
-                  
-data InvitationDelivery = EmailInvitation EmailAddress
-                      | OtherInvitation
-                      deriving (Show, Generic)
-                        
-
-instance FromJSON InvitationDelivery
-instance ToJSON InvitationDelivery
-
-instance FromJSON Invitation
-instance ToJSON Invitation
-
-
-data Credentials = Credentials {
-    userEmail :: EmailAddress
-  , userPassword :: Text
-  } deriving Generic
-
-instance FromJSON Credentials
-instance ToJSON Credentials
-
-data AccountData = AccountData {
-    credentials :: Maybe Credentials
-  , secret :: AuthToken
-  }
-
-type AccountId  = Int
-
--- Other auth methods might be added later on, like oauth bearer tokens:
-data AuthToken = GonimoSecret Text
-               | SendersSecret Text deriving (Show, Generic)
-instance FromJSON AuthToken
-instance ToJSON AuthToken
-
-data Coffee = Tea deriving Generic
-instance FromJSON Coffee
-instance ToJSON Coffee
+import Gonimo.Types
 
 
 type GonimoAPI =
@@ -82,16 +31,6 @@ type AuthGonimoAPI =
   :<|> "invitations" :> Capture "invitationId" InvitationId :> "delivery" :> ReqBody '[JSON] InvitationDelivery :> Post '[JSON] ()
   -- Create a family:
   :<|> "families" :> Post '[JSON] FamilyId
-  :<|> "families" :> Capture "familyId" FamilyId :> "senders" :> Get '[JSON] [(SenderName, [SenderId])]
-  :<|> "families" :> Capture "familyId" FamilyId :> "senders" :> ReqBody '[JSON] SenderName :> Post '[JSON] SenderId
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Post '[JSON] InboxId
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Get '[JSON] [InboxId]
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Capture "inbox" InboxId :> "sender" :> ReqBody '[PlainText] Text :> Put '[PlainText] ()
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Capture "inbox" InboxId :> "sender" :> Get '[PlainText] Text
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Capture "inbox" InboxId :> "sender" :> Delete '[PlainText] ()
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Capture "inbox" InboxId :> "receiver" :> ReqBody '[PlainText] Text :> Put '[PlainText] ()
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Capture "inbox" InboxId :> "receiver" :> Get '[PlainText] Text
-  :<|> "families" :> Caputure "familyId" FamilyId :> "senders" :> Capture "senderName" SenderName :> Capture "senderId" SenderId :> "inboxes" :> Capture "inbox" InboxId :> "receiver" :> Delete '[PlainText] ()
 
 
 
