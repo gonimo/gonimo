@@ -75,19 +75,21 @@ executable gonimo-back
   build-depends:       aeson
                      , attoparsec
                      , base >=4.8 && <4.9
+                     , bytestring >= 0.10.6.0
                      , either >= 4.4.1
                      , freer
                      , mime-mail >= 0.4.11
+                     , neat-interpolation
                      , servant
+                     , servant-docs
                      , servant-server
                      , smtp-mail
                      , text >= 1.2.1.3
+                     , text-show
                      , time >= 1.5.0.1
                      , transformers >= 0.4.2.0
                      , wai
                      , warp
-                     , neat-interpolation
-                     , text-show
   
   -- Directories containing source files.
   hs-source-dirs:      src
