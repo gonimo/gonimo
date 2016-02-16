@@ -2,13 +2,17 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 
-module Gonimo.Server.Database where
+module Gonimo.Server.DbEntities where
 
 import Database.Persist
 import Database.Persist.TH
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Aeson.Types (FromJSON)
+import Data.Aeson.Types (ToJSON)
+import GHC.Generics (Generic)
+import Gonimo.Server.DbTypes
 
 mkPersist sqlSettings [persistLowerCase|
   Account
@@ -18,9 +22,7 @@ mkPersist sqlSettings [persistLowerCase|
     email Text Maybe
     phone Text Maybe
     password Text Maybe
-    AccountSecret secret
-    AccountEmail email
-    AccountPhone phone
+    SecretAccount secret
 
   Family
     created UTCTime
@@ -35,5 +37,8 @@ mkPersist sqlSettings [persistLowerCase|
   Invitation
     secret Text
     familyId FamilyId
-    InvitationSecret secret
+    created UTCTime
+    delivery InvitationDelivery
+    SecretInvitation secret
+    deriving Show Generic
 |]

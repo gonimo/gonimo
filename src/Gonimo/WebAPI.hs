@@ -8,6 +8,8 @@ import GHC.Generics (Generic)
 import Data.Aeson.Types (FromJSON, ToJSON)
 import Data.Proxy
 import Data.Time.Calendar (Day)
+import Gonimo.Server.DbEntities
+import Gonimo.Server.DbTypes
 import Gonimo.Types
 
 

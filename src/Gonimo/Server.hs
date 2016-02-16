@@ -11,20 +11,39 @@ import           Gonimo.WebAPI
 import           Network.Mail.Mime (Address(..))
 import           Servant (ServantErr(..), err500, Server, (:<|>)(..))
 import Servant.Server (err401)
-import Control.Monad.Trans.Error (throwError)
 import Control.Monad.Trans.Either (left)
 import Data.Text (Text)
 
+import Gonimo.Types
+import Gonimo.Server.DbTypes
+import Gonimo.Server.DbEntities
+import Data.ByteString (ByteString)
 
 
-createAccount :: Maybe Credentials -> AuthToken
-createAccount Nothing = undefined
 
-login :: Credentials -> AuthToken
-login _ = undefined
+createAccount :: ServerConstraint r => Maybe Credentials -> Eff r (AccountId, AuthToken)
+createAccount mcred = do
+  now <- getCurrentTime
+  let email = mcred >>= getUserEmail . userName 
+  let phone = mcred >>= getUserPhone . userName 
+  let password = userPassword <$> mcred
+  secret <- generateSecret
+  id <- insertDb $ Account {
+    accountSecret = secret
+    , accountCreated = now
+    , accountLastAccessed = now
+    , accountEmail = email
+    , accountPhone = phone
+    , accountPassword = password
+    }
+  return (id, GonimoSecret secret)
+    
 
-myFamilies :: AuthToken -> [FamilyId]
-myFamilies _ = undefined
+login :: ServerConstraint r => Credentials -> Eff r (AccountId, AuthToken)
+login _ = return undefined
+
+myFamilies :: ServerConstraint r => AccountId -> Eff r [FamilyId]
+myFamilies uid = return undefined
 
 
 getInvitations :: Maybe FamilyId -> AuthToken -> [(InvitationId, Invitation)]
@@ -67,3 +86,7 @@ authServer = undefined
 -- Let's serve
 server :: Server GonimoAPI
 server = undefined
+
+generateSecret :: ServerConstraint r => Eff r ByteString
+generateSecret = genRandomBytes secretLength
+  where secretLength = 16
