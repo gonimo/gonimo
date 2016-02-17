@@ -6,7 +6,6 @@ module Gonimo.Server.DbEntities where
 
 
 import Gonimo.Database.Persist.TH
-import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
@@ -15,7 +14,7 @@ import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToEncoding
 
 mkPersist sqlSettings [persistLowerCase|
   Account
-    secret ByteString
+    secret Secret
     created UTCTime
     lastAccessed UTCTime
     email Text Maybe
@@ -31,10 +30,12 @@ mkPersist sqlSettings [persistLowerCase|
   FamilyAccount
     accountId AccountId
     familyId  FamilyId
+    joined UTCTime
+    invitedBy InvitationDelivery Maybe
     FamilyMember accountId familyId
 
   Invitation
-    secret Text
+    secret Secret
     familyId FamilyId
     created UTCTime
     delivery InvitationDelivery
