@@ -4,15 +4,14 @@
 
 module Gonimo.Server.DbEntities where
 
-import Database.Persist
-import Database.Persist.TH
+
+import Gonimo.Database.Persist.TH
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time (UTCTime)
-import Data.Aeson.Types (FromJSON)
-import Data.Aeson.Types (ToJSON)
 import GHC.Generics (Generic)
 import Gonimo.Server.DbTypes
+import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
 
 mkPersist sqlSettings [persistLowerCase|
   Account
@@ -42,3 +41,8 @@ mkPersist sqlSettings [persistLowerCase|
     SecretInvitation secret
     deriving Show Generic
 |]
+
+instance FromJSON Invitation
+instance ToJSON Invitation where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions

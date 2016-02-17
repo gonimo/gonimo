@@ -1,24 +1,23 @@
 module Gonimo.Types where
 
-import Data.Aeson.Types ((.:), FromJSON(..), ToJSON(..), object, Value(..), (.=), Object, pairs)
+import Data.Aeson.Types ((.:), FromJSON(..), ToJSON(..), object, Value(..), (.=), pairs, FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base64 as Base64
 import Data.Monoid ((<>))
-import Data.Proxy
+
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Data.Time.Calendar (Day)
-import GHC.Generics (Generic)
-import Gonimo.Server.DbEntities
-import Gonimo.Server.DbTypes
 
-import Servant.API
+import GHC.Generics (Generic)
+import Gonimo.Server.DbTypes
+import Servant.Common.Text (FromText (..))
+import Control.Error.Safe (rightMay)
+import qualified Data.Text as T
+
+
 
 type SenderName = Text
 type InvitationSecret = Text
-
-instance FromJSON Invitation
-instance ToJSON Invitation
 
 data UserName = UserNameEmail EmailAddress
               | UserNamePhone Text
@@ -34,7 +33,9 @@ getUserPhone _ = Nothing
 
 
 instance FromJSON UserName
-instance ToJSON UserName
+instance ToJSON UserName where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
                          
 
 data Credentials = Credentials {
@@ -43,7 +44,10 @@ data Credentials = Credentials {
   } deriving Generic
 
 instance FromJSON Credentials
-instance ToJSON Credentials
+instance ToJSON Credentials where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
+ 
 
 data AccountData = AccountData {
     credentials :: Maybe Credentials
@@ -65,6 +69,7 @@ instance FromJSON AuthToken where
     if tag ==  "GonimoSecret"
       then return $ GonimoSecret base64Decoded
       else fail $ "No such constructor in AuthToken: " ++ tag
+  parseJSON _ = fail "Expected an object when parsing an AuthToken."
       
 instance ToJSON AuthToken where
   toJSON (GonimoSecret s) = object [ "tag" .= ("GonimoSecret" :: Text)
@@ -73,7 +78,22 @@ instance ToJSON AuthToken where
   toEncoding (GonimoSecret s) = pairs ( "tag" .= ("GonimoSecret" :: Text)
                                         <> "contents" .= decodeUtf8 (Base64.encode s) )
 
+instance FromText AuthToken where
+  fromText t =
+    let
+      mval = case T.words t of
+        [tag, contents] -> Just (tag, contents)
+        _ -> Nothing
+      mdecoded = mval >>= rightMay . Base64.decode . encodeUtf8 . snd
+      mtag = fst <$> mval
+    in
+      case mtag of
+        Just "GonimoSecret" -> GonimoSecret <$> mdecoded
+        _ -> Nothing
+
 data Coffee = Tea deriving Generic
 instance FromJSON Coffee
-instance ToJSON Coffee
+instance ToJSON Coffee where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 

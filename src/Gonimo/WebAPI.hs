@@ -1,13 +1,13 @@
 module Gonimo.WebAPI where
 
-import Data.Text (Text)
-import Data.ByteString (ByteString)
+
+
 
 import Servant.API
-import GHC.Generics (Generic)
-import Data.Aeson.Types (FromJSON, ToJSON)
+
+
 import Data.Proxy
-import Data.Time.Calendar (Day)
+
 import Gonimo.Server.DbEntities
 import Gonimo.Server.DbTypes
 import Gonimo.Types
@@ -19,7 +19,7 @@ type GonimoAPI =
   -- "Login", or retrieve your secret, by passing your credentials:
   -- Conceptually this is a get, as nothing is changed on the server and only data is retrieved.
   -- However, we don't want to transmit user details in the URI nor do we want the received AuthToken to be cached.
-  :<|> "accounts" :> "account" :> ReqBody '[JSON] Credentials :> Post '[JSON] AuthToken
+  -- :<|> "accounts" :> "account" :> ReqBody '[JSON] Credentials :> Post '[JSON] AuthToken
   :<|> Header "Authorization" AuthToken :> AuthGonimoAPI
   :<|> "coffee" :> Get '[JSON] Coffee
 

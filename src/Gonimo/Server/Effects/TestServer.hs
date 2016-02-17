@@ -11,32 +11,32 @@ import Control.Monad.Freer.Exception (runError)
 import Control.Monad.Freer.Internal (Eff(..), Arrs)
 import Control.Monad.Freer.Exception (Exc(..))
 import Control.Monad.Freer.Internal (decomp)
-import Control.Monad.Freer.Internal (tsingleton)
+
 import Control.Monad.Freer.Internal (qApp)
-import Data.FTCQueue ((><))
-import Control.Monad.Freer.Internal (Union)
+
+
 import Data.Monoid ((<>))
 import qualified Data.Text.IO as T
 
 
-type ServerEffects = Eff '[Exc ServerError, Server]
+type ServerEffects = Eff '[Exc ServerException, Server]
 
-runErrorServer :: Eff (Exc ServerError ': '[Server]) w  -> IO (Either ServerError w)
+runErrorServer :: Eff (Exc ServerException ': '[Server]) w  -> IO (Either ServerException w)
 runErrorServer = runServer . runError
 
-runServer :: forall w . Eff '[Server] (Either ServerError w) -> IO (Either ServerError w)
+runServer :: forall w . Eff '[Server] (Either ServerException w) -> IO (Either ServerException w)
 runServer (Val v) = return v
 runServer (E u' q) = case decomp u' of
   Right (SendEmail mail)         -> execIO q $ sendMail "localhost" mail
-  Right (LogMessage message)     -> execIO q $ T.putStrLn message 
+  Right (LogMessage message)     -> execIO q $ T.putStrLn message
   Left  _                        -> error impossibleMessage
-  
-execIO :: Arrs '[Server] (Either ServerError b) (Either ServerError w)
+
+execIO :: Arrs '[Server] (Either ServerException b) (Either ServerException w)
           -> IO b
-          -> IO (Either ServerError w)
+          -> IO (Either ServerException w)
 execIO q action = serverTry action >>= runServer . qApp q
-  
-serverTry :: IO a -> IO (Either ServerError a)
+
+serverTry :: IO a -> IO (Either ServerException a)
 serverTry op = first SystemException <$> try op
 
 

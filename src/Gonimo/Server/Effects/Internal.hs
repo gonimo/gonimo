@@ -1,7 +1,7 @@
 module Gonimo.Server.Effects.Internal (
   EServer
   , Server(..)
-  , ServerError(..)
+  , ServerException(..)
   , ServerConstraint
   , sendServer
   ) where
@@ -11,34 +11,31 @@ import Control.Monad.Freer (send, Member, Eff)
 import Control.Monad.Freer.Exception (throwError, Exc(..))
 import Data.ByteString (ByteString)
 import Data.Text (Text)
-import Database.Persist
 import GHC.Generics
-import Gonimo.Types
+import Gonimo.Database.Effects (DbEffects)
+
 import Network.Mail.Mime (Mail)
-import TextShow
-import TextShow.Generic
+
+
 import Data.Time.Clock (UTCTime)
 
 -- Tidy up the following Server definition
-type EServer a =  Server (Either ServerError a)
+type EServer a =  Server (Either ServerException a)
 
-data Server v where 
+data Server v where
   SendEmail :: !Mail -> EServer ()
   LogMessage :: !Text -> EServer ()
   GenRandomBytes :: !Int -> EServer ByteString
   GetCurrentTime :: EServer UTCTime
-  -- db stuff:
-  InsertDb :: PersistEntity a => a -> EServer (Key a)
-  InsertDb_ :: PersistEntity a => a -> EServer ()
-  GetDb :: PersistEntity a => Key a -> EServer a
+  RunDb :: DbEffects a -> EServer a
 
-data ServerError =
-    NotFoundException
+data ServerException =
+    NotFoundException Text
   | SystemException SomeException deriving (Show, Generic)
 
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
-type ServerConstraint r = (Member Server r, Member (Exc ServerError) r)
+type ServerConstraint r = (Member Server r, Member (Exc ServerException) r)
 
 
 -- Send a server operation, that is an operation that might fail:

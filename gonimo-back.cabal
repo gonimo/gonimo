@@ -54,7 +54,9 @@ executable gonimo-back
   
   -- Modules included in this executable, other than Main.
   other-modules: 
-                   Gonimo.WebAPI
+                   Gonimo.Database.Effects
+                 , Gonimo.Database.Persist.TH
+                 , Gonimo.WebAPI
                  , Gonimo.WebAPI.Docs
                  , Gonimo.Types
                  , Gonimo.Server
@@ -86,6 +88,7 @@ executable gonimo-back
                      , bytestring >= 0.10.6.0
                      , crypto-api
                      , either >= 4.4.1
+                     , errors
                      , freer
                      , mime-mail >= 0.4.11
                      , neat-interpolation
@@ -102,6 +105,16 @@ executable gonimo-back
                      , transformers >= 0.4.2.0
                      , wai
                      , warp
+                     -- For our Persist.TH fork:
+                     , template-haskell
+                     , http-api-data
+                     , aeson-compat
+                     , path-pieces
+                     , unordered-containers
+                     , containers
+  ghc-options: -Wall
+  -- For our Persist.TH fork to work:
+  -- cpp-options: -DGHC_7_4
   
   -- Directories containing source files.
   hs-source-dirs:      src

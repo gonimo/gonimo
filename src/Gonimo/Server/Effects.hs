@@ -10,22 +10,20 @@ module Gonimo.Server.Effects (
   , logMessage
   , genRandomBytes
   , getCurrentTime
-  , insertDb
-  , insertDb_
+  , runDb
   , ServerConstraint
-  , ServerError(..)
+  , ServerException(..)
   ) where
 
 
-import Control.Exception.Base (SomeException)
-import Control.Monad.Freer (Eff, send, Member)
-import Control.Monad.Freer.Exception (Exc)
+
+import Control.Monad.Freer (Eff)
 import Data.Text (Text)
-import Database.Persist.Class (Key, PersistEntity)
 import Gonimo.Server.Effects.Internal
 import Network.Mail.Mime (Mail)
 import Data.ByteString (ByteString)
 import Data.Time.Clock (UTCTime)
+import Gonimo.Database.Effects
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
@@ -41,11 +39,5 @@ genRandomBytes = sendServer . GenRandomBytes
 getCurrentTime :: ServerConstraint r => Eff r UTCTime
 getCurrentTime = sendServer GetCurrentTime
 
-insertDb :: (ServerConstraint r, PersistEntity a) => a -> Eff r (Key a)
-insertDb = sendServer . InsertDb
-             
-insertDb_ :: (ServerConstraint r, PersistEntity a) => a -> Eff r ()
-insertDb_ = sendServer . InsertDb_
-
-getDb :: (ServerConstraint r, PersistEntity a) => Key a -> Eff r a
-getDb = sendServer . GetDb
+runDb :: ServerConstraint r => DbEffects a -> Eff r a
+runDb = sendServer . RunDb

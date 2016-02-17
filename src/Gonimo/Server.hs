@@ -1,43 +1,39 @@
 module Gonimo.Server where
 
-import           Control.Monad.Freer (Eff)
-import           Control.Monad.Trans.Class (lift)
-import           Control.Monad.Trans.Either (EitherT(..))
-import           Data.Bifunctor (first)
-import           Gonimo.Server.Effects hiding (Server)
-import           Gonimo.Server.Effects.TestServer
-import qualified Gonimo.Server.EmailInvitation as S
-import           Gonimo.WebAPI
-import           Network.Mail.Mime (Address(..))
-import           Servant (ServantErr(..), err500, Server, (:<|>)(..))
-import Servant.Server (err401)
-import Control.Monad.Trans.Either (left)
-import Data.Text (Text)
-
-import Gonimo.Types
-import Gonimo.Server.DbTypes
-import Gonimo.Server.DbEntities
+import Control.Monad.Freer (Eff)
+import Control.Monad.Trans.Either (EitherT(..), left)
+import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
+import Gonimo.Server.DbEntities
+import Gonimo.Server.DbTypes
+import Gonimo.Server.Effects hiding (Server)
+import Gonimo.Server.Effects.TestServer
+import Gonimo.Types
+import Gonimo.WebAPI
+import Servant (ServantErr(..), err500, Server, (:<|>)(..))
+import qualified Gonimo.Database.Effects as Db
+import qualified Data.Text as T
+import Servant.Server (err404)
 
 
 
 createAccount :: ServerConstraint r => Maybe Credentials -> Eff r (AccountId, AuthToken)
 createAccount mcred = do
   now <- getCurrentTime
-  let email = mcred >>= getUserEmail . userName 
-  let phone = mcred >>= getUserPhone . userName 
+  let email = mcred >>= getUserEmail . userName
+  let phone = mcred >>= getUserPhone . userName
   let password = userPassword <$> mcred
-  secret <- generateSecret
-  id <- insertDb $ Account {
-    accountSecret = secret
+  asecret <- generateSecret
+  aid <- runDb $ Db.insert $ Account {
+    accountSecret = asecret
     , accountCreated = now
     , accountLastAccessed = now
     , accountEmail = email
     , accountPhone = phone
     , accountPassword = password
     }
-  return (id, GonimoSecret secret)
-    
+  return (aid, GonimoSecret asecret)
+
 
 login :: ServerConstraint r => Credentials -> Eff r (AccountId, AuthToken)
 login _ = return undefined
@@ -70,14 +66,17 @@ createFamily _ = undefined
 getCoffee :: EitherT ServantErr IO Coffee
 getCoffee = left $ ServantErr { errReasonPhrase = "I am a tea pot!"
                               , errHTTPCode = 418
+                              , errBody = ""
+                              , errHeaders = []
                               }
 
 
 runServer ::  ServerEffects a -> EitherT ServantErr IO a
-runServer action = EitherT $ first errorServerToServant <$> runErrorServer action 
+runServer action = EitherT $ first errorServerToServant <$> runErrorServer action
 
-errorServerToServant :: ServerError -> ServantErr
-errorServerToServant (SystemException e) = err500
+errorServerToServant :: ServerException -> ServantErr
+errorServerToServant (NotFoundException m) = err404 { errReasonPhrase = T.unpack m }
+errorServerToServant (SystemException _)   = err500
 
 authServer :: Maybe AuthToken -> Server AuthGonimoAPI
 -- authServer Nothing = left $ err401 { errReasonPhrase = "" }
