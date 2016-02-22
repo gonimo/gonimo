@@ -34,7 +34,6 @@ createAccount mcred = do
     }
   return (aid, GonimoSecret asecret)
 
-
 login :: ServerConstraint r => Credentials -> Eff r (AccountId, AuthToken)
 login _ = return undefined
 
@@ -78,9 +77,6 @@ errorServerToServant :: ServerException -> ServantErr
 errorServerToServant (NotFoundException m) = err404 { errReasonPhrase = T.unpack m }
 errorServerToServant (SystemException _)   = err500
 
-authServer :: Maybe AuthToken -> Server AuthGonimoAPI
--- authServer Nothing = left $ err401 { errReasonPhrase = "" }
-authServer = undefined
 
 -- Let's serve
 server :: Server GonimoAPI

@@ -29,6 +29,7 @@ runServer (Val v) = return v
 runServer (E u' q) = case decomp u' of
   Right (SendEmail mail)         -> execIO q $ sendMail "localhost" mail
   Right (LogMessage message)     -> execIO q $ T.putStrLn message
+  Right (RunDb db)               -> execIO q $ 
   Left  _                        -> error impossibleMessage
 
 execIO :: Arrs '[Server] (Either ServerException b) (Either ServerException w)

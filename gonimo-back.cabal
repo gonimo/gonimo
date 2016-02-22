@@ -55,6 +55,7 @@ executable gonimo-back
   -- Modules included in this executable, other than Main.
   other-modules: 
                    Gonimo.Database.Effects
+                 , Gonimo.Database.Effects.PersistDatabase
                  , Gonimo.Database.Persist.TH
                  , Gonimo.WebAPI
                  , Gonimo.WebAPI.Docs
@@ -90,10 +91,13 @@ executable gonimo-back
                      , either >= 4.4.1
                      , errors
                      , freer
+                     , lifted-base >= 0.2.3.6
                      , mime-mail >= 0.4.11
+                     , monad-logger
                      , neat-interpolation
                      , persistent
                      , persistent-postgresql
+                     , persistent-sqlite
                      , persistent-template
                      , servant
                      , servant-docs

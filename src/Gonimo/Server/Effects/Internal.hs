@@ -9,25 +9,27 @@ module Gonimo.Server.Effects.Internal (
 import Control.Exception.Base (SomeException)
 import Control.Monad.Freer (send, Member, Eff)
 import Control.Monad.Freer.Exception (throwError, Exc(..))
+import Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
-import GHC.Generics
-import Gonimo.Database.Effects (DbEffects)
-
-import Network.Mail.Mime (Mail)
 
 
 import Data.Time.Clock (UTCTime)
+import Database.Persist.Class (PersistStore)
+import GHC.Generics
+
+import Network.Mail.Mime (Mail)
+import Gonimo.Database.Effects
 
 -- Tidy up the following Server definition
 type EServer a =  Server (Either ServerException a)
 
 data Server v where
   SendEmail :: !Mail -> EServer ()
-  LogMessage :: !Text -> EServer ()
+  LogMessage :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   GenRandomBytes :: !Int -> EServer ByteString
   GetCurrentTime :: EServer UTCTime
-  RunDb :: DbEffects a -> EServer a
+  RunDb :: PersistStore backend => Eff '[Exc DbException, Database backend]  a -> EServer a
 
 data ServerException =
     NotFoundException Text
@@ -45,4 +47,3 @@ sendServer op = do
   case r of
     Left e -> throwError e
     Right v -> return v
-
