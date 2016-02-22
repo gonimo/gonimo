@@ -99,6 +99,7 @@ executable gonimo-back
                      , persistent-postgresql
                      , persistent-sqlite
                      , persistent-template
+                     , resource-pool
                      , servant
                      , servant-docs
                      , servant-server

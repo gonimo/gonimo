@@ -2,35 +2,43 @@ module Gonimo.Server.Effects.TestServer (
   runErrorServer
   , ServerEffects) where
 
-import Gonimo.Server.Effects.Internal
-import Control.Exception.Base (try)
-import Network.Mail.SMTP (sendMail)
-import Data.Bifunctor (first)
 
-import Control.Monad.Freer.Exception (runError)
-import Control.Monad.Freer.Internal (Eff(..), Arrs)
-import Control.Monad.Freer.Exception (Exc(..))
-import Control.Monad.Freer.Internal (decomp)
-
-import Control.Monad.Freer.Internal (qApp)
-
-
-import Data.Monoid ((<>))
+import           Control.Exception.Base (try)
+import           Control.Monad.Freer.Exception (Exc(..), runError)
+import           Control.Monad.Freer.Internal (Eff(..), Arrs, decomp, qApp)
+import           Control.Monad.Logger (Loc, LogLevel, LogSource, LogStr)
+import           Data.Bifunctor (first)
+import           Data.Monoid ((<>))
+import           Data.Pool (Pool)
 import qualified Data.Text.IO as T
-
+import           Database.Persist.Sql (SqlBackend, runSqlPool)
+import           Gonimo.Server.Effects.Internal
+import           Network.Mail.SMTP (sendMail)
 
 type ServerEffects = Eff '[Exc ServerException, Server]
 
-runErrorServer :: Eff (Exc ServerException ': '[Server]) w  -> IO (Either ServerException w)
-runErrorServer = runServer . runError
+type DbPool = Pool SqlBackend
+type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO () 
 
-runServer :: forall w . Eff '[Server] (Either ServerException w) -> IO (Either ServerException w)
-runServer (Val v) = return v
-runServer (E u' q) = case decomp u' of
+data Config = Config {
+  configPool :: DbPool
+  ,  configLog :: LoggingFunction
+  }
+
+
+runErrorServer :: Config -> Eff (Exc ServerException ': '[Server]) w  -> IO (Either ServerException w)
+runErrorServer c = runServer c . runError
+
+runServer :: forall w . Config -> Eff '[Server] (Either ServerException w) -> IO (Either ServerException w)
+runServer _ (Val v) = return v
+runServer c (E u' q) = case decomp u' of
   Right (SendEmail mail)         -> execIO q $ sendMail "localhost" mail
-  Right (LogMessage message)     -> execIO q $ T.putStrLn message
-  Right (RunDb db)               -> execIO q $ 
+  Right (LogMessage loc ls ll msg)     -> execIO q $ doLog loc ls ll msg
+  Right (RunDb trans)            -> execIO q $ runSqlPool trans pool
   Left  _                        -> error impossibleMessage
+  where
+    pool = configPool c
+    doLog = configLog c
 
 execIO :: Arrs '[Server] (Either ServerException b) (Either ServerException w)
           -> IO b

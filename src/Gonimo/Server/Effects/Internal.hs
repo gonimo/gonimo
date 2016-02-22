@@ -15,11 +15,11 @@ import Data.Text (Text)
 
 
 import Data.Time.Clock (UTCTime)
-import Database.Persist.Class (PersistStore)
 import GHC.Generics
 
 import Network.Mail.Mime (Mail)
 import Gonimo.Database.Effects
+import Database.Persist.Sql (SqlBackend)
 
 -- Tidy up the following Server definition
 type EServer a =  Server (Either ServerException a)
@@ -29,7 +29,7 @@ data Server v where
   LogMessage :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   GenRandomBytes :: !Int -> EServer ByteString
   GetCurrentTime :: EServer UTCTime
-  RunDb :: PersistStore backend => Eff '[Exc DbException, Database backend]  a -> EServer a
+  RunDb :: Eff '[Exc DbException, Database SqlBackend]  a -> EServer a
 
 data ServerException =
     NotFoundException Text
