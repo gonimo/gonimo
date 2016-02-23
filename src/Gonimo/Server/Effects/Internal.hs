@@ -11,7 +11,7 @@ import Control.Monad.Freer (send, Member, Eff)
 import Control.Monad.Freer.Exception (throwError, Exc(..))
 import Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
 import Data.ByteString (ByteString)
-import Data.Text (Text)
+
 
 
 import Data.Time.Clock (UTCTime)
@@ -20,6 +20,7 @@ import GHC.Generics
 import Network.Mail.Mime (Mail)
 import Gonimo.Database.Effects
 import Database.Persist.Sql (SqlBackend)
+import Crypto.Random (GenError)
 
 -- Tidy up the following Server definition
 type EServer a =  Server (Either ServerException a)
@@ -32,8 +33,9 @@ data Server v where
   RunDb :: Eff '[Exc DbException, Database SqlBackend]  a -> EServer a
 
 data ServerException =
-    NotFoundException Text
-  | SystemException SomeException deriving (Show, Generic)
+    NotFoundException 
+    | RandomGeneratorException GenError
+    | SystemException SomeException deriving (Show, Generic)
 
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:

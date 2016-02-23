@@ -1,8 +1,9 @@
-module Gonimo.Database.PersistDatabase where
+module Gonimo.Database.Effects.PersistDatabase where
 
 
 import Control.Exception.Lifted (try)
 import Control.Monad.Freer.Internal (Eff(..), Arrs, decomp, qApp)
+import Control.Monad.Freer.Exception (Exc(..), runError)
 import Control.Monad.Trans.Reader (ReaderT)
 import Data.Bifunctor (first)
 import Data.Monoid ((<>))
@@ -12,7 +13,10 @@ import Gonimo.Database.Effects (Database(..), DbException(..))
 
 
 
-
+runExceptionDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend)
+                        => Eff (Exc DbException ': '[Database backend]) w
+                        -> ReaderT backend IO (Either DbException w)
+runExceptionDatabase = runDatabase . runError
 
 
 runDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend)
