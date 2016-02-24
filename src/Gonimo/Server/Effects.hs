@@ -22,10 +22,10 @@ import Control.Monad.Freer.Exception (Exc)
 import Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
 import Data.ByteString (ByteString)
 import Data.Time.Clock (UTCTime)
-import Database.Persist.Class (PersistStore)
 import Gonimo.Database.Effects
 import Gonimo.Server.Effects.Internal
 import Network.Mail.Mime (Mail)
+import Database.Persist.Sql (SqlBackend)
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
@@ -41,7 +41,7 @@ genRandomBytes = sendServer . GenRandomBytes
 getCurrentTime :: ServerConstraint r => Eff r UTCTime
 getCurrentTime = sendServer GetCurrentTime
 
-runDb :: (ServerConstraint r, PersistStore backend) => Eff '[Exc DbException, Database backend]  a -> Eff r a
+runDb :: (ServerConstraint r) => Eff '[Exc DbException, Database SqlBackend]  a -> Eff r a
 runDb = sendServer . RunDb
 
 {--

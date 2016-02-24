@@ -13,23 +13,26 @@ import Gonimo.Database.Effects (Database(..), DbException(..))
 
 
 
-runExceptionDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend)
+runExceptionDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
                         => Eff (Exc DbException ': '[Database backend]) w
                         -> ReaderT backend IO (Either DbException w)
 runExceptionDatabase = runDatabase . runError
 
 
-runDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend)
+runDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
                => Eff '[Database backend] (Either DbException w)
                -> ReaderT backend IO (Either DbException w)
 runDatabase (Val v)  = return v
 runDatabase (E u' q) = case decomp u' of
-  Right (Insert e)  -> execIO q $ insert e
-  Right (Insert_ e) -> execIO q $ insert_ e
-  Right (Get k)     -> dbMayTry (get k) >>= runDatabase . qApp q
+  Right (Insert e)    -> execIO q $ insert e
+  Right (Insert_ e)   -> execIO q $ insert_ e
+  Right (Replace k a) -> execIO q $ replace k a
+  Right (Delete k)    -> execIO q $ delete k
+  Right (Get k)       -> dbMayTry (get k) >>= runDatabase . qApp q
+  Right (GetBy k)     -> dbMayTry (getBy k) >>= runDatabase . qApp q
   Left _ -> error impossibleMessage
 
-execIO :: (HasPersistBackend backend backend, PersistStore backend)
+execIO :: (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
           => Arrs '[Database backend] (Either DbException b) (Either DbException w)
           -> ReaderT backend IO b
           -> ReaderT backend IO (Either DbException w)

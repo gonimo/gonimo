@@ -10,7 +10,8 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Gonimo.Server.DbTypes
-import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
+-- import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
+import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToJSON)
 
 mkPersist sqlSettings [persistLowerCase|
   Account
@@ -23,9 +24,9 @@ mkPersist sqlSettings [persistLowerCase|
     SecretAccount secret
 
   Family
+    name Text
     created UTCTime
     lastAccessed UTCTime
-    creatorId AccountId
 
   FamilyAccount
     accountId AccountId
@@ -46,4 +47,4 @@ mkPersist sqlSettings [persistLowerCase|
 instance FromJSON Invitation
 instance ToJSON Invitation where
   toJSON = genericToJSON defaultOptions
-  toEncoding = genericToEncoding defaultOptions
+--  toEncoding = genericToEncoding defaultOptions
