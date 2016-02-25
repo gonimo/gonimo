@@ -48,7 +48,7 @@ dbMayTry op = do
   r <- try $ liftPersist op
   case r of
     Left e -> return $ Left (SystemException e)
-    Right Nothing -> return $ Left NotFoundException
+    Right Nothing -> return $ Left NotFound
     Right (Just v) -> return $ Right v
 
 

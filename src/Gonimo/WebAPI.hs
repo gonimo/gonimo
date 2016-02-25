@@ -23,5 +23,8 @@ type AuthGonimoAPI =
 gonimoAPI :: Proxy GonimoAPI
 gonimoAPI = Proxy
 
+authGonimoAPI :: Proxy AuthGonimoAPI
+authGonimoAPI = Proxy
+
 gonimoLink :: (IsElem endpoint GonimoAPI, HasLink endpoint) => Proxy endpoint -> MkLink endpoint
 gonimoLink = safeLink gonimoAPI

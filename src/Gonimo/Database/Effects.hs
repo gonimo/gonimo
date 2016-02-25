@@ -24,7 +24,7 @@ data Database backend v where
   GetBy   :: (backend ~ PersistEntityBackend a, PersistEntity a) => Unique a -> EDatabase backend (Entity a)
 
 data DbException =
-  NotFoundException
+  NotFound
   | SystemException SomeException deriving (Show, Generic)
 
 insert :: DbConstraint backend a r => a -> Eff r (Key a)

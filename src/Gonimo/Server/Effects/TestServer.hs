@@ -1,10 +1,11 @@
 module Gonimo.Server.Effects.TestServer (
-  runErrorServer
+  runExceptionServer
   , Config(..)
-  , ServerEffects) where
+  , ServerEffects
+  , AuthServerEffects) where
 
 
-import           Control.Exception.Base (try)
+import           Control.Exception.Base (try, throwIO, fromException, SomeException)
 import           Control.Monad.Freer.Exception (Exc(..), runError)
 import           Control.Monad.Freer.Internal (Eff(..), Arrs, decomp, qApp)
 import           Control.Monad.Logger (Loc, LogLevel, LogSource, LogStr, ToLogStr(..))
@@ -18,14 +19,16 @@ import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
 import           Gonimo.Server.Effects.Internal
 import           Network.Mail.SMTP (sendMail)
 import Control.Monad.Trans.Reader (ReaderT)
-import Crypto.Random (SystemRandom)
-import Crypto.Random (genBytes)
+import Crypto.Random (SystemRandom, genBytes)
 import Data.Time.Clock (getCurrentTime)
+import Data.Maybe (fromMaybe)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad ((<=<))
 
 type ServerEffects = Eff '[Exc ServerException, Server]
 
 type DbPool = Pool SqlBackend
-type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO () 
+type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 
 data Config = Config {
   configPool :: DbPool
@@ -34,8 +37,8 @@ data Config = Config {
   }
 
 
-runErrorServer :: Config -> Eff (Exc ServerException ': '[Server]) w  -> IO (Either ServerException w)
-runErrorServer c = runServer c . runError
+runExceptionServer :: Config -> Eff (Exc ServerException ': '[Server]) w  -> IO (Either ServerException w)
+runExceptionServer c = runServer c . runError
 
 runServer :: forall w . Config -> Eff '[Server] (Either ServerException w) -> IO (Either ServerException w)
 runServer _ (Val v) = return v
@@ -43,9 +46,9 @@ runServer c (E u' q) = case decomp u' of
   Right (SendEmail mail)           -> execIO c q $ sendMail "localhost" mail
   Right (LogMessage loc ls ll msg) -> execIO c q $ doLog loc ls ll (toLogStr msg)
   Right (GenRandomBytes l)         -> let (res, newC) = doGen l
-                                      in return res >>= runServer newC . qApp q
-  Right (GetCurrentTime)           -> execIO c q getCurrentTime   
-                                      
+                                      in runServer newC . qApp q $ res
+  Right GetCurrentTime             -> execIO c q getCurrentTime
+
   Right (RunDb trans)              -> runDatabaseServerIO pool trans >>= runServer c . qApp q
   Left  _                          -> error impossibleMessage
   where
@@ -54,28 +57,33 @@ runServer c (E u' q) = case decomp u' of
     gen = configRandGen c
     -- runLogger loggerT = runLoggingT loggerT doLog
     doGen l = case genBytes l gen of
-      Left e              -> ((Left (RandomGeneratorException e)), c)
+      Left e              -> (Left (RandomGeneratorException e), c)
       Right (res, newGen) -> (Right res, c { configRandGen = newGen })
 
 
 
-
+-- We throw exceptions instead of using Either, because only in this case, are database transactions rolled back.
 runDatabaseServer :: forall w . Eff (Exc Db.DbException ': '[Db.Database SqlBackend]) w
-                     -> ReaderT SqlBackend IO (Either ServerException w)
-runDatabaseServer = fmap (first dbToServerException) . runExceptionDatabase
+                     -> ReaderT SqlBackend IO w
+runDatabaseServer = throwExceptions <=< fmap (first dbToServerException) . runExceptionDatabase
   where
-    dbToServerException Db.NotFoundException = NotFoundException
+    dbToServerException Db.NotFound = NotFound
     dbToServerException (Db.SystemException e) = SystemException e
 
-runDatabaseServerIO :: forall w . Pool SqlBackend 
+    -- Needed to have runSqlPool roll back the transaction:
+    throwExceptions :: Either ServerException a -> ReaderT SqlBackend IO a
+    throwExceptions (Left e)  = lift $ throwIO e
+    throwExceptions (Right v) = return v
+
+runDatabaseServerIO :: forall w . Pool SqlBackend
                        -> Eff (Exc Db.DbException ': '[Db.Database SqlBackend]) w
                      -> IO (Either ServerException w)
-runDatabaseServerIO pool = fmap flattenEither . try . flip runSqlPool pool . runDatabaseServer
+runDatabaseServerIO pool = fmap (first toServerException) . try
+                         . flip runSqlPool pool . runDatabaseServer
   where
-    flattenEither (Left e) = Left $ SystemException e
-    flattenEither (Right (Left e)) = Left $ e
-    flattenEither (Right (Right r)) = Right r
-    
+    toServerException :: SomeException -> ServerException
+    toServerException e = fromMaybe (SystemException e) (fromException e)
+
 execIO :: Config
           -> Arrs '[Server] (Either ServerException b) (Either ServerException w)
           -> IO b
