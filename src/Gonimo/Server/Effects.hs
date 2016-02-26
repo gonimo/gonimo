@@ -10,6 +10,7 @@ module Gonimo.Server.Effects (
   , sendEmail
   , logMessage
   , genRandomBytes
+  , generateSecret
   , getCurrentTime
   , runDb
   , ServerConstraint
@@ -24,10 +25,13 @@ import Data.ByteString (ByteString)
 import Data.Time.Clock (UTCTime)
 import Gonimo.Database.Effects
 import Gonimo.Server.Effects.Internal
+import Gonimo.Server.DbTypes (Secret (..))
 import Network.Mail.Mime (Mail)
 import Database.Persist.Sql (SqlBackend)
 import Control.Exception (SomeException)
 
+secretLength :: Int
+secretLength = 16
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
@@ -43,9 +47,11 @@ genRandomBytes = sendServer . GenRandomBytes
 getCurrentTime :: ServerConstraint r => Eff r UTCTime
 getCurrentTime = sendServer GetCurrentTime
 
-runDb :: (ServerConstraint r) => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
+runDb :: ServerConstraint r => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
 runDb = sendServer . RunDb
 
+generateSecret :: ServerConstraint r => Eff r Secret
+generateSecret = Secret <$> genRandomBytes secretLength
 
 -- Orphan instance - extensible effects and typeclasses don't really play well together ...
 -- If we try to user the Member constraint - it gets even worse!

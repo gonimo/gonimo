@@ -1,6 +1,8 @@
 module Gonimo.Server.AuthHandlers where
 
-import Control.Monad.Freer (Eff)
+import Control.Monad.Freer (Eff, Member)
+import Control.Monad.Freer.Exception (Exc (..))
+import Control.Monad.Freer.Reader (Reader (..))
 import Control.Monad.Trans.Either (EitherT(..), left)
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
@@ -11,13 +13,14 @@ import Gonimo.Server.Effects hiding (Server)
 import Gonimo.Server.Effects.TestServer
 import Gonimo.Types
 import Gonimo.WebAPI
-import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..), utf8Encode)
+import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
 import qualified Gonimo.Database.Effects as Db
 import qualified Data.Text as T
 import Servant.Server (err404, err400)
 import Database.Persist (Entity(..))
 import Gonimo.Server.EmailInvitation
 import Control.Monad.Freer.Exception (throwError)
+import Control.Exception (SomeException)
 
 
 data AuthData = AuthData {
@@ -25,7 +28,7 @@ data AuthData = AuthData {
 }
 
 type AuthServerConstraint r = (Member (Reader AuthData) r, ServerConstraint r)
-type AuthServerEffects = Eff '[Reader (Entity Account), Exc ServerException, Server]
+type AuthServerEffects = Eff '[Reader (Entity Account), Exc SomeException, Server]
 
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)

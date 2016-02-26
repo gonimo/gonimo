@@ -4,11 +4,10 @@ module Gonimo.Server.Effects.TestServer (
   , ServerEffects ) where
 
 
-import           Control.Exception.Base (try, throwIO, fromException, SomeException)
+import           Control.Exception.Base (try, throwIO, SomeException, toException)
 import           Control.Monad.Freer.Exception (Exc(..), runError)
 import           Control.Monad.Freer.Internal (Eff(..), Arrs, decomp, qApp)
 import           Control.Monad.Logger (Loc, LogLevel, LogSource, LogStr, ToLogStr(..))
-import           Data.Bifunctor (first)
 import           Data.Monoid ((<>))
 import           Data.Pool (Pool)
 
@@ -20,7 +19,6 @@ import           Network.Mail.SMTP (sendMail)
 import Control.Monad.Trans.Reader (ReaderT)
 import Crypto.Random (SystemRandom, genBytes)
 import Data.Time.Clock (getCurrentTime)
-import Data.Maybe (fromMaybe)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad ((<=<))
 
@@ -60,17 +58,16 @@ runServer c (E u' q) = case decomp u' of
 
 
 -- We throw exceptions instead of using Either, because only in this case, are database transactions rolled back.
-runDatabaseServer :: forall w . Eff (Exc Db.DbException ': '[Db.Database SqlBackend]) w
+runDatabaseServer :: forall w . Eff (Exc SomeException ': '[Db.Database SqlBackend]) w
                      -> ReaderT SqlBackend IO w
 runDatabaseServer = throwExceptions <=< runExceptionDatabase
   where
     -- Needed to have runSqlPool roll back the transaction:
     throwExceptions :: Either SomeException a -> ReaderT SqlBackend IO a
-    throwExceptions (Left e)  = lift $ throwIO e
-    throwExceptions (Right v) = return v
+    throwExceptions  = either (lift . throwIO) return
 
 runDatabaseServerIO :: forall w . Pool SqlBackend
-                       -> Eff (Exc Db.DbException ': '[Db.Database SqlBackend]) w
+                       -> Eff (Exc SomeException ': '[Db.Database SqlBackend]) w
                        -> IO (Either SomeException w)
 runDatabaseServerIO pool = try . flip runSqlPool pool . runDatabaseServer
 
@@ -78,11 +75,7 @@ execIO :: Config
           -> Arrs '[Server] (Either SomeException b) (Either SomeException w)
           -> IO b
           -> IO (Either SomeException w)
-execIO c q action = serverTry action >>= runServer c . qApp q
-
-serverTry :: IO a -> IO (Either SomeException a)
-serverTry op = first SystemException <$> try op
-
+execIO c q action = try action >>= runServer c . qApp q
 
 impossibleMessage :: String
 impossibleMessage =

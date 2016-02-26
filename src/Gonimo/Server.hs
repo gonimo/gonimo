@@ -11,13 +11,15 @@ import Gonimo.Server.Effects hiding (Server)
 import Gonimo.Server.Effects.TestServer
 import Gonimo.Types
 import Gonimo.WebAPI
-import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..), utf8Encode)
+import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
 import qualified Gonimo.Database.Effects as Db
 import qualified Data.Text as T
 import Servant.Server (err404, err400)
 import Database.Persist (Entity(..))
 import Gonimo.Server.EmailInvitation
 import Control.Monad.Freer.Exception (throwError)
+import Gonimo.Server.Handlers
+import Gonimo.Server.AuthHandlers
 
 
 
@@ -62,7 +64,7 @@ authToEff = Nat . authToEff'
 -------
 
 effToServant' :: ServerEffects a -> EitherT ServantErr IO a
-effToServant' = EitherT $ first exceptionToServantErr <$> runExceptionServer
+effToServant' = EitherT $ first exceptionToServantErr <$> runExceptionServer . handleExceptions
 
 effToServant :: ServerEffects :~> EitherT ServantErr IO
 effToServant = Nat effToServant'
