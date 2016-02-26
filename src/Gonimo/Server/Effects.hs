@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {--
   Gonimo server uses the new effects API from the freer package. This
   is all IO effects of gonimo server will be modeled in an interpreter,
@@ -12,20 +13,21 @@ module Gonimo.Server.Effects (
   , getCurrentTime
   , runDb
   , ServerConstraint
-  , ServerException(..)
   ) where
 
 
 
 import Control.Monad.Freer (Eff)
 import Control.Monad.Freer.Exception (Exc)
-import Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
+import Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr, MonadLogger (..))
 import Data.ByteString (ByteString)
 import Data.Time.Clock (UTCTime)
 import Gonimo.Database.Effects
 import Gonimo.Server.Effects.Internal
 import Network.Mail.Mime (Mail)
 import Database.Persist.Sql (SqlBackend)
+import Control.Exception (SomeException)
+
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
@@ -41,11 +43,11 @@ genRandomBytes = sendServer . GenRandomBytes
 getCurrentTime :: ServerConstraint r => Eff r UTCTime
 getCurrentTime = sendServer GetCurrentTime
 
-runDb :: (ServerConstraint r) => Eff '[Exc DbException, Database SqlBackend]  a -> Eff r a
+runDb :: (ServerConstraint r) => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
 runDb = sendServer . RunDb
 
-{--
+
 -- Orphan instance - extensible effects and typeclasses don't really play well together ...
-instance MonadLogger (Eff '[Exc ServerException, Server])  where
+-- If we try to user the Member constraint - it gets even worse!
+instance MonadLogger (Eff '[Exc SomeException, Server])  where
   monadLoggerLog = logMessage
---}

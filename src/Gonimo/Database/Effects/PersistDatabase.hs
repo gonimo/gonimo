@@ -5,52 +5,36 @@ import Control.Exception.Lifted (try)
 import Control.Monad.Freer.Internal (Eff(..), Arrs, decomp, qApp)
 import Control.Monad.Freer.Exception (Exc(..), runError)
 import Control.Monad.Trans.Reader (ReaderT)
-import Data.Bifunctor (first)
 import Data.Monoid ((<>))
 import Database.Persist
-import Gonimo.Database.Effects (Database(..), DbException(..))
-
-
+import Gonimo.Database.Effects (Database(..))
+import Control.Exception.Base (SomeException)
 
 
 runExceptionDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
-                        => Eff (Exc DbException ': '[Database backend]) w
-                        -> ReaderT backend IO (Either DbException w)
+                        => Eff (Exc SomeException ': '[Database backend]) w
+                        -> ReaderT backend IO (Either SomeException w)
 runExceptionDatabase = runDatabase . runError
 
 
 runDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
-               => Eff '[Database backend] (Either DbException w)
-               -> ReaderT backend IO (Either DbException w)
+               => Eff '[Database backend] (Either SomeException w)
+               -> ReaderT backend IO (Either SomeException w)
 runDatabase (Val v)  = return v
 runDatabase (E u' q) = case decomp u' of
   Right (Insert e)    -> execIO q $ insert e
   Right (Insert_ e)   -> execIO q $ insert_ e
   Right (Replace k a) -> execIO q $ replace k a
   Right (Delete k)    -> execIO q $ delete k
-  Right (Get k)       -> dbMayTry (get k) >>= runDatabase . qApp q
-  Right (GetBy k)     -> dbMayTry (getBy k) >>= runDatabase . qApp q
+  Right (Get k)       -> execIO q $ get k
+  Right (GetBy k)     -> execIO q $ getBy k
   Left _ -> error impossibleMessage
 
 execIO :: (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
-          => Arrs '[Database backend] (Either DbException b) (Either DbException w)
+          => Arrs '[Database backend] (Either SomeException b) (Either SomeException w)
           -> ReaderT backend IO b
-          -> ReaderT backend IO (Either DbException w)
-execIO q action = dbTry action >>= runDatabase . qApp q
-
-dbTry :: (HasPersistBackend backend backend, PersistStore backend)
-         => ReaderT backend IO a -> ReaderT backend IO (Either DbException a)
-dbTry op = first SystemException <$> try (liftPersist op)
-
-dbMayTry :: (HasPersistBackend backend backend, PersistStore backend)
-         => ReaderT backend IO (Maybe a) -> ReaderT backend IO (Either DbException a)
-dbMayTry op = do
-  r <- try $ liftPersist op
-  case r of
-    Left e -> return $ Left (SystemException e)
-    Right Nothing -> return $ Left NotFound
-    Right (Just v) -> return $ Right v
-
+          -> ReaderT backend IO (Either SomeException w)
+execIO q action = try action >>= runDatabase . qApp q
 
 impossibleMessage :: String
 impossibleMessage =

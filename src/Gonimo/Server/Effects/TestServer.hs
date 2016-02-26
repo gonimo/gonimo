@@ -1,8 +1,7 @@
 module Gonimo.Server.Effects.TestServer (
   runExceptionServer
   , Config(..)
-  , ServerEffects
-  , AuthServerEffects) where
+  , ServerEffects ) where
 
 
 import           Control.Exception.Base (try, throwIO, fromException, SomeException)
@@ -25,8 +24,6 @@ import Data.Maybe (fromMaybe)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad ((<=<))
 
-type ServerEffects = Eff '[Exc ServerException, Server]
-
 type DbPool = Pool SqlBackend
 type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 
@@ -37,10 +34,10 @@ data Config = Config {
   }
 
 
-runExceptionServer :: Config -> Eff (Exc ServerException ': '[Server]) w  -> IO (Either ServerException w)
+runExceptionServer :: Config -> Eff (Exc SomeException ': '[Server]) w  -> IO (Either SomeException w)
 runExceptionServer c = runServer c . runError
 
-runServer :: forall w . Config -> Eff '[Server] (Either ServerException w) -> IO (Either ServerException w)
+runServer :: forall w . Config -> Eff '[Server] (Either SomeException w) -> IO (Either SomeException w)
 runServer _ (Val v) = return v
 runServer c (E u' q) = case decomp u' of
   Right (SendEmail mail)           -> execIO c q $ sendMail "localhost" mail
@@ -57,7 +54,7 @@ runServer c (E u' q) = case decomp u' of
     gen = configRandGen c
     -- runLogger loggerT = runLoggingT loggerT doLog
     doGen l = case genBytes l gen of
-      Left e              -> (Left (RandomGeneratorException e), c)
+      Left e              -> (Left (toException e), c)
       Right (res, newGen) -> (Right res, c { configRandGen = newGen })
 
 
@@ -65,32 +62,25 @@ runServer c (E u' q) = case decomp u' of
 -- We throw exceptions instead of using Either, because only in this case, are database transactions rolled back.
 runDatabaseServer :: forall w . Eff (Exc Db.DbException ': '[Db.Database SqlBackend]) w
                      -> ReaderT SqlBackend IO w
-runDatabaseServer = throwExceptions <=< fmap (first dbToServerException) . runExceptionDatabase
+runDatabaseServer = throwExceptions <=< runExceptionDatabase
   where
-    dbToServerException Db.NotFound = NotFound
-    dbToServerException (Db.SystemException e) = SystemException e
-
     -- Needed to have runSqlPool roll back the transaction:
-    throwExceptions :: Either ServerException a -> ReaderT SqlBackend IO a
+    throwExceptions :: Either SomeException a -> ReaderT SqlBackend IO a
     throwExceptions (Left e)  = lift $ throwIO e
     throwExceptions (Right v) = return v
 
 runDatabaseServerIO :: forall w . Pool SqlBackend
                        -> Eff (Exc Db.DbException ': '[Db.Database SqlBackend]) w
-                     -> IO (Either ServerException w)
-runDatabaseServerIO pool = fmap (first toServerException) . try
-                         . flip runSqlPool pool . runDatabaseServer
-  where
-    toServerException :: SomeException -> ServerException
-    toServerException e = fromMaybe (SystemException e) (fromException e)
+                       -> IO (Either SomeException w)
+runDatabaseServerIO pool = try . flip runSqlPool pool . runDatabaseServer
 
 execIO :: Config
-          -> Arrs '[Server] (Either ServerException b) (Either ServerException w)
+          -> Arrs '[Server] (Either SomeException b) (Either SomeException w)
           -> IO b
-          -> IO (Either ServerException w)
+          -> IO (Either SomeException w)
 execIO c q action = serverTry action >>= runServer c . qApp q
 
-serverTry :: IO a -> IO (Either ServerException a)
+serverTry :: IO a -> IO (Either SomeException a)
 serverTry op = first SystemException <$> try op
 
 

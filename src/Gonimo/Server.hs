@@ -21,120 +21,70 @@ import Control.Monad.Freer.Exception (throwError)
 
 
 
-createAccount :: ServerConstraint r => Maybe Credentials -> Eff r (AccountId, AuthToken)
-createAccount mcred = do
-  now <- getCurrentTime
-  let email = mcred >>= getUserEmail . userName
-  let phone = mcred >>= getUserPhone . userName
-  let password = userPassword <$> mcred
-  asecret <- generateSecret
-  aid <- runDb $ Db.insert Account {
-    accountSecret = asecret
-    , accountCreated = now
-    , accountLastAccessed = now
-    , accountEmail = email
-    , accountPhone = phone
-    , accountPassword = password
-    }
-  return (aid, GonimoSecret asecret)
-
-createInvitation :: ServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
-createInvitation fid = do
-  now <- getCurrentTime
-  isecret <- generateSecret
-  let inv = Invitation {
-    invitationSecret = isecret
-    , invitationFamilyId = fid
-    , invitationCreated = now
-    , invitationDelivery = OtherDelivery
-  }
-  iid <- runDb $ Db.insert inv
-  return (iid, inv)
-
-
-acceptInvitation :: ServerConstraint r => Secret -> Eff r Invitation
-acceptInvitation invSecret = do
-  now <- getCurrentTime
-  uid <- error "TODO"
-  runDb $ do
-    Entity iid inv <- Db.getBy (SecretInvitation invSecret)
-    Db.delete iid
-    Db.insert_  FamilyAccount {
-        familyAccountAccountId = uid
-      , familyAccountFamilyId = invitationFamilyId inv
-      , familyAccountJoined = now
-      , familyAccountInvitedBy = Just (invitationDelivery inv)
-    }
-    return inv
-
-sendInvitation :: ServerConstraint r => SendInvitation -> Eff r ()
-sendInvitation (SendInvitation iid d@(EmailInvitation email)) = do
-  (inv, family) <- runDb $ do
-    inv <- Db.get iid
-    let newInv = inv {
-      invitationDelivery = d
-    }
-    Db.replace iid newInv
-    family <- Db.get (invitationFamilyId inv)
-    return (newInv, family)
-  sendEmail $ makeInvitationEmail inv email (familyName family)
-sendInvitation (SendInvitation _ OtherDelivery) =
-  throwError $ BadRequest "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
-
-
-createFamily :: ServerConstraint r => FamilyName -> Eff r FamilyId
-createFamily n = do
-  now <- getCurrentTime
-  uid <- error "TODO"
-  runDb $ do
-    fid <- Db.insert Family {
-        familyName = n
-      , familyCreated = now
-      , familyLastAccessed = now
-    }
-    Db.insert_ FamilyAccount {
-      familyAccountAccountId = uid
-      , familyAccountFamilyId = fid
-      , familyAccountJoined = now
-      , familyAccountInvitedBy = Nothing
-    }
-    return fid
-
-getCoffee :: ServerConstraint r => Eff r Coffee
-getCoffee = throwError TeaPot
-
--- runServer ::  ServerEffects a -> EitherT ServantErr IO a
--- runServer action = EitherT $ first errorServerToServant <$> runErrorServer action
-
-errorServerToServant :: ServerException -> ServantErr
-errorServerToServant NotFound              = err404
-errorServerToServant (BadRequest m)        = err400 {errBody = encodeUtf8 m}
-errorServerToServant TeaPot                = ServantErr { errReasonPhrase = "I am a tea pot!"
-                                                        , errHTTPCode = 418
-                                                        , errBody = ""
-                                                        , errHeaders = []
-                                                        }
-errorServerToServant (SystemException _)   = err500
-
-
-authServerT :: AuthToken -> ServerT AuthGonimoAPI ServerEffects
-authServerT token = undefined
-
-effServerT :: ServerT GonimoAPI ServerEffects
-effServerT = createAccount
-        :<|> authServerT
+effServer :: ServerT GonimoAPI ServerEffects
+effServer = createAccount
+        :<|> getAuthServer
         :<|> getCoffee
+
+authServer :: ServerT AuthGonimoAPI AuthServerEffects
+authServer = createInvitation
+       :<|>  acceptInvitation
+       :<|>  sendInvitation
+
+
+
 
 -- Let's serve
 server :: Server GonimoAPI
-server = enter effToServantT effServerT
+server = enter effToServant effServer
 
-effToServantT' :: ServerEffects a -> EitherT ServantErr IO a
-effToServantT' = EitherT $ first errorServerToServant <$> runExceptionServer
+getAuthServer :: AuthToken -> ServerT AuthGonimoAPI ServerEffects
+getAuthServer s = enter (authToEff s) authServerT
 
-effToServantT :: ServerEffects :~> EitherT ServantErr IO
-effToServantT = Nat effToServantT'
 
-generateSecret :: ServerConstraint r => Eff r Secret
-generateSecret = Secret <$> genRandomBytes secretLength
-  where secretLength = 16
+----------------------- Natural transformations -------------------------
+
+authToEff' :: Maybe AuthToken -> AuthServerEffects a -> ServerEffects a
+authToEff' Nothing _ = throwError err 401 { -- Not standard conform, but I don't care for now.
+                          errReasonPhrase = "You need to provide an AuthToken!"
+                         }
+authToEff' (GonimoSecret s) m = do
+    a <- runDbAuthErr $ Db.getBy $ SecretAccount s
+    let authData = AuthData a
+    runReader m authData
+  where
+    invalidAuthErr = err400 { reasonPhrase = "Your provided credentials are invalid!" }
+    runDbAuthErr = servantErrOnNothing invalidAuthErr <=< runDb
+
+authToEff :: Maybe AuthToken -> AuthServerEffects :~> ServerEffects
+authToEff = Nat . authToEff'
+
+-------
+
+effToServant' :: ServerEffects a -> EitherT ServantErr IO a
+effToServant' = EitherT $ first exceptionToServantErr <$> runExceptionServer
+
+effToServant :: ServerEffects :~> EitherT ServantErr IO
+effToServant = Nat effToServant'
+
+
+-------------------------------------------------------------------------
+
+
+---------------------- Exception handling -------------------------------
+
+handleExceptions :: ServerConstraint r => Eff r a -> Eff r a
+handleExceptions action = catchError action $ \e ->
+    case asyncExceptionFromException e of
+      -- A more reliable technique for this would be: https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions .
+      Just ae -> throw ae -- Async exceptions are bad - just quit.
+      _ -> do
+        $(logError) $ "Error: " <> show e -- For now, try to carry on for all other exceptions.
+        throwError e                      -- Simply throwing an err500 to the user and log the error.
+
+
+
+exceptionToServantErr :: SomeException -> ServantErr
+exceptionToServantErr se = case fromException se of
+    Just (ServantException err) -> err
+    Nothing -> err500

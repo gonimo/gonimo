@@ -61,7 +61,8 @@ executable gonimo-back
                  , Gonimo.WebAPI.Docs
                  , Gonimo.Types
                  , Gonimo.Server
-                 , Gonimo.Server.Auth
+                 , Gonimo.Server.AuthHandlers
+                 , Gonimo.Server.Handlers
                  , Gonimo.Server.DbEntities
                  , Gonimo.Server.DbTypes
                  , Gonimo.Server.Effects
