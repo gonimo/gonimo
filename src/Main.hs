@@ -9,8 +9,8 @@ import Servant
 
 
 
---app :: Application
--- app =  serve gonimoAPI server
+app :: Application
+app = serve gonimoAPI server
 
--- main = run 8081 app
-main = putStrLn "Hello World!"
+main :: IO ()
+main = run 8081 app

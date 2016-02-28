@@ -1,38 +1,26 @@
 module Gonimo.Server.AuthHandlers where
 
-import Control.Monad.Freer (Eff, Member)
-import Control.Monad.Freer.Exception (Exc (..))
-import Control.Monad.Freer.Reader (Reader (..))
-import Control.Monad.Trans.Either (EitherT(..), left)
-import Data.Bifunctor (first)
-import Data.ByteString (ByteString)
-import Data.Text.Encoding (encodeUtf8)
-import Gonimo.Server.DbEntities
+import Control.Monad.Freer (Eff)
+import Control.Monad.Freer.Reader (ask)
 import Gonimo.Server.DbTypes
-import Gonimo.Server.Effects hiding (Server)
-import Gonimo.Server.Effects.TestServer
+import Gonimo.Server.DbEntities
+import Gonimo.Server.Effects
+import Gonimo.Database.Effects.Servant
 import Gonimo.Types
-import Gonimo.WebAPI
-import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
 import qualified Gonimo.Database.Effects as Db
-import qualified Data.Text as T
-import Servant.Server (err404, err400)
+import Servant.Server (err400, ServantErr(..))
 import Database.Persist (Entity(..))
 import Gonimo.Server.EmailInvitation
-import Control.Monad.Freer.Exception (throwError)
-import Control.Exception (SomeException)
+import Gonimo.Server.Auth
+import Gonimo.Util
 
-
-data AuthData = AuthData {
-  authDataAccountEntity :: Entity Account
-}
-
-type AuthServerConstraint r = (Member (Reader AuthData) r, ServerConstraint r)
-type AuthServerEffects = Eff '[Reader (Entity Account), Exc SomeException, Server]
-
-
-createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
-createInvitation fid = do
+-- We have to use AuthServerEffects instead of constraint AuthServerConstraint, as an open
+-- constraint does not seem to play well with servant. (Ambiguous type errors)
+createInvitation :: Maybe FamilyId -> AuthServerEffects (InvitationId, Invitation)
+-- createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
+createInvitation Nothing = throwServant err400 {errReasonPhrase = "FamilyId missing!"}
+createInvitation (Just fid) = do
+  authorize $ isFamilyMember fid
   now <- getCurrentTime
   isecret <- generateSecret
   let inv = Invitation {
@@ -45,12 +33,15 @@ createInvitation fid = do
   return (iid, inv)
 
 
-acceptInvitation :: AuthServerConstraint r => Secret -> Eff r Invitation
-acceptInvitation invSecret = do
+acceptInvitation :: Maybe Secret -> AuthServerEffects Invitation
+-- acceptInvitation :: AuthServerConstraint r => Secret -> Eff r Invitation
+acceptInvitation Nothing = throwServant err400 {errReasonPhrase = "Secret missing!"}
+acceptInvitation (Just invSecret) = do
+  -- no authorization: valid user, secret can be found - all fine.
   now <- getCurrentTime
-  uid <- error "TODO"
+  uid <- askAccountId
   runDb $ do
-    Entity iid inv <- Db.getBy404 (SecretInvitation invSecret)
+    Entity iid inv <- getBy404 (SecretInvitation invSecret)
     Db.delete iid
     Db.insert_  FamilyAccount {
         familyAccountAccountId = uid
@@ -60,25 +51,34 @@ acceptInvitation invSecret = do
     }
     return inv
 
-sendInvitation :: AuthServerConstraint r => SendInvitation -> Eff r ()
-sendInvitation (SendInvitation iid d@(EmailInvitation email)) = do
+sendInvitation :: Maybe SendInvitation -> AuthServerEffects ()
+-- sendInvitation :: AuthServerConstraint r => Maybe SendInvitation -> Eff r ()
+sendInvitation Nothing = throwServant err400 {errReasonPhrase = "SendInvitation missing!"}
+sendInvitation (Just (SendInvitation iid d@(EmailInvitation email))) = do
+  authData <- ask -- Only allowed if user is member of the inviting family!
   (inv, family) <- runDb $ do
-    inv <- Db.get iid
+    inv <- get404 iid
+    authorizeAuthData (isFamilyMember (invitationFamilyId inv)) authData
     let newInv = inv {
       invitationDelivery = d
     }
     Db.replace iid newInv
-    family <- Db.get (invitationFamilyId inv)
+    family <- get404 (invitationFamilyId inv)
     return (newInv, family)
   sendEmail $ makeInvitationEmail inv email (familyName family)
-sendInvitation (SendInvitation _ OtherDelivery) =
-  throwError $ BadRequest "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
+sendInvitation (Just (SendInvitation _ OtherDelivery)) =
+  throwServant err400 {
+    errReasonPhrase = "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
+  }
 
 
-createFamily :: AuthServerConstraint r => FamilyName -> Eff r FamilyId
-createFamily n = do
+createFamily :: Maybe FamilyName -> AuthServerEffects FamilyId
+-- createFamily :: AuthServerConstraint r =>  Maybe FamilyName -> Eff r FamilyId
+createFamily Nothing = throwServant err400 {errReasonPhrase = "Family name missing!"}
+createFamily (Just n) = do
+  -- no authorization: - any valid user can create a family.
   now <- getCurrentTime
-  uid <- error "TODO"
+  uid <- askAccountId
   runDb $ do
     fid <- Db.insert Family {
         familyName = n

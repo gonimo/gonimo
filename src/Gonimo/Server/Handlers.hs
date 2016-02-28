@@ -1,25 +1,12 @@
 module Gonimo.Server.Handlers where
 
 import Control.Monad.Freer (Eff)
-import Control.Monad.Trans.Either (EitherT(..), left)
-import Data.Bifunctor (first)
-import Data.ByteString (ByteString)
-import Data.Text.Encoding (encodeUtf8)
 import Gonimo.Server.DbEntities
-import Gonimo.Server.DbTypes
 import Gonimo.Server.Effects hiding (Server)
-import Gonimo.Server.Effects.TestServer
 import Gonimo.Types
-import Gonimo.WebAPI
-import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
+import Servant (ServantErr(..))
 import qualified Gonimo.Database.Effects as Db
-import qualified Data.Text as T
-import Servant.Server (err404, err400)
-import Database.Persist (Entity(..))
-import Gonimo.Server.EmailInvitation
-import Control.Monad.Freer.Exception (throwError)
-
-
+import Gonimo.Util
 
 createAccount :: ServerConstraint r => Maybe Credentials -> Eff r (AccountId, AuthToken)
 createAccount mcred = do

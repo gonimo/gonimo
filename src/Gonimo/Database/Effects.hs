@@ -7,7 +7,7 @@ import Control.Monad.Freer (send, Member, Eff)
 import Control.Monad.Freer.Exception (throwError, Exc(..))
 
 
-import Database.Persist (PersistEntity(..), Entity)
+import Database.Persist (PersistEntity(..), Entity, Filter, SelectOpt, PersistQuery)
 
 
 -- Type synonym for constraints on Database API functions, requires ConstraintKinds language extension:
@@ -26,6 +26,7 @@ data Database backend v where
   Delete  :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> EDatabase backend ()
   Get     :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> EDatabase backend (Maybe a)
   GetBy   :: (backend ~ PersistEntityBackend a, PersistEntity a) => Unique a -> EDatabase backend (Maybe (Entity a))
+  SelectList :: (backend ~ PersistEntityBackend a, PersistQuery backend, PersistEntity a) => [Filter a] -> [SelectOpt a] -> EDatabase backend [Entity a]
 
 insert :: DbConstraint backend a r => a -> Eff r (Key a)
 insert = sendDb . Insert
@@ -45,6 +46,8 @@ delete = sendDb . Delete
 getBy :: DbConstraint backend a r => Unique a -> Eff r (Maybe (Entity a))
 getBy = sendDb . GetBy
 
+selectList :: (DbConstraint backend a r, PersistQuery backend) => [Filter a] -> [SelectOpt a] -> Eff r [Entity a]
+selectList f s = sendDb $ SelectList f s
 
 -- Send a server operation, that is an operation that might fail:
 sendDb :: (Member (Database backend) r, Member (Exc SomeException) r) => EDatabase backend a -> Eff r a

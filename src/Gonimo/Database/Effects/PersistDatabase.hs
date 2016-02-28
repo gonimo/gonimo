@@ -10,14 +10,15 @@ import Database.Persist
 import Gonimo.Database.Effects (Database(..))
 import Control.Exception.Base (SomeException)
 
+type PersistConstraint backend = (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend, PersistQuery backend)
 
-runExceptionDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
+runExceptionDatabase :: forall w backend .PersistConstraint backend
                         => Eff (Exc SomeException ': '[Database backend]) w
                         -> ReaderT backend IO (Either SomeException w)
 runExceptionDatabase = runDatabase . runError
 
 
-runDatabase :: forall w backend . (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
+runDatabase :: forall w backend . PersistConstraint backend
                => Eff '[Database backend] (Either SomeException w)
                -> ReaderT backend IO (Either SomeException w)
 runDatabase (Val v)  = return v
@@ -28,9 +29,10 @@ runDatabase (E u' q) = case decomp u' of
   Right (Delete k)    -> execIO q $ delete k
   Right (Get k)       -> execIO q $ get k
   Right (GetBy k)     -> execIO q $ getBy k
+  Right (SelectList fs ss) -> execIO q $ selectList fs ss
   Left _ -> error impossibleMessage
 
-execIO :: (HasPersistBackend backend backend, PersistStore backend, PersistUnique backend)
+execIO :: PersistConstraint backend
           => Arrs '[Database backend] (Either SomeException b) (Either SomeException w)
           -> ReaderT backend IO b
           -> ReaderT backend IO (Either SomeException w)

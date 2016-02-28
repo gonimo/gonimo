@@ -1,6 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Server where
 
 import Control.Monad.Freer (Eff)
+import Control.Monad.Freer.Reader (runReader)
 import Control.Monad.Trans.Either (EitherT(..), left)
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
@@ -14,12 +16,18 @@ import Gonimo.WebAPI
 import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
 import qualified Gonimo.Database.Effects as Db
 import qualified Data.Text as T
-import Servant.Server (err404, err400)
-import Database.Persist (Entity(..))
+import Servant.Server (err404, err400, err401)
+import Database.Persist (Entity(..), (==.))
 import Gonimo.Server.EmailInvitation
-import Control.Monad.Freer.Exception (throwError)
+import Control.Monad.Freer.Exception (throwError, catchError)
 import Gonimo.Server.Handlers
 import Gonimo.Server.AuthHandlers
+import Gonimo.Server.Auth
+import Gonimo.Database.Effects.Servant
+import Control.Monad ((<=<))
+import Control.Exception (asyncExceptionFromException, throw, SomeException, fromException)
+import Data.Monoid
+import Gonimo.Util (ServantException(..), throwServant)
 
 
 
@@ -31,43 +39,44 @@ effServer = createAccount
 authServer :: ServerT AuthGonimoAPI AuthServerEffects
 authServer = createInvitation
        :<|>  acceptInvitation
+       :<|>  createFamily
        :<|>  sendInvitation
 
 
-
-
 -- Let's serve
-server :: Server GonimoAPI
-server = enter effToServant effServer
+getServer :: Config -> Server GonimoAPI
+getServer c = enter (effToServant c) effServer
 
-getAuthServer :: AuthToken -> ServerT AuthGonimoAPI ServerEffects
-getAuthServer s = enter (authToEff s) authServerT
+getAuthServer :: Maybe AuthToken -> ServerT AuthGonimoAPI ServerEffects
+getAuthServer s = enter (authToEff s) authServer
 
 
 ----------------------- Natural transformations -------------------------
 
 authToEff' :: Maybe AuthToken -> AuthServerEffects a -> ServerEffects a
-authToEff' Nothing _ = throwError err 401 { -- Not standard conform, but I don't care for now.
+authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don't care for now.
                           errReasonPhrase = "You need to provide an AuthToken!"
                          }
-authToEff' (GonimoSecret s) m = do
-    a <- runDbAuthErr $ Db.getBy $ SecretAccount s
-    let authData = AuthData a
+authToEff' (Just (GonimoSecret s)) m = do
+    authData <- runDb $ do
+      ae@(Entity aid account) <- getByAuthErr $ SecretAccount s
+      fids <- map (familyAccountFamilyId . entityVal) <$> Db.selectList [FamilyAccountAccountId ==. aid] []
+      return $ AuthData ae fids
     runReader m authData
   where
-    invalidAuthErr = err400 { reasonPhrase = "Your provided credentials are invalid!" }
-    runDbAuthErr = servantErrOnNothing invalidAuthErr <=< runDb
+    invalidAuthErr = err400 { errReasonPhrase = "Your provided credentials are invalid!" }
+    getByAuthErr = servantErrOnNothing invalidAuthErr <=< Db.getBy
 
 authToEff :: Maybe AuthToken -> AuthServerEffects :~> ServerEffects
-authToEff = Nat . authToEff'
+authToEff token = Nat $ authToEff' token
 
 -------
 
-effToServant' :: ServerEffects a -> EitherT ServantErr IO a
-effToServant' = EitherT $ first exceptionToServantErr <$> runExceptionServer . handleExceptions
+effToServant' :: Config -> ServerEffects a -> EitherT ServantErr IO a
+effToServant' c = EitherT . fmap (first exceptionToServantErr) . runExceptionServer c . handleExceptions
 
-effToServant :: ServerEffects :~> EitherT ServantErr IO
-effToServant = Nat effToServant'
+effToServant :: Config -> ServerEffects :~> EitherT ServantErr IO
+effToServant c = Nat $ effToServant' c
 
 
 -------------------------------------------------------------------------
@@ -81,7 +90,7 @@ handleExceptions action = catchError action $ \e ->
       -- A more reliable technique for this would be: https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions .
       Just ae -> throw ae -- Async exceptions are bad - just quit.
       _ -> do
-        $(logError) $ "Error: " <> show e -- For now, try to carry on for all other exceptions.
+        $(logError) $ "Error: " <> T.pack (show e) -- For now, try to carry on for all other exceptions.
         throwError e                      -- Simply throwing an err500 to the user and log the error.
 
 
