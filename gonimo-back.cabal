@@ -93,6 +93,7 @@ executable gonimo-back
                      , crypto-api
                      , either >= 4.4.1
                      , errors
+                     , fast-logger
                      , freer
                      , lifted-base >= 0.2.3.6
                      , mime-mail >= 0.4.11

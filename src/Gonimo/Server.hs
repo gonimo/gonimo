@@ -25,7 +25,7 @@ import Gonimo.Server.AuthHandlers
 import Gonimo.Server.Auth
 import Gonimo.Database.Effects.Servant
 import Control.Monad ((<=<))
-import Control.Exception (asyncExceptionFromException, throw, SomeException, fromException)
+import Control.Exception (asyncExceptionFromException, throw, SomeException, fromException, AsyncException)
 import Data.Monoid
 import Gonimo.Util (ServantException(..), throwServant)
 
@@ -39,8 +39,8 @@ effServer = createAccount
 authServer :: ServerT AuthGonimoAPI AuthServerEffects
 authServer = createInvitation
        :<|>  acceptInvitation
-       :<|>  createFamily
        :<|>  sendInvitation
+       :<|>  createFamily
 
 
 -- Let's serve
@@ -59,7 +59,7 @@ authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don'
                          }
 authToEff' (Just (GonimoSecret s)) m = do
     authData <- runDb $ do
-      ae@(Entity aid account) <- getByAuthErr $ SecretAccount s
+      ae@(Entity aid _) <- getByAuthErr $ SecretAccount s
       fids <- map (familyAccountFamilyId . entityVal) <$> Db.selectList [FamilyAccountAccountId ==. aid] []
       return $ AuthData ae fids
     runReader m authData
@@ -88,7 +88,7 @@ handleExceptions :: ServerConstraint r => Eff r a -> Eff r a
 handleExceptions action = catchError action $ \e ->
     case asyncExceptionFromException e of
       -- A more reliable technique for this would be: https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions .
-      Just ae -> throw ae -- Async exceptions are bad - just quit.
+      Just (ae :: AsyncException) -> throw ae -- Async exceptions are bad - just quit.
       _ -> do
         $(logError) $ "Error: " <> T.pack (show e) -- For now, try to carry on for all other exceptions.
         throwError e                      -- Simply throwing an err500 to the user and log the error.

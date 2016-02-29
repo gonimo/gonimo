@@ -1,9 +1,11 @@
 module Gonimo.WebAPI where
 
+import Data.Text (Text)
 import Servant.API
 import Data.Proxy
 import Gonimo.Types
 import Gonimo.Server.DbEntities
+import Gonimo.Server.DbTypes
 
 
 type GonimoAPI =
@@ -15,9 +17,10 @@ type GonimoAPI =
 
 type AuthGonimoAPI =
   "invitations" :> ReqBody '[JSON] FamilyId :> Post '[JSON] (InvitationId, Invitation) -- Create an invitation
-  :<|> "invitations" :> ReqBody '[JSON] InvitationSecret :> Delete '[JSON] Invitation -- Accept an invitation
-  :<|> "families" :> ReqBody '[JSON] FamilyName -> Post '[JSON] FamilyId -- Create a family
+  :<|> "invitations" :> ReqBody '[JSON] Secret :> Delete '[JSON] Invitation -- Accept an invitation
   :<|> "invitationOutbox" :> ReqBody '[JSON] SendInvitation :> Post '[JSON] () -- Send an invitation email/telegram message/...
+  :<|> "families" :> ReqBody '[JSON] Text :> Post '[JSON] FamilyId -- Create a family
+
 
 
 gonimoAPI :: Proxy GonimoAPI

@@ -21,7 +21,6 @@ import qualified Data.Text as T
 
 
 type SenderName = Text
-type InvitationSecret = Text
 
 data UserName = UserNameEmail EmailAddress
               | UserNamePhone Text
@@ -79,6 +78,6 @@ instance ToJSON Coffee where
   toJSON = genericToJSON defaultOptions
 --  toEncoding = genericToEncoding defaultOptions
 
-type FamilyName = Text
+data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving Generic
 
-data SendInvitation = SendInvitation InvitationId InvitationDelivery
+instance FromJSON SendInvitation
