@@ -17,8 +17,7 @@ import Gonimo.Util
 
 -- We have to use AuthServerEffects instead of constraint AuthServerConstraint, as an open
 -- constraint does not seem to play well with servant. (Ambiguous type errors)
-createInvitation :: FamilyId -> AuthServerEffects (InvitationId, Invitation)
--- createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
+createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
   authorize $ isFamilyMember fid
   now <- getCurrentTime
@@ -33,8 +32,7 @@ createInvitation fid = do
   return (iid, inv)
 
 
-acceptInvitation :: Secret -> AuthServerEffects Invitation
--- acceptInvitation :: AuthServerConstraint r => Secret -> Eff r Invitation
+acceptInvitation :: AuthServerConstraint r => Secret -> Eff r Invitation
 acceptInvitation invSecret = do
   -- no authorization: valid user, secret can be found - all fine.
   now <- getCurrentTime
@@ -50,8 +48,7 @@ acceptInvitation invSecret = do
     }
     return inv
 
-sendInvitation :: SendInvitation -> AuthServerEffects ()
--- sendInvitation :: AuthServerConstraint r => Maybe SendInvitation -> Eff r ()
+sendInvitation :: AuthServerConstraint r => SendInvitation -> Eff r ()
 sendInvitation (SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
   (inv, family) <- runDb $ do
@@ -70,8 +67,7 @@ sendInvitation (SendInvitation _ OtherDelivery) =
   }
 
 
-createFamily :: Text -> AuthServerEffects FamilyId
--- createFamily :: AuthServerConstraint r =>  Maybe FamilyName -> Eff r FamilyId
+createFamily :: AuthServerConstraint r =>  FamilyName -> Eff r FamilyId
 createFamily n = do
   -- no authorization: - any valid user can create a family.
   now <- getCurrentTime

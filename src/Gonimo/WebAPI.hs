@@ -19,7 +19,7 @@ type AuthGonimoAPI =
   "invitations" :> ReqBody '[JSON] FamilyId :> Post '[JSON] (InvitationId, Invitation) -- Create an invitation
   :<|> "invitations" :> ReqBody '[JSON] Secret :> Delete '[JSON] Invitation -- Accept an invitation
   :<|> "invitationOutbox" :> ReqBody '[JSON] SendInvitation :> Post '[JSON] () -- Send an invitation email/telegram message/...
-  :<|> "families" :> ReqBody '[JSON] Text :> Post '[JSON] FamilyId -- Create a family
+  :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId -- Create a family
 
 
 

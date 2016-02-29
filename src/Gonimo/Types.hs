@@ -81,3 +81,5 @@ instance ToJSON Coffee where
 data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving Generic
 
 instance FromJSON SendInvitation
+
+type FamilyName = Text
