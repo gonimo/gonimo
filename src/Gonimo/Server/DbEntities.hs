@@ -6,6 +6,9 @@ module Gonimo.Server.DbEntities where
 
 
 import Gonimo.Database.Persist.TH
+
+import Database.Persist
+
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
@@ -13,7 +16,7 @@ import Gonimo.Server.DbTypes
 -- import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
 import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToJSON)
 
-mkPersist sqlSettings [persistLowerCase|
+share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Account
     secret Secret
     created UTCTime

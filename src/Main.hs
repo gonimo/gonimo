@@ -13,6 +13,7 @@ import Control.Monad.Logger
 import qualified Data.ByteString.Char8 as S8
 import System.IO (Handle, stderr)
 import System.Log.FastLogger (fromLogStr)
+import Gonimo.Server.DbEntities
 
 logHandle :: Handle
 logHandle = stderr
@@ -24,6 +25,7 @@ main :: IO ()
 main = do
   sysGen <- newGenIO
   pool <- runLoggingT (createSqlitePool ":memory" 10) doLogging
+  flip runSqlPool pool $ runMigration migrateAll
   let config = Config {
   configPool = pool
     , configLog = logToHandle logHandle
