@@ -17,19 +17,19 @@ import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
 import           Gonimo.Server.Effects.Internal
 import           Network.Mail.SMTP (sendMail)
 import Control.Monad.Trans.Reader (ReaderT)
-import Crypto.Random (SystemRandom, genBytes)
+import Crypto.Random (SystemRandom, genBytes, newGenIO)
 import Data.Time.Clock (getCurrentTime)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad ((<=<))
+import Data.Bifunctor
 
 type DbPool = Pool SqlBackend
 type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 
 data Config = Config {
   configPool :: DbPool
-  ,  configLog :: LoggingFunction
-  , configRandGen :: SystemRandom
-  }
+, configLog :: LoggingFunction
+}
 
 
 runExceptionServer :: Config -> Eff (Exc SomeException ': '[Server]) w  -> IO (Either SomeException w)
@@ -40,8 +40,11 @@ runServer _ (Val v) = return v
 runServer c (E u' q) = case decomp u' of
   Right (SendEmail mail)           -> execIO c q $ sendMail "localhost" mail
   Right (LogMessage loc ls ll msg) -> execIO c q $ doLog loc ls ll (toLogStr msg)
-  Right (GenRandomBytes l)         -> let (res, newC) = doGen l
-                                      in runServer newC . qApp q $ res
+  Right (GenRandomBytes l)         ->
+    -- Throw away the new generator & make an exception of any occurred error:
+    bimap toException fst . genBytes l <$> (newGenIO :: IO SystemRandom)
+    >>= runServer c . qApp q
+
   Right GetCurrentTime             -> execIO c q getCurrentTime
 
   Right (RunDb trans)              -> runDatabaseServerIO pool trans >>= runServer c . qApp q
@@ -49,13 +52,7 @@ runServer c (E u' q) = case decomp u' of
   where
     pool = configPool c
     doLog = configLog c
-    gen = configRandGen c
     -- runLogger loggerT = runLoggingT loggerT doLog
-    doGen l = case genBytes l gen of
-      Left e              -> (Left (toException e), c)
-      Right (res, newGen) -> (Right res, c { configRandGen = newGen })
-
-
 
 -- We throw exceptions instead of using Either, because only in this case, are database transactions rolled back.
 runDatabaseServer :: forall w . Eff (Exc SomeException ': '[Db.Database SqlBackend]) w

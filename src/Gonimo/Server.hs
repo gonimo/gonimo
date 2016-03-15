@@ -28,8 +28,12 @@ import Control.Monad ((<=<))
 import Control.Exception (asyncExceptionFromException, throw, SomeException, fromException, AsyncException)
 import Data.Monoid
 import Gonimo.Util (ServantException(..), throwServant)
+import Servant.Utils.StaticFiles (serveDirectory)
 
 
+getDevelopmentServer :: Config -> Server DevelopmentAPI
+getDevelopmentServer c = getServer c
+  :<|> serveDirectory "/home/robert/projects/gonimo-front/dist"
 
 effServer :: ServerT GonimoAPI ServerEffects
 effServer = createAccount

@@ -19,18 +19,16 @@ logHandle :: Handle
 logHandle = stderr
 
 getApp :: Config -> Application
-getApp =   serve gonimoAPI . getServer
+getApp =   serve developmentAPI . getDevelopmentServer
 
 main :: IO ()
 main = do
-  sysGen <- newGenIO
   pool <- runLoggingT (createSqlitePool ":memory" 10) doLogging
   flip runSqlPool pool $ runMigration migrateAll
   let config = Config {
-  configPool = pool
-    , configLog = logToHandle logHandle
-    , configRandGen = sysGen
-    }
+    configPool = pool
+  , configLog = logToHandle logHandle
+  }
   run 8081 . getApp $ config
 
 

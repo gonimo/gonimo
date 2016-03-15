@@ -7,6 +7,9 @@ import Gonimo.Types
 import Gonimo.Server.DbEntities
 import Gonimo.Server.DbTypes
 
+-- The development API also serves javascript
+type DevelopmentAPI = GonimoAPI
+  :<|> "development" :> Raw
 
 type GonimoAPI =
   -- Create an account pass Nothing if you want an anonymous account:
@@ -22,6 +25,8 @@ type AuthGonimoAPI =
   :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId -- Create a family
 
 
+developmentAPI :: Proxy DevelopmentAPI
+developmentAPI = Proxy
 
 gonimoAPI :: Proxy GonimoAPI
 gonimoAPI = Proxy

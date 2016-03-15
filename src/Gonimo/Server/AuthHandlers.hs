@@ -15,8 +15,6 @@ import Gonimo.Server.EmailInvitation
 import Gonimo.Server.Auth
 import Gonimo.Util
 
--- We have to use AuthServerEffects instead of constraint AuthServerConstraint, as an open
--- constraint does not seem to play well with servant. (Ambiguous type errors)
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
   authorize $ isFamilyMember fid
