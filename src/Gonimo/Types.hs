@@ -55,7 +55,7 @@ instance ToJSON Credentials where
 data AccountData = AccountData {
     credentials :: Maybe Credentials
   , secret :: AuthToken
-  }
+  } deriving Generic
 
 
 -- Other auth methods might be added later on, like oauth bearer tokens:

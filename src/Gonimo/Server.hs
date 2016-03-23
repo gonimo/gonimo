@@ -4,6 +4,7 @@ module Gonimo.Server where
 import Control.Monad.Freer (Eff)
 import Control.Monad.Freer.Reader (runReader)
 import Control.Monad.Trans.Either (EitherT(..), left)
+import Data.Aeson (encode)
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.Text.Encoding (encodeUtf8)
@@ -28,6 +29,7 @@ import Control.Monad ((<=<))
 import Control.Exception (asyncExceptionFromException, throw, SomeException, fromException, AsyncException)
 import Data.Monoid
 import Gonimo.Util (ServantException(..), throwServant)
+import Gonimo.Error
 import Servant.Utils.StaticFiles (serveDirectory)
 
 
@@ -68,7 +70,9 @@ authToEff' (Just (GonimoSecret s)) m = do
       return $ AuthData ae fids
     runReader m authData
   where
-    invalidAuthErr = err400 { errReasonPhrase = "Your provided credentials are invalid!" }
+    invalidAuthErr = err400 { errReasonPhrase = "The provided AuthToken is not valid!"
+      , errBody = encode InvalidAuthToken
+      }
     getByAuthErr = servantErrOnNothing invalidAuthErr <=< Db.getBy
 
 authToEff :: Maybe AuthToken -> AuthServerEffects :~> ServerEffects
