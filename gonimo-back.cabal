@@ -138,7 +138,9 @@ executable mkFrontendTypes
   main-is:             MkFrontendTypes.hs
 
   -- Modules included in this executable, other than Main.
-  other-modules:                  
+  other-modules:      Gonimo.TypeBridges
+                    , Gonimo.PSTypes
+                    , Gonimo.TypeBridges
 
   -- LANGUAGE extensions used by modules in this package.
   default-extensions: ConstraintKinds
@@ -172,7 +174,7 @@ executable mkFrontendTypes
                      , persistent-postgresql
                      , persistent-sqlite
                      , persistent-template
-                     , purescript-bridge
+                     , purescript-bridge >= 0.3.0.3
                      , resource-pool
                      , servant
                      , servant-docs

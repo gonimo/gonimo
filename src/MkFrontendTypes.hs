@@ -1,11 +1,16 @@
 
 
-import Language.PureScript.Bridge
+import           Language.PureScript.Bridge
 
-import Gonimo.Types
-import Gonimo.Server.DbTypes
-import qualified Data.Map as M
-import Data.Proxy
+import           Data.Proxy
+import           GHC.Generics
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.DbTypes
+import           Gonimo.TypeBridges
+import           Gonimo.Types
+
+
+data TestTypeConstructor m a = TestTypeConstructor (m a) deriving Generic
 
 myTypes :: [SumType]
 myTypes = [
@@ -13,7 +18,10 @@ myTypes = [
       , toSumType (Proxy :: Proxy Credentials)
       , toSumType (Proxy :: Proxy AccountData)
       , toSumType (Proxy :: Proxy AuthToken)
+      , toSumType (Proxy :: Proxy Invitation)
+      , toSumType (Proxy :: Proxy SendInvitation)
+      , toSumType (Proxy :: Proxy InvitationDelivery)
       ]
 
 main :: IO ()
-main = writePSTypes defaultBridge "../gonimo-front/src" myTypes
+main = writePSTypes gonimoBridge "../gonimo-front/src" myTypes

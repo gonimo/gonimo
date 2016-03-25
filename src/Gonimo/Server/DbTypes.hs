@@ -21,7 +21,7 @@ import           Database.Persist.TH
 import           GHC.Generics (Generic)
 import           Servant.Common.Text (FromText (..), ToText (..))
 
-type EmailAddress = Text
+type EmailAddress = Text 
 
 
 --------------------------------------------------

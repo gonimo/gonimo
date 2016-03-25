@@ -3,20 +3,23 @@ module Gonimo.Types where
 
 
 -- import Data.Aeson.Types ((.:), FromJSON(..), ToJSON(..), object, Value(..), (.=), pairs, FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
-import Data.Aeson.Types ((.:), FromJSON(..), ToJSON(..), object, Value(..), (.=), FromJSON, ToJSON(..), defaultOptions, genericToJSON)
+import           Data.Aeson.Types         (FromJSON (..), FromJSON, ToJSON (..),
+                                           ToJSON (..), Value (..),
+                                           defaultOptions, genericToJSON,
+                                           object, (.:), (.=))
 
 
 
 
-import Data.Text (Text)
+import           Data.Text                (Text)
 
 
-import GHC.Generics (Generic)
-import Gonimo.Server.DbTypes
-import Gonimo.Server.DbEntities
-import Servant.Common.Text (FromText (..))
+import           GHC.Generics             (Generic)
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.DbTypes
+import           Servant.Common.Text      (FromText (..))
 
-import qualified Data.Text as T
+import qualified Data.Text                as T
 
 
 
@@ -42,7 +45,7 @@ instance ToJSON UserName where
 
 
 data Credentials = Credentials {
-    userName :: UserName
+    userName     :: UserName
   , userPassword :: Text
   } deriving Generic
 
@@ -54,7 +57,7 @@ instance ToJSON Credentials where
 
 data AccountData = AccountData {
     credentials :: Maybe Credentials
-  , secret :: AuthToken
+  , secret      :: AuthToken
   } deriving Generic
 
 
