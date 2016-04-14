@@ -20,9 +20,23 @@ type GonimoAPI =
 
 type AuthGonimoAPI =
   "invitations" :> ReqBody '[JSON] FamilyId :> Post '[JSON] (InvitationId, Invitation) -- Create an invitation
+  -- with subscriber:
+  -- "invitations" :> ReqBody '[JSON]' FamilyId :> SubsPost '[JSON] (InvitationId, Invitation)
   :<|> "invitations" :> ReqBody '[JSON] Secret :> Delete '[JSON] Invitation -- Accept an invitation
   :<|> "invitationOutbox" :> ReqBody '[JSON] SendInvitation :> Post '[JSON] () -- Send an invitation email/telegram message/...
   :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId -- Create a family
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> ReqBody '[JSON] BabyName :> PostCreated '[JSON] () -- Create a "mail box" -- limit number of connections! & also limit number of mailboxes per family to something reasonable! - DOS! & Only allow creation of mailboxes for families with more than one member! + Some IP limit? + Log total number of mailboxes - warn when critical! -> Make sure the needed client resources for exhausting the server are substantial!
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> Delete '[JSON] () -- Delete a mailbox when no longer needed -> Be nice!
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> "keepAlive" :> Post '[JSON] () -- Keep alive - we need to cleanup when no longer used, alternatively the keep alive handler can be triggered via our websocket pong. HOW?
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> PostCreated '[JSON] ConnectionId -- Connect to baby
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> Capture "connectionId" ConnectionId :> Delete '[JSON] () -- Delete a connection when you are done with it - this is just being nice to the server.
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> Capture "connectionId" ConnectionId :> "InMessage" :> ReqBody '[JSON] Text :> PUT '[JSON] () -- Send message, this function should only return when the receiver got the message - Make sure probably large messages don't fill up memory.
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> Capture "connectionId" ConnectionId :> "InMessage" :> READ '[JSON] Text -- Baby reads message
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> Capture "connectionId" ConnectionId :> "OutMessage" :> ReqBody '[SOMETEXT] Text :> PUT '[JSON] () -- Baby can send messages
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> Capture "connectionId" ConnectionId :> "OutMessage" :> READ '[TEXT] Text -- Client can read messages from baby
+  :<|> "families" :> Capture "familyId" FamilyId :> "babies" :> Capture "babyName" BabyName :> Capture "connectionId" ConnectionId :> "KeepAlive" :> POST '[JSON] () -- Keep this connection alive. Clients have to show that they are still there - either by sending messages or by keep alive! - Make sure using server resources also means client resources! DoS!
+
+
 
 
 developmentAPI :: Proxy DevelopmentAPI
