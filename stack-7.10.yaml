@@ -1,0 +1,10 @@
+resolver: lts-5.18
+packages:
+- '.'
+extra-deps:
+- freer-0.2.2.6
+- purescript-bridge-0.3.2.0
+
+flags: {}
+
+extra-package-dbs: []
