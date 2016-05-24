@@ -8,7 +8,7 @@ gonimo
 ------
 
 [gonimo][1] is a free open-source baby monitoring application,
-developed in by Robert Klotzner, funded by [netidee.at][2]
+developed by Robert Klotzner, funded by [netidee.at][2]
 
 
 [1]: https://gonimo.com/
