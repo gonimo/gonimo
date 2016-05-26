@@ -1,3 +1,6 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE InstanceSigs #-}
+
 module Gonimo.Types where
 
 
@@ -12,12 +15,13 @@ import           Data.Aeson.Types         (FromJSON (..), FromJSON, ToJSON (..),
 
 
 import           Data.Text                (Text)
-
+import           Data.Text.Encoding       (encodeUtf8)
 
 import           GHC.Generics             (Generic)
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.DbTypes
-import           Servant.Common.Text      (FromText (..))
+{-import           Servant.Common.Text      (FromText (..))-}
+import           Web.HttpApiData          (FromHttpApiData (..), parseUrlPieceWithPrefix)
 
 import qualified Data.Text                as T
 
@@ -70,10 +74,10 @@ instance ToJSON AuthToken where
   toJSON = genericToJSON defaultOptions
 --  toEncoding = genericToEncoding defaultOptions
 
-instance FromText AuthToken where
-  fromText t = case T.words t of
-    ["GonimoSecret", contents] -> GonimoSecret <$> fromText contents
-    _ -> Nothing
+instance FromHttpApiData AuthToken where
+    parseUrlPiece :: Text -> Either Text AuthToken
+    parseUrlPiece x = do gsecret :: Text <- parseUrlPieceWithPrefix "GonimoSecret " x
+                         GonimoSecret <$> parseUrlPiece gsecret
 
 data Coffee = Tea deriving Generic
 instance FromJSON Coffee

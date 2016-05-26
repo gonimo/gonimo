@@ -8,20 +8,20 @@
 module Gonimo.Server.DbTypes where
 
 
-import           Control.Error.Safe (rightMay, rightZ)
+import           Control.Error.Safe (rightZ)
 import           Data.Aeson.Types       (FromJSON (..), ToJSON (..), Value (String), defaultOptions, genericToJSON)
 import           Data.ByteString (ByteString)
 
 import qualified Data.ByteString.Base64 as Base64
-import           Data.Text (Text)
+import           Data.Bifunctor
+import           Data.Text as T
 import           Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import           Database.Persist
-import           Database.Persist.Sql
 import           Database.Persist.TH
 import           GHC.Generics (Generic)
-import           Servant.Common.Text (FromText (..), ToText (..))
+{-import           Servant.Common.Text (FromText (..), ToText (..))-}
+import           Web.HttpApiData (FromHttpApiData(..))
 
-type EmailAddress = Text 
+type EmailAddress = Text
 
 
 --------------------------------------------------
@@ -47,15 +47,8 @@ instance FromJSON Secret where
 instance ToJSON Secret where
   toJSON (Secret bs) = String . decodeUtf8 . Base64.encode $ bs
 
-instance FromText Secret where
-  fromText = fmap Secret . rightMay . Base64.decode . encodeUtf8
+instance FromHttpApiData Secret where
+    parseUrlPiece = bimap T.pack Secret . Base64.decode . encodeUtf8
 
 derivePersistField "Secret"
---------------------------------------------------
 
--- Orphan instances to make our life easier:
-instance ToText (BackendKey SqlBackend) where
-  toText = toText . unSqlBackendKey
-
-instance FromText (BackendKey SqlBackend) where
-  fromText = fmap SqlBackendKey . fromText

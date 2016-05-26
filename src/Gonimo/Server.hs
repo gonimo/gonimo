@@ -3,7 +3,7 @@ module Gonimo.Server where
 
 import Control.Monad.Freer (Eff)
 import Control.Monad.Freer.Reader (runReader)
-import Control.Monad.Trans.Either (EitherT(..), left)
+import Control.Monad.Except (ExceptT(..))
 import Data.Aeson (encode)
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
@@ -80,10 +80,10 @@ authToEff token = Nat $ authToEff' token
 
 -------
 
-effToServant' :: Config -> ServerEffects a -> EitherT ServantErr IO a
-effToServant' c = EitherT . fmap (first exceptionToServantErr) . runExceptionServer c . handleExceptions
+effToServant' :: Config -> ServerEffects a -> ExceptT ServantErr IO a
+effToServant' c = ExceptT . fmap (first exceptionToServantErr) . runExceptionServer c . handleExceptions
 
-effToServant :: Config -> ServerEffects :~> EitherT ServantErr IO
+effToServant :: Config -> ServerEffects :~> ExceptT ServantErr IO
 effToServant c = Nat $ effToServant' c
 
 
