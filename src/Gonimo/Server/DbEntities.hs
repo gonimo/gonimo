@@ -5,9 +5,8 @@
 module Gonimo.Server.DbEntities where
 
 
-import Gonimo.Database.Persist.TH
 
-import Database.Persist
+import Database.Persist.TH
 
 import Data.Text (Text)
 import Data.Time (UTCTime)
