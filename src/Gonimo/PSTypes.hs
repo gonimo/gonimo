@@ -1,6 +1,8 @@
 module Gonimo.PSTypes where
 
 import           Language.PureScript.Bridge.TypeInfo
+import           Language.PureScript.Bridge.Builder
+
 import Control.Monad.Reader.Class
 
 -- PureScript's Data.Date currently has no Generic instance ...
