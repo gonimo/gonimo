@@ -3,8 +3,11 @@ packages:
 - '.'
 extra-deps:
 - freer-0.2.2.6
-- purescript-bridge-0.3.2.0
+- purescript-bridge-0.6.0.0
 
 flags: {}
 
 extra-package-dbs: []
+
+nix:
+  shell-file: stack.nix

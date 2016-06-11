@@ -12,16 +12,16 @@ import           Gonimo.Types
 
 data TestTypeConstructor m a = TestTypeConstructor (m a) deriving Generic
 
-myTypes :: [SumType]
+myTypes :: [SumType 'Haskell]
 myTypes = [
-        toSumType (Proxy :: Proxy UserName)
-      , toSumType (Proxy :: Proxy Credentials)
-      , toSumType (Proxy :: Proxy AccountData)
-      , toSumType (Proxy :: Proxy AuthToken)
-      , toSumType (Proxy :: Proxy Invitation)
-      , toSumType (Proxy :: Proxy SendInvitation)
-      , toSumType (Proxy :: Proxy InvitationDelivery)
+        mkSumType (Proxy :: Proxy UserName)
+      , mkSumType (Proxy :: Proxy Credentials)
+      , mkSumType (Proxy :: Proxy AccountData)
+      , mkSumType (Proxy :: Proxy AuthToken)
+      , mkSumType (Proxy :: Proxy Invitation)
+      , mkSumType (Proxy :: Proxy SendInvitation)
+      , mkSumType (Proxy :: Proxy InvitationDelivery)
       ]
 
 main :: IO ()
-main = writePSTypes gonimoBridge "../gonimo-front/src" myTypes
+main = writePSTypes "../gonimo-front/src" (buildBridge gonimoBridge) myTypes

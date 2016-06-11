@@ -3,20 +3,27 @@ module Gonimo.TypeBridges where
 import           Control.Applicative
 import           Gonimo.PSTypes
 import           Language.PureScript.Bridge
+import           Language.PureScript.Bridge.Builder
 
-gonimoBridge :: TypeBridge
-gonimoBridge t = defaultBridge t
-  <|> secretBridge t
-  <|> utcTimeBridge t
-  <|> dbKeyBridge t
+gonimoBridge :: BridgePart
+gonimoBridge = defaultBridge
+  <|> secretBridge
+  <|> utcTimeBridge
+  <|> dbKeyBridge
 
-secretBridge :: TypeBridge
-secretBridge = mkBridgeTo (eqTypeName "Secret") psGonimoSecret
+secretBridge :: BridgePart
+secretBridge = do
+   typeName ^== "Secret"
+   return psGonimoSecret
 
 -- There is currently no Generic instance for PureScript's Data.Date,
 -- so just use the JSON string in the frontend:
-utcTimeBridge :: TypeBridge
-utcTimeBridge = mkBridgeTo (eqTypeName "UTCTime") psGonimoDate
+utcTimeBridge :: BridgePart
+utcTimeBridge = do
+   typeName ^== "UTCTime"
+   return psGonimoDate
 
-dbKeyBridge :: TypeBridge
-dbKeyBridge = mkBridgeTo1 (eqTypeName "Key") psGonimoDbKey
+dbKeyBridge :: BridgePart
+dbKeyBridge = do
+  typeName ^== "Key"
+  psGonimoDbKey

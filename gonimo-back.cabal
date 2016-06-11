@@ -120,6 +120,7 @@ executable mkFrontendTypes
                      , lifted-base       >= 0.2.3.6
                      , mime-mail         >= 0.4.11
                      , monad-logger
+                     , mtl
                      , neat-interpolation
                      , persistent
                      , persistent-postgresql

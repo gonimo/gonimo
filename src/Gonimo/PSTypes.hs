@@ -1,28 +1,27 @@
 module Gonimo.PSTypes where
 
 import           Language.PureScript.Bridge.TypeInfo
+import           Language.PureScript.Bridge.Builder
+
+import Control.Monad.Reader.Class
 
 -- PureScript's Data.Date currently has no Generic instance ...
-psGonimoDate :: TypeInfo
+psGonimoDate :: TypeInfo 'PureScript
 psGonimoDate = TypeInfo {
-    typePackage = ""
-  , typeModule = "Gonimo.Server.Types"
-  , typeName = "Date"
-  , typeParameters = []
+    _typePackage = ""
+  , _typeModule = "Gonimo.Server.Types"
+  , _typeName = "Date"
+  , _typeParameters = []
   }
 
 -- Don't bother converting to a binary format at the client side:
-psGonimoSecret :: TypeInfo
+psGonimoSecret :: TypeInfo 'PureScript
 psGonimoSecret = TypeInfo {
-    typePackage = ""
-  , typeModule = "Gonimo.Server.Types"
-  , typeName = "Secret"
-  , typeParameters = []
+    _typePackage = ""
+  , _typeModule = "Gonimo.Server.Types"
+  , _typeName = "Secret"
+  , _typeParameters = []
   }
 
-psGonimoDbKey :: TypeInfo -> TypeInfo
-psGonimoDbKey t = t {
-    typePackage = ""
-  , typeModule = "Gonimo.Server.Types"
-  , typeName = "Key"
-  }
+psGonimoDbKey :: MonadReader BridgeData m => m PSType
+psGonimoDbKey = TypeInfo "" "Gonimo.Server.Types" "Key" <$> psTypeParameters
