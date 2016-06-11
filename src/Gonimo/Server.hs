@@ -6,10 +6,7 @@ import Control.Monad.Freer.Reader (runReader)
 import Control.Monad.Except (ExceptT(..))
 import Data.Aeson (encode)
 import Data.Bifunctor (first)
-import Data.ByteString (ByteString)
-import Data.Text.Encoding (encodeUtf8)
 import Gonimo.Server.DbEntities
-import Gonimo.Server.DbTypes
 import Gonimo.Server.Effects hiding (Server)
 import Gonimo.Server.Effects.TestServer
 import Gonimo.Types
@@ -17,9 +14,8 @@ import Gonimo.WebAPI
 import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
 import qualified Gonimo.Database.Effects as Db
 import qualified Data.Text as T
-import Servant.Server (err404, err400, err401)
+import Servant.Server (err400, err401)
 import Database.Persist (Entity(..), (==.))
-import Gonimo.Server.EmailInvitation
 import Control.Monad.Freer.Exception (throwError, catchError)
 import Gonimo.Server.Handlers
 import Gonimo.Server.AuthHandlers

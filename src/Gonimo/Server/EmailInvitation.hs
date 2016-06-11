@@ -4,9 +4,7 @@ module Gonimo.Server.EmailInvitation (
 
 import NeatInterpolation
 import Data.Text (Text)
-import Network.Mail.Mime (Address(..))
-import Network.Mail.Mime (Mail)
-import Network.Mail.Mime (simpleMail')
+import Network.Mail.Mime (Address(..), Mail, simpleMail')
 import Gonimo.Server.DbEntities hiding (familyName)
 import Gonimo.Server.DbTypes
 import Gonimo.Types
@@ -16,7 +14,7 @@ import qualified Data.Text.Lazy as TL
 
 
 invitationText :: Invitation -> FamilyName -> Text
-invitationText inv n =
+invitationText _inv _n =
   [text|
     Dear User of gonimo.com!
 

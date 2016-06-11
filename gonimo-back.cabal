@@ -21,7 +21,6 @@ executable gonimo-back
                    Gonimo.Database.Effects
                  , Gonimo.Database.Effects.PersistDatabase
                  , Gonimo.WebAPI
-                 , Gonimo.WebAPI.Docs
                  , Gonimo.Types
                  , Gonimo.Server
                  , Gonimo.Server.Auth
@@ -33,6 +32,10 @@ executable gonimo-back
                  , Gonimo.Server.Invitation
                  , Gonimo.Server.Effects.Internal
                  , Gonimo.Server.Effects.TestServer
+                 , Gonimo.Database.Effects.Servant
+                 , Gonimo.Error
+                 , Gonimo.Server.EmailInvitation
+                 , Gonimo.Util
 
   default-extensions: ConstraintKinds
                     , DataKinds
@@ -89,6 +92,9 @@ executable mkFrontendTypes
   other-modules:      Gonimo.TypeBridges
                     , Gonimo.PSTypes
                     , Gonimo.TypeBridges
+                    , Gonimo.Server.DbEntities
+                    , Gonimo.Server.DbTypes
+                    , Gonimo.Types
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric

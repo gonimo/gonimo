@@ -5,17 +5,11 @@ module Gonimo.Types where
 
 
 
--- import Data.Aeson.Types ((.:), FromJSON(..), ToJSON(..), object, Value(..), (.=), pairs, FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
 import           Data.Aeson.Types         (FromJSON (..), FromJSON, ToJSON (..),
-                                           ToJSON (..), Value (..),
-                                           defaultOptions, genericToJSON,
-                                           object, (.:), (.=))
+                                           ToJSON (..), defaultOptions,
+                                           genericToJSON
+                                           )
 
-
-
-
-import           Data.Text                (Text)
-import           Data.Text.Encoding       (encodeUtf8)
 
 import           GHC.Generics             (Generic)
 import           Gonimo.Server.DbEntities
@@ -23,9 +17,7 @@ import           Gonimo.Server.DbTypes
 {-import           Servant.Common.Text      (FromText (..))-}
 import           Web.HttpApiData          (FromHttpApiData (..), parseUrlPieceWithPrefix)
 
-import qualified Data.Text                as T
-
-
+import           Data.Text                (Text)
 
 type SenderName = Text
 

@@ -1,6 +1,5 @@
 module Main where
 
-import Data.Text
 import Gonimo.Server
 import Gonimo.Server.Effects.TestServer
 import Gonimo.WebAPI
@@ -8,7 +7,6 @@ import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
 import Database.Persist.Sqlite
-import Crypto.Random
 import Control.Monad.Logger
 import qualified Data.ByteString.Char8 as S8
 import System.IO (Handle, stderr)

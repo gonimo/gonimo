@@ -1,6 +1,5 @@
 module Gonimo.Server.AuthHandlers where
 
-import Data.Text (Text)
 import Control.Monad.Freer (Eff)
 import Control.Monad.Freer.Reader (ask)
 import Gonimo.Server.DbTypes
