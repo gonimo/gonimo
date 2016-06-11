@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Gonimo.Server.Invitation where
 
 import Gonimo.Server.Effects
