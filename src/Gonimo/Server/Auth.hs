@@ -14,7 +14,7 @@ data AuthData = AuthData { authDataAccountEntity :: Entity Account
                          , authDataAllowedFamilies :: [FamilyId]
                          -- Usually just one ore two - so using list lookup
                          -- should be fine.
-                         , authDataClients :: ClientId
+                         , authDataClient :: ClientId
                          }
 
 type AuthReader = Reader AuthData

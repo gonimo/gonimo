@@ -1,8 +1,11 @@
+{-# LANGUAGE RecordWildCards #-}
 module Gonimo.Server.AuthHandlers where
 
+import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
 import           Data.Text                       (Text)
+import           Data.Maybe                      (isJust)
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
@@ -12,8 +15,8 @@ import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Types
 import           Gonimo.Util
-import           Servant.Server                  (ServantErr (..), err400)
 import           Gonimo.WebAPI.Types as Client
+import           Servant.Server                  (ServantErr (..), err400, err403)
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -87,7 +90,19 @@ createFamily n = do
 
 createChannel :: AuthServerConstraint r
               => FamilyId -> ClientId -> ClientId -> Eff r Secret
-createChannel = undefined
+createChannel fid from to = do
+  -- is it a good idea to expose the db-id in the route - people know how to use
+  -- a packet sniffer
+  AuthData{..} <- ask
+  unless (fid `elem` authDataAllowedFamilies) $ throwServant err403 { errBody = "invalid family route" }
+  unless (from == authDataClient) $ throwServant err403 { errBody = "from client not consistent with auth data" }
+  client <- runDb $ Db.get to
+  case client of
+    Nothing     -> throwServant err403 { errBody = "to client is not valid" }
+    Just (Client _ toAcc' _) ->
+        do isMember <- runDb $ Db.getBy (FamilyMember toAcc' fid)
+           unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
+           generateSecret
 
 
 receiveChannel :: AuthServerConstraint r
