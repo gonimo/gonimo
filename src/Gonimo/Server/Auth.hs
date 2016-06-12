@@ -10,10 +10,12 @@ import Servant.Server (err403)
 import Database.Persist (Entity(..), Key)
 import Control.Exception (SomeException)
 
-data AuthData = AuthData {
-  authDataAccountEntity :: Entity Account
-  , authDataAllowedFamilies :: [FamilyId] -- Usually just one ore two - so using list lookup should be fine.
-}
+data AuthData = AuthData { authDataAccountEntity :: Entity Account
+                         , authDataAllowedFamilies :: [FamilyId]
+                         -- Usually just one ore two - so using list lookup
+                         -- should be fine.
+                         , authDataClients :: ClientId
+                         }
 
 type AuthReader = Reader AuthData
 type AuthReaderMember r = Member AuthReader r
@@ -27,7 +29,7 @@ askAccountId = entityKey . authDataAccountEntity <$> ask
 
 
 isFamilyMember :: FamilyId -> AuthData -> Bool
-isFamilyMember fid (AuthData _ fids) = fid `elem` fids
+isFamilyMember fid (AuthData _ fids _) = fid `elem` fids
 
 authorizeAuthData :: Member (Exc SomeException) r => (AuthData -> Bool) -> AuthData -> Eff r ()
 authorizeAuthData check = kickOut . check

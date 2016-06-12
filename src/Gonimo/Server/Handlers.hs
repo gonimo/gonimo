@@ -9,21 +9,24 @@ import qualified Gonimo.Database.Effects as Db
 import Gonimo.Util
 
 createAccount :: ServerConstraint r => Maybe Credentials -> Eff r (AccountId, AuthToken)
+-- | creating a new "Account" implicitly also generates a "Client" - that is
+-- associated to this "Account".
 createAccount mcred = do
   now <- getCurrentTime
   let email = mcred >>= getUserEmail . userName
   let phone = mcred >>= getUserPhone . userName
   let password = userPassword <$> mcred
-  asecret <- generateSecret
-  aid <- runDb $ Db.insert Account {
-    accountSecret = asecret
-    , accountCreated = now
-    , accountLastAccessed = now
-    , accountEmail = email
-    , accountPhone = phone
-    , accountPassword = password
-    }
-  return (aid, GonimoSecret asecret)
+  csecret <- generateSecret
+  aid <- runDb $ Db.insert Account { accountCreated  = now
+                                   , accountEmail    = email
+                                   , accountPhone    = phone
+                                   , accountPassword = password
+                                   }
+
+  _ <- runDb $ Db.insert Client { clientSecret       = csecret
+                                , clientAccountId    = aid
+                                , clientLastAccessed = now}
+  return (aid, GonimoSecret csecret)
 
 
 

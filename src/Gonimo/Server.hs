@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Server where
 
@@ -61,15 +62,17 @@ authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don'
                          }
 authToEff' (Just (GonimoSecret s)) m = do
     authData <- runDb $ do
-      ae@(Entity aid _) <- getByAuthErr $ SecretAccount s
-      fids <- map (familyAccountFamilyId . entityVal) <$> Db.selectList [FamilyAccountAccountId ==. aid] []
-      return $ AuthData ae fids
+      Entity cid c@Client{..} <- getByAuthErr $ SecretClient s
+      account <- getAuthErr clientAccountId
+      fids <- map (familyAccountFamilyId . entityVal) <$> Db.selectList [FamilyAccountAccountId ==. clientAccountId] []
+      return $ AuthData (Entity clientAccountId account) fids cid
     runReader m authData
   where
     invalidAuthErr = err400 { errReasonPhrase = "The provided AuthToken is not valid!"
       , errBody = encode InvalidAuthToken
       }
     getByAuthErr = servantErrOnNothing invalidAuthErr <=< Db.getBy
+    getAuthErr = servantErrOnNothing invalidAuthErr <=< Db.get
 
 authToEff :: Maybe AuthToken -> AuthServerEffects :~> ServerEffects
 authToEff token = Nat $ authToEff' token
