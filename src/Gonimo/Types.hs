@@ -12,8 +12,6 @@ import           Data.Aeson.Types      (FromJSON (..), FromJSON, ToJSON (..),
 
 import           GHC.Generics          (Generic)
 import           Gonimo.Server.DbTypes
-{-import           Servant.Common.Text      (FromText (..))-}
-import           Database.Persist.Sql
 import           Web.HttpApiData       (FromHttpApiData (..),
                                         parseUrlPieceWithPrefix)
 
