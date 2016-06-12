@@ -1,18 +1,18 @@
 module Gonimo.Server.AuthHandlers where
 
-import Control.Monad.Freer (Eff)
-import Control.Monad.Freer.Reader (ask)
-import Gonimo.Server.DbTypes
-import Gonimo.Server.DbEntities
-import Gonimo.Server.Effects
-import Gonimo.Database.Effects.Servant
-import Gonimo.Types
-import qualified Gonimo.Database.Effects as Db
-import Servant.Server (err400, ServantErr(..))
-import Database.Persist (Entity(..))
-import Gonimo.Server.EmailInvitation
-import Gonimo.Server.Auth
-import Gonimo.Util
+import           Control.Monad.Freer             (Eff)
+import           Control.Monad.Freer.Reader      (ask)
+import           Database.Persist                (Entity (..))
+import qualified Gonimo.Database.Effects         as Db
+import           Gonimo.Database.Effects.Servant
+import           Gonimo.Server.Auth
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.DbTypes
+import           Gonimo.Server.Effects
+import           Gonimo.Server.EmailInvitation
+import           Gonimo.Types
+import           Gonimo.Util
+import           Servant.Server                  (ServantErr (..), err400)
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
