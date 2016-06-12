@@ -1,7 +1,10 @@
 resolver: lts-6.0
 packages:
 - '.'
-- ../servant-purescript
+- location:
+    git: https://github.com/eskimor/servant-purescript.git
+    commit: HEAD
+
 extra-deps:
 - freer-0.2.2.6
 - purescript-bridge-0.6.0.0
