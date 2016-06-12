@@ -142,9 +142,6 @@ executable psGenerator
   main-is:            PSGenerator.hs
   other-modules:      Gonimo.TypeBridges
                     , Gonimo.PSTypes
-                    , Gonimo.Server.DbEntities
-                    , Gonimo.Server.DbTypes
-                    , Gonimo.Types
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric
@@ -168,6 +165,7 @@ executable psGenerator
                      , freer
                      , gonimo-back
                      , http-api-data
+                     , lens
                      , lifted-base       >= 0.2.3.6
                      , mime-mail         >= 0.4.11
                      , monad-logger
@@ -181,6 +179,7 @@ executable psGenerator
                      , resource-pool
                      , servant
                      , servant-docs
+                     , servant-purescript
                      , servant-server
                      , smtp-mail
                      , text              >= 1.2.1.3

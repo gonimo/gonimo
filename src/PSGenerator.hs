@@ -1,14 +1,25 @@
-
+{-# LANGUAGE OverloadedStrings #-}
 
 import           Language.PureScript.Bridge
 
+import Control.Lens
 import           Data.Proxy
 import           GHC.Generics
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.DbTypes
+import           Gonimo.WebAPI
 import           Gonimo.TypeBridges
 import           Gonimo.Types
+import           Servant.PureScript
 
+data GonimoBridge
+
+instance HasBridge GonimoBridge where
+  languageBridge _ = buildBridge gonimoBridge
+
+
+gonimoProxy :: Proxy GonimoBridge
+gonimoProxy = Proxy
 
 data TestTypeConstructor m a = TestTypeConstructor (m a) deriving Generic
 
@@ -23,5 +34,12 @@ myTypes = [
       , mkSumType (Proxy :: Proxy InvitationDelivery)
       ]
 
+mySettings :: Settings
+mySettings = addReaderParam "AuthToken" defaultSettings & apiModuleName .~ "Gonimo.WebAPI"
+
+
 main :: IO ()
-main = writePSTypes "../gonimo-front/src" (buildBridge gonimoBridge) myTypes
+main = do
+  let gonimoFrontPath = "../gonimo-front/src"
+  writePSTypes gonimoFrontPath (buildBridge gonimoBridge) myTypes
+  writeAPIModuleWithSettings mySettings gonimoFrontPath gonimoProxy gonimoAPI

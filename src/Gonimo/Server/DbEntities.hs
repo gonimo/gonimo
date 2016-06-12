@@ -1,19 +1,22 @@
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
 
 module Gonimo.Server.DbEntities where
 
 
 
-import Database.Persist.TH
+import           Database.Persist.TH
 
-import Data.Text (Text)
-import Data.Time (UTCTime)
-import GHC.Generics (Generic)
-import Gonimo.Server.DbTypes
+import           Data.Text             (Text)
+import           Data.Time             (UTCTime)
+import           GHC.Generics          (Generic)
+import           Gonimo.Server.DbTypes
 -- import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
-import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToJSON)
+import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
+                                        genericToJSON)
+
+import           Gonimo.Types          
 
 share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Account
@@ -50,3 +53,6 @@ instance FromJSON Invitation
 instance ToJSON Invitation where
   toJSON = genericToJSON defaultOptions
 --  toEncoding = genericToEncoding defaultOptions
+
+data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving Generic
+instance FromJSON SendInvitation

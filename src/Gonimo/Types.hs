@@ -1,23 +1,23 @@
+{-# LANGUAGE InstanceSigs        #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE InstanceSigs #-}
 
 module Gonimo.Types where
 
 
 
-import           Data.Aeson.Types         (FromJSON (..), FromJSON, ToJSON (..),
-                                           ToJSON (..), defaultOptions,
-                                           genericToJSON
-                                           )
+import           Data.Aeson.Types      (FromJSON (..), FromJSON, ToJSON (..),
+                                        ToJSON (..), defaultOptions,
+                                        genericToJSON)
 
 
-import           GHC.Generics             (Generic)
-import           Gonimo.Server.DbEntities
+import           GHC.Generics          (Generic)
 import           Gonimo.Server.DbTypes
 {-import           Servant.Common.Text      (FromText (..))-}
-import           Web.HttpApiData          (FromHttpApiData (..), parseUrlPieceWithPrefix)
+import           Database.Persist.Sql
+import           Web.HttpApiData       (FromHttpApiData (..),
+                                        parseUrlPieceWithPrefix)
 
-import           Data.Text                (Text)
+import           Data.Text             (Text)
 
 type SenderName = Text
 
@@ -77,8 +77,7 @@ instance ToJSON Coffee where
   toJSON = genericToJSON defaultOptions
 --  toEncoding = genericToEncoding defaultOptions
 
-data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving Generic
 
-instance FromJSON SendInvitation
 
 type FamilyName = Text
+
