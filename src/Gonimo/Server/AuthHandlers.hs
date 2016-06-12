@@ -2,6 +2,7 @@ module Gonimo.Server.AuthHandlers where
 
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
+import           Data.Text                       (Text)
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
@@ -82,3 +83,21 @@ createFamily n = do
       , familyAccountInvitedBy = Nothing
     }
     return fid
+
+
+createChannel :: AuthServerConstraint r
+              => FamilyId -> ClientId -> ClientId -> Eff r Secret
+createChannel = undefined
+
+
+receiveChannel :: AuthServerConstraint r
+               => FamilyId -> ClientId -> ClientId -> Eff r Secret
+receiveChannel = undefined
+
+putMessage :: AuthServerConstraint r
+           => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
+putMessage     = undefined
+
+receiveMessage :: AuthServerConstraint r
+               => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
+receiveMessage = undefined

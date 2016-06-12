@@ -37,7 +37,7 @@ library
                  , Gonimo.Util
                  , Gonimo.WebAPI
                  , Gonimo.WebAPI.Types
-
+                 , Gonimo.WebAPI.Verbs
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric
