@@ -14,8 +14,8 @@ type DevelopmentAPI = GonimoAPI
 
 type GonimoAPI =
   -- Create an account pass Nothing if you want an anonymous account:
-  "accounts" :> ReqBody '[JSON] (Maybe Credentials) :> Post '[JSON] (AccountId, AuthToken)
-  :<|> Header "Authorization" AuthToken :> AuthGonimoAPI
+  --"clients" :> ReqBody '[JSON] (Maybe Credentials) :> Post '[JSON] (AccountId, AuthToken)
+  Header "Authorization" AuthToken :> AuthGonimoAPI
   :<|> "coffee" :> Get '[JSON] Coffee
 
 

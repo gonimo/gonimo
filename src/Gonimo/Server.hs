@@ -34,8 +34,8 @@ getDevelopmentServer c = getServer c
   :<|> serveDirectory "/home/robert/projects/gonimo-front/dist"
 
 effServer :: ServerT GonimoAPI ServerEffects
-effServer = createAccount
-        :<|> getAuthServer
+effServer = -- createAccount
+        getAuthServer
         :<|> getCoffee
 
 authServer :: ServerT AuthGonimoAPI AuthServerEffects
