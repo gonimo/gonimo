@@ -110,7 +110,18 @@ createChannel fid from to = do
 
 receiveChannel :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Eff r Secret
-receiveChannel = undefined
+-- | in this request @to@ is the one receiving the secret
+receiveChannel fid from to = do
+  AuthData{..} <- ask
+  unless (fid `elem` authDataAllowedFamilies) $ throwServant err403 { errBody = "invalid family route" }
+  unless (to == authDataClient) $ throwServant err403 { errBody = "from client not consistent with auth data" }
+  runDb $ do client <- Db.get from
+             case client of
+               Nothing     -> throwServant err403 { errBody = "to client is not valid" }
+               Just (Client _ toAcc' _) ->
+                   do isMember <- Db.getBy (FamilyMember toAcc' fid)
+                      unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
+  error "this secret should be fetched from memory"
 
 putMessage :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
