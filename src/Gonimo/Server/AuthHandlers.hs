@@ -96,13 +96,16 @@ createChannel fid from to = do
   AuthData{..} <- ask
   unless (fid `elem` authDataAllowedFamilies) $ throwServant err403 { errBody = "invalid family route" }
   unless (from == authDataClient) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  client <- runDb $ Db.get to
-  case client of
-    Nothing     -> throwServant err403 { errBody = "to client is not valid" }
-    Just (Client _ toAcc' _) ->
-        do isMember <- runDb $ Db.getBy (FamilyMember toAcc' fid)
-           unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
-           generateSecret
+  runDb $ do client <- Db.get to
+             case client of
+               Nothing     -> throwServant err403 { errBody = "to client is not valid" }
+               Just (Client _ toAcc' _) ->
+                   do isMember <- Db.getBy (FamilyMember toAcc' fid)
+                      unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
+  --secret <- generateSecret
+  --putInMemory secret
+  --return secret
+  generateSecret
 
 
 receiveChannel :: AuthServerConstraint r
