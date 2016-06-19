@@ -3,7 +3,7 @@
 module Gonimo.WebAPI where
 
 import           Data.Proxy
-import           Data.Text (Text)
+import           Data.Text                (Text)
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Types
 import qualified Gonimo.WebAPI.Types as Client

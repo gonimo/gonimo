@@ -1,20 +1,20 @@
 module Gonimo.Server.Auth where
 
-import Control.Monad.Freer (Eff, Member)
-import Control.Monad.Freer.Exception (Exc (..))
-import Control.Monad.Freer.Reader (Reader (..), ask)
-import Gonimo.Server.DbEntities
-import Gonimo.Server.Effects
-import Gonimo.Util
-import Servant.Server (err403)
-import Database.Persist (Entity(..), Key)
-import Control.Exception (SomeException)
+import           Control.Exception             (SomeException)
+import           Control.Monad.Freer           (Eff, Member)
+import           Control.Monad.Freer.Exception (Exc (..))
+import           Control.Monad.Freer.Reader    (Reader (..), ask)
+import           Database.Persist              (Entity (..), Key)
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Effects
+import           Gonimo.Util
+import           Servant.Server                (err403)
 
-data AuthData = AuthData { authDataAccountEntity :: Entity Account
+data AuthData = AuthData { authDataAccountEntity   :: Entity Account
                          , authDataAllowedFamilies :: [FamilyId]
                          -- Usually just one ore two - so using list lookup
                          -- should be fine.
-                         , authDataClient :: ClientId
+                         , authDataClient          :: ClientId
                          }
 
 type AuthReader = Reader AuthData

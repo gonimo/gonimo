@@ -1,17 +1,17 @@
 module Main where
 
-import Gonimo.Server
-import Gonimo.Server.Effects.TestServer
-import Gonimo.WebAPI
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Servant
-import Database.Persist.Sqlite
-import Control.Monad.Logger
-import qualified Data.ByteString.Char8 as S8
-import System.IO (Handle, stderr)
-import System.Log.FastLogger (fromLogStr)
-import Gonimo.Server.DbEntities
+import           Control.Monad.Logger
+import qualified Data.ByteString.Char8            as S8
+import           Database.Persist.Sqlite
+import           Gonimo.Server
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Effects.TestServer
+import           Gonimo.WebAPI
+import           Network.Wai
+import           Network.Wai.Handler.Warp
+import           Servant
+import           System.IO                        (Handle, stderr)
+import           System.Log.FastLogger            (fromLogStr)
 
 logHandle :: Handle
 logHandle = stderr
@@ -33,21 +33,9 @@ main = do
 doLogging :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 doLogging = logToHandle logHandle
 
-logToHandle :: Handle
-              -> Loc
-              -> LogSource
-              -> LogLevel
-              -> LogStr
-              -> IO ()
-logToHandle h loc src level msg =
-    S8.hPutStr h ls
-  where
-    ls = logHandleBS loc src level msg
+logToHandle :: Handle -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+logToHandle h loc src level msg = S8.hPutStr h ls
+  where ls = logHandleBS loc src level msg
 
-logHandleBS :: Loc
-                -> LogSource
-                -> LogLevel
-                -> LogStr
-                -> S8.ByteString
-logHandleBS a b c d =
-    fromLogStr $ defaultLogStr a b c d
+logHandleBS :: Loc -> LogSource -> LogLevel -> LogStr -> S8.ByteString
+logHandleBS a b c d = fromLogStr $ defaultLogStr a b c d

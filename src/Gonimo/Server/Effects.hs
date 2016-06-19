@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell   #-}
 {--
   Gonimo server uses the new effects API from the freer package. This
   is all IO effects of gonimo server will be modeled in an interpreter,
@@ -24,20 +24,21 @@ module Gonimo.Server.Effects (
 
 
 
-import Control.Monad.Freer (Eff)
-import Control.Monad.Freer.Exception (Exc)
-import Control.Monad.Logger (LogLevel(..), LogSource, ToLogStr, liftLoc)
-import Data.ByteString (ByteString)
-import Data.Time.Clock (UTCTime)
-import Gonimo.Database.Effects
-import Gonimo.Server.Effects.Internal
-import Gonimo.Server.Types (Secret (..))
-import Network.Mail.Mime (Mail)
-import Database.Persist.Sql (SqlBackend)
-import Control.Exception (SomeException)
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
-import Data.Text
+import           Control.Exception              (SomeException)
+import           Control.Monad.Freer            (Eff)
+import           Control.Monad.Freer.Exception  (Exc)
+import           Control.Monad.Logger           (LogLevel (..), LogSource,
+                                                 ToLogStr, liftLoc)
+import           Data.ByteString                (ByteString)
+import           Data.Text
+import           Data.Time.Clock                (UTCTime)
+import           Database.Persist.Sql           (SqlBackend)
+import           Gonimo.Database.Effects
+import           Gonimo.Server.Types            (Secret (..))
+import           Gonimo.Server.Effects.Internal
+import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax
+import           Network.Mail.Mime              (Mail)
 
 secretLength :: Int
 secretLength = 16

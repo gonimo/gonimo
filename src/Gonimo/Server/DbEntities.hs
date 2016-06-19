@@ -9,12 +9,11 @@ module Gonimo.Server.DbEntities where
 import           Database.Persist.TH
 
 
-import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions
-                                       ,genericToJSON)
+import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
+                                        genericToJSON)
 import           Data.Text             (Text)
 import           Data.Time             (UTCTime)
 import           GHC.Generics          (Generic)
-import           Gonimo.Types
 
 import           Gonimo.Server.Types
 

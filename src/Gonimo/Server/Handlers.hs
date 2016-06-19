@@ -1,13 +1,13 @@
 module Gonimo.Server.Handlers where
 
-import Control.Monad.Freer (Eff)
-import Gonimo.Server.DbEntities
-import Gonimo.Server.Effects hiding (Server)
-import Gonimo.Server.Types
-import Servant (ServantErr(..))
-import qualified Gonimo.Database.Effects as Db
-import Gonimo.Util
+import           Control.Monad.Freer           (Eff)
+import qualified Gonimo.Database.Effects       as Db
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Effects         hiding (Server)
+import           Gonimo.Server.Types
+import           Gonimo.Util
 import qualified Gonimo.WebAPI.Types as Client
+import           Servant                       (ServantErr (..))
 
 -- | Create an anonymous account and a client.
 --   Each device is uniquely identified by a ClientId, multiple

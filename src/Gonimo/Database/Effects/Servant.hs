@@ -1,19 +1,14 @@
+module Gonimo.Database.Effects.Servant where
 -- Little helpers integrating db functions with servant:
 
-module Gonimo.Database.Effects.Servant where
-
-
-
-import Database.Persist (Key, Entity, Unique)
-import Gonimo.Database.Effects
-import Control.Monad.Freer.Exception
-import Control.Monad.Freer
-import Servant.Server
-import Control.Monad ((<=<))
-import Control.Exception (SomeException)
-import Gonimo.Util
-
-
+import           Control.Exception             (SomeException)
+import           Control.Monad                 ((<=<))
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Exception
+import           Database.Persist              (Entity, Key, Unique)
+import           Gonimo.Database.Effects
+import           Gonimo.Util
+import           Servant.Server
 
 get404 :: DbConstraint backend a r => Key a -> Eff r a
 get404 = servantErrOnNothing err404 <=< get

@@ -1,13 +1,14 @@
-{-- Freer extensible effects for database access, based on persistent types.
---}
+{-- Freer extensible effects for database access, based on persistent types. --}
 module Gonimo.Database.Effects where
 
-import Control.Exception.Base (SomeException)
-import Control.Monad.Freer (send, Member, Eff)
-import Control.Monad.Freer.Exception (throwError, Exc(..))
+import           Control.Exception.Base        (SomeException)
+import           Control.Monad.Freer           (Eff, Member, send)
+import           Control.Monad.Freer.Exception (Exc (..), throwError)
 
 
-import Database.Persist (PersistEntity(..), Entity, Filter, SelectOpt, PersistQuery)
+import           Database.Persist              (Entity, Filter,
+                                                PersistEntity (..),
+                                                PersistQuery, SelectOpt)
 
 
 -- Type synonym for constraints on Database API functions, requires ConstraintKinds language extension:
@@ -20,12 +21,12 @@ type EDatabase backend a =  Database backend (Either SomeException a)
 
 
 data Database backend v where
-  Insert  :: (backend ~ PersistEntityBackend a, PersistEntity a) => a -> EDatabase backend (Key a)
-  Insert_ :: (backend ~ PersistEntityBackend a, PersistEntity a) => a -> EDatabase backend ()
-  Replace :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> a -> EDatabase backend ()
-  Delete  :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> EDatabase backend ()
-  Get     :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> EDatabase backend (Maybe a)
-  GetBy   :: (backend ~ PersistEntityBackend a, PersistEntity a) => Unique a -> EDatabase backend (Maybe (Entity a))
+  Insert     :: (backend ~ PersistEntityBackend a, PersistEntity a) => a -> EDatabase backend (Key a)
+  Insert_    :: (backend ~ PersistEntityBackend a, PersistEntity a) => a -> EDatabase backend ()
+  Replace    :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> a -> EDatabase backend ()
+  Delete     :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> EDatabase backend ()
+  Get        :: (backend ~ PersistEntityBackend a, PersistEntity a) => Key a -> EDatabase backend (Maybe a)
+  GetBy      :: (backend ~ PersistEntityBackend a, PersistEntity a) => Unique a -> EDatabase backend (Maybe (Entity a))
   SelectList :: (backend ~ PersistEntityBackend a, PersistQuery backend, PersistEntity a) => [Filter a] -> [SelectOpt a] -> EDatabase backend [Entity a]
 
 insert :: DbConstraint backend a r => a -> Eff r (Key a)

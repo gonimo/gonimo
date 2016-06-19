@@ -2,32 +2,38 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Server where
 
-import Control.Monad.Freer (Eff)
-import Control.Monad.Freer.Reader (runReader)
-import Control.Monad.Except (ExceptT(..))
-import Data.Aeson (encode)
-import Data.Bifunctor (first)
-import Gonimo.Server.DbEntities
-import Gonimo.Server.Effects hiding (Server)
-import Gonimo.Server.Effects.TestServer
-import Gonimo.Server.Types
-import Gonimo.WebAPI
-import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
-import qualified Gonimo.Database.Effects as Db
-import qualified Data.Text as T
-import Servant.Server (err400, err401)
-import Database.Persist (Entity(..), (==.))
-import Control.Monad.Freer.Exception (throwError, catchError)
-import Gonimo.Server.Handlers
-import Gonimo.Server.AuthHandlers
-import Gonimo.Server.Auth
-import Gonimo.Database.Effects.Servant
-import Control.Monad ((<=<))
-import Control.Exception (asyncExceptionFromException, throw, SomeException, fromException, AsyncException)
-import Data.Monoid
-import Gonimo.Util (ServantException(..), throwServant)
-import Gonimo.Error
-import Servant.Utils.StaticFiles (serveDirectory)
+import           Control.Exception                (AsyncException,
+                                                   SomeException,
+                                                   asyncExceptionFromException,
+                                                   fromException, throw)
+import           Control.Monad                    ((<=<))
+import           Control.Monad.Except             (ExceptT (..))
+import           Control.Monad.Freer              (Eff)
+import           Control.Monad.Freer.Exception    (catchError, throwError)
+import           Control.Monad.Freer.Reader       (runReader)
+import           Data.Aeson                       (encode)
+import           Data.Bifunctor                   (first)
+import           Data.Monoid
+import qualified Data.Text                        as T
+import           Database.Persist                 (Entity (..), (==.))
+import qualified Gonimo.Database.Effects          as Db
+import           Gonimo.Database.Effects.Servant
+import           Gonimo.Error
+import           Gonimo.Server.Auth
+import           Gonimo.Server.AuthHandlers
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Effects            hiding (Server)
+import           Gonimo.Server.Effects.TestServer
+import           Gonimo.Server.Handlers
+import           Gonimo.Server.Types
+import           Gonimo.Util                      (ServantException (..),
+                                                   throwServant)
+import           Gonimo.WebAPI
+import           Servant                          ((:<|>) (..), (:~>) (..),
+                                                   ServantErr (..), Server,
+                                                   ServerT, enter, err500)
+import           Servant.Server                   (err400, err401)
+import           Servant.Utils.StaticFiles        (serveDirectory)
 
 
 getDevelopmentServer :: Config -> Server DevelopmentAPI

@@ -2,13 +2,13 @@
 module Gonimo.Server.EmailInvitation (
   makeInvitationEmail) where
 
-import NeatInterpolation
-import Data.Text (Text)
-import Network.Mail.Mime (Address(..), Mail, simpleMail')
-import Gonimo.Server.DbEntities hiding (familyName)
-import Gonimo.Server.Types
+import           Data.Text                (Text)
+import           Gonimo.Server.DbEntities hiding (familyName)
+import           Gonimo.Server.Types
+import           NeatInterpolation
+import           Network.Mail.Mime        (Address (..), Mail, simpleMail')
 
-import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy           as TL
 
 
 

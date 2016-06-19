@@ -4,8 +4,8 @@ module Gonimo.Server.AuthHandlers where
 import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
-import           Data.Text                       (Text)
 import           Data.Maybe                      (isJust)
+import           Data.Text                       (Text)
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
@@ -15,8 +15,9 @@ import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Types
 import           Gonimo.Util
+import           Servant.Server                  (ServantErr (..), err400,
+                                                  err403)
 import           Gonimo.WebAPI.Types as Client
-import           Servant.Server                  (ServantErr (..), err400, err403)
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do

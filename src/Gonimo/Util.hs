@@ -3,13 +3,14 @@ module Gonimo.Util where
 
 
 
-import Control.Exception (Exception, SomeException, toException)
+import           Control.Exception             (Exception, SomeException,
+                                                toException)
 
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
-import Servant.Server
-import Data.Typeable (Typeable)
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Exception
+import           Data.Typeable                 (Typeable)
+import           Servant.Server
 
 
 
