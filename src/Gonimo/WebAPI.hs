@@ -40,8 +40,8 @@ type AuthGonimoAPI =
   :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
   -- Create a family
 
-  :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> PostCreated '[JSON] Secret
-  :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> Receive '[JSON] Secret
+  :<|> "socket" :> Capture "familyId" FamilyId :> To :> ReqBody '[JSON] ClientId :> PostCreated '[JSON] Secret
+  :<|> "socket" :> Capture "familyId" FamilyId :> To :> Receive '[JSON] (ClientId, Secret)
   :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
   :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> Channel :> Receive '[JSON] Text
 

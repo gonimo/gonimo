@@ -91,7 +91,7 @@ createFamily n = do
 
 createChannel :: AuthServerConstraint r
               => FamilyId -> ClientId -> ClientId -> Eff r Secret
-createChannel fid from to = do
+createChannel fid to from = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
   AuthData{..} <- ask
@@ -110,10 +110,11 @@ createChannel fid from to = do
 
 
 receiveChannel :: AuthServerConstraint r
-               => FamilyId -> ClientId -> ClientId -> Eff r Secret
+               => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
-receiveChannel fid from to = do
+receiveChannel fid to = do
   AuthData{..} <- ask
+  from <- undefined -- actually get this from inMemory
   unless (fid `elem` authDataAllowedFamilies) $ throwServant err403 { errBody = "invalid family route" }
   unless (to == authDataClient) $ throwServant err403 { errBody = "from client not consistent with auth data" }
   runDb $ do client <- Db.get from
