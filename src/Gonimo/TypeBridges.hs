@@ -3,7 +3,6 @@ module Gonimo.TypeBridges where
 import           Control.Applicative
 import           Gonimo.PSTypes
 import           Language.PureScript.Bridge
-import           Language.PureScript.Bridge.Builder
 
 gonimoBridge :: BridgePart
 gonimoBridge = defaultBridge
