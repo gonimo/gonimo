@@ -20,13 +20,10 @@ import           Gonimo.Types
 
 share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Account
-    secret Secret
     created UTCTime
-    lastAccessed UTCTime
     email Text Maybe
     phone Text Maybe
     password Text Maybe
-    SecretAccount secret
 
   Family
     name Text
@@ -47,6 +44,12 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     delivery InvitationDelivery
     SecretInvitation secret
     deriving Show Generic
+
+  Client
+    secret Secret
+    accountId AccountId
+    lastAccessed UTCTime
+    SecretClient secret
 |]
 
 instance FromJSON Invitation
