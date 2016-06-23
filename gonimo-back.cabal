@@ -18,22 +18,25 @@ cabal-version:       >=1.10
 library
   exposed-modules: Gonimo.Database.Effects
                  , Gonimo.Database.Effects.PersistDatabase
-                 , Gonimo.WebAPI
-                 , Gonimo.Types
+                 , Gonimo.Database.Effects.Servant
+                 , Gonimo.Error
+                 , Gonimo.PSTypes
                  , Gonimo.Server
                  , Gonimo.Server.Auth
                  , Gonimo.Server.AuthHandlers
-                 , Gonimo.Server.Handlers
                  , Gonimo.Server.DbEntities
                  , Gonimo.Server.DbTypes
                  , Gonimo.Server.Effects
-                 , Gonimo.Server.Invitation
                  , Gonimo.Server.Effects.Internal
+                 , Gonimo.Server.Effects.Servant
                  , Gonimo.Server.Effects.TestServer
-                 , Gonimo.Database.Effects.Servant
-                 , Gonimo.Error
                  , Gonimo.Server.EmailInvitation
+                 , Gonimo.Server.Handlers
+                 , Gonimo.Server.Invitation
+                 , Gonimo.TypeBridges
+                 , Gonimo.Types
                  , Gonimo.Util
+                 , Gonimo.WebAPI
 
   default-extensions: ConstraintKinds
                     , DataKinds
@@ -58,6 +61,7 @@ library
                      , fast-logger
                      , freer
                      , http-api-data
+                     , lens
                      , lifted-base >= 0.2.3.6
                      , mime-mail >= 0.4.11
                      , monad-logger
@@ -73,10 +77,10 @@ library
                      , servant-docs
                      , servant-server
                      , smtp-mail
+                     , template-haskell
                      , text >= 1.2.1.3
                      , text-show
                      , time >= 1.5.0.1
-                     , template-haskell
                      , transformers >= 0.4.2.0
                      , wai
                      , warp
