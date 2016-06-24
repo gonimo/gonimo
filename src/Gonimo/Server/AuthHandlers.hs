@@ -7,12 +7,12 @@ import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth
 import           Gonimo.Server.DbEntities
-import           Gonimo.Server.DbTypes
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Types
 import           Gonimo.Util
 import           Servant.Server                  (ServantErr (..), err400)
+import Gonimo.Client.Types as Client
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do

@@ -11,7 +11,6 @@ import           Database.Persist.TH
 import           Data.Text             (Text)
 import           Data.Time             (UTCTime)
 import           GHC.Generics          (Generic)
-import           Gonimo.Server.DbTypes
 -- import Data.Aeson.Types (FromJSON, ToJSON(..), defaultOptions, genericToEncoding, genericToJSON)
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToJSON)

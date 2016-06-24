@@ -31,7 +31,7 @@ import Data.ByteString (ByteString)
 import Data.Time.Clock (UTCTime)
 import Gonimo.Database.Effects
 import Gonimo.Server.Effects.Internal
-import Gonimo.Server.DbTypes (Secret (..))
+import Gonimo.Types (Secret (..))
 import Network.Mail.Mime (Mail)
 import Database.Persist.Sql (SqlBackend)
 import Control.Exception (SomeException)

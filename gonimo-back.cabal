@@ -16,7 +16,8 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules: Gonimo.CodeGen.PSTypes
+  exposed-modules: Gonimo.Client.Types
+                 , Gonimo.CodeGen.PSTypes
                  , Gonimo.CodeGen.TypeBridges
                  , Gonimo.Database.Effects
                  , Gonimo.Database.Effects.PersistDatabase
@@ -26,7 +27,6 @@ library
                  , Gonimo.Server.Auth
                  , Gonimo.Server.AuthHandlers
                  , Gonimo.Server.DbEntities
-                 , Gonimo.Server.DbTypes
                  , Gonimo.Server.Effects
                  , Gonimo.Server.Effects.Internal
                  , Gonimo.Server.Effects.Servant

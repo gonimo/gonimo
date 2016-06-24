@@ -1,8 +1,9 @@
 module Gonimo.CodeGen.TypeBridges where
 
 import           Control.Applicative
-import           Gonimo.PSTypes
 import           Language.PureScript.Bridge
+
+import           Gonimo.CodeGen.PSTypes
 
 gonimoBridge :: BridgePart
 gonimoBridge = defaultBridge
