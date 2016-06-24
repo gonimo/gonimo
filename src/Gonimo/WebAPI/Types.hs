@@ -2,7 +2,7 @@
 -- They are either accepted from the client or sent to the client but have no further use
 -- on the server side.
 
-module Gonimo.Client.Types where
+module Gonimo.WebAPI.Types where
 
 import Gonimo.Types
 import Gonimo.Server.DbEntities

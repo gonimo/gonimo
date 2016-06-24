@@ -11,7 +11,7 @@ import           Gonimo.CodeGen.TypeBridges
 import           Gonimo.Server.DbEntities
 import           Gonimo.WebAPI
 import           Gonimo.Types
-import           Gonimo.Client.Types as Client
+import           Gonimo.WebAPI.Types as Client
 
 data GonimoBridge
 

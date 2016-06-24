@@ -6,7 +6,7 @@ import Servant.API
 import Data.Proxy
 import Gonimo.Types
 import Gonimo.Server.DbEntities
-import qualified Gonimo.Client.Types as Client
+import qualified Gonimo.WebAPI.Types as Client
 
 -- The development API also serves javascript
 type DevelopmentAPI = GonimoAPI

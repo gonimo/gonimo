@@ -12,7 +12,7 @@ import           Gonimo.Server.EmailInvitation
 import           Gonimo.Types
 import           Gonimo.Util
 import           Servant.Server                  (ServantErr (..), err400)
-import Gonimo.Client.Types as Client
+import           Gonimo.WebAPI.Types as Client
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do

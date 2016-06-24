@@ -16,8 +16,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules: Gonimo.Client.Types
-                 , Gonimo.CodeGen.PSTypes
+  exposed-modules: Gonimo.CodeGen.PSTypes
                  , Gonimo.CodeGen.TypeBridges
                  , Gonimo.Database.Effects
                  , Gonimo.Database.Effects.PersistDatabase
@@ -37,6 +36,7 @@ library
                  , Gonimo.Types
                  , Gonimo.Util
                  , Gonimo.WebAPI
+                 , Gonimo.WebAPI.Types
 
   default-extensions: ConstraintKinds
                     , DataKinds

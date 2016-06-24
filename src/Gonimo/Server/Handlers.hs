@@ -7,7 +7,7 @@ import Gonimo.Types
 import Servant (ServantErr(..))
 import qualified Gonimo.Database.Effects as Db
 import Gonimo.Util
-import qualified Gonimo.Client.Types as Client
+import qualified Gonimo.WebAPI.Types as Client
 
 -- | Create an anonymous account and a client.
 --   Each device is uniquely identified by a ClientId, multiple
