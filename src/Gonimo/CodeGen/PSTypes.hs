@@ -1,4 +1,4 @@
-module Gonimo.PSTypes where
+module Gonimo.CodeGen.PSTypes where
 
 import           Language.PureScript.Bridge.TypeInfo
 import           Language.PureScript.Bridge.Builder

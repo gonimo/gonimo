@@ -1,4 +1,4 @@
-module Gonimo.TypeBridges where
+module Gonimo.CodeGen.TypeBridges where
 
 import           Control.Applicative
 import           Gonimo.PSTypes

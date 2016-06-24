@@ -5,12 +5,13 @@ import           Language.PureScript.Bridge
 import Control.Lens
 import           Data.Proxy
 import           GHC.Generics
+import           Servant.PureScript
+
+import           Gonimo.CodeGen.TypeBridges
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.DbTypes
 import           Gonimo.WebAPI
-import           Gonimo.TypeBridges
 import           Gonimo.Types
-import           Servant.PureScript
 
 data GonimoBridge
 

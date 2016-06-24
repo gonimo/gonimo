@@ -16,11 +16,12 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules: Gonimo.Database.Effects
+  exposed-modules: Gonimo.CodeGen.PSTypes
+                 , Gonimo.CodeGen.TypeBridges
+                 , Gonimo.Database.Effects
                  , Gonimo.Database.Effects.PersistDatabase
                  , Gonimo.Database.Effects.Servant
                  , Gonimo.Error
-                 , Gonimo.PSTypes
                  , Gonimo.Server
                  , Gonimo.Server.Auth
                  , Gonimo.Server.AuthHandlers
@@ -33,7 +34,6 @@ library
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Handlers
                  , Gonimo.Server.Invitation
-                 , Gonimo.TypeBridges
                  , Gonimo.Types
                  , Gonimo.Util
                  , Gonimo.WebAPI
