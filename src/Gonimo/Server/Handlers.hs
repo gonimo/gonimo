@@ -17,18 +17,18 @@ createClient :: ServerConstraint r => Eff r Client.AuthData
 createClient = do
   now <- getCurrentTime
   authToken <- GonimoSecret <$> generateSecret
-  aid <- runDb $ Db.insert Account { accountCreated  = now
-                                   }
-
-  cid <- runDb $ Db.insert Client { clientAuthToken = authToken
-                                  , clientAccountId    = aid
-                                  , clientLastAccessed = now
-                                  }
-  return Client.AuthData {
-      Client.accountId = aid
-    , Client.clientId = cid
-    , Client.authToken = authToken
-    }
+  runDb $ do
+    aid <- Db.insert Account { accountCreated  = now
+                             }
+    cid <- Db.insert Client  { clientAuthToken = authToken
+                             , clientAccountId    = aid
+                             , clientLastAccessed = now
+                             }
+    return Client.AuthData {
+        Client.accountId = aid
+      , Client.clientId = cid
+      , Client.authToken = authToken
+      }
 
 
 
