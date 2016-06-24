@@ -20,9 +20,6 @@ import           Gonimo.Types
 share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Account
     created UTCTime
-    email Text Maybe
-    phone Text Maybe
-    password Text Maybe
 
   Family
     name Text
@@ -45,10 +42,16 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     deriving Show Generic
 
   Client
-    secret Secret
+    authToken AuthToken
     accountId AccountId
     lastAccessed UTCTime
-    SecretClient secret
+    AuthTokenClient authToken
+
+  User
+    login Text
+    password Text 
+    accountId AccountId
+    
 |]
 
 instance FromJSON Invitation
@@ -56,5 +59,3 @@ instance ToJSON Invitation where
   toJSON = genericToJSON defaultOptions
 --  toEncoding = genericToEncoding defaultOptions
 
-data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving Generic
-instance FromJSON SendInvitation

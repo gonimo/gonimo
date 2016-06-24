@@ -35,8 +35,8 @@ getDevelopmentServer c = getServer c
   :<|> serveDirectory "/home/robert/projects/gonimo-front/dist"
 
 effServer :: ServerT GonimoAPI ServerEffects
-effServer = -- createAccount
-        getAuthServer
+effServer =  createClient
+        :<|> getAuthServer
         :<|> getCoffee
 
 authServer :: ServerT AuthGonimoAPI AuthServerEffects
@@ -60,9 +60,9 @@ authToEff' :: Maybe AuthToken -> AuthServerEffects a -> ServerEffects a
 authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don't care for now.
                           errReasonPhrase = "You need to provide an AuthToken!"
                          }
-authToEff' (Just (GonimoSecret s)) m = do
+authToEff' (Just s) m = do
     authData <- runDb $ do
-      Entity cid c@Client{..} <- getByAuthErr $ SecretClient s
+      Entity cid Client{..} <- getByAuthErr $ AuthTokenClient s
       account <- getAuthErr clientAccountId
       fids <- map (familyAccountFamilyId . entityVal) <$> Db.selectList [FamilyAccountAccountId ==. clientAccountId] []
       return $ AuthData (Entity clientAccountId account) fids cid

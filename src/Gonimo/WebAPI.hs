@@ -6,7 +6,7 @@ import Servant.API
 import Data.Proxy
 import Gonimo.Types
 import Gonimo.Server.DbEntities
-import Gonimo.Server.DbTypes
+import qualified Gonimo.Client.Types as Client
 
 -- The development API also serves javascript
 type DevelopmentAPI = GonimoAPI
@@ -14,8 +14,8 @@ type DevelopmentAPI = GonimoAPI
 
 type GonimoAPI =
   -- Create an account pass Nothing if you want an anonymous account:
-  --"clients" :> ReqBody '[JSON] (Maybe Credentials) :> Post '[JSON] (AccountId, AuthToken)
-  Header "Authorization" AuthToken :> AuthGonimoAPI
+       "accounts" :> Post '[JSON] Client.AuthData
+  :<|> Header "Authorization" AuthToken :> AuthGonimoAPI
   :<|> "coffee" :> Get '[JSON] Coffee
 
 
@@ -28,7 +28,7 @@ type AuthGonimoAPI =
   :<|> "invitations" :> ReqBody '[JSON] Secret :> Delete '[JSON] Invitation
   -- Accept an invitation
   --
-  :<|> "invitationOutbox" :> ReqBody '[JSON] SendInvitation :> Post '[JSON] ()
+  :<|> "invitationOutbox" :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()
   -- Send an invitation email/telegram message/...
   --
   :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId

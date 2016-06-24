@@ -7,26 +7,28 @@ import Gonimo.Types
 import Servant (ServantErr(..))
 import qualified Gonimo.Database.Effects as Db
 import Gonimo.Util
+import qualified Gonimo.Client.Types as Client
 
-createAccount :: ServerConstraint r => Maybe Credentials -> Eff r (AccountId, AuthToken)
--- | creating a new "Account" implicitly also generates a "Client" - that is
--- associated to this "Account".
-createAccount mcred = do
+-- | Create an anonymous account and a client.
+--   Each device is uniquely identified by a ClientId, multiple
+--   Client's can share a single account in case a user login was provided,
+--   otherwise every client corresponds to a single Account.
+createClient :: ServerConstraint r => Eff r Client.AuthData
+createClient = do
   now <- getCurrentTime
-  let email = mcred >>= getUserEmail . userName
-  let phone = mcred >>= getUserPhone . userName
-  let password = userPassword <$> mcred
-  csecret <- generateSecret
+  authToken <- GonimoSecret <$> generateSecret
   aid <- runDb $ Db.insert Account { accountCreated  = now
-                                   , accountEmail    = email
-                                   , accountPhone    = phone
-                                   , accountPassword = password
                                    }
 
-  _ <- runDb $ Db.insert Client { clientSecret       = csecret
-                                , clientAccountId    = aid
-                                , clientLastAccessed = now}
-  return (aid, GonimoSecret csecret)
+  cid <- runDb $ Db.insert Client { clientAuthToken = authToken
+                                  , clientAccountId    = aid
+                                  , clientLastAccessed = now
+                                  }
+  return Client.AuthData {
+      Client.accountId = aid
+    , Client.clientId = cid
+    , Client.authToken = authToken
+    }
 
 
 
