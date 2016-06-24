@@ -1,6 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
 module Gonimo.Server.AuthHandlers where
 
+import           Control.Lens                    hiding (to,from)
 import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
@@ -9,7 +9,7 @@ import           Data.Text                       (Text)
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
-import           Gonimo.Server.Auth
+import           Gonimo.Server.Auth              as Auth
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
@@ -17,7 +17,7 @@ import           Gonimo.Server.Types
 import           Gonimo.Util
 import           Servant.Server                  (ServantErr (..), err400,
                                                   err403)
-import           Gonimo.WebAPI.Types as Client
+import qualified Gonimo.WebAPI.Types as Client
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -50,8 +50,8 @@ acceptInvitation invSecret = do
     }
     return inv
 
-sendInvitation :: AuthServerConstraint r => SendInvitation -> Eff r ()
-sendInvitation (SendInvitation iid d@(EmailInvitation email)) = do
+sendInvitation :: AuthServerConstraint r => Client.SendInvitation -> Eff r ()
+sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
   (inv, family) <- runDb $ do
     inv <- get404 iid
@@ -63,7 +63,7 @@ sendInvitation (SendInvitation iid d@(EmailInvitation email)) = do
     family <- get404 (invitationFamilyId inv)
     return (newInv, family)
   sendEmail $ makeInvitationEmail inv email (familyName family)
-sendInvitation (SendInvitation _ OtherDelivery) =
+sendInvitation (Client.SendInvitation _ OtherDelivery) =
   throwServant err400 {
     errReasonPhrase = "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
   }
@@ -94,11 +94,11 @@ createChannel :: AuthServerConstraint r
 createChannel fid to from = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
-  AuthData{..} <- ask
-  unless (fid `elem` authDataAllowedFamilies) $ throwServant err403 { errBody = "invalid family route" }
-  unless (from == authDataClient) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do client <- Db.get to
-             case client of
+  authData <- ask
+  unless (fid `elem` (authData^.allowedFamilies )) $ throwServant err403 { errBody = "invalid family route" }
+  unless (from == (authData^.client)) $ throwServant err403 { errBody = "from client not consistent with auth data" }
+  runDb $ do clientId <- Db.get to
+             case clientId of
                Nothing     -> throwServant err403 { errBody = "to client is not valid" }
                Just (Client _ toAcc' _) ->
                    do isMember <- Db.getBy (FamilyMember toAcc' fid)
@@ -113,13 +113,13 @@ receiveChannel :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
 receiveChannel fid to = do
-  AuthData{..} <- ask
+  authData <- ask
   from <- undefined -- actually get this from inMemory
-  unless (fid `elem` authDataAllowedFamilies) $ throwServant err403 { errBody = "invalid family route" }
-  unless (to == authDataClient) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do client <- Db.get from
-             case client of
-               Nothing     -> throwServant err403 { errBody = "to client is not valid" }
+  unless (fid `elem` (authData^.allowedFamilies)) $ throwServant err403 { errBody = "invalid family route" }
+  unless (to == authData^.client) $ throwServant err403 { errBody = "from client not consistent with auth data" }
+  runDb $ do clientId <- Db.get from
+             case clientId of
+               Nothing     -> throwServant err403 { errBody = "from client is not valid" }
                Just (Client _ toAcc' _) ->
                    do isMember <- Db.getBy (FamilyMember toAcc' fid)
                       unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }

@@ -24,11 +24,10 @@ gonimoProxy = Proxy
 data TestTypeConstructor m a = TestTypeConstructor (m a) deriving Generic
 
 myTypes :: [SumType 'Haskell]
-myTypes = [ mkSumType (Proxy :: Proxy AccountData)
-        mkSumType (Proxy :: Proxy Client.AuthData)
-      , mkSumType (Proxy :: Proxy Account)
+myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
+          , mkSumType (Proxy :: Proxy Account)
           , mkSumType (Proxy :: Proxy AuthToken)
-      , mkSumType (Proxy :: Proxy Client)
+          , mkSumType (Proxy :: Proxy Client)
           , mkSumType (Proxy :: Proxy Coffee)
           , mkSumType (Proxy :: Proxy Invitation)
           , mkSumType (Proxy :: Proxy InvitationDelivery)

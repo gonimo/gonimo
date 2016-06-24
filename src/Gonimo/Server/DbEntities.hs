@@ -51,9 +51,9 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
 
   User
     login Text
-    password Text 
+    password Text
     accountId AccountId
-    
+
 |]
 
 instance FromJSON Invitation

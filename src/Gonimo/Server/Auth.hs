@@ -1,6 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Server.Auth where
 
 import           Control.Exception             (SomeException)
+import           Control.Lens
 import           Control.Monad.Freer           (Eff, Member)
 import           Control.Monad.Freer.Exception (Exc (..))
 import           Control.Monad.Freer.Reader    (Reader (..), ask)
@@ -10,12 +12,13 @@ import           Gonimo.Server.Effects
 import           Gonimo.Util
 import           Servant.Server                (err403)
 
-data AuthData = AuthData { authDataAccountEntity   :: Entity Account
-                         , authDataAllowedFamilies :: [FamilyId]
+data AuthData = AuthData { _accountEntity   :: Entity Account
+                         , _allowedFamilies :: [FamilyId]
                          -- Usually just one ore two - so using list lookup
                          -- should be fine.
-                         , authDataClient          :: ClientId
+                         , _client          :: ClientId
                          }
+$(makeLenses ''AuthData)
 
 type AuthReader = Reader AuthData
 type AuthReaderMember r = Member AuthReader r
@@ -25,7 +28,7 @@ type AuthServerEffects = Eff '[AuthReader, Exc SomeException, Server]
 
 
 askAccountId :: AuthReaderMember r => Eff r (Key Account)
-askAccountId = entityKey . authDataAccountEntity <$> ask
+askAccountId = entityKey . _accountEntity <$> ask
 
 
 isFamilyMember :: FamilyId -> AuthData -> Bool
