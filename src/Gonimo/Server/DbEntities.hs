@@ -20,6 +20,7 @@ import           Gonimo.Types
 share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Account
     created UTCTime
+    deriving Generic
 
   Family
     name Text
@@ -46,6 +47,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     accountId AccountId
     lastAccessed UTCTime
     AuthTokenClient authToken
+    deriving Generic
 
   User
     login Text
