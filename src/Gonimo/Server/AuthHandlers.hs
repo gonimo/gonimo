@@ -9,7 +9,7 @@ import           Gonimo.Server.Auth
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
-import           Gonimo.Types
+import           Gonimo.Server.Types
 import           Gonimo.Util
 import           Servant.Server                  (ServantErr (..), err400)
 import           Gonimo.WebAPI.Types as Client

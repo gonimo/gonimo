@@ -15,7 +15,7 @@ import           GHC.Generics          (Generic)
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToJSON)
 
-import           Gonimo.Types          
+import           Gonimo.Server.Types
 
 share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Account

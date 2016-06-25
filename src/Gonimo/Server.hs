@@ -10,7 +10,7 @@ import Data.Bifunctor (first)
 import Gonimo.Server.DbEntities
 import Gonimo.Server.Effects hiding (Server)
 import Gonimo.Server.Effects.TestServer
-import Gonimo.Types
+import Gonimo.Server.Types
 import Gonimo.WebAPI
 import Servant (ServantErr(..), err500, Server, (:<|>)(..), ServerT, enter, (:~>)(..))
 import qualified Gonimo.Database.Effects as Db

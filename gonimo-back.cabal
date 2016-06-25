@@ -33,7 +33,7 @@ library
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Handlers
                  , Gonimo.Server.Invitation
-                 , Gonimo.Types
+                 , Gonimo.Server.Types
                  , Gonimo.Util
                  , Gonimo.WebAPI
                  , Gonimo.WebAPI.Types

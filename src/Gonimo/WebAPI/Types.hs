@@ -4,7 +4,7 @@
 
 module Gonimo.WebAPI.Types where
 
-import Gonimo.Types
+import Gonimo.Server.Types
 import Gonimo.Server.DbEntities
 import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics

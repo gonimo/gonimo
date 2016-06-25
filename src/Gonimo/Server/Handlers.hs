@@ -3,7 +3,7 @@ module Gonimo.Server.Handlers where
 import Control.Monad.Freer (Eff)
 import Gonimo.Server.DbEntities
 import Gonimo.Server.Effects hiding (Server)
-import Gonimo.Types
+import Gonimo.Server.Types
 import Servant (ServantErr(..))
 import qualified Gonimo.Database.Effects as Db
 import Gonimo.Util

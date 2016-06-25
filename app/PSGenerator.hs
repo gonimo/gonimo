@@ -10,7 +10,7 @@ import           Servant.PureScript
 import           Gonimo.CodeGen.TypeBridges
 import           Gonimo.Server.DbEntities
 import           Gonimo.WebAPI
-import           Gonimo.Types
+import           Gonimo.Server.Types
 import           Gonimo.WebAPI.Types as Client
 
 data GonimoBridge

@@ -6,7 +6,7 @@ import NeatInterpolation
 import Data.Text (Text)
 import Network.Mail.Mime (Address(..), Mail, simpleMail')
 import Gonimo.Server.DbEntities hiding (familyName)
-import Gonimo.Types
+import Gonimo.Server.Types
 
 import qualified Data.Text.Lazy as TL
 

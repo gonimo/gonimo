@@ -7,7 +7,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE OverloadedStrings       #-}
 
-module Gonimo.Types where
+module Gonimo.Server.Types where
 
 
 
