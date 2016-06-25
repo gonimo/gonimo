@@ -19,3 +19,5 @@ cabal.sandbox.config
 dist
 dist-*
 shell.nix
+/:memory
+/stack.yaml
