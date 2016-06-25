@@ -21,6 +21,7 @@ module Gonimo.Server.Effects (
   , logWarn
   , logInfo
   , logError
+  , notify
   ) where
 
 
@@ -30,17 +31,21 @@ import           Control.Monad.Freer            (Eff)
 import           Control.Monad.Freer.Exception  (Exc)
 import           Control.Monad.Logger           (LogLevel (..), LogSource, ToLogStr, liftLoc)
 import           Data.ByteString                (ByteString)
+import           Data.Proxy
 import           Data.Text
 import           Data.Time.Clock                (UTCTime)
 import           Database.Persist.Sql           (SqlBackend)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 import           Network.Mail.Mime              (Mail)
+import           Servant.Subscriber (IsElem, HasLink, IsValidEndpoint, IsSubscribable, Event, MkLink, URI)
 
 import           Gonimo.Database.Effects
-import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.Server.Effects.Internal
 import qualified Gonimo.Server.State as Server
+import           Gonimo.Server.Types            (Secret (..))
+import           Gonimo.WebAPI (GonimoAPI)
+
 
 secretLength :: Int
 secretLength = 16
@@ -68,6 +73,12 @@ generateSecret = Secret <$> genRandomBytes secretLength
 
 getState :: ServerConstraint r => Eff r Server.State
 getState = sendServer GetState
+
+notify :: forall endpoint r. (ServerConstraint r, IsElem endpoint GonimoAPI, HasLink endpoint
+                      , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
+                      => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> Eff r ()
+notify ev pE cb = sendServer $ Notify ev pE cb
+
 
 -- We can not create an instance of MonadLogger for (Member Server r => Eff r).
 -- The right solution would be to define a Logger type together with an

@@ -15,7 +15,6 @@ import           Control.Monad.Logger                    (Loc, LogLevel,
                                                           ToLogStr (..))
 import           Data.Monoid                             ((<>))
 import           Data.Pool                               (Pool)
-
 import           Control.Monad                           ((<=<))
 import           Control.Monad.Trans.Class               (lift)
 import           Control.Monad.Trans.Reader              (ReaderT)
@@ -25,11 +24,16 @@ import           Data.Bifunctor
 import           Data.Time.Clock                         (getCurrentTime)
 import           Database.Persist.Sql                    (SqlBackend,
                                                           runSqlPool)
+import           Network.Mail.SMTP                       (sendMail)
+import           Servant.Subscriber
+import           Control.Concurrent.STM (atomically)
+
 import qualified Gonimo.Database.Effects                 as Db
 import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
 import           Gonimo.Server.Effects.Internal
 import qualified Gonimo.Server.State as Server
-import           Network.Mail.SMTP                       (sendMail)
+import           Gonimo.WebAPI (GonimoAPI)
+
 
 type DbPool = Pool SqlBackend
 type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
@@ -38,6 +42,7 @@ data Config = Config {
   configPool :: !DbPool
 , configLog  :: !LoggingFunction
 , state      :: !Server.State
+, subscriber :: !(Subscriber GonimoAPI)
 }
 
 
@@ -56,6 +61,7 @@ runServer c (E u' q) = case decomp u' of
 
   Right GetCurrentTime             -> execIO c q getCurrentTime
   Right GetState                   -> runServer c . qApp q $ Right (state c)
+  Right (Notify ev pE cB)          -> execIO c q $ atomically (notify (subscriber c) ev pE cB)
   Right (RunDb trans)              -> runDatabaseServerIO pool trans >>= runServer c . qApp q
   Left  _                          -> error impossibleMessage
   where
