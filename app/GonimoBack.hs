@@ -3,15 +3,19 @@ module Main where
 import           Control.Monad.Logger
 import qualified Data.ByteString.Char8            as S8
 import           Database.Persist.Sqlite
-import           Gonimo.Server
-import           Gonimo.Server.DbEntities
-import           Gonimo.Server.Effects.TestServer
-import           Gonimo.WebAPI
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Servant
 import           System.IO                        (Handle, stderr)
 import           System.Log.FastLogger            (fromLogStr)
+import           Control.Concurrent.STM.TVar
+import qualified Data.Map.Strict as Map
+
+import           Gonimo.Server
+import qualified Gonimo.Server.State as Server
+import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Effects.TestServer
+import           Gonimo.WebAPI
 
 logHandle :: Handle
 logHandle = stderr
@@ -20,12 +24,14 @@ getApp :: Config -> Application
 getApp =   serve developmentAPI . getDevelopmentServer
 
 main :: IO ()
-main = do
-  pool <- runLoggingT (createSqlitePool ":memory" 10) doLogging
+main           = do
+  pool     <- runLoggingT (createSqlitePool ":memory" 10) doLogging
+  families <- newTVarIO Map.empty
   flip runSqlPool pool $ runMigration migrateAll
-  let config = Config {
+  let config   = Config {
     configPool = pool
-  , configLog = logToHandle logHandle
+  , configLog  = logToHandle logHandle
+  , state = Server.State families 
   }
   run 8081 . getApp $ config
 

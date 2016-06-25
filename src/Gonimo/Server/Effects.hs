@@ -13,6 +13,7 @@ module Gonimo.Server.Effects (
   , genRandomBytes
   , generateSecret
   , getCurrentTime
+  , getState
   , runDb
   , ServerConstraint
   , logTH
@@ -27,18 +28,19 @@ module Gonimo.Server.Effects (
 import           Control.Exception              (SomeException)
 import           Control.Monad.Freer            (Eff)
 import           Control.Monad.Freer.Exception  (Exc)
-import           Control.Monad.Logger           (LogLevel (..), LogSource,
-                                                 ToLogStr, liftLoc)
+import           Control.Monad.Logger           (LogLevel (..), LogSource, ToLogStr, liftLoc)
 import           Data.ByteString                (ByteString)
 import           Data.Text
 import           Data.Time.Clock                (UTCTime)
 import           Database.Persist.Sql           (SqlBackend)
-import           Gonimo.Database.Effects
-import           Gonimo.Server.Types            (Secret (..))
-import           Gonimo.Server.Effects.Internal
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 import           Network.Mail.Mime              (Mail)
+
+import           Gonimo.Database.Effects
+import           Gonimo.Server.Types            (Secret (..))
+import           Gonimo.Server.Effects.Internal
+import qualified Gonimo.Server.State as Server
 
 secretLength :: Int
 secretLength = 16
@@ -62,6 +64,10 @@ runDb = sendServer . RunDb
 
 generateSecret :: ServerConstraint r => Eff r Secret
 generateSecret = Secret <$> genRandomBytes secretLength
+
+
+getState :: ServerConstraint r => Eff r Server.State
+getState = sendServer GetState
 
 -- We can not create an instance of MonadLogger for (Member Server r => Eff r).
 -- The right solution would be to define a Logger type together with an

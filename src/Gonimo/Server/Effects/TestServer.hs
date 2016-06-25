@@ -28,14 +28,16 @@ import           Database.Persist.Sql                    (SqlBackend,
 import qualified Gonimo.Database.Effects                 as Db
 import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
 import           Gonimo.Server.Effects.Internal
+import qualified Gonimo.Server.State as Server
 import           Network.Mail.SMTP                       (sendMail)
 
 type DbPool = Pool SqlBackend
 type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 
 data Config = Config {
-  configPool :: DbPool
-, configLog  :: LoggingFunction
+  configPool :: !DbPool
+, configLog  :: !LoggingFunction
+, state      :: !Server.State
 }
 
 
@@ -53,7 +55,7 @@ runServer c (E u' q) = case decomp u' of
     >>= runServer c . qApp q
 
   Right GetCurrentTime             -> execIO c q getCurrentTime
-
+  Right GetState                   -> runServer c . qApp q $ Right (state c)
   Right (RunDb trans)              -> runDatabaseServerIO pool trans >>= runServer c . qApp q
   Left  _                          -> error impossibleMessage
   where
