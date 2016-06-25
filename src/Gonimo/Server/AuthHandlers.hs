@@ -103,10 +103,9 @@ createChannel fid to from = do
                Just (Client _ toAcc' _) ->
                    do isMember <- Db.getBy (FamilyMember toAcc' fid)
                       unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
-  --secret <- generateSecret
-  --putInMemory secret
-  --return secret
-  generateSecret
+  secret <- generateSecret
+  -- liftIO . flip atomicallyModifyIORef (putSecret (from, to) secret
+  return secret
 
 
 receiveChannel :: AuthServerConstraint r
@@ -114,7 +113,7 @@ receiveChannel :: AuthServerConstraint r
 -- | in this request @to@ is the one receiving the secret
 receiveChannel fid to = do
   authData <- ask
-  from <- undefined -- actually get this from inMemory
+  from <- error "NotYetImplemented: get from information from inmemory structure"
   unless (fid `elem` (authData^.allowedFamilies)) $ throwServant err403 { errBody = "invalid family route" }
   unless (to == authData^.client) $ throwServant err403 { errBody = "from client not consistent with auth data" }
   runDb $ do clientId <- Db.get from
@@ -123,11 +122,12 @@ receiveChannel fid to = do
                Just (Client _ toAcc' _) ->
                    do isMember <- Db.getBy (FamilyMember toAcc' fid)
                       unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
-  error "this secret should be fetched from memory"
+  secret <- error "NotYetImplemented: this secret should be fetched from inmemory data structure"
+  return (from, secret)
 
 putMessage :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
-putMessage     = undefined
+putMessage fid from to secret = undefined
 
 receiveMessage :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text

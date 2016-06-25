@@ -56,6 +56,7 @@ library
                      , base64-bytestring
                      , bytestring >= 0.10.6.0
                      , crypto-api
+                     , containers
                      , either >= 4.4.1
                      , errors
                      , fast-logger
