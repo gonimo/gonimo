@@ -25,7 +25,7 @@ getApp =   serve developmentAPI . getDevelopmentServer
 
 main :: IO ()
 main           = do
-  pool     <- runLoggingT (createSqlitePool ":memory" 10) doLogging
+  pool     <- runLoggingT (createSqlitePool ":memory:" 10) doLogging
   families <- newTVarIO Map.empty
   flip runSqlPool pool $ runMigration migrateAll
   let config   = Config {
