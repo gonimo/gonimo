@@ -11,20 +11,20 @@ import Control.Monad.Reader.Class
 psGonimoDate :: TypeInfo 'PureScript
 psGonimoDate = TypeInfo {
     _typePackage = ""
-  , _typeModule = "Gonimo.Server.Types"
+  , _typeModule = "Gonimo.Types"
   , _typeName = "Date"
   , _typeParameters = []
   }
 
 
--- | Use type definition in Gonimo.Server.Types
-psServerType :: MonadReader BridgeData m => m PSType
-psServerType = do
+-- | Use type definition in Gonimo.Types
+psClientType :: MonadReader BridgeData m => m PSType
+psClientType = do
   inType <- view haskType
   params <- psTypeParameters
   return TypeInfo {
     _typePackage = ""
-  , _typeModule  = "Gonimo.Server.Types"
+  , _typeModule  = "Gonimo.Types"
   , _typeName = inType ^. typeName
   , _typeParameters = params
   }

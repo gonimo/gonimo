@@ -7,9 +7,9 @@ import           Gonimo.CodeGen.PSTypes
 
 gonimoBridge :: BridgePart
 gonimoBridge = defaultBridge
-  <|> (typeName ^== "Family" >> psServerType)
-  <|> (typeName ^== "Key" >> psServerType)
-  <|> (typeName ^== "Secret" >> psServerType)
+  <|> (typeName ^== "Family" >> psClientType)
+  <|> (typeName ^== "Key" >> psClientType)
+  <|> (typeName ^== "Secret" >> psClientType)
   <|> utcTimeBridge
 
 -- There is currently no Generic instance for PureScript's Data.Date,
