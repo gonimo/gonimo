@@ -33,6 +33,7 @@ library
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Handlers
                  , Gonimo.Server.Invitation
+                 , Gonimo.Server.State
                  , Gonimo.Server.Types
                  , Gonimo.Util
                  , Gonimo.WebAPI
@@ -78,6 +79,7 @@ library
                      , servant-docs
                      , servant-server
                      , smtp-mail
+                     , stm
                      , template-haskell
                      , text >= 1.2.1.3
                      , text-show
@@ -109,6 +111,7 @@ executable gonimo-back
                      , base >=4.8 && <4.9
                      , base64-bytestring
                      , bytestring >= 0.10.6.0
+                     , containers
                      , crypto-api
                      , either >= 4.4.1
                      , errors
@@ -131,6 +134,7 @@ executable gonimo-back
                      , servant-docs
                      , servant-server
                      , smtp-mail
+                     , stm
                      , text >= 1.2.1.3
                      , text-show
                      , time >= 1.5.0.1
