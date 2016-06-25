@@ -37,7 +37,7 @@ myTypes = [
       ]
 
 mySettings :: Settings
-mySettings = addReaderParam "AuthToken" defaultSettings & apiModuleName .~ "Gonimo.WebAPI"
+mySettings = addReaderParam "Authorization" defaultSettings & apiModuleName .~ "Gonimo.WebAPI"
 
 
 main :: IO ()
