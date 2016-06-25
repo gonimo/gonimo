@@ -10,7 +10,7 @@ import           Database.Persist              (Entity (..), Key)
 import           Data.Map.Strict as M
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
-import           Gonimo.Types
+import           Gonimo.Server.Types
 import           Gonimo.Util
 import           Servant.Server                (err403)
 

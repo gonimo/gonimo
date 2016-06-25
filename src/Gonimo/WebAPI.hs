@@ -7,7 +7,6 @@ import           Data.Text                (Text)
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Types
 import qualified Gonimo.WebAPI.Types as Client
-import           Gonimo.Types
 import           Gonimo.WebAPI.Verbs
 import           Servant.API
 
