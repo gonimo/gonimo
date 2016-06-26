@@ -1,12 +1,9 @@
 resolver: lts-6.0
 packages:
 - '.'
-- location:
-    git: https://github.com/eskimor/servant-purescript.git
-    commit: HEAD
-- location:
-    git: https://github.com/eskimor/purescript-bridge.git
-    commit: HEAD
+- ../servant-purescript 
+- ../purescript-bridge
+- ../servant-subscriber
 
 extra-deps:
 - freer-0.2.2.6
