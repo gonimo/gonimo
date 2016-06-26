@@ -11,13 +11,14 @@ import Control.Monad.Freer (send, Member, Eff)
 import Control.Monad.Freer.Exception (throwError, Exc(..))
 import Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
 import Data.ByteString (ByteString)
-
 import Data.Time.Clock (UTCTime)
-
-import Network.Mail.Mime (Mail)
-import Gonimo.Database.Effects
 import Database.Persist.Sql (SqlBackend)
+import Network.Mail.Mime (Mail)
+import Servant.Subscriber
+
+import Gonimo.Database.Effects
 import qualified Gonimo.Server.State as Server
+import Gonimo.WebAPI (GonimoAPI)
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
 type ServerConstraint r = (Member Server r, Member (Exc SomeException) r)
@@ -36,6 +37,10 @@ data Server v where
   LogMessage     :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
   SendEmail      :: !Mail -> EServer ()
+  Notify         :: forall endpoint. (IsElem endpoint GonimoAPI, HasLink endpoint
+                      , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
+                      => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> EServer ()
+
 
 -- Send a server operation, that is an operation that might fail:
 sendServer :: ServerConstraint r => EServer a -> Eff r a
