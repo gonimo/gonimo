@@ -53,9 +53,6 @@ before_install:
   - if [ ${GHC} != head ]; then ln -s stack-${GHC%.*}.yaml stack.yaml; fi
   - travis_retry stack setup
   - #travis_retry stack install hscolour
-  - echo '#################### TRAVIS CONFIG ####################
-  - cat .travis.yml
-  - echo '################# END TRAVIS CONFIG ###################
   - pushd ..
   - git clone https://github.com/eskimor/servant-subscriber.git
   - git clone https://github.com/eskimor/servant-purescript.git
