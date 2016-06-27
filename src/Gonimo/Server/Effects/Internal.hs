@@ -6,19 +6,20 @@ module Gonimo.Server.Effects.Internal (
   , sendServer
   ) where
 
-import Control.Exception.Base (SomeException)
-import Control.Monad.Freer (send, Member, Eff)
-import Control.Monad.Freer.Exception (throwError, Exc(..))
-import Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
-import Data.ByteString (ByteString)
-import Data.Time.Clock (UTCTime)
-import Database.Persist.Sql (SqlBackend)
-import Network.Mail.Mime (Mail)
-import Servant.Subscriber
+import           Control.Concurrent.STM (STM)
+import           Control.Exception.Base (SomeException)
+import           Control.Monad.Freer (send, Member, Eff)
+import           Control.Monad.Freer.Exception (throwError, Exc(..))
+import           Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
+import           Data.ByteString (ByteString)
+import           Data.Time.Clock (UTCTime)
+import           Database.Persist.Sql (SqlBackend)
+import           Network.Mail.Mime (Mail)
+import           Servant.Subscriber
 
-import Gonimo.Database.Effects
+import           Gonimo.Database.Effects
 import qualified Gonimo.Server.State as Server
-import Gonimo.WebAPI (GonimoAPI)
+import           Gonimo.WebAPI (GonimoAPI)
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
 type ServerConstraint r = (Member Server r, Member (Exc SomeException) r)
@@ -31,6 +32,7 @@ type ServerEffects = Eff '[Exc SomeException, Server]
 type EServer a =  Server (Either SomeException a)
 
 data Server v where
+  Atomically     :: STM a -> EServer a
   GenRandomBytes :: !Int -> EServer ByteString
   GetCurrentTime :: EServer UTCTime
   GetState       :: EServer Server.State
