@@ -12,6 +12,7 @@ import           Servant
 import           Servant.Subscriber
 import           System.IO                        (Handle, stderr)
 import           System.Log.FastLogger            (fromLogStr)
+import           Network.Wai.Middleware.Static
 
 import           Gonimo.Server
 import           Gonimo.Server.DbEntities
@@ -21,9 +22,6 @@ import           Gonimo.WebAPI
 
 logHandle :: Handle
 logHandle = stderr
-
-getApp :: Config -> Application
-getApp =   serve developmentAPI . getDevelopmentServer
 
 main :: IO ()
 main = do
@@ -38,7 +36,11 @@ main = do
   , state      = Server.State families 
   , subscriber = subscriber
   }
-  run 8081 $ serveSubscriber subscriber (getServer config)
+  run 8081 $ serveDevelopment $ serveSubscriber subscriber (getServer config)
+
+
+serveDevelopment :: Application -> Application
+serveDevelopment = staticPolicy $ addBase "../gonimo-front/dist" <|> addSlash
 
 
 doLogging :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()

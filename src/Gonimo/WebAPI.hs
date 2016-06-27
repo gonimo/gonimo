@@ -10,9 +10,6 @@ import qualified Gonimo.WebAPI.Types as Client
 import           Gonimo.WebAPI.Verbs
 import           Servant.API
 
--- The development API also serves javascript
-type DevelopmentAPI = GonimoAPI
-  :<|> "development" :> Raw
 
 type GonimoAPI =
   -- Create an account pass Nothing if you want an anonymous account:
@@ -43,9 +40,6 @@ type AuthGonimoAPI =
   :<|> "socket" :> Capture "familyId" FamilyId :> To :> Receive '[JSON] (ClientId, Secret)
   :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
   :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> Channel :> Receive '[JSON] Text
-
-developmentAPI :: Proxy DevelopmentAPI
-developmentAPI = Proxy
 
 gonimoAPI :: Proxy GonimoAPI
 gonimoAPI = Proxy

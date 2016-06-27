@@ -143,6 +143,8 @@ executable gonimo-back
                      , time >= 1.5.0.1
                      , transformers >= 0.4.2.0
                      , wai
+-- Only needed for development:
+                     , wai-middleware-static 
                      , warp
   ghc-options: -Wall
   hs-source-dirs:      app
