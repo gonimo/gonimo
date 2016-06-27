@@ -18,7 +18,7 @@ import qualified Data.Text                        as T
 import           Database.Persist                 (Entity (..), (==.))
 import qualified Gonimo.Database.Effects          as Db
 import           Gonimo.Database.Effects.Servant
-import           Gonimo.Error
+import           Gonimo.WebAPI.Error
 import           Gonimo.Server.Auth
 import           Gonimo.Server.AuthHandlers
 import           Gonimo.Server.DbEntities

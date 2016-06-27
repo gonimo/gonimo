@@ -21,7 +21,6 @@ library
                  , Gonimo.Database.Effects
                  , Gonimo.Database.Effects.PersistDatabase
                  , Gonimo.Database.Effects.Servant
-                 , Gonimo.Error
                  , Gonimo.Server
                  , Gonimo.Server.Auth
                  , Gonimo.Server.AuthHandlers
@@ -37,6 +36,7 @@ library
                  , Gonimo.Server.Types
                  , Gonimo.Util
                  , Gonimo.WebAPI
+                 , Gonimo.WebAPI.Error
                  , Gonimo.WebAPI.Types
                  , Gonimo.WebAPI.Verbs
   default-extensions: ConstraintKinds

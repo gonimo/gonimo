@@ -1,4 +1,4 @@
-module Gonimo.Error where
+module Gonimo.WebAPI.Error where
 
 
 import           Data.Aeson
@@ -11,4 +11,4 @@ data Error =
   deriving (Generic)
 
 instance ToJSON Error where
-    toJSON x = genericToJSON defaultOptions x
+    toJSON = genericToJSON defaultOptions
