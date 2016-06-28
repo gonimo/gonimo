@@ -1,10 +1,15 @@
 module Gonimo.Server.AuthHandlers where
 
-import           Control.Lens
+import           Control.Concurrent.STM          (throwSTM)
+import           Control.Concurrent.STM.TVar
+import           Control.Lens                    hiding (from, to)
 import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
-import           Data.Maybe                      (isJust)
+import qualified Data.ByteString.Lazy.Char8      as B
+import qualified Data.Map.Strict                 as M
+import           Data.Maybe                      (fromMaybe, isJust)
+import qualified Data.Set                        as S
 import           Data.Text                       (Text)
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
@@ -13,11 +18,12 @@ import           Gonimo.Server.Auth              as Auth
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
+import           Gonimo.Server.State
 import           Gonimo.Server.Types
 import           Gonimo.Util
+import qualified Gonimo.WebAPI.Types             as Client
 import           Servant.Server                  (ServantErr (..), err400,
                                                   err403)
-import qualified Gonimo.WebAPI.Types as Client
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -102,18 +108,19 @@ createChannel :: AuthServerConstraint r
 createChannel fid toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
-  authData <- ask
-  unless (fid `elem` (authData^.allowedFamilies )) $ throwServant err403 { errBody = "invalid family route" }
-  unless (fromId == authData^.clientEntity.to entityKey) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do clientId <- Db.get toId
-             case clientId of
-               Nothing     -> throwServant err403 { errBody = "to client is not valid" }
-               Just (Client _ _ toAcc' _) ->
-                   do isMember <- Db.getBy (FamilyMember toAcc' fid)
-                      unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
+  state <- _runState <$> getState
   secret <- generateSecret
-  -- liftIO . flip atomicallyModifyIORef (putSecret (fromId, toId) secret
-  return secret
+  atomically $ do
+      transient <- readTVar state
+      let fromto = S.fromList [fromId,toId]
+      unless ( fromMaybe False $ ((fromto `S.isSubsetOf`) . _online) <$> (fid `M.lookup` transient))
+             $ throwSTM err403 { errBody = B.intercalate "'" ["family "    ,B.pack $ show fid
+                                                             ,", or from " ,B.pack $ show fromId
+                                                             ,", or to "   ,B.pack $ show toId
+                                                             ," invalid!"] }
+      modifyTVar' state (over (ix fid . secrets) (putSecret from to secret))
+      return secret
+  -- what about throwServant instead of throwSTM
 
 
 receiveChannel :: AuthServerConstraint r
@@ -135,7 +142,7 @@ receiveChannel fid toId = do
 
 putMessage :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
-putMessage fid fromId toId secret = undefined
+putMessage = undefined
 
 receiveMessage :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
