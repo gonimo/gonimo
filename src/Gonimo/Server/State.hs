@@ -17,7 +17,7 @@ data Transient = Transient { _secrets :: SecretDB
                            , _online  :: Set ClientId }
 $(makeLenses ''Transient)
 
-type FamilyMap = Map FamilyId Transient
+type FamilyMap = Map FamilyId (TVar Transient)
 
 data State = State { _runState :: TVar FamilyMap }
 $(makeLenses ''State)

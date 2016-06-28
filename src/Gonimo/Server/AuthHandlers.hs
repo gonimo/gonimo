@@ -1,6 +1,5 @@
 module Gonimo.Server.AuthHandlers where
 
-import           Control.Concurrent.STM          (throwSTM)
 import           Control.Concurrent.STM.TVar
 import           Control.Lens                    hiding (from, to)
 import           Control.Monad                   (unless)
@@ -8,9 +7,10 @@ import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
 import qualified Data.ByteString.Lazy.Char8      as B
 import qualified Data.Map.Strict                 as M
-import           Data.Maybe                      (fromMaybe, isJust)
+import           Data.Maybe                      (isJust)
 import qualified Data.Set                        as S
 import           Data.Text                       (Text)
+import           Data.Proxy                      (Proxy(..))
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
@@ -21,6 +21,7 @@ import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
 import           Gonimo.Util
+import           Gonimo.WebAPI                   (AuthGonimoAPI)
 import qualified Gonimo.WebAPI.Types             as Client
 import           Servant.Server                  (ServantErr (..), err400,
                                                   err403)
@@ -109,18 +110,22 @@ createChannel fid toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
   state <- _runState <$> getState
-  secret <- generateSecret
-  atomically $ do
-      transient <- readTVar state
+  familyMap <- atomically $ readTVar state
+  case fid `M.lookup` familyMap of
+    Nothing        -> throwServant err403 { errBody = B.intercalate "'" [ "Family " ,B.pack $ show fid
+                                                                        , " invalid!"] }
+    Just transientData -> do
+      secret     <- generateSecret
+      familyData <- atomically $ readTVar transientData
       let fromto = S.fromList [fromId,toId]
-      unless ( fromMaybe False $ ((fromto `S.isSubsetOf`) . _online) <$> (fid `M.lookup` transient))
-             $ throwSTM err403 { errBody = B.intercalate "'" ["family "    ,B.pack $ show fid
-                                                             ,", or from " ,B.pack $ show fromId
-                                                             ,", or to "   ,B.pack $ show toId
-                                                             ," invalid!"] }
-      modifyTVar' state (over (ix fid . secrets) (putSecret from to secret))
+      unless (fromto `S.isSubsetOf` (familyData^.online))
+             $ throwServant err403 { errBody = B.intercalate "'" [    "From " ,B.pack $ show fromId
+                                                                 , ", or to " ,B.pack $ show toId
+                                                                 , " invalid!"] }
+      atomically $ modifyTVar' transientData (over secrets (putSecret from to secret))
+      {-notify undefined webAPI (\)-}
       return secret
-  -- what about throwServant instead of throwSTM
+  {-where webAPI = Proxy :: AuthGonimoAPI-}
 
 
 receiveChannel :: AuthServerConstraint r

@@ -6,7 +6,6 @@ module Gonimo.Server.Effects.Internal (
   , sendServer
   ) where
 
-import           Control.Concurrent.STM (STM)
 import           Control.Exception.Base (SomeException)
 import           Control.Monad.Freer (send, Member, Eff)
 import           Control.Monad.Freer.Exception (throwError, Exc(..))
