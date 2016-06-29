@@ -29,7 +29,7 @@ main :: IO ()
 main = do
   let subscriberPath = "subscriber"
   subscriber <- atomically $ makeSubscriber subscriberPath runStderrLoggingT 
-  pool       <- runLoggingT (createSqlitePool ":memory:" 10) doLogging
+  pool       <- runLoggingT (createSqlitePool "testdb" 1) doLogging
   families   <- newTVarIO Map.empty
   flip runSqlPool pool $ runMigration migrateAll
   let config = Config {
