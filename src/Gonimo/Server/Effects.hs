@@ -26,6 +26,7 @@ module Gonimo.Server.Effects (
 
 
 
+import           Control.Concurrent.STM         (STM)
 import           Control.Exception              (SomeException)
 import           Control.Monad.Freer            (Eff)
 import           Control.Monad.Freer.Exception  (Exc)
@@ -50,6 +51,10 @@ import           Gonimo.WebAPI (GonimoAPI)
 secretLength :: Int
 secretLength = 16
 
+
+atomically :: ServerConstraint r => STM a -> Eff r a
+atomically = sendServer . Atomically
+ 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
 
