@@ -36,10 +36,6 @@ import           Servant.Server                   (err400, err401)
 import           Servant.Utils.StaticFiles        (serveDirectory)
 
 
-getDevelopmentServer :: Config -> Server DevelopmentAPI
-getDevelopmentServer c = getServer c
-  :<|> serveDirectory "/home/robert/projects/gonimo-front/dist"
-
 effServer :: ServerT GonimoAPI ServerEffects
 effServer =  createClient
         :<|> getAuthServer
