@@ -9,7 +9,9 @@ extra-deps:
 - freer-0.2.2.6
 - servant-subscriber-0.1.0.2
 
-flags: {}
+flags:
+  gonimo-back:
+    dev: true
 
 extra-package-dbs: []
 
