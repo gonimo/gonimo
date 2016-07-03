@@ -38,7 +38,6 @@ import           Servant                          ((:<|>) (..), (:~>) (..),
                                                    ServantErr (..), Server,
                                                    ServerT, enter, err500)
 import           Servant.Server                   (err400, err401)
-import           Servant.Utils.StaticFiles        (serveDirectory)
 
 
 effServer :: ServerT GonimoAPI ServerEffects
@@ -53,9 +52,9 @@ authServer = createInvitation
         :<|> sendInvitation
         :<|> createFamily
         :<|> createChannel
+        :<|> receiveSocket
+        :<|> putChannel
         :<|> receiveChannel
-        :<|> putMessage
-        :<|> receiveMessage
 
 
 -- Let's serve

@@ -6,16 +6,21 @@ module Gonimo.Server.Effects.Internal (
   , sendServer
   ) where
 
-import           Control.Exception.Base (SomeException)
-import           Control.Monad.Freer (send, Member, Eff)
-import           Control.Monad.Freer.Exception (throwError, Exc(..))
-import           Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
-import           Data.ByteString (ByteString)
-import           Data.Time.Clock (UTCTime)
-import           Database.Persist.Sql (SqlBackend)
-import           Network.Mail.Mime (Mail)
-import           Servant.Subscriber
-import           Data.Either (either)
+import           Control.Concurrent.STM        (STM)
+import           Control.Exception.Base        (SomeException)
+import           Control.Monad.Freer           (Eff, Member, send)
+import           Control.Monad.Freer.Exception (Exc (..), throwError)
+import           Control.Monad.Logger          (Loc, LogLevel, LogSource,
+                                                ToLogStr)
+import           Data.ByteString               (ByteString)
+import           Data.Either                   (either)
+import           Data.Proxy                    (Proxy (..))
+import           Data.Time.Clock               (UTCTime)
+import           Database.Persist.Sql          (SqlBackend)
+import           Network.Mail.Mime             (Mail)
+import           Servant.Subscriber            (Event, HasLink, IsElem,
+                                                IsSubscribable, IsValidEndpoint,
+                                                MkLink, URI)
 
 import           Gonimo.Database.Effects
 import qualified Gonimo.Server.State as Server

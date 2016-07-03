@@ -7,10 +7,10 @@ import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
 import qualified Data.ByteString.Lazy.Char8      as B
 import qualified Data.Map.Strict                 as M
-import           Data.Maybe                      (isJust)
+import           Data.Maybe                      (isJust, fromMaybe)
+import           Data.Proxy                      (Proxy (..))
 import qualified Data.Set                        as S
 import           Data.Text                       (Text)
-import           Data.Proxy                      (Proxy(..))
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
@@ -21,10 +21,14 @@ import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
 import           Gonimo.Util
-import           Gonimo.WebAPI                   (AuthGonimoAPI)
+import           Gonimo.WebAPI                   (To, ReceiveSocketR)
 import qualified Gonimo.WebAPI.Types             as Client
+import           Gonimo.WebAPI.Verbs
+import           Servant.API                     (Capture, JSON, (:>))
 import           Servant.Server                  (ServantErr (..), err400,
                                                   err403)
+import           Servant.Subscriber              (Event (ModifyEvent))
+import           Servant.Subscriber.Subscribable
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -109,11 +113,10 @@ createChannel :: AuthServerConstraint r
 createChannel fid toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
-  state <- _runState <$> getState
-  familyMap <- atomically $ readTVar state
+  familyMap <- atomically . readTVar =<< (_runState <$> getState)
   case fid `M.lookup` familyMap of
-    Nothing        -> throwServant err403 { errBody = B.intercalate "'" [ "Family " ,B.pack $ show fid
-                                                                        , " invalid!"] }
+    Nothing -> throwServant err403 { errBody = B.intercalate "'" [ "Family " ,B.pack $ show fid
+                                                                 , " invalid!"] }
     Just transientData -> do
       secret     <- generateSecret
       familyData <- atomically $ readTVar transientData
@@ -122,36 +125,44 @@ createChannel fid toId fromId = do
              $ throwServant err403 { errBody = B.intercalate "'" [    "From " ,B.pack $ show fromId
                                                                  , ", or to " ,B.pack $ show toId
                                                                  , " invalid!"] }
-      atomically $ modifyTVar' transientData (over secrets (putSecret from to secret))
-      {-notify undefined webAPI (\)-}
+
+      atomically $ putSecret from to secret transientData
+      notify ModifyEvent endpoint (\f -> f fid to)
       return secret
-  {-where webAPI = Proxy :: AuthGonimoAPI-}
+
+ where
+   endpoint :: Proxy ("socket" :> ReceiveSocketR)
+   endpoint = Proxy
 
 
-receiveChannel :: AuthServerConstraint r
+receiveSocket :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
-receiveChannel fid toId = do
-  authData <- ask
-  fromId <- error "NotYetImplemented: get from information from inmemory structure"
-  unless (fid `elem` (authData^.allowedFamilies)) $ throwServant err403 { errBody = "invalid family route" }
-  unless (toId == authData^.clientEntity.to entityKey) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do client <- Db.get fromId
-             case client of
-               Nothing     -> throwServant err403 { errBody = "from client is not valid" }
-               Just (Client _ _ toAcc' _) ->
-                   do isMember <- Db.getBy (FamilyMember toAcc' fid)
-                      unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
-  secret <- error "NotYetImplemented: this secret should be fetched from inmemory data structure"
-  return (fromId, secret)
+receiveSocket fid toId = do
+  authorize (isFamilyMember fid)
+  authorize ((toId ==). _client)
+  Just transientData <- (fid `M.lookup`) <$> (atomically . readTVar =<< (_runState <$> getState))
+  familyData <- atomically $ readTVar transientData
+  fromMaybe
+    (throwServant err403 { errBody = B.intercalate "'" [ "To " ,B.pack $ show toId
+                                                       , " invalid!"] })
+    $ return undefined -- <$> getSecret toId (familyData^.secrets)
 
-putMessage :: AuthServerConstraint r
+      -- runDb $ do clientId <- Db.get fromId
+      --            case clientId of
+      --              Nothing     -> throwServant err403 { errBody = "from client is not valid" }
+      --              Just (Client _ toAcc' _) ->
+      --                  do isMember <- Db.getBy (FamilyMember toAcc' fid)
+      --                     unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
+
+
+putChannel :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
-putMessage = undefined
+putChannel = undefined
 
-receiveMessage :: AuthServerConstraint r
+receiveChannel :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
-receiveMessage = undefined
+receiveChannel = undefined
 
 
 -- The following stuff should go somewhere else someday (e.g. to paradise):
