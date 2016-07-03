@@ -2,10 +2,10 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE OverloadedStrings       #-}
 
 module Gonimo.Server.Types where
 
@@ -13,8 +13,10 @@ module Gonimo.Server.Types where
 
 
 import           Control.Error.Safe     (rightZ)
-import           Data.Aeson.Types       (FromJSON (..), FromJSON, ToJSON (..), ToJSON (..), defaultOptions, genericToJSON, Value (String)) 
-
+import           Data.Aeson             (eitherDecode)
+import           Data.Aeson.Types       (FromJSON (..), FromJSON, ToJSON (..),
+                                         ToJSON (..), Value (String),
+                                         defaultOptions, genericToJSON)
 import           Data.Bifunctor
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
@@ -24,7 +26,8 @@ import           Database.Persist.TH
 
 import           GHC.Generics           (Generic)
 {-import           Servant.Common.Text (FromText (..), ToText (..))-}
-import           Web.HttpApiData        (FromHttpApiData (..), parseUrlPieceWithPrefix)
+import           Servant.PureScript     (jsonParseUrlPiece)
+import           Web.HttpApiData        (FromHttpApiData (..))
 
 type SenderName = Text
 
@@ -39,7 +42,7 @@ instance ToJSON Secret where
   toJSON (Secret bs) = String . decodeUtf8 . Base64.encode $ bs
 
 instance FromHttpApiData Secret where
-    parseUrlPiece = bimap T.pack Secret . Base64.decode . encodeUtf8
+  parseUrlPiece = jsonParseUrlPiece
 
 derivePersistField "Secret"
 
@@ -56,8 +59,7 @@ instance ToJSON AuthToken where
 
 instance FromHttpApiData AuthToken where
     parseUrlPiece :: Text -> Either Text AuthToken
-    parseUrlPiece x = do gsecret :: Text <- parseUrlPieceWithPrefix "GonimoSecret " x
-                         GonimoSecret <$> parseUrlPiece gsecret
+    parseUrlPiece = jsonParseUrlPiece
 
 data Coffee = Tea deriving Generic
 instance FromJSON Coffee

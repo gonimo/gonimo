@@ -89,6 +89,7 @@ library
                      , resource-pool
                      , servant
                      , servant-docs
+                     , servant-purescript
                      , servant-server
                      , servant-subscriber >= 0.1
                      , smtp-mail
