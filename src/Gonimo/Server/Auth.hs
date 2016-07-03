@@ -35,7 +35,7 @@ authView :: AuthReaderMember r => Getter AuthData a -> Eff r a
 authView g = (^. g) <$> ask
 
 isFamilyMember :: FamilyId -> AuthData -> Bool
-isFamilyMember fid (AuthData _ fids _) = fid `elem` fids
+isFamilyMember fid = (fid `elem`) . _allowedFamilies
 
 authorizeAuthData :: Member (Exc SomeException) r => (AuthData -> Bool) -> AuthData -> Eff r ()
 authorizeAuthData check = kickOut . check
