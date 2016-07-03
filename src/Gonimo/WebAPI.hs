@@ -10,6 +10,7 @@ import qualified Gonimo.WebAPI.Types as Client
 import           Gonimo.WebAPI.Verbs
 import           Servant.API
 import           Servant.API.BrowserHeader
+import           Servant.Subscriber.Subscribable
 
 
 type GonimoAPI =
@@ -38,10 +39,17 @@ type AuthGonimoAPI =
   :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
   -- Create a family
 
-  :<|> "socket" :> Capture "familyId" FamilyId :> To :> ReqBody '[JSON] ClientId :> PostCreated '[JSON] Secret
-  :<|> "socket" :> Capture "familyId" FamilyId :> To :> Receive '[JSON] (ClientId, Secret)
-  :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
-  :<|> "socket" :> Capture "familyId" FamilyId :> From :> To :> Channel :> Receive '[JSON] Text
+  :<|> "socket" :> SocketAPI
+    
+type SocketAPI =  CreateChannelR
+             :<|> ReceiveSocketR
+             :<|> PutChannelR
+             :<|> ReceiveChannelR
+
+type CreateChannelR   = Capture "familyId" FamilyId :> To :> ReqBody '[JSON] ClientId :> PostCreated '[JSON] Secret
+type ReceiveSocketR  = Capture "familyId" FamilyId :> To :> Subscribable :> Receive '[JSON] (ClientId, Secret)
+type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
+type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Receive '[JSON] Text
 
 gonimoAPI :: Proxy GonimoAPI
 gonimoAPI = Proxy
