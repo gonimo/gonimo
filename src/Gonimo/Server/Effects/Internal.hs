@@ -16,6 +16,7 @@ import           Data.Time.Clock (UTCTime)
 import           Database.Persist.Sql (SqlBackend)
 import           Network.Mail.Mime (Mail)
 import           Servant.Subscriber
+import           Data.Either (either)
 
 import           Gonimo.Database.Effects
 import qualified Gonimo.Server.State as Server
@@ -46,8 +47,4 @@ data Server v where
 
 -- Send a server operation, that is an operation that might fail:
 sendServer :: ServerConstraint r => EServer a -> Eff r a
-sendServer op = do
-  r <- send op
-  case r of
-    Left e -> throwError e
-    Right v -> return v
+sendServer op = either throwError return =<< send op
