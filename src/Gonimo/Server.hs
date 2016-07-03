@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
 module Gonimo.Server where
 
 import           Control.Exception                (AsyncException,
@@ -23,7 +24,11 @@ import           Gonimo.Server.Auth
 import           Gonimo.Server.AuthHandlers
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects            hiding (Server)
-import           Gonimo.Server.Effects.TestServer
+#ifdef DEVELOPMENT
+import           Gonimo.Server.Effects.Development
+#else
+import           Gonimo.Server.Effects.Production
+#endif
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Types
 import           Gonimo.Util                      (ServantException (..),

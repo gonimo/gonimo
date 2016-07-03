@@ -15,7 +15,16 @@ build-type:          Simple
 
 cabal-version:       >=1.10
 
+Flag dev
+    Description:   Turn on development settings.
+    Default:       False
+
 library
+  if flag(dev) 
+      cpp-options:   -DDEVELOPMENT
+      ghc-options:   -Wall -fwarn-tabs -O0
+  else
+      ghc-options:   -Wall -fwarn-tabs -O2
   exposed-modules: Gonimo.CodeGen.PSTypes
                  , Gonimo.CodeGen.TypeBridges
                  , Gonimo.Database.Effects
@@ -28,7 +37,9 @@ library
                  , Gonimo.Server.Effects
                  , Gonimo.Server.Effects.Internal
                  , Gonimo.Server.Effects.Servant
-                 , Gonimo.Server.Effects.TestServer
+                 , Gonimo.Server.Effects.Common
+                 , Gonimo.Server.Effects.Development
+                 , Gonimo.Server.Effects.Production
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Handlers
                  , Gonimo.Server.Invitation
@@ -63,6 +74,7 @@ library
                      , fast-logger
                      , freer
                      , http-api-data
+                     , http-types
                      , lens
                      , lifted-base >= 0.2.3.6
                      , mime-mail >= 0.4.11
@@ -93,6 +105,7 @@ library
   default-language:    Haskell2010
 
 executable gonimo-back
+  ghc-options:        -threaded -O2 -rtsopts -with-rtsopts=-N -Wall
   main-is:            GonimoBack.hs
 
   default-extensions: ConstraintKinds
@@ -203,6 +216,7 @@ executable psGenerator
   default-language:    Haskell2010
 
 test-suite test
+  ghc-options:       -Wall
   main-is:            Main.hs
   type:               exitcode-stdio-1.0
   hs-source-dirs:     tst

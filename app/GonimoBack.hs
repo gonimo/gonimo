@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Main where
 
 import           Control.Concurrent.STM (atomically)
@@ -16,7 +17,11 @@ import           Network.Wai.Middleware.Static
 
 import           Gonimo.Server
 import           Gonimo.Server.DbEntities
-import           Gonimo.Server.Effects.TestServer
+#ifdef DEVELOPMENT
+import           Gonimo.Server.Effects.Development 
+#else
+import           Gonimo.Server.Effects.Production 
+#endif
 import qualified Gonimo.Server.State as Server
 import           Gonimo.WebAPI
 
@@ -36,11 +41,15 @@ main = do
   , state      = Server.State families 
   , subscriber = subscriber
   }
-  run 8081 $ serveDevelopment $ serveSubscriber subscriber (getServer config)
+  run 8081 $ addDevServer $ serveSubscriber subscriber (getServer config)
 
-
-serveDevelopment :: Application -> Application
-serveDevelopment = staticPolicy $ addBase "../gonimo-front/dist" <|> addSlash
+#ifdef DEVELOPMENT
+addDevServer :: Application -> Application
+addDevServer = staticPolicy $ addBase "../gonimo-front/dist" <|> addSlash
+#else
+addDevServer :: Application -> Application
+addDevServer = id
+#endif
 
 
 doLogging :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
