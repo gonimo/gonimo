@@ -3,12 +3,14 @@ module Gonimo.Server.EmailInvitation (
   makeInvitationEmail) where
 
 import           Data.Text                (Text)
-import           Gonimo.Server.DbEntities hiding (familyName)
-import           Gonimo.Server.Types
 import           NeatInterpolation
 import           Network.Mail.Mime        (Address (..), Mail, simpleMail')
-
+import           Web.HttpApiData
 import qualified Data.Text.Lazy           as TL
+
+import           Gonimo.Server.DbEntities hiding (familyName)
+import           Gonimo.Server.Types
+import           Gonimo.WebAPI.Types
 
 
 
@@ -17,11 +19,13 @@ invitationText _inv _n =
   [text|
     Dear User of gonimo.com!
 
-    You got invited to join gonimo family "#{n}"!
+    You got invited to join gonimo family "$_n"!
     Just click on the link below and you are all set for the best baby monitoring on the planet!
 
-    https://gonimo.com/acceptInvitation?#{secret inv}
+    https://gonimo.com/index.html?acceptInvitation=$secret
   |]
+  where
+    secret = toUrlPiece $ invitationSecret _inv
 
 
 makeInvitationEmail :: Invitation -> EmailAddress -> FamilyName -> Mail

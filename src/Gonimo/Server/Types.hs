@@ -13,11 +13,11 @@ module Gonimo.Server.Types where
 
 
 import           Control.Error.Safe     (rightZ)
-import           Data.Aeson             (eitherDecode)
+
 import           Data.Aeson.Types       (FromJSON (..), FromJSON, ToJSON (..),
                                          ToJSON (..), Value (String),
                                          defaultOptions, genericToJSON)
-import           Data.Bifunctor
+
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
 import           Data.Text              as T
@@ -26,8 +26,8 @@ import           Database.Persist.TH
 
 import           GHC.Generics           (Generic)
 {-import           Servant.Common.Text (FromText (..), ToText (..))-}
-import           Servant.PureScript     (jsonParseUrlPiece)
-import           Web.HttpApiData        (FromHttpApiData (..))
+import           Servant.PureScript     (jsonParseUrlPiece, jsonParseHeader, jsonToUrlPiece, jsonToHeader)
+import           Web.HttpApiData        (FromHttpApiData (..), ToHttpApiData (..))
 
 type SenderName = Text
 
@@ -43,6 +43,11 @@ instance ToJSON Secret where
 
 instance FromHttpApiData Secret where
   parseUrlPiece = jsonParseUrlPiece
+  parseHeader   = jsonParseHeader
+
+instance ToHttpApiData Secret where
+  toUrlPiece = jsonToUrlPiece
+  toHeader   = jsonToHeader
 
 derivePersistField "Secret"
 
@@ -60,6 +65,7 @@ instance ToJSON AuthToken where
 instance FromHttpApiData AuthToken where
     parseUrlPiece :: Text -> Either Text AuthToken
     parseUrlPiece = jsonParseUrlPiece
+    parseHeader   = jsonParseHeader
 
 data Coffee = Tea deriving Generic
 instance FromJSON Coffee
