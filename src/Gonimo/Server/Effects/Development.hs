@@ -45,7 +45,7 @@ runServer :: forall w . Config -> Eff '[Server] (Either SomeException w) -> IO (
 runServer _ (Val v) = return v
 runServer c (E u' q) = case decomp u' of
   Right (Atomically m)             -> execIO c q $ atomically m
-  Right (SendEmail mail)           -> execIO c q $ sendMail "localhost" mail
+  Right (SendEmail mail)           -> execIO c q $ print mail
   Right (LogMessage loc ls ll msg) -> execIO c q $ doLog loc ls ll (toLogStr msg)
   Right (GenRandomBytes l)         ->
     -- Throw away the new generator & make an exception of any occurred error:
