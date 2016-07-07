@@ -1,6 +1,6 @@
 module Gonimo.Server.AuthHandlers where
 
-import           Control.Lens                    hiding (to,from)
+import           Control.Lens
 import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
@@ -91,44 +91,55 @@ createFamily n = do
 
 createChannel :: AuthServerConstraint r
               => FamilyId -> ClientId -> ClientId -> Eff r Secret
-createChannel fid to from = do
+createChannel fid toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
   authData <- ask
   unless (fid `elem` (authData^.allowedFamilies )) $ throwServant err403 { errBody = "invalid family route" }
-  unless (from == (authData^.client)) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do clientId <- Db.get to
+  unless (fromId == authData^.clientEntity.to entityKey) $ throwServant err403 { errBody = "from client not consistent with auth data" }
+  runDb $ do clientId <- Db.get toId
              case clientId of
                Nothing     -> throwServant err403 { errBody = "to client is not valid" }
-               Just (Client _ toAcc' _) ->
+               Just (Client _ _ toAcc' _) ->
                    do isMember <- Db.getBy (FamilyMember toAcc' fid)
                       unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
   secret <- generateSecret
-  -- liftIO . flip atomicallyModifyIORef (putSecret (from, to) secret
+  -- liftIO . flip atomicallyModifyIORef (putSecret (fromId, toId) secret
   return secret
 
 
 receiveChannel :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
-receiveChannel fid to = do
+receiveChannel fid toId = do
   authData <- ask
-  from <- error "NotYetImplemented: get from information from inmemory structure"
+  fromId <- error "NotYetImplemented: get from information from inmemory structure"
   unless (fid `elem` (authData^.allowedFamilies)) $ throwServant err403 { errBody = "invalid family route" }
-  unless (to == authData^.client) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do clientId <- Db.get from
-             case clientId of
+  unless (toId == authData^.clientEntity.to entityKey) $ throwServant err403 { errBody = "from client not consistent with auth data" }
+  runDb $ do client <- Db.get fromId
+             case client of
                Nothing     -> throwServant err403 { errBody = "from client is not valid" }
-               Just (Client _ toAcc' _) ->
+               Just (Client _ _ toAcc' _) ->
                    do isMember <- Db.getBy (FamilyMember toAcc' fid)
                       unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
   secret <- error "NotYetImplemented: this secret should be fetched from inmemory data structure"
-  return (from, secret)
+  return (fromId, secret)
 
 putMessage :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
-putMessage fid from to secret = undefined
+putMessage fid fromId toId secret = undefined
 
 receiveMessage :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
 receiveMessage = undefined
+
+
+-- The following stuff should go somewhere else someday (e.g. to paradise):
+
+-- | Get the family of the requesting device.
+--
+--   error 404 if not found.
+--   TODO: Get this from in memory data structure when available.
+getFamily :: ServerConstraint r => FamilyId -> Eff r Family
+getFamily fid = runDb $ get404 fid
+

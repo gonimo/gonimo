@@ -73,10 +73,11 @@ authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don'
                          }
 authToEff' (Just s) m = do
     authData <- runDb $ do
-      Entity cid Client{..} <- getByAuthErr $ AuthTokenClient s
+      client@(Entity cid Client{..}) <- getByAuthErr $ AuthTokenClient s
       account <- getAuthErr clientAccountId
-      fids <- map (familyAccountFamilyId . entityVal) <$> Db.selectList [FamilyAccountAccountId ==. clientAccountId] []
-      return $ AuthData (Entity clientAccountId account) fids cid
+      fids <- map (familyAccountFamilyId . entityVal)
+              <$> Db.selectList [FamilyAccountAccountId ==. clientAccountId] []
+      return $ AuthData (Entity clientAccountId account) fids client
     runReader m authData
   where
     invalidAuthErr = err400 { errReasonPhrase = "The provided AuthToken is not valid!"

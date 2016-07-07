@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
 module Gonimo.Server.Auth where
 
 import           Control.Exception             (SomeException)
@@ -15,10 +16,10 @@ import           Gonimo.Util
 import           Servant.Server                (err403)
 
 data AuthData = AuthData { _accountEntity   :: Entity Account
-                         , _allowedFamilies :: [FamilyId]
                          -- Usually just one ore two - so using list lookup
                          -- should be fine.
-                         , _client          :: ClientId
+                         , _allowedFamilies :: [FamilyId]
+                         , _clientEntity    :: Entity Client
                          }
 $(makeLenses ''AuthData)
 
