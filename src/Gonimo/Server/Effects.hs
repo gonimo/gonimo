@@ -7,7 +7,8 @@
   testing, one for development and one for production.
 --}
 module Gonimo.Server.Effects (
-  Server
+    Server
+  , atomically
   , sendEmail
   , logMessage
   , genRandomBytes
@@ -68,6 +69,7 @@ genRandomBytes = sendServer . GenRandomBytes
 
 getCurrentTime :: ServerConstraint r => Eff r UTCTime
 getCurrentTime = sendServer GetCurrentTime
+
 
 runDb :: ServerConstraint r => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
 runDb = sendServer . RunDb
