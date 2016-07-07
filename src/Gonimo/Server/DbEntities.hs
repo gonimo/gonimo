@@ -40,10 +40,14 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     familyId FamilyId
     created UTCTime
     delivery InvitationDelivery
+    sendingFamily Text
+    sendingClient Text
+    sendingUser Text Maybe
     SecretInvitation secret
     deriving Show Generic
 
   Client
+    name Text
     authToken AuthToken
     accountId AccountId
     lastAccessed UTCTime

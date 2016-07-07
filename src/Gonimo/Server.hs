@@ -48,6 +48,7 @@ effServer =  createClient
 
 authServer :: ServerT AuthGonimoAPI AuthServerEffects
 authServer = createInvitation
+        :<|> getInvitation
         :<|> acceptInvitation
         :<|> sendInvitation
         :<|> createFamily

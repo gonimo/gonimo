@@ -3,17 +3,18 @@
 module Gonimo.WebAPI where
 
 import           Data.Proxy
-import           Data.Text                (Text)
+import           Data.Text (Text)
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Types
 import qualified Gonimo.WebAPI.Types as Client
 import           Gonimo.WebAPI.Verbs
 import           Servant.API
+import           Servant.API.BrowserHeader
 
 
 type GonimoAPI =
   -- Create an account pass Nothing if you want an anonymous account:
-       "accounts" :> Post '[JSON] Client.AuthData
+       "accounts" :> BrowserHeader "User-Agent" Text :> Post '[JSON] Client.AuthData
   :<|> Header "Authorization" AuthToken :> AuthGonimoAPI
   :<|> "coffee" :> Get '[JSON] Coffee
 
@@ -25,9 +26,10 @@ type AuthGonimoAPI =
   "invitations" :> ReqBody '[JSON] FamilyId :> Post '[JSON] (InvitationId, Invitation)
   -- Create an invitation
 
-  -- with subscriber:
-  -- "invitations" :> ReqBody '[JSON]' FamilyId :> SubsPost '[JSON] (InvitationId, Invitation)
-  :<|> "invitations" :> ReqBody '[JSON] Secret :> Delete '[JSON] Invitation
+  -- Check the invitation ...
+  :<|> "invitations" :> ReqBody '[JSON] Secret :> Get '[JSON] Invitation
+  -- Accept the invitation ...
+  :<|> "invitations" :> ReqBody '[JSON] Secret :> Delete '[JSON] ()
   -- Accept an invitation
 
   :<|> "invitationOutbox" :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()

@@ -24,17 +24,25 @@ createInvitation fid = do
   authorize $ isFamilyMember fid
   now <- getCurrentTime
   isecret <- generateSecret
+  family <- getFamily fid
+  clientName <- authView $ clientEntity.to (clientName . entityVal)
   let inv = Invitation {
     invitationSecret = isecret
     , invitationFamilyId = fid
     , invitationCreated = now
     , invitationDelivery = OtherDelivery
+    , invitationSendingClient = clientName
+    , invitationSendingFamily = familyName family
+    , invitationSendingUser = Nothing
   }
   iid <- runDb $ Db.insert inv
   return (iid, inv)
 
 
-acceptInvitation :: AuthServerConstraint r => Secret -> Eff r Invitation
+getInvitation :: AuthServerConstraint r => Secret -> Eff r Invitation
+getInvitation invSecret = runDb $ entityVal <$> getBy404 (SecretInvitation invSecret)
+
+acceptInvitation :: AuthServerConstraint r => Secret -> Eff r ()
 acceptInvitation invSecret = do
   -- no authorization: valid user, secret can be found - all fine.
   now <- getCurrentTime
@@ -48,7 +56,7 @@ acceptInvitation invSecret = do
       , familyAccountJoined = now
       , familyAccountInvitedBy = Just (invitationDelivery inv)
     }
-    return inv
+    return ()
 
 sendInvitation :: AuthServerConstraint r => Client.SendInvitation -> Eff r ()
 sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do

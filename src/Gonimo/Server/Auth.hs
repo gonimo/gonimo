@@ -52,6 +52,9 @@ type AuthServerEffects = Eff '[AuthReader, Exc SomeException, Server]
 askAccountId :: AuthReaderMember r => Eff r (Key Account)
 askAccountId = entityKey . _accountEntity <$> ask
 
+authView :: AuthReaderMember r => Getter AuthData a -> Eff r a
+authView g = (^. g) <$> ask
+
 
 isFamilyMember :: FamilyId -> AuthData -> Bool
 isFamilyMember fid (AuthData _ fids _) = fid `elem` fids
