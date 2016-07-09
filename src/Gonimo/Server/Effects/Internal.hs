@@ -22,8 +22,8 @@ import           Servant.Subscriber            (Event, HasLink, IsElem,
                                                 MkLink, URI)
 
 import           Gonimo.Database.Effects
-import qualified Gonimo.Server.State as Server
-import           Gonimo.WebAPI (GonimoAPI)
+import           Gonimo.Server.State           (OnlineState)
+import           Gonimo.WebAPI                 (GonimoAPI)
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
 type ServerConstraint r = (Member Server r, Member (Exc SomeException) r)
@@ -39,7 +39,7 @@ data Server v where
   Atomically     :: STM a -> EServer a
   GenRandomBytes :: !Int -> EServer ByteString
   GetCurrentTime :: EServer UTCTime
-  GetState       :: EServer Server.State
+  GetState       :: EServer OnlineState
   LogMessage     :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
   SendEmail      :: !Mail -> EServer ()

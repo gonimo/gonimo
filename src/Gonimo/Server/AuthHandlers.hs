@@ -111,7 +111,7 @@ createChannel :: AuthServerConstraint r
 createChannel fid toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
-  familyMap <- atomically . readTVar =<< (_runState <$> getState)
+  familyMap <- atomically . readTVar =<< getState
   case fid `M.lookup` familyMap of
     Nothing -> throwServant err403 { errBody = B.intercalate "'" [ "Family " ,B.pack $ show fid
                                                                  , " invalid!"] }
@@ -119,7 +119,7 @@ createChannel fid toId fromId = do
       secret     <- generateSecret
       familyData <- atomically $ readTVar transientData
       let fromto = S.fromList [fromId,toId]
-      unless (fromto `S.isSubsetOf` (familyData^.online))
+      unless (fromto `S.isSubsetOf` (familyData^.onlineMembers))
              $ throwServant err403 { errBody = B.intercalate "'" [    "From " ,B.pack $ show fromId
                                                                  , ", or to " ,B.pack $ show toId
                                                                  , " invalid!"] }
@@ -139,7 +139,7 @@ receiveSocket :: AuthServerConstraint r
 receiveSocket fid toId = do
   authorize (isFamilyMember fid)
   authorize ((toId ==) . entityKey . _clientEntity)
-  Just transientData <- (fid `M.lookup`) <$> (atomically . readTVar =<< (_runState <$> getState))
+  Just transientData <- (fid `M.lookup`) <$> (atomically . readTVar =<< getState)
   _familyData <- atomically $ readTVar transientData
   fromMaybe
     (throwServant err403 { errBody = B.intercalate "'" [ "To " ,B.pack $ show toId

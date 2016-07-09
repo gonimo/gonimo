@@ -21,7 +21,6 @@ import           Gonimo.Server.Effects.Development
 #else
 import           Gonimo.Server.Effects.Production 
 #endif
-import qualified Gonimo.Server.State as Server
 
 logHandle :: Handle
 logHandle = stderr
@@ -36,7 +35,7 @@ main = do
   let config = Config {
     configPool = pool
   , configLog  = logToHandle logHandle
-  , state      = Server.State families
+  , state      = families
   , subscriber = subscriber'
   }
   run 8081 $ addDevServer $ serveSubscriber subscriber' (getServer config)

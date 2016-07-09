@@ -2,46 +2,43 @@
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module Gonimo.Server.State where
 
+import           Control.Concurrent.STM (STM, TVar,check, readTVar, modifyTVar)
+import           Control.Lens
+import           Control.Monad            (forever)
+import           Data.Map.Strict          (Map)
+import qualified Data.Map.Strict          as M
+import           Data.Set                 (Set)
+import qualified Data.Set                 as S
 
-import           Control.Concurrent.STM
-import           Control.Monad               (forever)
-import           Control.Lens                hiding (to, from)
-import           Data.Map.Strict             (Map)
-import qualified Data.Map.Strict             as M
-import           Data.Set                    (Set)
+import           Gonimo.Server.DbEntities (ClientId, FamilyId)
+import           Gonimo.Server.Types      (Secret)
 
-import           Gonimo.Server.Types (Secret)
-import           Gonimo.Server.DbEntities (FamilyId, ClientId)
+type ChannelSecrets = Map ClientId (ClientId, Secret)
 
-type ChannelDB = Map ClientId (ClientId, Secret)
+data FamilyOnlineState = FamilyOnlineState
+                       { _channelSecrets :: ChannelSecrets
+                       , _onlineMembers  :: Set ClientId }
+$(makeLenses ''FamilyOnlineState)
 
-data Transient = Transient { _secrets :: ChannelDB
-                           , _online  :: Set ClientId }
-$(makeLenses ''Transient)
+type FamilyMap = Map FamilyId (TVar FamilyOnlineState)
 
-type FamilyMap = Map FamilyId (TVar Transient)
+type OnlineState = TVar FamilyMap
 
-data State = State { _runState :: TVar FamilyMap }
-$(makeLenses ''State)
-
-putSecret :: ClientId -> ClientId -> Secret -> TVar Transient -> STM ()
+putSecret :: ClientId -> ClientId -> Secret -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites
-putSecret from to secret transient = forever $ do
-  t <- _secrets <$> readTVar transient
-  check (to `M.member` t)
-  modifyTVar transient (secrets %~ to `M.insert` (from, secret))
+putSecret fromId toId secret familyStateVar = forever $ do
+  t <- _channelSecrets <$> readTVar familyStateVar
+  check (toId `M.member` t)
+  modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
 
-receieveSecret :: ClientId -> TVar Transient -> STM (ClientId, Secret)
-receieveSecret to transient = -- M.lookup to . fetch
-                    forever $ do
-  t <- _secrets <$> readTVar transient
-  case to `M.lookup` t of
-    Nothing ->  receieveSecret to transient
-    Just cs -> do modifyTVar transient (secrets %~ M.delete to)
-                  return cs
-  
-  --modifyTVar transient (secrets %~ M.insert to (from, secret))
+receieveSecret :: ClientId -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Secret))
+receieveSecret toId familyStateVar = do
+  t <- _channelSecrets <$> readTVar familyStateVar
+  case toId `M.lookup` t of
+    Nothing ->  return Nothing
+    Just cs -> do modifyTVar familyStateVar (channelSecrets %~ M.delete toId)
+                  return $ Just cs
 
-deleteSecret :: ClientId -> ChannelDB -> ChannelDB
-deleteSecret to = undefined -- ChannelDB . M.delete to . fetch
+--deleteSecret :: ClientId -> ChannelSecrets -> ChannelSecrets
+--deleteSecret toId = undefined -- ChannelSecrets . M.delete toId . fetch
 
