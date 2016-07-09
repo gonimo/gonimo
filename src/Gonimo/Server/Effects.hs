@@ -17,7 +17,6 @@ module Gonimo.Server.Effects (
   , getState
   , runDb
   , ServerConstraint
-  , atomically
   , logTH
   , logDebug
   , logWarn

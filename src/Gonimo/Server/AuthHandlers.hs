@@ -1,17 +1,17 @@
 module Gonimo.Server.AuthHandlers where
 
-import           Control.Concurrent.STM.TVar
-import           Control.Lens                    hiding (from, to)
+import           Control.Concurrent.STM          hiding (atomically)
+import           Control.Lens
 import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
 import qualified Data.ByteString.Lazy.Char8      as B
 import qualified Data.Map.Strict                 as M
-import           Data.Maybe                      (isJust, fromMaybe)
+import           Data.Maybe                      (fromMaybe)
 import           Data.Proxy                      (Proxy (..))
 import qualified Data.Set                        as S
 import           Data.Text                       (Text)
-import           Database.Persist                (Entity (..))
+import           Database.Persist                (Entity (..), entityKey)
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth              as Auth
@@ -21,14 +21,12 @@ import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
 import           Gonimo.Util
-import           Gonimo.WebAPI                   (To, ReceiveSocketR)
+import           Gonimo.WebAPI                   (ReceiveSocketR)
 import qualified Gonimo.WebAPI.Types             as Client
-import           Gonimo.WebAPI.Verbs
-import           Servant.API                     (Capture, JSON, (:>))
+import           Servant.API                     ((:>))
 import           Servant.Server                  (ServantErr (..), err400,
                                                   err403)
 import           Servant.Subscriber              (Event (ModifyEvent))
-import           Servant.Subscriber.Subscribable
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -36,13 +34,13 @@ createInvitation fid = do
   now <- getCurrentTime
   isecret <- generateSecret
   family <- getFamily fid
-  clientName <- authView $ clientEntity.to (clientName . entityVal)
+  clientName' <- authView $ clientEntity.to (clientName . entityVal)
   let inv = Invitation {
     invitationSecret = isecret
     , invitationFamilyId = fid
     , invitationCreated = now
     , invitationDelivery = OtherDelivery
-    , invitationSendingClient = clientName
+    , invitationSendingClient = clientName'
     , invitationSendingFamily = familyName family
     , invitationSendingUser = Nothing
   }
@@ -126,8 +124,8 @@ createChannel fid toId fromId = do
                                                                  , ", or to " ,B.pack $ show toId
                                                                  , " invalid!"] }
 
-      atomically $ putSecret from to secret transientData
-      notify ModifyEvent endpoint (\f -> f fid to)
+      atomically $ putSecret fromId toId secret transientData
+      notify ModifyEvent endpoint (\f -> f fid toId)
       return secret
 
  where
@@ -140,9 +138,9 @@ receiveSocket :: AuthServerConstraint r
 -- | in this request @to@ is the one receiving the secret
 receiveSocket fid toId = do
   authorize (isFamilyMember fid)
-  authorize ((toId ==). _client)
+  authorize ((toId ==) . entityKey . _clientEntity)
   Just transientData <- (fid `M.lookup`) <$> (atomically . readTVar =<< (_runState <$> getState))
-  familyData <- atomically $ readTVar transientData
+  _familyData <- atomically $ readTVar transientData
   fromMaybe
     (throwServant err403 { errBody = B.intercalate "'" [ "To " ,B.pack $ show toId
                                                        , " invalid!"] })

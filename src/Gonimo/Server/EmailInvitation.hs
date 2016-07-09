@@ -10,7 +10,6 @@ import qualified Data.Text.Lazy           as TL
 
 import           Gonimo.Server.DbEntities hiding (familyName)
 import           Gonimo.Server.Types
-import           Gonimo.WebAPI.Types
 
 
 

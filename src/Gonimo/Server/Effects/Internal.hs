@@ -13,7 +13,6 @@ import           Control.Monad.Freer.Exception (Exc (..), throwError)
 import           Control.Monad.Logger          (Loc, LogLevel, LogSource,
                                                 ToLogStr)
 import           Data.ByteString               (ByteString)
-import           Data.Either                   (either)
 import           Data.Proxy                    (Proxy (..))
 import           Data.Time.Clock               (UTCTime)
 import           Database.Persist.Sql          (SqlBackend)
