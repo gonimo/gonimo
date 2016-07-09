@@ -73,7 +73,7 @@ authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don'
                          }
 authToEff' (Just s) m = do
     authData <- runDb $ do
-      client@(Entity cid Client{..}) <- getByAuthErr $ AuthTokenClient s
+      client@(Entity _ Client{..}) <- getByAuthErr $ AuthTokenClient s
       account <- getAuthErr clientAccountId
       fids <- map (familyAccountFamilyId . entityVal)
               <$> Db.selectList [FamilyAccountAccountId ==. clientAccountId] []
