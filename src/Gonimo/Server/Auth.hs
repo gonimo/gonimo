@@ -4,6 +4,7 @@ module Gonimo.Server.Auth where
 
 import           Control.Exception             (SomeException)
 import           Control.Lens
+import           Control.Monad                 (unless)
 import           Control.Monad.Freer           (Eff, Member)
 import           Control.Monad.Freer.Exception (Exc (..))
 import           Control.Monad.Freer.Reader    (Reader (..), ask)
@@ -34,14 +35,18 @@ askAccountId = entityKey . _accountEntity <$> ask
 authView :: AuthReaderMember r => Getter AuthData a -> Eff r a
 authView g = (^. g) <$> ask
 
+clientKey :: AuthData -> Key Client
+clientKey = entityKey . _clientEntity
+
 isFamilyMember :: FamilyId -> AuthData -> Bool
 isFamilyMember fid = (fid `elem`) . _allowedFamilies
 
-authorizeAuthData :: Member (Exc SomeException) r => (AuthData -> Bool) -> AuthData -> Eff r ()
-authorizeAuthData check = kickOut . check
-  where
-    kickOut False = throwServant err403 -- Forbidden
-    kickOut True = return ()
+authorize :: Member (Exc SomeException) r => (a -> Bool) -> a -> Eff r ()
+authorize check x = unless (check x) (throwServant err403)
 
-authorize :: (Member (Exc SomeException) r, AuthReaderMember r) =>  (AuthData -> Bool) -> Eff r ()
-authorize check = authorizeAuthData check =<< ask
+authorizeJust :: Member (Exc SomeException) r => (a -> Maybe b) -> a -> Eff r b
+authorizeJust check x = case check x of Nothing -> throwServant err403
+                                        Just y  -> return y
+
+authorizeAuthData :: (Member (Exc SomeException) r, AuthReaderMember r) =>  (AuthData -> Bool) -> Eff r ()
+authorizeAuthData check = authorize check =<< ask

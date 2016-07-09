@@ -42,3 +42,7 @@ receieveSecret toId familyStateVar = do
 --deleteSecret :: ClientId -> ChannelSecrets -> ChannelSecrets
 --deleteSecret toId = undefined -- ChannelSecrets . M.delete toId . fetch
 
+onlineMember :: ClientId -> TVar FamilyOnlineState -> STM Bool
+onlineMember cid familyStateVar = do familyState <- readTVar familyStateVar
+                                     return $ cid `S.member` (familyState^.onlineMembers)
+

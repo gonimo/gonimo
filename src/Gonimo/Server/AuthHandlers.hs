@@ -1,17 +1,15 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Server.AuthHandlers where
 
 import           Control.Concurrent.STM          hiding (atomically)
 import           Control.Lens
-import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
-import qualified Data.ByteString.Lazy.Char8      as B
 import qualified Data.Map.Strict                 as M
-import           Data.Maybe                      (fromMaybe)
 import           Data.Proxy                      (Proxy (..))
 import qualified Data.Set                        as S
 import           Data.Text                       (Text)
-import           Database.Persist                (Entity (..), entityKey)
+import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth              as Auth
@@ -24,13 +22,12 @@ import           Gonimo.Util
 import           Gonimo.WebAPI                   (ReceiveSocketR)
 import qualified Gonimo.WebAPI.Types             as Client
 import           Servant.API                     ((:>))
-import           Servant.Server                  (ServantErr (..), err400,
-                                                  err403)
+import           Servant.Server                  (ServantErr (..), err400)
 import           Servant.Subscriber              (Event (ModifyEvent))
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
-  authorize $ isFamilyMember fid
+  authorizeAuthData $ isFamilyMember fid
   now <- getCurrentTime
   isecret <- generateSecret
   family <- getFamily fid
@@ -72,7 +69,7 @@ sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
   (inv, family) <- runDb $ do
     inv <- get404 iid
-    authorizeAuthData (isFamilyMember (invitationFamilyId inv)) authData
+    authorize (isFamilyMember (invitationFamilyId inv)) authData
     let newInv = inv {
       invitationDelivery = d
     }
@@ -105,28 +102,27 @@ createFamily n = do
     }
     return fid
 
-
 createChannel :: AuthServerConstraint r
               => FamilyId -> ClientId -> ClientId -> Eff r Secret
-createChannel fid toId fromId = do
+createChannel familyId toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
-  familyMap <- atomically . readTVar =<< getState
-  case fid `M.lookup` familyMap of
-    Nothing -> throwServant err403 { errBody = B.intercalate "'" [ "Family " ,B.pack $ show fid
-                                                                 , " invalid!"] }
-    Just transientData -> do
-      secret     <- generateSecret
-      familyData <- atomically $ readTVar transientData
-      let fromto = S.fromList [fromId,toId]
-      unless (fromto `S.isSubsetOf` (familyData^.onlineMembers))
-             $ throwServant err403 { errBody = B.intercalate "'" [    "From " ,B.pack $ show fromId
-                                                                 , ", or to " ,B.pack $ show toId
-                                                                 , " invalid!"] }
+  authorizeAuthData (isFamilyMember familyId)
+  authorizeAuthData ((fromId ==) . clientKey)
 
-      atomically $ putSecret fromId toId secret transientData
-      notify ModifyEvent endpoint (\f -> f fid toId)
-      return secret
+  familyOnlineData  <- authorizeJust (familyId `M.lookup`)
+                    =<< atomically . readTVar
+                    =<< getState
+
+  secret            <- generateSecret
+  familyOnlineState <- atomically $ readTVar familyOnlineData
+  let fromto = S.fromList [fromId, toId]
+
+  authorize (fromto `S.isSubsetOf`) (familyOnlineState^.onlineMembers)
+
+  atomically $ putSecret fromId toId secret familyOnlineData
+  notify ModifyEvent endpoint (\f -> f familyId toId)
+  return secret
 
  where
    endpoint :: Proxy ("socket" :> ReceiveSocketR)
@@ -136,27 +132,20 @@ createChannel fid toId fromId = do
 receiveSocket :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
-receiveSocket fid toId = do
-  authorize (isFamilyMember fid)
-  authorize ((toId ==) . entityKey . _clientEntity)
-  Just transientData <- (fid `M.lookup`) <$> (atomically . readTVar =<< getState)
-  _familyData <- atomically $ readTVar transientData
-  fromMaybe
-    (throwServant err403 { errBody = B.intercalate "'" [ "To " ,B.pack $ show toId
-                                                       , " invalid!"] })
-    $ return undefined -- <$> getSecret toId (familyData^.secrets)
+receiveSocket familyId toId = do
+  authorizeAuthData (isFamilyMember familyId)
+  authorizeAuthData ((toId ==) . clientKey)
 
-      -- runDb $ do clientId <- Db.get fromId
-      --            case clientId of
-      --              Nothing     -> throwServant err403 { errBody = "from client is not valid" }
-      --              Just (Client _ toAcc' _) ->
-      --                  do isMember <- Db.getBy (FamilyMember toAcc' fid)
-      --                     unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
+  familyOnlineData  <- authorizeJust (familyId `M.lookup`)
+                    =<< atomically . readTVar
+                    =<< getState
+
+  authorizeJust id =<< atomically (receieveSecret toId familyOnlineData)
 
 
 putChannel :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
-putChannel = undefined
+putChannel familyId fromId toId token txt = undefined
 
 receiveChannel :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
