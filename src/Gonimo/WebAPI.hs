@@ -49,7 +49,7 @@ type SocketAPI =  CreateChannelR
 type CreateChannelR   = Capture "familyId" FamilyId :> To :> ReqBody '[JSON] ClientId :> PostCreated '[JSON] Secret
 type ReceiveSocketR  = Capture "familyId" FamilyId :> To :> Subscribable :> Receive '[JSON] (ClientId, Secret)
 type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
-type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Receive '[JSON] Text
+type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Receive '[JSON] Text
 
 gonimoAPI :: Proxy GonimoAPI
 gonimoAPI = Proxy

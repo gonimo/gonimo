@@ -1,25 +1,23 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Server.AuthHandlers where
 
-import           Control.Concurrent.STM          hiding (atomically)
 import           Control.Lens
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
-import qualified Data.Map.Strict                 as M
 import           Data.Proxy                      (Proxy (..))
-import qualified Data.Set                        as S
 import           Data.Text                       (Text)
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth              as Auth
+import           Gonimo.Server.AuthHandlers.Internal
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
 import           Gonimo.Util
-import           Gonimo.WebAPI                   (ReceiveSocketR)
+import           Gonimo.WebAPI                   (ReceiveChannelR,
+                                                  ReceiveSocketR)
 import qualified Gonimo.WebAPI.Types             as Client
 import           Servant.API                     ((:>))
 import           Servant.Server                  (ServantErr (..), err400)
@@ -107,23 +105,10 @@ createChannel :: AuthServerConstraint r
 createChannel familyId toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((fromId ==) . clientKey)
-
-  familyOnlineData  <- authorizeJust (familyId `M.lookup`)
-                    =<< atomically . readTVar
-                    =<< getState
-
-  secret            <- generateSecret
-  familyOnlineState <- atomically $ readTVar familyOnlineData
-  let fromto = S.fromList [fromId, toId]
-
-  authorize (fromto `S.isSubsetOf`) (familyOnlineState^.onlineMembers)
-
-  atomically $ putSecret fromId toId secret familyOnlineData
+  secret <- generateSecret
+  authorizedPut (putSecret secret) familyId fromId toId
   notify ModifyEvent endpoint (\f -> f familyId toId)
   return secret
-
  where
    endpoint :: Proxy ("socket" :> ReceiveSocketR)
    endpoint = Proxy
@@ -132,24 +117,24 @@ createChannel familyId toId fromId = do
 receiveSocket :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
-receiveSocket familyId toId = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . clientKey)
-
-  familyOnlineData  <- authorizeJust (familyId `M.lookup`)
-                    =<< atomically . readTVar
-                    =<< getState
-
-  authorizeJust id =<< atomically (receieveSecret toId familyOnlineData)
-
+receiveSocket = authorizedRecieve receieveSecret
 
 putChannel :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
-putChannel familyId fromId toId token txt = undefined
+putChannel familyId fromId toId token txt = do
+  authorizedPut (putData txt) familyId fromId toId
+  notify ModifyEvent endpoint (\f -> f familyId fromId toId token)
+  where
+   endpoint :: Proxy ("socket" :> ReceiveChannelR)
+   endpoint = Proxy
+
 
 receiveChannel :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
-receiveChannel = undefined
+receiveChannel familyId fromId toId token = do
+  -- TODO: we don't use toId and token, that should be changed
+  (_, txt) <- authorizedRecieve receieveData familyId fromId
+  return txt
 
 
 -- The following stuff should go somewhere else someday (e.g. to paradise):
