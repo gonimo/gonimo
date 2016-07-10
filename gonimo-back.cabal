@@ -219,14 +219,26 @@ executable psGenerator
 
 test-suite test
   ghc-options:       -Wall
-  main-is:            Main.hs
+  main-is:            Spec.hs
+  other-modules: Test.Utils
+               , Test.DBSetup
+               , Gonimo.Server.AuthSpec
+
   type:               exitcode-stdio-1.0
   hs-source-dirs:     tst
+
   default-language:   Haskell2010
   build-depends:      base              >= 4.8 && <4.9
                ,      gonimo-back
-               ,      tasty
-               ,      tasty-smallcheck
-               ,      tasty-quickcheck
-               ,      tasty-hspec
-               ,      tasty-hunit
+
+               ,      freer
+               ,      hspec
+               ,      hspec-discover
+               ,      hspec-smallcheck
+               ,      persistent-sqlite
+               ,      persistent-template
+               ,      QuickCheck
+               ,      servant-server
+               ,      smallcheck
+               ,      time
+

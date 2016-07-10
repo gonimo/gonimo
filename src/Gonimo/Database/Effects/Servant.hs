@@ -4,7 +4,7 @@ module Gonimo.Database.Effects.Servant where
 import           Control.Exception             (SomeException)
 import           Control.Monad                 ((<=<))
 import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Exception (Exc (..))
 import           Database.Persist              (Entity, Key, Unique)
 import           Gonimo.Database.Effects
 import           Gonimo.Util
