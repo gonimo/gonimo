@@ -117,7 +117,7 @@ createChannel familyId toId fromId = do
 receiveSocket :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
-receiveSocket = authorizedRecieve receieveSecret
+receiveSocket = authorizedRecieve receiveSecret
 
 putChannel :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()

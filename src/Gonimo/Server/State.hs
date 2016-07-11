@@ -35,8 +35,8 @@ putSecret secret fromId toId familyStateVar = forever $ do
   check (toId `M.member` t)
   modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
 
-receieveSecret :: ClientId -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Secret))
-receieveSecret toId familyStateVar = do
+receiveSecret :: ClientId -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Secret))
+receiveSecret toId familyStateVar = do
   t <- _channelSecrets <$> readTVar familyStateVar
   case toId `M.lookup` t of
     Nothing ->  return Nothing
