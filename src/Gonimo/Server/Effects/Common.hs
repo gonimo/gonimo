@@ -1,35 +1,35 @@
 module Gonimo.Server.Effects.Common where
 
 
+import           Control.Concurrent.STM                  (atomically)
 import           Control.Exception.Base                  (SomeException,
                                                           throwIO, toException,
                                                           try)
+import           Control.Monad                           ((<=<))
 import           Control.Monad.Freer.Exception           (Exc (..), runError)
 import           Control.Monad.Freer.Internal            (Arrs, Eff (..),
                                                           decomp, qApp)
 import           Control.Monad.Logger                    (Loc, LogLevel,
                                                           LogSource, LogStr,
                                                           ToLogStr (..))
-import           Data.Monoid                             ((<>))
-import           Data.Pool                               (Pool)
-import           Control.Monad                           ((<=<))
 import           Control.Monad.Trans.Class               (lift)
 import           Control.Monad.Trans.Reader              (ReaderT)
 import           Crypto.Random                           (SystemRandom,
                                                           genBytes, newGenIO)
 import           Data.Bifunctor
+import           Data.Monoid                             ((<>))
+import           Data.Pool                               (Pool)
 import           Data.Time.Clock                         (getCurrentTime)
 import           Database.Persist.Sql                    (SqlBackend,
                                                           runSqlPool)
 import           Network.Mail.SMTP                       (sendMail)
 import           Servant.Subscriber
-import           Control.Concurrent.STM (atomically)
 
 import qualified Gonimo.Database.Effects                 as Db
 import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
 import           Gonimo.Server.Effects.Internal
-import qualified Gonimo.Server.State as Server
-import           Gonimo.WebAPI (GonimoAPI)
+import           Gonimo.Server.State                     (OnlineState)
+import           Gonimo.WebAPI                           (GonimoAPI)
 
 
 type DbPool = Pool SqlBackend
@@ -38,7 +38,7 @@ type LoggingFunction = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 data Config = Config {
   configPool :: !DbPool
 , configLog  :: !LoggingFunction
-, state      :: !Server.State
+, state      :: !OnlineState
 , subscriber :: !(Subscriber GonimoAPI)
 }
 

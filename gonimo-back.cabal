@@ -50,6 +50,7 @@ library
                  , Gonimo.WebAPI.Error
                  , Gonimo.WebAPI.Types
                  , Gonimo.WebAPI.Verbs
+  other-modules:   Gonimo.Server.AuthHandlers.Internal
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric

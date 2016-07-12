@@ -6,21 +6,24 @@ module Gonimo.Server.Effects.Internal (
   , sendServer
   ) where
 
-import           Control.Concurrent.STM (STM)
-import           Control.Exception.Base (SomeException)
-import           Control.Monad.Freer (send, Member, Eff)
-import           Control.Monad.Freer.Exception (throwError, Exc(..))
-import           Control.Monad.Logger (Loc, LogLevel, LogSource, ToLogStr)
-import           Data.ByteString (ByteString)
-import           Data.Time.Clock (UTCTime)
-import           Database.Persist.Sql (SqlBackend)
-import           Network.Mail.Mime (Mail)
-import           Servant.Subscriber
-import           Data.Either (either)
+import           Control.Concurrent.STM        (STM)
+import           Control.Exception.Base        (SomeException)
+import           Control.Monad.Freer           (Eff, Member, send)
+import           Control.Monad.Freer.Exception (Exc (..), throwError)
+import           Control.Monad.Logger          (Loc, LogLevel, LogSource,
+                                                ToLogStr)
+import           Data.ByteString               (ByteString)
+import           Data.Proxy                    (Proxy (..))
+import           Data.Time.Clock               (UTCTime)
+import           Database.Persist.Sql          (SqlBackend)
+import           Network.Mail.Mime             (Mail)
+import           Servant.Subscriber            (Event, HasLink, IsElem,
+                                                IsSubscribable, IsValidEndpoint,
+                                                MkLink, URI)
 
 import           Gonimo.Database.Effects
-import qualified Gonimo.Server.State as Server
-import           Gonimo.WebAPI (GonimoAPI)
+import           Gonimo.Server.State           (OnlineState)
+import           Gonimo.WebAPI                 (GonimoAPI)
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:
 type ServerConstraint r = (Member Server r, Member (Exc SomeException) r)
@@ -36,7 +39,7 @@ data Server v where
   Atomically     :: STM a -> EServer a
   GenRandomBytes :: !Int -> EServer ByteString
   GetCurrentTime :: EServer UTCTime
-  GetState       :: EServer Server.State
+  GetState       :: EServer OnlineState
   LogMessage     :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
   SendEmail      :: !Mail -> EServer ()

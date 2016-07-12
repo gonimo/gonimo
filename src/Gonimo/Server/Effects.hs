@@ -31,7 +31,8 @@ import           Control.Concurrent.STM         (STM)
 import           Control.Exception              (SomeException)
 import           Control.Monad.Freer            (Eff)
 import           Control.Monad.Freer.Exception  (Exc)
-import           Control.Monad.Logger           (LogLevel (..), LogSource, ToLogStr, liftLoc)
+import           Control.Monad.Logger           (LogLevel (..), LogSource,
+                                                 ToLogStr, liftLoc)
 import           Data.ByteString                (ByteString)
 import           Data.Proxy
 import           Data.Text
@@ -40,13 +41,15 @@ import           Database.Persist.Sql           (SqlBackend)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 import           Network.Mail.Mime              (Mail)
-import           Servant.Subscriber (IsElem, HasLink, IsValidEndpoint, IsSubscribable, Event, MkLink, URI)
+import           Servant.Subscriber             (Event, HasLink, IsElem,
+                                                 IsSubscribable,
+                                                 IsValidEndpoint, MkLink, URI)
 
 import           Gonimo.Database.Effects
 import           Gonimo.Server.Effects.Internal
-import qualified Gonimo.Server.State as Server
+import           Gonimo.Server.State            (OnlineState)
 import           Gonimo.Server.Types            (Secret (..))
-import           Gonimo.WebAPI (GonimoAPI)
+import           Gonimo.WebAPI                  (GonimoAPI)
 
 
 secretLength :: Int
@@ -78,7 +81,7 @@ generateSecret :: ServerConstraint r => Eff r Secret
 generateSecret = Secret <$> genRandomBytes secretLength
 
 
-getState :: ServerConstraint r => Eff r Server.State
+getState :: ServerConstraint r => Eff r OnlineState
 getState = sendServer GetState
 
 notify :: forall endpoint r. (ServerConstraint r, IsElem endpoint GonimoAPI, HasLink endpoint

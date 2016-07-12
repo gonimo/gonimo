@@ -1,37 +1,41 @@
 module Gonimo.Server.AuthHandlers where
 
 import           Control.Lens
-import           Control.Monad                   (unless)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Reader      (ask)
-import           Data.Maybe                      (isJust)
+import           Data.Proxy                      (Proxy (..))
 import           Data.Text                       (Text)
 import           Database.Persist                (Entity (..))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth              as Auth
+import           Gonimo.Server.AuthHandlers.Internal
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
+import           Gonimo.Server.State
 import           Gonimo.Server.Types
 import           Gonimo.Util
-import           Servant.Server                  (ServantErr (..), err400,
-                                                  err403)
-import qualified Gonimo.WebAPI.Types as Client
+import           Gonimo.WebAPI                   (ReceiveChannelR,
+                                                  ReceiveSocketR)
+import qualified Gonimo.WebAPI.Types             as Client
+import           Servant.API                     ((:>))
+import           Servant.Server                  (ServantErr (..), err400)
+import           Servant.Subscriber              (Event (ModifyEvent))
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
-  authorize $ isFamilyMember fid
+  authorizeAuthData $ isFamilyMember fid
   now <- getCurrentTime
   isecret <- generateSecret
   family <- getFamily fid
-  clientName <- authView $ clientEntity.to (clientName . entityVal)
+  clientName' <- authView $ clientEntity.to (clientName . entityVal)
   let inv = Invitation {
     invitationSecret = isecret
     , invitationFamilyId = fid
     , invitationCreated = now
     , invitationDelivery = OtherDelivery
-    , invitationSendingClient = clientName
+    , invitationSendingClient = clientName'
     , invitationSendingFamily = familyName family
     , invitationSendingUser = Nothing
   }
@@ -63,7 +67,7 @@ sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
   (inv, family) <- runDb $ do
     inv <- get404 iid
-    authorizeAuthData (isFamilyMember (invitationFamilyId inv)) authData
+    authorize (isFamilyMember (invitationFamilyId inv)) authData
     let newInv = inv {
       invitationDelivery = d
     }
@@ -96,50 +100,41 @@ createFamily n = do
     }
     return fid
 
-
 createChannel :: AuthServerConstraint r
               => FamilyId -> ClientId -> ClientId -> Eff r Secret
-createChannel fid toId fromId = do
+createChannel familyId toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
-  authData <- ask
-  unless (fid `elem` (authData^.allowedFamilies )) $ throwServant err403 { errBody = "invalid family route" }
-  unless (fromId == authData^.clientEntity.to entityKey) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do clientId <- Db.get toId
-             case clientId of
-               Nothing     -> throwServant err403 { errBody = "to client is not valid" }
-               Just (Client _ _ toAcc' _) ->
-                   do isMember <- Db.getBy (FamilyMember toAcc' fid)
-                      unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
   secret <- generateSecret
-  -- liftIO . flip atomicallyModifyIORef (putSecret (fromId, toId) secret
+  authorizedPut (putSecret secret) familyId fromId toId
+  notify ModifyEvent endpoint (\f -> f familyId toId)
   return secret
+ where
+   endpoint :: Proxy ("socket" :> ReceiveSocketR)
+   endpoint = Proxy
+
+
+receiveSocket :: AuthServerConstraint r
+               => FamilyId -> ClientId -> Eff r (ClientId, Secret)
+-- | in this request @to@ is the one receiving the secret
+receiveSocket = authorizedRecieve receiveSecret
+
+putChannel :: AuthServerConstraint r
+           => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
+putChannel familyId fromId toId token txt = do
+  authorizedPut (putData txt) familyId fromId toId
+  notify ModifyEvent endpoint (\f -> f familyId fromId toId token)
+  where
+   endpoint :: Proxy ("socket" :> ReceiveChannelR)
+   endpoint = Proxy
 
 
 receiveChannel :: AuthServerConstraint r
-               => FamilyId -> ClientId -> Eff r (ClientId, Secret)
--- | in this request @to@ is the one receiving the secret
-receiveChannel fid toId = do
-  authData <- ask
-  fromId <- error "NotYetImplemented: get from information from inmemory structure"
-  unless (fid `elem` (authData^.allowedFamilies)) $ throwServant err403 { errBody = "invalid family route" }
-  unless (toId == authData^.clientEntity.to entityKey) $ throwServant err403 { errBody = "from client not consistent with auth data" }
-  runDb $ do client <- Db.get fromId
-             case client of
-               Nothing     -> throwServant err403 { errBody = "from client is not valid" }
-               Just (Client _ _ toAcc' _) ->
-                   do isMember <- Db.getBy (FamilyMember toAcc' fid)
-                      unless (isJust isMember)  $ throwServant err403 { errBody = "to client not in the same family" }
-  secret <- error "NotYetImplemented: this secret should be fetched from inmemory data structure"
-  return (fromId, secret)
-
-putMessage :: AuthServerConstraint r
-           => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
-putMessage fid fromId toId secret = undefined
-
-receiveMessage :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
-receiveMessage = undefined
+receiveChannel familyId fromId toId token = do
+  -- TODO: we don't use toId and token, that should be changed
+  (_, txt) <- authorizedRecieve receieveData familyId fromId
+  return txt
 
 
 -- The following stuff should go somewhere else someday (e.g. to paradise):

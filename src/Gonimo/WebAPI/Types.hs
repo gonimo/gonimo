@@ -7,8 +7,6 @@ module Gonimo.WebAPI.Types where
 
 import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics
-import Web.HttpApiData
-import Servant.PureScript
 
 import Gonimo.Server.Types
 import Gonimo.Server.DbEntities

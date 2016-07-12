@@ -38,7 +38,6 @@ import           Servant                          ((:<|>) (..), (:~>) (..),
                                                    ServantErr (..), Server,
                                                    ServerT, enter, err500)
 import           Servant.Server                   (err400, err401)
-import           Servant.Utils.StaticFiles        (serveDirectory)
 
 
 effServer :: ServerT GonimoAPI ServerEffects
@@ -53,9 +52,9 @@ authServer = createInvitation
         :<|> sendInvitation
         :<|> createFamily
         :<|> createChannel
+        :<|> receiveSocket
+        :<|> putChannel
         :<|> receiveChannel
-        :<|> putMessage
-        :<|> receiveMessage
 
 
 -- Let's serve
@@ -74,7 +73,7 @@ authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don'
                          }
 authToEff' (Just s) m = do
     authData <- runDb $ do
-      client@(Entity cid Client{..}) <- getByAuthErr $ AuthTokenClient s
+      client@(Entity _ Client{..}) <- getByAuthErr $ AuthTokenClient s
       account <- getAuthErr clientAccountId
       fids <- map (familyAccountFamilyId . entityVal)
               <$> Db.selectList [FamilyAccountAccountId ==. clientAccountId] []
