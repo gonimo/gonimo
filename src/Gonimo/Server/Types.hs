@@ -43,9 +43,11 @@ instance FromJSON Secret where
 
 instance ToJSON Secret where
   toJSON (Secret bs) = String . decodeUtf8 . Base64.encode $ bs
+  toEncoding (Secret bs) = toEncoding $ "\"" <> (decodeUtf8 . Base64.encode) bs <> "\""
 
 instance FromHttpApiData Secret where
-  parseUrlPiece = jsonParseUrlPiece
+  parseUrlPiece = jsonParseUrlPiece . logInput
+    where logInput input = trace (T.unpack $ "FromHttpApiData Secret, got:" <> input) input
   parseHeader   = jsonParseHeader
 
 instance ToHttpApiData Secret where

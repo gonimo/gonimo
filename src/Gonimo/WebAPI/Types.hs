@@ -25,3 +25,17 @@ data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving Ge
 instance FromJSON SendInvitation
 instance ToJSON SendInvitation
 
+
+data InvitationInfo = InvitationInfo {
+    invitationInfoFamily          :: Text
+  , invitationInfoSendingClient :: Text
+  , invitationInfoSendingUser   :: Maybe Text
+  } deriving (Generic, Show)
+
+instance FromJSON InvitationInfo
+instance ToJSON InvitationInfo
+
+data InvitationReply = InvitationAccept | InvitationReject deriving (Generic, Show, Eq)
+
+instance FromJSON InvitationReply
+instance ToJSON InvitationReply

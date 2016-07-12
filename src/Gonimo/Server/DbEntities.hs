@@ -41,9 +41,8 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     familyId FamilyId
     created UTCTime
     delivery InvitationDelivery
-    sendingFamily Text
-    sendingClient Text
-    sendingUser Text Maybe
+    senderId ClientId -- Use ClientId here as it is the most precise information about the sender.
+    receiverId AccountId Maybe  -- To be set on put InvitationInfo
     SecretInvitation secret
     deriving Show Generic
 
@@ -59,7 +58,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     login Text
     password Text
     accountId AccountId
-
+    AccountIdUser accountId
 |]
 
 instance FromJSON Invitation

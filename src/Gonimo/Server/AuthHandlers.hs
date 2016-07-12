@@ -1,27 +1,31 @@
 module Gonimo.Server.AuthHandlers where
 
 import           Control.Lens
-import           Control.Monad.Freer             (Eff)
-import           Control.Monad.Freer.Reader      (ask)
-import           Data.Proxy                      (Proxy (..))
-import           Data.Text                       (Text)
-import           Database.Persist                (Entity (..))
-import qualified Gonimo.Database.Effects         as Db
+import           Control.Monad
+import           Control.Monad.Freer                 (Eff)
+import           Control.Monad.Freer.Reader          (ask)
+import           Data.Proxy                          (Proxy (..))
+import           Data.Text                           (Text)
+import           Database.Persist                    (Entity (..))
+import qualified Gonimo.Database.Effects             as Db
 import           Gonimo.Database.Effects.Servant
-import           Gonimo.Server.Auth              as Auth
+import           Gonimo.Server.Auth                  as Auth
 import           Gonimo.Server.AuthHandlers.Internal
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
+import           Gonimo.Server.Error
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
-import           Gonimo.Util
-import           Gonimo.WebAPI                   (ReceiveChannelR,
-                                                  ReceiveSocketR)
-import qualified Gonimo.WebAPI.Types             as Client
-import           Servant.API                     ((:>))
-import           Servant.Server                  (ServantErr (..), err400)
-import           Servant.Subscriber              (Event (ModifyEvent))
+import           Gonimo.WebAPI                       (ReceiveChannelR,
+                                                      ReceiveSocketR)
+import           Gonimo.WebAPI.Types                 (InvitationInfo (..),
+                                                      InvitationReply (..))
+import qualified Gonimo.WebAPI.Types                 as Client
+import           Servant.API                         ((:>))
+import           Servant.Server                      (ServantErr (..), err400,
+                                                      err403)
+import           Servant.Subscriber                  (Event (ModifyEvent))
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -29,38 +33,54 @@ createInvitation fid = do
   now <- getCurrentTime
   isecret <- generateSecret
   family <- getFamily fid
-  clientName' <- authView $ clientEntity.to (clientName . entityVal)
+  senderId' <- authView $ clientEntity.to entityKey
   let inv = Invitation {
     invitationSecret = isecret
     , invitationFamilyId = fid
     , invitationCreated = now
     , invitationDelivery = OtherDelivery
-    , invitationSendingClient = clientName'
-    , invitationSendingFamily = familyName family
-    , invitationSendingUser = Nothing
+    , invitationSenderId = senderId'
+    , invitationReceiverId = Nothing
   }
   iid <- runDb $ Db.insert inv
   return (iid, inv)
 
 
-getInvitation :: AuthServerConstraint r => Secret -> Eff r Invitation
-getInvitation invSecret = runDb $ entityVal <$> getBy404 (SecretInvitation invSecret)
+putInvitationInfo :: AuthServerConstraint r => Secret -> Eff r InvitationInfo
+putInvitationInfo invSecret = do
+  aid <- authView $ accountEntity . to entityKey
+  runDb $ do
+    Entity invId inv <- getBy404 $ SecretInvitation invSecret
+    guardWithM InvitationAlreadyClaimed
+      $ case invitationReceiverId inv of
+        Nothing -> do
+          Db.replace invId $ inv { invitationReceiverId = Just aid }
+          return True
+        Just receiverId' -> return $ receiverId' == aid
+    invFamily  <- get404   $ invitationFamilyId inv
+    invClient  <- get404   $ invitationSenderId inv
+    mInvUser   <- Db.getBy $ AccountIdUser (clientAccountId invClient)
+    return InvitationInfo
+                { invitationInfoFamily = familyName invFamily
+                , invitationInfoSendingClient = clientName invClient
+                , invitationInfoSendingUser = userLogin . entityVal <$> mInvUser
+                }
 
-acceptInvitation :: AuthServerConstraint r => Secret -> Eff r ()
-acceptInvitation invSecret = do
+answerInvitation :: AuthServerConstraint r => Secret -> InvitationReply -> Eff r ()
+answerInvitation invSecret reply = do
   -- no authorization: valid user, secret can be found - all fine.
   now <- getCurrentTime
   uid <- askAccountId
   runDb $ do
     Entity iid inv <- getBy404 (SecretInvitation invSecret)
     Db.delete iid
-    Db.insert_  FamilyAccount {
-        familyAccountAccountId = uid
-      , familyAccountFamilyId = invitationFamilyId inv
-      , familyAccountJoined = now
-      , familyAccountInvitedBy = Just (invitationDelivery inv)
-    }
-    return ()
+    when (reply == InvitationAccept)
+      $ Db.insert_  FamilyAccount {
+          familyAccountAccountId = uid
+        , familyAccountFamilyId = invitationFamilyId inv
+        , familyAccountJoined = now
+        , familyAccountInvitedBy = Just (invitationDelivery inv)
+        }
 
 sendInvitation :: AuthServerConstraint r => Client.SendInvitation -> Eff r ()
 sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
@@ -145,4 +165,3 @@ receiveChannel familyId fromId toId token = do
 --   TODO: Get this from in memory data structure when available.
 getFamily :: ServerConstraint r => FamilyId -> Eff r Family
 getFamily fid = runDb $ get404 fid
-

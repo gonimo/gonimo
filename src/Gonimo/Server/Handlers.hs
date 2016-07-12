@@ -7,7 +7,7 @@ import qualified Gonimo.Database.Effects       as Db
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects         hiding (Server)
 import           Gonimo.Server.Types
-import           Gonimo.Util
+import           Gonimo.Server.Error
 import qualified Gonimo.WebAPI.Types as Client
 import           Servant                       (ServantErr (..))
 

@@ -25,17 +25,14 @@ type To      = Capture "toClient"   ClientId
 type Channel = Capture "channelId"  Secret
 
 type AuthGonimoAPI =
-  "invitations" :> ReqBody '[JSON] FamilyId :> Post '[JSON] (InvitationId, Invitation)
   -- Create an invitation
-
-  -- Check the invitation ...
-  :<|> "invitations" :> ReqBody '[JSON] Secret :> Get '[JSON] Invitation
-  -- Accept the invitation ...
-  :<|> "invitations" :> ReqBody '[JSON] Secret :> Delete '[JSON] ()
-  -- Accept an invitation
-
-  :<|> "invitationOutbox" :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()
+  "invitations" :> ReqBody '[JSON] FamilyId :> Post '[JSON] (InvitationId, Invitation)
+  -- Accept/Reject the invitation ...
+  :<|> "invitations" :> Capture "invitationSecret" Secret :> ReqBody '[JSON] InvitationReply :> Delete '[JSON] ()
   -- Send an invitation email/telegram message/...
+  :<|> "invitationOutbox" :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()
+  -- Retrieve InvitationInfo. Additional effect: The invitation is now restricted to the requesting account.
+  :<|> "invitationInfo" :> Capture "invitationSecret" Secret :> Put '[JSON] InvitationInfo
 
   :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
   -- Create a family
