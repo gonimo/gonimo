@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Gonimo.Database.Effects.PersistDatabase where
 
 
@@ -27,6 +28,7 @@ runDatabase (E u' q) = case decomp u' of
   Right (Insert_ e)   -> execIO q $ insert_ e
   Right (Replace k a) -> execIO q $ replace k a
   Right (Delete k)    -> execIO q $ delete k
+  Right (DeleteBy k)  -> execIO q $ deleteBy k
   Right (Get k)       -> execIO q $ get k
   Right (GetBy k)     -> execIO q $ getBy k
   Right (SelectList fs ss) -> execIO q $ selectList fs ss
