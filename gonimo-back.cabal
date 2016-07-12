@@ -43,20 +43,17 @@ library
                  , Gonimo.Server.Invitation
                  , Gonimo.Server.State
                  , Gonimo.Server.Types
-                 , Gonimo.Util
                  , Gonimo.WebAPI
-                 , Gonimo.WebAPI.Error
+                 , Gonimo.Server.Error
                  , Gonimo.WebAPI.Types
                  , Gonimo.WebAPI.Verbs
   other-modules:   Gonimo.Server.AuthHandlers.Internal
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric
-                    , GADTs
                     , GeneralizedNewtypeDeriving
                     , OverloadedStrings
                     , PolyKinds
-                    , TypeFamilies
                     , TypeOperators
                     , ScopedTypeVariables
                     , FlexibleContexts
