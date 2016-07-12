@@ -9,6 +9,7 @@ import           Servant.PureScript
 import           Gonimo.CodeGen.TypeBridges
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Types
+import           Gonimo.Server.Error
 import           Gonimo.WebAPI
 import           Gonimo.WebAPI.Types as Client
 
@@ -26,6 +27,9 @@ data TestTypeConstructor m a = TestTypeConstructor (m a) deriving Generic
 myTypes :: [SumType 'Haskell]
 myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy Account)
+          , mkSumType (Proxy :: Proxy Client.InvitationInfo)
+          , mkSumType (Proxy :: Proxy Client.InvitationReply)
+          , mkSumType (Proxy :: Proxy ServerError)
           , mkSumType (Proxy :: Proxy AuthToken)
           , mkSumType (Proxy :: Proxy Client)
           , mkSumType (Proxy :: Proxy Coffee)
