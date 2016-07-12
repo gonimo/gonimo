@@ -3,27 +3,27 @@
 {-# LANGUAGE CPP #-}
 module Gonimo.Server where
 
-import           Control.Exception                (AsyncException,
-                                                   SomeException,
-                                                   asyncExceptionFromException,
-                                                   fromException, throw)
-import           Control.Monad                    ((<=<))
-import           Control.Monad.Except             (ExceptT (..))
-import           Control.Monad.Freer              (Eff)
-import           Control.Monad.Freer.Exception    (catchError, throwError)
-import           Control.Monad.Freer.Reader       (runReader)
-import           Data.Aeson                       (encode)
-import           Data.Bifunctor                   (first)
+import           Control.Exception               (AsyncException, SomeException,
+                                                  asyncExceptionFromException,
+                                                  fromException, throw)
+import           Control.Monad                   ((<=<))
+import           Control.Monad.Except            (ExceptT (..))
+import           Control.Monad.Freer             (Eff)
+import           Control.Monad.Freer.Exception   (catchError, throwError)
+import           Control.Monad.Freer.Reader      (runReader)
+import           Data.Aeson                      (encode)
+import           Data.Bifunctor                  (first)
 import           Data.Monoid
-import qualified Data.Text                        as T
-import           Database.Persist                 (Entity (..), (==.))
-import qualified Gonimo.Database.Effects          as Db
+import qualified Data.Text                       as T
+import           Database.Persist                (Entity (..), (==.))
+import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
-import           Gonimo.WebAPI.Error
 import           Gonimo.Server.Auth
 import           Gonimo.Server.AuthHandlers
 import           Gonimo.Server.DbEntities
-import           Gonimo.Server.Effects            hiding (Server)
+import           Gonimo.Server.Effects           hiding (Server)
+import           Gonimo.Server.Error
+import           Gonimo.Server.Error    (ServantException (..), throwServant)
 #ifdef DEVELOPMENT
 import           Gonimo.Server.Effects.Development
 #else
@@ -31,13 +31,11 @@ import           Gonimo.Server.Effects.Production
 #endif
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Types
-import           Gonimo.Util                      (ServantException (..),
-                                                   throwServant)
 import           Gonimo.WebAPI
-import           Servant                          ((:<|>) (..), (:~>) (..),
-                                                   ServantErr (..), Server,
-                                                   ServerT, enter, err500)
-import           Servant.Server                   (err400, err401)
+import           Servant                ((:<|>) (..), (:~>) (..),
+                                         ServantErr (..), Server, ServerT,
+                                         enter, err500)
+import           Servant.Server         (err400, err401)
 
 
 effServer :: ServerT GonimoAPI ServerEffects

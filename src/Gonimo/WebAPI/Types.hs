@@ -5,16 +5,17 @@
 
 module Gonimo.WebAPI.Types where
 
-import Data.Aeson (ToJSON, FromJSON)
-import GHC.Generics
+import           Data.Aeson          (FromJSON, ToJSON)
+import           Data.Text           (Text)
+import           GHC.Generics
 
-import Gonimo.Server.Types
-import Gonimo.Server.DbEntities
+import           Gonimo.Server.Types
+import           Gonimo.Server.DbEntities
 
 
 data AuthData = AuthData {
     accountId :: AccountId
-  , clientId :: ClientId
+  , clientId  :: ClientId
   , authToken :: AuthToken
   } deriving (Generic, Show)
 

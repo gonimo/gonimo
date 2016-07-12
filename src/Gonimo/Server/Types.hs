@@ -20,14 +20,17 @@ import           Data.Aeson.Types       (FromJSON (..), FromJSON, ToJSON (..),
 
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
+import           Data.Monoid
 import           Data.Text              as T
 import           Data.Text.Encoding     (decodeUtf8, encodeUtf8)
 import           Database.Persist.TH
+import           Debug.Trace            (trace)
 
 import           GHC.Generics           (Generic)
-{-import           Servant.Common.Text (FromText (..), ToText (..))-}
-import           Servant.PureScript     (jsonParseUrlPiece, jsonParseHeader, jsonToUrlPiece, jsonToHeader)
-import           Web.HttpApiData        (FromHttpApiData (..), ToHttpApiData (..))
+import           Servant.PureScript     (jsonParseHeader, jsonParseUrlPiece,
+                                         jsonToHeader, jsonToUrlPiece)
+import           Web.HttpApiData        (FromHttpApiData (..),
+                                         ToHttpApiData (..))
 
 type SenderName = Text
 
