@@ -23,6 +23,6 @@ throwServant = throwException . ServantException
 
 newtype ServantException = ServantException {
   unwrapServantErr :: ServantErr
-  } deriving (Show, Typeable)
+  } deriving (Show, Typeable, Eq)
 
 instance Exception ServantException
