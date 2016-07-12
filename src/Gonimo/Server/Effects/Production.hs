@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Gonimo.Server.Effects.Production (
   runExceptionServer
   , Config(..)

@@ -2,6 +2,7 @@
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE GADTs       #-}
 
 module Gonimo.Server.DbEntities where
 
