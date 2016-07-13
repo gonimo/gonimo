@@ -1,8 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies       #-}
-{-# LANGUAGE GADTs       #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE GADTs                 #-}
 
 module Gonimo.Server.DbEntities where
 
@@ -51,6 +51,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     authToken AuthToken
     accountId AccountId
     lastAccessed UTCTime
+    userAgent Text
     AuthTokenClient authToken
     deriving Generic
 

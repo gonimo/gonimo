@@ -17,10 +17,11 @@ import           Network.Wai.Middleware.Static
 import           Gonimo.Server
 import           Gonimo.Server.DbEntities
 #ifdef DEVELOPMENT
-import           Gonimo.Server.Effects.Development 
+import           Gonimo.Server.Effects.Development
 #else
-import           Gonimo.Server.Effects.Production 
+import           Gonimo.Server.Effects.Production
 #endif
+import qualified Gonimo.Server.State as Server
 
 logHandle :: Handle
 logHandle = stderr
@@ -29,8 +30,8 @@ main :: IO ()
 main = do
   let subscriberPath = "subscriber"
   subscriber' <- atomically $ makeSubscriber subscriberPath runStderrLoggingT
-  pool       <- runLoggingT (createSqlitePool "testdb" 1) doLogging
-  families   <- newTVarIO Map.empty
+  pool        <- runLoggingT (createSqlitePool "testdb" 1) doLogging
+  families    <- newTVarIO Map.empty
   flip runSqlPool pool $ runMigration migrateAll
   let config = Config {
     configPool = pool
