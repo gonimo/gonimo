@@ -51,6 +51,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     authToken AuthToken
     accountId AccountId
     lastAccessed UTCTime
+    userAgent Text
     AuthTokenClient authToken
     deriving Generic
 
