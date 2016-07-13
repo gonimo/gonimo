@@ -5,36 +5,41 @@ module Gonimo.Server.Effects.Development (
   , ServerEffects ) where
 
 
+import           Control.Concurrent.STM                  (atomically)
 import           Control.Exception.Base                  (SomeException,
                                                           throwIO, toException,
                                                           try)
+import           Control.Monad                           ((<=<))
 import           Control.Monad.Freer.Exception           (Exc (..), runError)
 import           Control.Monad.Freer.Internal            (Arrs, Eff (..),
                                                           decomp, qApp)
 import           Control.Monad.Logger                    (Loc, LogLevel,
                                                           LogSource, LogStr,
                                                           ToLogStr (..))
-import           Data.Monoid                             ((<>))
-import           Data.Pool                               (Pool)
-import           Control.Monad                           ((<=<))
 import           Control.Monad.Trans.Class               (lift)
 import           Control.Monad.Trans.Reader              (ReaderT)
 import           Crypto.Random                           (SystemRandom,
                                                           genBytes, newGenIO)
 import           Data.Bifunctor
+import           Data.Monoid                             ((<>))
+import           Data.Pool                               (Pool)
+import           Data.ByteString.Lazy                    (toStrict)
+import           Data.Text                               (Text)
+import qualified Data.Text.IO                            as T
+import qualified Data.Text.Encoding                      as T
+import           Network.Mail.Mime                       
 import           Data.Time.Clock                         (getCurrentTime)
 import           Database.Persist.Sql                    (SqlBackend,
                                                           runSqlPool)
 import           Network.Mail.SMTP                       (sendMail)
 import           Servant.Subscriber
-import           Control.Concurrent.STM (atomically)
 
 import qualified Gonimo.Database.Effects                 as Db
 import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
+import           Gonimo.Server.Effects.Common
 import           Gonimo.Server.Effects.Internal
-import qualified Gonimo.Server.State as Server
-import           Gonimo.WebAPI (GonimoAPI)
-import Gonimo.Server.Effects.Common
+import qualified Gonimo.Server.State                     as Server
+import           Gonimo.WebAPI                           (GonimoAPI)
 
 
 runExceptionServer :: Config -> Eff (Exc SomeException ': '[Server]) w  -> IO (Either SomeException w)
@@ -46,7 +51,7 @@ runServer :: forall w . Config -> Eff '[Server] (Either SomeException w) -> IO (
 runServer _ (Val v) = return v
 runServer c (E u' q) = case decomp u' of
   Right (Atomically m)             -> execIO c q $ atomically m
-  Right (SendEmail mail)           -> execIO c q $ print mail
+  Right (SendEmail mail)           -> execIO c q $ T.putStrLn $ getMailBody mail
   Right (LogMessage loc ls ll msg) -> execIO c q $ doLog loc ls ll (toLogStr msg)
   Right (GenRandomBytes l)         ->
     -- Throw away the new generator & make an exception of any occurred error:
@@ -69,3 +74,15 @@ execIO :: Config
           -> IO b
           -> IO (Either SomeException w)
 execIO c q action = try action >>= runServer c . qApp q
+
+
+getMailBody :: Mail -> Text
+getMailBody mail = let
+    parts = concat $ mailParts mail
+    textParts = filter ((== "text/plain; charset=utf-8") . partType) parts
+    textPart = case textParts of
+                 (x : _) -> partContent x
+                 _ -> "!Mail contained no text!"
+  in
+      T.decodeUtf8 . toStrict $ textPart
+      
