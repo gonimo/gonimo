@@ -68,15 +68,23 @@ putInvitationInfo invSecret = do
 
 answerInvitation :: AuthServerConstraint r => Secret -> InvitationReply -> Eff r ()
 answerInvitation invSecret reply = do
-  -- no authorization: valid user, secret can be found - all fine.
+  authData <- ask
+  let aid = authData ^. accountEntity . to entityKey
   now <- getCurrentTime
-  uid <- askAccountId
-  runDb $ do
+  inv <- runDb $ do
     Entity iid inv <- getBy404 (SecretInvitation invSecret)
+    guardWith InvitationAlreadyClaimed
+      $ case invitationReceiverId inv of
+          Nothing -> True
+          Just receiverId' -> receiverId' == aid
     Db.delete iid
-    when (reply == InvitationAccept)
-      $ Db.insert_  FamilyAccount {
-          familyAccountAccountId = uid
+    return inv
+  runDb $ do -- Separate transaction - we want the invitation to be deleted now!
+    when (reply == InvitationAccept ) $ do
+      guardWith AlreadyFamilyMember
+        $ not $ isFamilyMember (invitationFamilyId inv) authData
+      Db.insert_  FamilyAccount {
+          familyAccountAccountId = aid
         , familyAccountFamilyId = invitationFamilyId inv
         , familyAccountJoined = now
         , familyAccountInvitedBy = Just (invitationDelivery inv)
