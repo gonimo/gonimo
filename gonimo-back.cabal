@@ -48,6 +48,7 @@ library
                  , Gonimo.WebAPI.Types
                  , Gonimo.WebAPI.Verbs
   other-modules:   Gonimo.Server.AuthHandlers.Internal
+               ,   Utils.Control.Monad.Trans.Maybe
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric
@@ -58,13 +59,14 @@ library
                     , ScopedTypeVariables
                     , FlexibleContexts
 
-  build-depends:       aeson
+  build-depends:       base >=4.8 && <4.9
+
+                     , aeson
                      , attoparsec
-                     , base >=4.8 && <4.9
                      , base64-bytestring
                      , bytestring >= 0.10.6.0
-                     , crypto-api
                      , containers
+                     , crypto-api
                      , either >= 4.4.1
                      , errors
                      , fast-logger
@@ -75,6 +77,7 @@ library
                      , lifted-base >= 0.2.3.6
                      , mime-mail >= 0.4.11
                      , monad-logger
+                     , monad-stm
                      , mtl
                      , neat-interpolation
                      , persistent
@@ -97,6 +100,7 @@ library
                      , transformers >= 0.4.2.0
                      , wai
                      , warp
+
   ghc-options: -Wall
   hs-source-dirs:      src
   default-language:    Haskell2010

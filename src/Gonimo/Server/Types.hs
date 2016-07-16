@@ -35,7 +35,7 @@ import           Web.HttpApiData        (FromHttpApiData (..),
 type SenderName = Text
 
 
-newtype Secret = Secret ByteString deriving (Generic, Show, Read)
+newtype Secret = Secret ByteString deriving (Generic, Show, Read, Ord, Eq)
 
 instance FromJSON Secret where
   parseJSON (String t) = Secret <$> (rightZ . Base64.decode . encodeUtf8 $ t)
