@@ -2,10 +2,9 @@
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module Gonimo.Server.State where
 
-import           Control.Concurrent.STM   (STM, TVar, check, modifyTVar,
+import           Control.Concurrent.STM   (STM, TVar, modifyTVar,
                                            readTVar, retry)
 import           Control.Lens
-import           Control.Monad            (forever)
 import           Data.Map.Strict          (Map)
 import qualified Data.Map.Strict          as M
 import           Data.Set                 (Set)
@@ -30,10 +29,11 @@ type OnlineState = TVar FamilyMap
 
 putSecret :: Secret -> ClientId -> ClientId -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites
-putSecret secret fromId toId familyStateVar = forever $ do
+putSecret secret fromId toId familyStateVar = do
   t <- _channelSecrets <$> readTVar familyStateVar
-  check (toId `M.member` t)
-  modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
+  if toId `M.member` t
+     then retry
+     else modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
 
 receiveSecret :: ClientId -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Secret))
 receiveSecret toId familyStateVar = do
@@ -52,9 +52,9 @@ onlineMember cid familyStateVar = do familyState <- readTVar familyStateVar
 
 putData :: Text -> Secret -> ClientId -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites
-putData txt secret fromId familyStateVar = forever $ do
+putData txt secret fromId familyStateVar = do
   t <- _channelData <$> readTVar familyStateVar
-  if (secret `M.member` t)
+  if secret `M.member` t
      then retry
      else modifyTVar familyStateVar (channelData %~ secret `M.insert` (fromId, txt))
 

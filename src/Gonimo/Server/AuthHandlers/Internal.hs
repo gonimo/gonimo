@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Server.AuthHandlers.Internal where
 
 import           Control.Concurrent.STM          (STM, TVar, readTVar)
@@ -14,12 +13,10 @@ import           Gonimo.Server.Auth              (AuthServerConstraint,
                                                   authorizeJust, clientKey,
                                                   isFamilyMember)
 import           Gonimo.Server.DbEntities        (ClientId, FamilyId)
-import           Gonimo.Server.Effects           (atomically, getState)
-import           Gonimo.Server.Error
+import           Gonimo.Server.Effects           (atomically, getState, timeout)
 import           Gonimo.Server.State             (FamilyOnlineState,
                                                   onlineMembers)
 import           Utils.Control.Monad.Trans.Maybe (maybeT)
-import           System.Timeout
 
 
 authorizedPut :: AuthServerConstraint r
@@ -31,7 +28,7 @@ authorizedPut f familyId fromId toId = do
 
   let fromto = S.fromList [fromId, toId]
   state <- getState
-  x <- atomically $ runMaybeT $ do
+  x <- timeout 2000 $ atomically $ runMaybeT $ do
     a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
     b <- liftSTM $ readTVar a
     guard $ fromto `S.isSubsetOf` (b^.onlineMembers)
@@ -49,7 +46,7 @@ authorizedRecieve f familyId fromId toId = do
 
   let fromto = S.fromList [fromId, toId]
   state <- getState
-  x <- atomically $ runMaybeT $ do
+  x <- timeout 2000 $ atomically $ runMaybeT $ do
     a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
     b <- liftSTM $ readTVar a
     guard $ fromto `S.isSubsetOf` (b^.onlineMembers)
@@ -64,7 +61,7 @@ authorizedRecieve' f familyId toId = do
   authorizeAuthData ((toId ==) . clientKey)
 
   state <- getState
-  x <- atomically $ runMaybeT $ do
+  x <- timeout 2000 $ atomically $ runMaybeT $ do
     a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
     MaybeT $ f a
   authorizeJust id x

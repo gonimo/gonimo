@@ -16,8 +16,9 @@ import           Servant.Server
 -- Define an error type, so handling errors is easier at the client side.
 -- This makes it easier to handle them at the client side.
 data ServerError = InvalidAuthToken
-           | InvitationAlreadyClaimed -- Invitation was already claimed by someone else
-           | AlreadyFamilyMember -- If a client tries to become a member of a family he is already a member of.
+                 | InvitationAlreadyClaimed -- ^ Invitation was already claimed by someone else.
+                 | AlreadyFamilyMember -- ^ If a client tries to become a member of a family he is already a member of.
+                 | TransactionTimeout
   deriving (Generic)
 
 
@@ -45,6 +46,7 @@ getServantErr :: ServerError -> ServantErr
 getServantErr InvalidAuthToken = err403
 getServantErr InvitationAlreadyClaimed = err403
 getServantErr AlreadyFamilyMember = err409
+getServantErr TransactionTimeout = err500
 
 instance ToJSON ServerError where
     toJSON = genericToJSON defaultOptions

@@ -8,21 +8,22 @@
 --}
 module Gonimo.Server.Effects (
     Server
+  , ServerConstraint
   , atomically
-  , sendEmail
-  , logMessage
   , genRandomBytes
   , generateSecret
   , getCurrentTime
   , getState
-  , runDb
-  , ServerConstraint
-  , logTH
   , logDebug
-  , logWarn
-  , logInfo
   , logError
+  , logInfo
+  , logMessage
+  , logTH
+  , logWarn
   , notify
+  , runDb
+  , sendEmail
+  , timeout
   ) where
 
 
@@ -58,7 +59,10 @@ secretLength = 16
 
 atomically :: ServerConstraint r => STM a -> Eff r a
 atomically = sendServer . Atomically
- 
+
+timeout :: ServerConstraint r => Int -> Eff r a -> Eff r a
+timeout n eff = sendServer $ Timeout n eff
+
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
 
