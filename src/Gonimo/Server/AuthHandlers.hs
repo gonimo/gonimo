@@ -1,10 +1,19 @@
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Gonimo.Server.AuthHandlers where
 
+import           Control.Concurrent.STM              (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Freer                 (Eff)
+import           Control.Monad                       (guard)
 import           Control.Monad.Freer.Reader          (ask)
+import           Control.Monad.STM.Class             (liftSTM)
+import           Control.Monad.Trans.Class           (lift)
+import           Control.Monad.Trans.Maybe           (MaybeT(..), runMaybeT)
+import           Utils.Control.Monad.Trans.Maybe     (maybeT)
+import qualified Data.Map.Strict                     as M
 import           Data.Proxy                          (Proxy (..))
+import qualified Data.Set                            as S
 import           Data.Text                           (Text)
 import           Database.Persist                    (Entity (..))
 import qualified Gonimo.Database.Effects             as Db
@@ -133,8 +142,10 @@ createChannel :: AuthServerConstraint r
 createChannel familyId toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
+
   secret <- generateSecret
-  authorizedPut (putSecret secret) familyId fromId toId
+  authorizedPut (putSecret secret fromId toId) familyId fromId toId
+
   notify ModifyEvent endpoint (\f -> f familyId toId)
   return secret
  where
@@ -145,12 +156,15 @@ createChannel familyId toId fromId = do
 receiveSocket :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r (ClientId, Secret)
 -- | in this request @to@ is the one receiving the secret
-receiveSocket = authorizedRecieve receiveSecret
+receiveSocket familyId toId =
+  authorizedRecieve'(receiveSecret toId) familyId toId
 
 putChannel :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
 putChannel familyId fromId toId token txt = do
-  authorizedPut (putData txt) familyId fromId toId
+
+  authorizedPut (putData txt token fromId) familyId fromId toId 
+
   notify ModifyEvent endpoint (\f -> f familyId fromId toId token)
   where
    endpoint :: Proxy ("socket" :> ReceiveChannelR)
@@ -159,11 +173,9 @@ putChannel familyId fromId toId token txt = do
 
 receiveChannel :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
-receiveChannel familyId fromId toId token = do
-  -- TODO: we don't use toId and token, that should be changed
-  (_, txt) <- authorizedRecieve receieveData familyId fromId
-  return txt
-
+receiveChannel familyId fromId toId token =
+  authorizeJust (\(fromId',t) -> do guard (fromId == fromId'); return t)
+    =<< authorizedRecieve (receieveData token) familyId fromId toId
 
 -- The following stuff should go somewhere else someday (e.g. to paradise):
 

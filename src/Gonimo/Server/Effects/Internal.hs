@@ -44,6 +44,7 @@ data Server v where
   LogMessage     :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
   SendEmail      :: !Mail -> EServer ()
+  Timeout        :: ServerConstraint r => !Int -> Eff r a -> EServer a
   Notify         :: forall endpoint. (IsElem endpoint GonimoAPI, HasLink endpoint
                       , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
                       => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> EServer ()

@@ -2,10 +2,9 @@
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module Gonimo.Server.State where
 
-import           Control.Concurrent.STM   (STM, TVar, check, modifyTVar,
-                                           readTVar)
+import           Control.Concurrent.STM   (STM, TVar, modifyTVar,
+                                           readTVar, retry)
 import           Control.Lens
-import           Control.Monad            (forever)
 import           Data.Map.Strict          (Map)
 import qualified Data.Map.Strict          as M
 import           Data.Set                 (Set)
@@ -16,7 +15,7 @@ import           Gonimo.Server.DbEntities (ClientId, FamilyId)
 import           Gonimo.Server.Types      (Secret)
 
 type ChannelSecrets = Map ClientId (ClientId, Secret)
-type ChannelData    = Map ClientId (ClientId, Text)
+type ChannelData    = Map Secret (ClientId, Text)
 
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets :: ChannelSecrets
@@ -30,10 +29,11 @@ type OnlineState = TVar FamilyMap
 
 putSecret :: Secret -> ClientId -> ClientId -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites
-putSecret secret fromId toId familyStateVar = forever $ do
+putSecret secret fromId toId familyStateVar = do
   t <- _channelSecrets <$> readTVar familyStateVar
-  check (toId `M.member` t)
-  modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
+  if toId `M.member` t
+     then retry
+     else modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
 
 receiveSecret :: ClientId -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Secret))
 receiveSecret toId familyStateVar = do
@@ -50,17 +50,18 @@ onlineMember :: ClientId -> TVar FamilyOnlineState -> STM Bool
 onlineMember cid familyStateVar = do familyState <- readTVar familyStateVar
                                      return $ cid `S.member` (familyState^.onlineMembers)
 
-putData :: Text -> ClientId -> ClientId -> TVar FamilyOnlineState -> STM ()
+putData :: Text -> Secret -> ClientId -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites
-putData txt fromId toId familyStateVar = forever $ do
+putData txt secret fromId familyStateVar = do
   t <- _channelData <$> readTVar familyStateVar
-  check (toId `M.member` t)
-  modifyTVar familyStateVar (channelData %~ toId `M.insert` (fromId, txt))
+  if secret `M.member` t
+     then retry
+     else modifyTVar familyStateVar (channelData %~ secret `M.insert` (fromId, txt))
 
-receieveData :: ClientId -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Text))
-receieveData toId familyStateVar = do
+receieveData :: Secret -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Text))
+receieveData secret familyStateVar = do
   t <- _channelData <$> readTVar familyStateVar
-  case toId `M.lookup` t of
+  case secret `M.lookup` t of
     Nothing ->  return Nothing
-    Just cs -> do modifyTVar familyStateVar (channelData %~ M.delete toId)
+    Just cs -> do modifyTVar familyStateVar (channelData %~ M.delete secret)
                   return $ Just cs
