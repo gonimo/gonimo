@@ -46,7 +46,7 @@ createClient mUserAgent = do
       }
 
 
-createFunnyUserName :: ServerConstraint r => Eff r String
+createFunnyUserName :: ServerConstraint r => Eff r Text
 createFunnyUserName = do
   let funnyNames = ["pink elephant", "singing whale", "dancing tiger"]
   index <- runRandom $ randomR (0, length funnyNames -1)

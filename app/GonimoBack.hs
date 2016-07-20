@@ -21,7 +21,6 @@ import           Gonimo.Server.Effects.Development
 #else
 import           Gonimo.Server.Effects.Production
 #endif
-import qualified Gonimo.Server.State as Server
 
 logHandle :: Handle
 logHandle = stderr

@@ -41,7 +41,7 @@ createInvitation fid = do
   authorizeAuthData $ isFamilyMember fid
   now <- getCurrentTime
   isecret <- generateSecret
-  family <- getFamily fid
+  -- family <- getFamily fid  -- defined but not used (yet).
   senderId' <- authView $ clientEntity.to entityKey
   let inv = Invitation {
     invitationSecret = isecret
