@@ -41,6 +41,7 @@ import           Servant.Server         (err400, err401)
 effServer :: ServerT GonimoAPI ServerEffects
 effServer =  createClient
         :<|> getAuthServer
+        :<|> createFunnyUserName
         :<|> getCoffee
 
 authServer :: ServerT AuthGonimoAPI AuthServerEffects

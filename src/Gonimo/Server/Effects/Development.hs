@@ -33,6 +33,7 @@ import           Database.Persist.Sql                    (SqlBackend,
                                                           runSqlPool)
 import           Network.Mail.SMTP                       (sendMail)
 import           Servant.Subscriber
+import           System.Random                           (getStdRandom)
 
 import qualified Gonimo.Database.Effects                 as Db
 import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
@@ -62,6 +63,7 @@ runServer c (E u' q) = case decomp u' of
   Right GetState                   -> runServer c . qApp q $ Right (state c)
   Right (Notify ev pE cB)          -> execIO c q $ atomically (notify (subscriber c) ev pE cB)
   Right (RunDb trans)              -> runDatabaseServerIO pool trans >>= runServer c . qApp q
+  Right (RunRandom rand)           -> execIO c q (getStdRandom rand)
   Left  _                          -> error impossibleMessage
   where
     pool = configPool c

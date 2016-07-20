@@ -21,6 +21,7 @@ import           Network.Mail.Mime             (Mail)
 import           Servant.Subscriber            (Event, HasLink, IsElem,
                                                 IsSubscribable, IsValidEndpoint,
                                                 MkLink, URI)
+import           System.Random                 (Random, StdGen)
 
 import           Gonimo.Database.Effects
 import           Gonimo.Server.State           (OnlineState)
@@ -43,6 +44,7 @@ data Server v where
   GetState       :: EServer OnlineState
   LogMessage     :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
+  RunRandom      :: Random a => (StdGen -> (a,StdGen)) -> EServer a
   SendEmail      :: !Mail -> EServer ()
   Timeout        :: ServerConstraint r => !Int -> Eff r a -> EServer a
   Notify         :: forall endpoint. (IsElem endpoint GonimoAPI, HasLink endpoint

@@ -22,6 +22,7 @@ module Gonimo.Server.Effects (
   , logWarn
   , notify
   , runDb
+  , runRandom
   , sendEmail
   , timeout
   ) where
@@ -45,6 +46,7 @@ import           Network.Mail.Mime              (Mail)
 import           Servant.Subscriber             (Event, HasLink, IsElem,
                                                  IsSubscribable,
                                                  IsValidEndpoint, MkLink, URI)
+import           System.Random                  (Random, StdGen)
 
 import           Gonimo.Database.Effects
 import           Gonimo.Server.Effects.Internal
@@ -80,6 +82,9 @@ getCurrentTime = sendServer GetCurrentTime
 
 runDb :: ServerConstraint r => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
 runDb = sendServer . RunDb
+
+runRandom :: (ServerConstraint r, Random a) => (StdGen -> (a,StdGen)) -> Eff r a
+runRandom = sendServer . RunRandom
 
 generateSecret :: ServerConstraint r => Eff r Secret
 generateSecret = Secret <$> genRandomBytes secretLength

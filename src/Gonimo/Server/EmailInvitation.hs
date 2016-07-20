@@ -6,7 +6,7 @@ module Gonimo.Server.EmailInvitation (
 import           Data.Text                (Text)
 #ifndef DEVELOPMENT
 import           NeatInterpolation
-#endif DEVELOPMENT
+#endif
 import           Network.Mail.Mime        (Address (..), Mail, simpleMail')
 import           Web.HttpApiData
 import qualified Data.Text.Lazy           as TL

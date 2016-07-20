@@ -85,6 +85,7 @@ library
                      , persistent-sqlite
                      , persistent-template
                      , purescript-bridge
+                     , random
                      , resource-pool
                      , servant
                      , servant-docs

@@ -11,6 +11,7 @@ import           Gonimo.Server.Error
 import qualified Gonimo.WebAPI.Types as Client
 import           Prelude                       hiding (take)
 import           Servant                       (ServantErr (..))
+import           System.Random
 
 
 noUserAgentDefault :: Text
@@ -44,6 +45,12 @@ createClient mUserAgent = do
       , Client.authToken = authToken
       }
 
+
+createFunnyUserName :: ServerConstraint r => Eff r String
+createFunnyUserName = do
+  let funnyNames = ["pink elephant", "singing whale", "dancing tiger"]
+  index <- runRandom $ randomR (0, length funnyNames -1)
+  return $ funnyNames !! index
 
 
 getCoffee :: ServerConstraint r => Eff r Coffee
