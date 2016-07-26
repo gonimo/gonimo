@@ -33,7 +33,12 @@ invitationText _inv _n =
 
     You got invited to join gonimo family "$_n"!
     Just click on the link below and you are all set for the best baby monitoring on the planet!
-    https://gonimo.com/index.html?acceptInvitation=$secret
+
+    https://test.gonimo.com/index.html?acceptInvitation=$secret
+
+    Sincerely yours,
+
+    Gonimo
   |]
   where
     secret = toUrlPiece $ invitationSecret _inv
