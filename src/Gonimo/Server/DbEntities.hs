@@ -61,9 +61,10 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     accountId AccountId
     AccountIdUser accountId
 
---  FunnyNamePiece
---    piece Text
---    kind FunnyNamePieceKind
+  FunnyWord
+    word Text
+    wordType FunnyWordType
+    deriving Show
 |]
 
 instance FromJSON Invitation

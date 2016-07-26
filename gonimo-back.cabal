@@ -40,6 +40,7 @@ library
                  , Gonimo.Server.Effects.Production
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Handlers
+                 , Gonimo.Server.InitDb
                  , Gonimo.Server.Invitation
                  , Gonimo.Server.State
                  , Gonimo.Server.Types

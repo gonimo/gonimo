@@ -12,6 +12,7 @@ import qualified Gonimo.WebAPI.Types as Client
 import           Prelude                       hiding (take)
 import           Servant                       (ServantErr (..))
 import           System.Random
+import           Database.Persist              (entityVal, (==.))
 
 
 noUserAgentDefault :: Text
@@ -46,11 +47,16 @@ createClient mUserAgent = do
       }
 
 
+-- You may test this part of the API this way:
+-- $ curl --request POST http://localhost:8081/funnyusername
 createFunnyUserName :: ServerConstraint r => Eff r Text
 createFunnyUserName = do
-  let funnyNames = ["pink elephant", "singing whale", "dancing tiger"]
-  index <- runRandom $ randomR (0, length funnyNames -1)
-  return $ funnyNames !! index
+  -- TODO: randomly get words of different types and combine them
+  funnyWords <- runDb $ do
+    Db.selectList [FunnyWordWordType ==. FunnyPrefix1] []
+  index <- runRandom $ randomR (0, (length funnyWords) - 1)
+  let funnyName = funnyWordWord . entityVal $ funnyWords !! index
+  return funnyName
 
 
 getCoffee :: ServerConstraint r => Eff r Coffee

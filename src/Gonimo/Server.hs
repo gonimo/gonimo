@@ -22,8 +22,7 @@ import           Gonimo.Server.Auth
 import           Gonimo.Server.AuthHandlers
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects           hiding (Server)
-import           Gonimo.Server.Error
-import           Gonimo.Server.Error    (ServantException (..), throwServant)
+import           Gonimo.Server.Error    (ServantException (..), throwServant, ServerError (..))
 #ifdef DEVELOPMENT
 import           Gonimo.Server.Effects.Development
 #else

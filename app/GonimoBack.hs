@@ -16,6 +16,7 @@ import           Network.Wai.Middleware.Static
 
 import           Gonimo.Server
 import           Gonimo.Server.DbEntities
+import           Gonimo.Server.InitDb
 #ifdef DEVELOPMENT
 import           Gonimo.Server.Effects.Development
 #else
@@ -31,7 +32,9 @@ main = do
   subscriber' <- atomically $ makeSubscriber subscriberPath runStderrLoggingT
   pool        <- runLoggingT (createSqlitePool "testdb" 1) doLogging
   families    <- newTVarIO Map.empty
-  flip runSqlPool pool $ runMigration migrateAll
+  flip runSqlPool pool $ do
+    runMigration migrateAll
+    initDb
   let config = Config {
     configPool = pool
   , configLog  = logToHandle logHandle
