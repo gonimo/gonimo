@@ -44,7 +44,7 @@ data Server v where
   GetState       :: EServer OnlineState
   LogMessage     :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> EServer ()
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
-  RunRandom      :: Random a => (StdGen -> (a,StdGen)) -> EServer a
+  RunRandom      :: (StdGen -> (a,StdGen)) -> EServer a
   SendEmail      :: !Mail -> EServer ()
   Timeout        :: ServerConstraint r => !Int -> Eff r a -> EServer a
   Notify         :: forall endpoint. (IsElem endpoint GonimoAPI, HasLink endpoint

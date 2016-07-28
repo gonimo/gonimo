@@ -36,6 +36,8 @@ import qualified Gonimo.Server.State as Server
 import           Gonimo.WebAPI (GonimoAPI)
 import Gonimo.Server.Effects.Common
 
+import           System.Random                           (getStdRandom)
+
 
 runExceptionServer :: Config -> Eff (Exc SomeException ': '[Server]) w  -> IO (Either SomeException w)
 runExceptionServer c = runServer c . runError
@@ -57,6 +59,7 @@ runServer c (E u' q) = case decomp u' of
   Right GetState                   -> runServer c . qApp q $ Right (state c)
   Right (Notify ev pE cB)          -> execIO c q $ atomically (notify (subscriber c) ev pE cB)
   Right (RunDb trans)              -> runDatabaseServerIO pool trans >>= runServer c . qApp q
+  Right (RunRandom rand)           -> execIO c q (getStdRandom rand)
   Left  _                          -> error impossibleMessage
   where
     pool = configPool c

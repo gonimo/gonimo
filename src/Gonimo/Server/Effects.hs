@@ -83,7 +83,7 @@ getCurrentTime = sendServer GetCurrentTime
 runDb :: ServerConstraint r => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
 runDb = sendServer . RunDb
 
-runRandom :: (ServerConstraint r, Random a) => (StdGen -> (a,StdGen)) -> Eff r a
+runRandom :: ServerConstraint r => (StdGen -> (a,StdGen)) -> Eff r a
 runRandom = sendServer . RunRandom
 
 generateSecret :: ServerConstraint r => Eff r Secret

@@ -2,17 +2,18 @@ module Gonimo.Server.Handlers where
 
 import           Control.Monad.Freer           (Eff)
 import           Data.Maybe                    (fromMaybe)
-import           Data.Text                     (Text, take)
+import           Data.Text                     (Text, take, unwords)
 import qualified Gonimo.Database.Effects       as Db
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects         hiding (Server)
 import           Gonimo.Server.Types
 import           Gonimo.Server.Error
 import qualified Gonimo.WebAPI.Types as Client
-import           Prelude                       hiding (take)
+import           Prelude                       hiding (take, unwords)
 import           Servant                       (ServantErr (..))
-import           System.Random
 import           Database.Persist              (entityVal, (==.))
+import           Utils.System.Random
+
 
 
 noUserAgentDefault :: Text
@@ -51,12 +52,13 @@ createClient mUserAgent = do
 -- $ curl --request POST http://localhost:8081/funnyusername
 createFunnyUserName :: ServerConstraint r => Eff r Text
 createFunnyUserName = do
-  -- TODO: randomly get words of different types and combine them
-  funnyWords <- runDb $ do
-    Db.selectList [FunnyWordWordType ==. FunnyPrefix1] []
-  index <- runRandom $ randomR (0, (length funnyWords) - 1)
-  let funnyName = funnyWordWord . entityVal $ funnyWords !! index
-  return funnyName
+  let scaffold     = [FunnyPrefix1, FunnyPrefix2, FunnyCharacter, FunnySuffix]
+      fetch t      = Db.selectList [FunnyWordWordType ==. t] []
+      word r       = funnyWordWord (entityVal r)
+  funnyWordPools  <- fmap (fmap (fmap word)) $
+                     runDb $ mapM fetch scaffold
+  funnyWords      <- runRandom $ randomLs funnyWordPools
+  return           $ unwords funnyWords
 
 
 getCoffee :: ServerConstraint r => Eff r Coffee

@@ -1,0 +1,16 @@
+FunnyPrefix1 funny
+FunnyPrefix1 cute
+FunnyPrefix1 adoring
+FunnyPrefix1 cherish
+FunnyPrefix2 little
+FunnyPrefix2 big
+FunnyPrefix2 pink
+FunnyPrefix2 blue
+FunnyCharacter elephant
+FunnyCharacter rhino
+FunnyCharacter mouse
+FunnyCharacter octopus
+FunnySuffix from outer space
+FunnySuffix from the big city
+FunnySuffix from the animal farm
+FunnySuffix from candy heaven

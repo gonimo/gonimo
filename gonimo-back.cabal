@@ -50,6 +50,7 @@ library
                  , Gonimo.WebAPI.Verbs
   other-modules:   Gonimo.Server.AuthHandlers.Internal
                ,   Utils.Control.Monad.Trans.Maybe
+               ,   Utils.System.Random
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric
@@ -148,6 +149,7 @@ executable gonimo-back
                      , persistent-sqlite
                      , persistent-template
                      , purescript-bridge
+                     , random
                      , resource-pool
                      , servant
                      , servant-docs
