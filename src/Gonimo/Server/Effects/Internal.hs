@@ -21,7 +21,7 @@ import           Network.Mail.Mime             (Mail)
 import           Servant.Subscriber            (Event, HasLink, IsElem,
                                                 IsSubscribable, IsValidEndpoint,
                                                 MkLink, URI)
-import           System.Random                 (Random, StdGen)
+import           System.Random                 (StdGen)
 
 import           Gonimo.Database.Effects
 import           Gonimo.Server.State           (OnlineState)

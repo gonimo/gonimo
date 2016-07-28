@@ -22,4 +22,6 @@ dist-*
 shell.nix
 /:memory
 /stack.yaml
-/testdb
+testdb
+testdb-shm
+testdb-wal

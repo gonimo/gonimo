@@ -11,8 +11,6 @@ import           Control.Monad.Logger                    (Loc, LogLevel,
                                                           LogSource, LogStr)
 import           Control.Monad.Trans.Class               (lift)
 import           Control.Monad.Trans.Reader              (ReaderT)
-import           Crypto.Random                           (SystemRandom,
-                                                          genBytes, newGenIO)
 import           Data.Monoid                             ((<>))
 import           Data.Pool                               (Pool)
 import           Database.Persist.Sql                    (SqlBackend,

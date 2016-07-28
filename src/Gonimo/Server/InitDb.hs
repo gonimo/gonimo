@@ -4,22 +4,13 @@ module Gonimo.Server.InitDb where
 import           Prelude        hiding (words, unwords, lines, readFile)
 import           Data.Text      hiding (count, map)
 import           Data.Text.IO
-import           Data.Time             (UTCTime)
-import           GHC.Generics          (Generic)
 
-import           Gonimo.Server.Types
 import           Gonimo.Server.DbEntities
 import           Database.Persist.Sqlite
-import           Servant.Subscriber
 import           Control.Monad.Trans.Reader (ReaderT)
 import           Control.Monad.IO.Class     (liftIO)
-import           Control.Monad
 
 import           Paths_gonimo_back
-import           Gonimo.Server.DbEntities
-import           Gonimo.Server.Types
-import           Gonimo.Server
-import           Gonimo.Server.DbEntities
 
 
 -- TODO: use cabal's data-files instead of optimism to find the file there.

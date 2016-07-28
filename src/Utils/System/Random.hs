@@ -1,7 +1,6 @@
 module Utils.System.Random where
 
 import System.Random
-import Control.Monad
 import Control.Monad.State
 
 -- Warning: an empty list leads to a crash.
