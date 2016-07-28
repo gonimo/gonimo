@@ -4,6 +4,7 @@ module Gonimo.Server.EmailInvitation (
   makeInvitationEmail) where
 
 import           Data.Text                (Text)
+import           Data.Text               as T
 #ifndef DEVELOPMENT
 import           NeatInterpolation
 #endif
@@ -33,7 +34,12 @@ invitationText _inv _n =
 
     You got invited to join gonimo family "$_n"!
     Just click on the link below and you are all set for the best baby monitoring on the planet!
-    https://gonimo.com/index.html?acceptInvitation=$secret
+
+    https://test.gonimo.com/index.html?acceptInvitation=$secret
+
+    Sincerely yours,
+
+    Gonimo
   |]
   where
     secret = toUrlPiece $ invitationSecret _inv
@@ -44,4 +50,6 @@ makeInvitationEmail inv addr name = simpleMail' receiver sender "You got invited
   where
     textContent = invitationText inv name
     receiver = Address Nothing addr
-    sender = Address Nothing "noreply@gonimo.com"
+    sender = if T.isSuffixOf "gonimo.com" addr
+      then Address Nothing "noreply@baby.gonimo.com" -- So we can send emails to ourself. (noreply@gonimo.com gets blocked by easyname)
+      else Address Nothing "noreply@gonimo.com"
