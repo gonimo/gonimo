@@ -52,7 +52,7 @@ createClient mUserAgent = do
 -- $ curl --request POST http://localhost:8081/funnyusername
 createFunnyUserName :: ServerConstraint r => Eff r Text
 createFunnyUserName = do
-  let scaffold     = [FunnyPrefix1, FunnyPrefix2, FunnyCharacter, FunnySuffix]
+  let scaffold     = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
       fetch t      = Db.selectList [FunnyWordWordType ==. t] []
       word r       = funnyWordWord (entityVal r)
   funnyWordPools  <- fmap (fmap (fmap word)) $

@@ -99,8 +99,7 @@ instance ToJSON InvitationDelivery where
 derivePersistField "InvitationDelivery"
 --------------------------------------------------
 
-data FunnyWordType = FunnyPrefix1
-                   | FunnyPrefix2
+data FunnyWordType = FunnyPrefix
                    | FunnyCharacter
                    | FunnySuffix
                    deriving (Read, Show, Generic)
