@@ -51,7 +51,9 @@ prodMain = do
   -- empty connection string means settings are fetched from env.
   pool        <- runLoggingT (createPostgresqlPool "" 10) doLogging
   families    <- newTVarIO Map.empty
-  flip runSqlPool pool $ runMigration migrateAll
+  flip runSqlPool pool $ do
+    runMigration migrateAll
+    initDb
   let config = Config {
     configPool = pool
   , configLog  = logToHandle logHandle

@@ -1,8 +1,9 @@
 module Gonimo.Server.InitDb where
 
 
-import           Prelude        hiding (words, unwords, lines)
+import           Prelude        hiding (words, unwords, lines, readFile)
 import           Data.Text      hiding (count, map)
+import           Data.Text.IO
 import           Data.Time             (UTCTime)
 import           GHC.Generics          (Generic)
 
@@ -14,6 +15,7 @@ import           Control.Monad.Trans.Reader (ReaderT)
 import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad
 
+import           Paths_gonimo_back
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Types
 import           Gonimo.Server
@@ -21,23 +23,21 @@ import           Gonimo.Server.DbEntities
 
 
 -- TODO: use cabal's data-files instead of optimism to find the file there.
-pathOfFunnyWordsPreset :: FilePath
-pathOfFunnyWordsPreset = "data/funnywords.txt"
+pathOfFunnyWordsPreset :: IO FilePath
+pathOfFunnyWordsPreset = getDataFileName "data/funnywords.txt"
 
 
--- If the FunnyWord table is empty, populate it with data.
--- TODO: consider taking a more refined migration approach one day.
+-- Delete the FunnyWord table and refill it with our preset.
 initDb :: ReaderT SqlBackend IO ()
 initDb = do
-  funnyWordCount <- count ([] :: [Filter FunnyWord])
-  when (funnyWordCount == 0)
-    populateFunnyWords
+  deleteWhere ([] :: [Filter FunnyWord])
+  populateFunnyWords
 
 
 populateFunnyWords :: ReaderT SqlBackend IO ()
 populateFunnyWords = do
-  funnyWordsPreset <- liftIO (readFile pathOfFunnyWordsPreset)
-  let funnyWords = parseFunnyWordPreset (pack funnyWordsPreset)
+  funnyWordsPreset <- liftIO $ pathOfFunnyWordsPreset >>= readFile
+  let funnyWords    = parseFunnyWordPreset funnyWordsPreset
   insertMany_ funnyWords
 
 
