@@ -48,17 +48,18 @@ createClient mUserAgent = do
       }
 
 
--- You may test this part of the API this way:
--- $ curl --request POST http://localhost:8081/funnyusername
+-- | Generate a funny user name.
+--   You may this part of the API by running the shell command:
+--   curl --request POST http://localhost:8081/funnyusername
 createFunnyUserName :: ServerConstraint r => Eff r Text
 createFunnyUserName = do
-  let scaffold     = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
-      fetch t      = Db.selectList [FunnyWordWordType ==. t] []
-      word r       = funnyWordWord (entityVal r)
-  funnyWordPools  <- fmap (fmap (fmap word)) $
-                     runDb $ mapM fetch scaffold
-  funnyWords      <- runRandom $ randomLs funnyWordPools
-  return           $ unwords funnyWords
+  let scaffold    = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
+      fetch t     = Db.selectList [FunnyWordWordType ==. t] []
+      word        = funnyWordWord . entityVal
+  funnyWordPools <- map (map word) <$>
+                      (runDb $ mapM fetch scaffold)
+  funnyWords     <- runRandom $ randomLs funnyWordPools
+  return $ unwords funnyWords
 
 
 getCoffee :: ServerConstraint r => Eff r Coffee
