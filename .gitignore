@@ -8,6 +8,7 @@
 *.hp
 *.o
 *.prof
+*.swp
 .cabal-sandbox/
 .hpc
 .hsenv
@@ -21,4 +22,6 @@ dist-*
 shell.nix
 /:memory
 /stack.yaml
-/testdb
+testdb
+testdb-shm
+testdb-wal

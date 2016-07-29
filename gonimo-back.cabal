@@ -13,6 +13,8 @@ build-type:          Simple
 
 cabal-version:       >=1.10
 
+data-files:          data/*.txt
+
 Flag dev
     Description:   Turn on development settings.
     Default:       False
@@ -40,6 +42,7 @@ library
                  , Gonimo.Server.Effects.Production
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Handlers
+                 , Gonimo.Server.InitDb
                  , Gonimo.Server.Invitation
                  , Gonimo.Server.State
                  , Gonimo.Server.Types
@@ -49,6 +52,8 @@ library
                  , Gonimo.WebAPI.Verbs
   other-modules:   Gonimo.Server.AuthHandlers.Internal
                ,   Utils.Control.Monad.Trans.Maybe
+               ,   Utils.System.Random
+               ,   Paths_gonimo_back
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric
@@ -85,6 +90,7 @@ library
                      , persistent-sqlite
                      , persistent-template
                      , purescript-bridge
+                     , random
                      , resource-pool
                      , servant
                      , servant-docs
@@ -146,6 +152,7 @@ executable gonimo-back
                      , persistent-sqlite
                      , persistent-template
                      , purescript-bridge
+                     , random
                      , resource-pool
                      , servant
                      , servant-docs

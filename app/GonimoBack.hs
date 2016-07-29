@@ -16,13 +16,13 @@ import           System.Log.FastLogger             (fromLogStr)
 
 import           Gonimo.Server
 import           Gonimo.Server.DbEntities
+import           Gonimo.Server.InitDb
 #ifdef DEVELOPMENT
 import           Gonimo.Server.Effects.Development
 #else
 import           Gonimo.Server.Effects.Production
 #endif
 import           Database.Persist.Postgresql
-import qualified Gonimo.Server.State               as Server
 
 logHandle :: Handle
 logHandle = stderr
@@ -33,7 +33,9 @@ devMain = do
   subscriber' <- atomically $ makeSubscriber subscriberPath runStderrLoggingT
   pool        <- runLoggingT (createSqlitePool "testdb" 1) doLogging
   families    <- newTVarIO Map.empty
-  flip runSqlPool pool $ runMigration migrateAll
+  flip runSqlPool pool $ do
+    runMigration migrateAll
+    initDb
   let config = Config {
     configPool = pool
   , configLog  = logToHandle logHandle
@@ -49,7 +51,9 @@ prodMain = do
   -- empty connection string means settings are fetched from env.
   pool        <- runLoggingT (createPostgresqlPool "" 10) doLogging
   families    <- newTVarIO Map.empty
-  flip runSqlPool pool $ runMigration migrateAll
+  flip runSqlPool pool $ do
+    runMigration migrateAll
+    initDb
   let config = Config {
     configPool = pool
   , configLog  = logToHandle logHandle

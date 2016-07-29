@@ -2,15 +2,18 @@ module Gonimo.Server.Handlers where
 
 import           Control.Monad.Freer           (Eff)
 import           Data.Maybe                    (fromMaybe)
-import           Data.Text                     (Text, take)
+import           Data.Text                     (Text, take, unwords)
 import qualified Gonimo.Database.Effects       as Db
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects         hiding (Server)
 import           Gonimo.Server.Types
 import           Gonimo.Server.Error
 import qualified Gonimo.WebAPI.Types as Client
-import           Prelude                       hiding (take)
+import           Prelude                       hiding (take, unwords)
 import           Servant                       (ServantErr (..))
+import           Database.Persist              (entityVal, (==.), Entity)
+import           Utils.System.Random
+
 
 
 noUserAgentDefault :: Text
@@ -44,6 +47,20 @@ createClient mUserAgent = do
       , Client.authToken = authToken
       }
 
+
+-- | Generate a funny user name.
+--   You may this part of the API by running the shell command:
+--   curl --request POST http://localhost:8081/funnyName
+createFunnyName :: ServerConstraint r => Eff r Text
+createFunnyName = do
+  let scaffold    = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
+      fetch t     = Db.selectList [FunnyWordWordType ==. t] []
+      word       :: Entity FunnyWord -> Text
+      word        = funnyWordWord . entityVal
+  funnyWordPools <- map (map word) <$>
+                      (runDb $ mapM fetch scaffold)
+  funnyWords     <- runRandom $ randomLs funnyWordPools
+  return $ unwords funnyWords
 
 
 getCoffee :: ServerConstraint r => Eff r Coffee

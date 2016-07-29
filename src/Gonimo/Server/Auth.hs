@@ -11,7 +11,6 @@ import           Control.Monad.Freer.Reader    (Reader (..), ask)
 import           Database.Persist              (Entity (..), Key)
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
-import           Gonimo.Server.Types
 import           Gonimo.Server.Error
 import           Servant.Server                (err403)
 

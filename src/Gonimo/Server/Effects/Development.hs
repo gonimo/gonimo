@@ -7,39 +7,26 @@ module Gonimo.Server.Effects.Development (
 
 import           Control.Concurrent.STM                  (atomically)
 import           Control.Exception.Base                  (SomeException,
-                                                          throwIO, toException,
+                                                          toException,
                                                           try)
-import           Control.Monad                           ((<=<))
 import           Control.Monad.Freer.Exception           (Exc (..), runError)
 import           Control.Monad.Freer.Internal            (Arrs, Eff (..),
                                                           decomp, qApp)
-import           Control.Monad.Logger                    (Loc, LogLevel,
-                                                          LogSource, LogStr,
-                                                          ToLogStr (..))
-import           Control.Monad.Trans.Class               (lift)
-import           Control.Monad.Trans.Reader              (ReaderT)
+import           Control.Monad.Logger                    (ToLogStr (..))
 import           Crypto.Random                           (SystemRandom,
                                                           genBytes, newGenIO)
 import           Data.Bifunctor
-import           Data.Monoid                             ((<>))
-import           Data.Pool                               (Pool)
 import           Data.ByteString.Lazy                    (toStrict)
 import           Data.Text                               (Text)
 import qualified Data.Text.IO                            as T
 import qualified Data.Text.Encoding                      as T
 import           Network.Mail.Mime                       
 import           Data.Time.Clock                         (getCurrentTime)
-import           Database.Persist.Sql                    (SqlBackend,
-                                                          runSqlPool)
-import           Network.Mail.SMTP                       (sendMail)
 import           Servant.Subscriber
+import           System.Random                           (getStdRandom)
 
-import qualified Gonimo.Database.Effects                 as Db
-import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
 import           Gonimo.Server.Effects.Common
 import           Gonimo.Server.Effects.Internal
-import qualified Gonimo.Server.State                     as Server
-import           Gonimo.WebAPI                           (GonimoAPI)
 
 
 runExceptionServer :: Config -> Eff (Exc SomeException ': '[Server]) w  -> IO (Either SomeException w)
@@ -62,6 +49,7 @@ runServer c (E u' q) = case decomp u' of
   Right GetState                   -> runServer c . qApp q $ Right (state c)
   Right (Notify ev pE cB)          -> execIO c q $ atomically (notify (subscriber c) ev pE cB)
   Right (RunDb trans)              -> runDatabaseServerIO pool trans >>= runServer c . qApp q
+  Right (RunRandom rand)           -> execIO c q (getStdRandom rand)
   Left  _                          -> error impossibleMessage
   where
     pool = configPool c
