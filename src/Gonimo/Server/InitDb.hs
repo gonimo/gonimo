@@ -12,6 +12,7 @@ import           Control.Monad.Trans.Reader (ReaderT)
 import           Control.Monad.IO.Class     (liftIO)
 
 import           Paths_gonimo_back
+import           System.IO.Error
 
 
 funnyWordsDataFile :: FunnyWordType -> FilePath
@@ -35,7 +36,7 @@ populateFunnyWords =
                               }
       readPreset typ        = map (lineToRecord typ) . lines <$> do
                                 fileName <- getDataFileName (funnyWordsDataFile typ)
-                                readFile fileName
+                                readFile fileName `catchIOError` (error . show)
   in  do
         funnyWords   <- liftIO $ concat <$> mapM readPreset types
         insertMany_     funnyWords
