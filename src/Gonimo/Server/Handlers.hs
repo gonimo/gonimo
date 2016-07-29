@@ -50,9 +50,9 @@ createClient mUserAgent = do
 
 -- | Generate a funny user name.
 --   You may this part of the API by running the shell command:
---   curl --request POST http://localhost:8081/funnyusername
-createFunnyUserName :: ServerConstraint r => Eff r Text
-createFunnyUserName = do
+--   curl --request POST http://localhost:8081/funnyName
+createFunnyName :: ServerConstraint r => Eff r Text
+createFunnyName = do
   let scaffold    = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
       fetch t     = Db.selectList [FunnyWordWordType ==. t] []
       word       :: Entity FunnyWord -> Text
