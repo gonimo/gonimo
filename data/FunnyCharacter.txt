@@ -19,3 +19,6 @@ rhino
 Tarzan
 Tarzipan
 turtle
+bear
+teddy
+bunny
