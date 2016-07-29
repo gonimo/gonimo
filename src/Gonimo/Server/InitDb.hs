@@ -2,10 +2,11 @@ module Gonimo.Server.InitDb where
 
 
 import           Prelude        hiding (words, unwords, lines, readFile)
-import           Data.Text      hiding (count, map)
+import           Data.Text      hiding (count, map, concat)
 import           Data.Text.IO
 
 import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Types
 import           Database.Persist.Sqlite
 import           Control.Monad.Trans.Reader (ReaderT)
 import           Control.Monad.IO.Class     (liftIO)
@@ -13,9 +14,9 @@ import           Control.Monad.IO.Class     (liftIO)
 import           Paths_gonimo_back
 
 
--- TODO: use cabal's data-files instead of optimism to find the file there.
-pathOfFunnyWordsPreset :: IO FilePath
-pathOfFunnyWordsPreset = getDataFileName "data/funnywords.txt"
+funnyWordsDataFile :: FunnyWordType -> FilePath
+funnyWordsDataFile typ =
+  "data/" ++ show typ ++ ".txt"
 
 
 -- Delete the FunnyWord table and refill it with our preset.
@@ -26,18 +27,15 @@ initDb = do
 
 
 populateFunnyWords :: ReaderT SqlBackend IO ()
-populateFunnyWords = do
-  funnyWordsPreset <- liftIO $ pathOfFunnyWordsPreset >>= readFile
-  let funnyWords    = parseFunnyWordPreset funnyWordsPreset
-  insertMany_ funnyWords
-
-
-parseFunnyWordPreset :: Text -> [FunnyWord]
-parseFunnyWordPreset =
-  let lineToWord line = partsToWord (words line)
-      partsToWord (w:ws) =
-        FunnyWord {
-          funnyWordWord     = unwords ws,
-          funnyWordWordType = read (unpack w)
-        }
-  in  map lineToWord . lines
+populateFunnyWords =
+  let types                 = [FunnyPrefix, FunnyCharacter, FunnySuffix]
+      lineToRecord typ line = FunnyWord {
+                                funnyWordWord = line,
+                                funnyWordWordType = typ
+                              }
+      readPreset typ        = map (lineToRecord typ) . lines <$> do
+                                fileName <- getDataFileName (funnyWordsDataFile typ)
+                                readFile fileName
+  in  do
+        funnyWords   <- liftIO $ concat <$> mapM readPreset types
+        insertMany_     funnyWords
