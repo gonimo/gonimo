@@ -46,7 +46,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     SecretInvitation secret
     deriving Show Generic
 
-  Client
+  Client -- think of "device", or more precise: a browser on a device
     name Text
     authToken AuthToken
     accountId AccountId
