@@ -11,7 +11,7 @@ import           Gonimo.Server.Error
 import qualified Gonimo.WebAPI.Types as Client
 import           Prelude                       hiding (take, unwords)
 import           Servant                       (ServantErr (..))
-import           Database.Persist              (entityVal, (==.))
+import           Database.Persist              (entityVal, (==.), Entity)
 import           Utils.System.Random
 
 
@@ -55,6 +55,7 @@ createFunnyUserName :: ServerConstraint r => Eff r Text
 createFunnyUserName = do
   let scaffold    = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
       fetch t     = Db.selectList [FunnyWordWordType ==. t] []
+      word       :: Entity FunnyWord -> Text
       word        = funnyWordWord . entityVal
   funnyWordPools <- map (map word) <$>
                       (runDb $ mapM fetch scaffold)
