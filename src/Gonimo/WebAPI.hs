@@ -15,7 +15,6 @@ import           Servant.Subscriber.Subscribable
 
 
 type GonimoAPI =
-  -- Create an account pass Nothing if you want an anonymous account:
        "accounts" :> BrowserHeader "User-Agent" Text :> Post '[JSON] Client.AuthData
   :<|> Header "Authorization" AuthToken :> AuthGonimoAPI
   :<|> "funnyName" :> Post '[JSON] Text

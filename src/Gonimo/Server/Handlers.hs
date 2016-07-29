@@ -32,18 +32,19 @@ createClient mUserAgent = do
   now <- getCurrentTime
   authToken <- GonimoSecret <$> generateSecret
   let userAgent = maybe noUserAgentDefault (take maxUserAgentLength) mUserAgent
+  funnyName <- createFunnyName
   runDb $ do
-    aid <- Db.insert Account { accountCreated  = now
+    aid <- Db.insert Account { accountCreated     = now
                              }
-    cid <- Db.insert Client  { clientName = fromMaybe "Client" mUserAgent
-                             , clientAuthToken = authToken
+    cid <- Db.insert Client  { clientName         = funnyName
+                             , clientAuthToken    = authToken
                              , clientAccountId    = aid
                              , clientLastAccessed = now
                              , clientUserAgent    = userAgent
                              }
     return Client.AuthData {
         Client.accountId = aid
-      , Client.clientId = cid
+      , Client.clientId  = cid
       , Client.authToken = authToken
       }
 
