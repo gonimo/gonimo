@@ -49,10 +49,10 @@ authServer = createInvitation
         :<|> sendInvitation
         :<|> putInvitationInfo
         :<|> createFamily
-        :<|> createChannel
-        :<|> receiveSocket
-        :<|> putChannel
-        :<|> receiveChannel
+        :<|> socketApi
+        :<|> statusApi
+  where socketApi = createChannel :<|> receiveSocket :<|> putChannel :<|> receiveChannel
+        statusApi = statusRegisterR :<|> statusUpdateR :<|> statusDeleteR :<|> statusListDevicesR
 
 
 -- Let's serve
@@ -111,8 +111,8 @@ handleExceptions action = catchError action $ \e ->
         throwError e                      -- Simply throwing an err500 to the user and log the error.
 
 
-
 exceptionToServantErr :: SomeException -> ServantErr
 exceptionToServantErr se = case fromException se of
     Just (ServantException err) -> err
     Nothing -> err500
+

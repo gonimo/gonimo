@@ -31,7 +31,7 @@ authorizedPut f familyId fromId toId = do
   x <- timeout 2000 $ atomically $ runMaybeT $ do
     a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
     b <- liftSTM $ readTVar a
-    guard $ fromto `S.isSubsetOf` (b^.onlineMembers)
+    guard $ fromto `S.isSubsetOf` (M.keysSet $ b^.onlineMembers)
     liftSTM $ f a
 
   authorizeJust id x
@@ -49,7 +49,7 @@ authorizedRecieve f familyId fromId toId = do
   x <- timeout 2000 $ atomically $ runMaybeT $ do
     a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
     b <- liftSTM $ readTVar a
-    guard $ fromto `S.isSubsetOf` (b^.onlineMembers)
+    guard $ fromto `S.isSubsetOf` (M.keysSet $ b^.onlineMembers)
     MaybeT $ f a
   authorizeJust id x
 

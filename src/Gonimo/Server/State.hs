@@ -12,7 +12,7 @@ import qualified Data.Set                 as S
 import           Data.Text                (Text)
 
 import           Gonimo.Server.DbEntities (ClientId, FamilyId)
-import           Gonimo.Server.Types      (Secret)
+import           Gonimo.Server.Types      (Secret, ClientType)
 
 type ChannelSecrets = Map ClientId (ClientId, Secret)
 type ChannelData    = Map Secret (ClientId, Text)
@@ -20,7 +20,9 @@ type ChannelData    = Map Secret (ClientId, Text)
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets :: ChannelSecrets
                        , _channelData    :: ChannelData
-                       , _onlineMembers  :: Set ClientId }
+                       , _onlineMembers  :: Map ClientId ClientType
+                       } deriving (Show, Eq)
+
 $(makeLenses ''FamilyOnlineState)
 
 type FamilyMap = Map FamilyId (TVar FamilyOnlineState)
@@ -48,7 +50,7 @@ receiveSecret toId familyStateVar = do
 
 onlineMember :: ClientId -> TVar FamilyOnlineState -> STM Bool
 onlineMember cid familyStateVar = do familyState <- readTVar familyStateVar
-                                     return $ cid `S.member` (familyState^.onlineMembers)
+                                     return $ cid `S.member` (M.keysSet $ familyState^.onlineMembers)
 
 putData :: Text -> Secret -> ClientId -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites

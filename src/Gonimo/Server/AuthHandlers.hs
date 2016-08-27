@@ -185,3 +185,19 @@ receiveChannel familyId fromId toId token =
 --   TODO: Get this from in memory data structure when available.
 getFamily :: ServerConstraint r => FamilyId -> Eff r Family
 getFamily fid = runDb $ get404 fid
+
+statusRegisterR :: AuthServerConstraint r
+                => FamilyId -> (ClientId,ClientType) -> Eff r ()
+statusRegisterR = undefined
+
+statusUpdateR  :: AuthServerConstraint r
+               => FamilyId -> ClientId -> (ClientId,ClientType) -> Eff r ()
+statusUpdateR = undefined
+
+statusDeleteR  :: AuthServerConstraint r
+               => FamilyId -> ClientId -> Eff r ()
+statusDeleteR = undefined
+statusListDevicesR  :: AuthServerConstraint r
+                    => FamilyId -> Eff r [(ClientId, ClientType)]
+statusListDevicesR = undefined
+

@@ -20,11 +20,8 @@ Flag dev
     Default:       False
 
 library
-  if flag(dev) 
-      cpp-options:   -DDEVELOPMENT
-      ghc-options:   -Wall -fwarn-tabs -O0
-  else
-      ghc-options:   -Wall -fwarn-tabs -O2
+  hs-source-dirs:      src
+  default-language:    Haskell2010
   exposed-modules: Gonimo.CodeGen.PSTypes
                  , Gonimo.CodeGen.TypeBridges
                  , Gonimo.Database.Effects
@@ -50,6 +47,7 @@ library
                  , Gonimo.Server.Error
                  , Gonimo.WebAPI.Types
                  , Gonimo.WebAPI.Verbs
+                 , Gonimo.Util
   other-modules:   Gonimo.Server.AuthHandlers.Internal
                ,   Utils.Control.Monad.Trans.Maybe
                ,   Utils.System.Random
@@ -106,10 +104,12 @@ library
                      , transformers >= 0.4.2.0
                      , wai
                      , warp
+  if flag(dev) 
+      cpp-options:   -DDEVELOPMENT
+      ghc-options:   -Wall -fwarn-tabs -O0
+  else
+      ghc-options:   -Werror -fwarn-tabs -O2
 
-  ghc-options: -Wall
-  hs-source-dirs:      src
-  default-language:    Haskell2010
 
 executable gonimo-back
   if flag(dev) 
@@ -208,7 +208,7 @@ executable psGenerator
                      , persistent-postgresql
                      , persistent-sqlite
                      , persistent-template
-                     , purescript-bridge >= 0.3.0.3
+                     , purescript-bridge
                      , resource-pool
                      , servant
                      , servant-docs
@@ -243,6 +243,7 @@ test-suite test
                ,      hspec
                ,      hspec-discover
                ,      hspec-smallcheck
+               ,      hspec-expectations-pretty-diff
                ,      persistent-sqlite
                ,      persistent-template
                ,      QuickCheck

@@ -20,10 +20,12 @@ setupDB = do
 
      fromA@(Entity fromAID _ ) <- Db.insertEntity Account {accountCreated = now}
 
-     fromC   <- Db.insertEntity Client { clientName = "From"
+     fromC   <- Db.insertEntity Client { clientName = "TestFrom"
                                        , clientAuthToken = GonimoSecret (Secret "secret")
                                        , clientAccountId = fromAID
-                                       , clientLastAccessed = now }
+                                       , clientLastAccessed = now
+                                       , clientUserAgent = "TestUserAgent"
+                                       }
 
      return AuthData{ _accountEntity = fromA
                     , _allowedFamilies = [fid]
