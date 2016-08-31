@@ -187,17 +187,25 @@ getFamily :: ServerConstraint r => FamilyId -> Eff r Family
 getFamily fid = runDb $ get404 fid
 
 statusRegisterR :: AuthServerConstraint r
-                => FamilyId -> (ClientId,ClientType) -> Eff r ()
-statusRegisterR = undefined
+                => FamilyId -> (ClientId, ClientType) -> Eff r ()
+statusRegisterR familyId clientData@(clientId, _) = do
+  authorizeAuthData $ isFamilyMember familyId
+  authorizeAuthData $ isClient clientId
+  updateFamilyEff familyId $ updateStatus clientData
 
 statusUpdateR  :: AuthServerConstraint r
-               => FamilyId -> ClientId -> (ClientId,ClientType) -> Eff r ()
-statusUpdateR = undefined
+               => FamilyId -> ClientId -> ClientType -> Eff r ()
+statusUpdateR familyId = curry $ statusRegisterR familyId
 
 statusDeleteR  :: AuthServerConstraint r
                => FamilyId -> ClientId -> Eff r ()
-statusDeleteR = undefined
+statusDeleteR familyId clientId = do
+  authorizeAuthData $ isFamilyMember familyId
+  authorizeAuthData $ isClient clientId
+  updateFamilyEff familyId $ deleteStatus clientId
+
 statusListDevicesR  :: AuthServerConstraint r
                     => FamilyId -> Eff r [(ClientId, ClientType)]
-statusListDevicesR = undefined
-
+statusListDevicesR familyId = do
+  authorizeAuthData $ isFamilyMember familyId
+  M.toList . _onlineMembers <$> getFamilyEff familyId
