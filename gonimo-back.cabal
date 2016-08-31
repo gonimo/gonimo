@@ -110,6 +110,12 @@ library
   else
       ghc-options:   -Werror -fwarn-tabs -O2
 
+  extra-libraries:    pq
+                    , crypto
+                    , ssl
+
+  hs-source-dirs:      src
+  default-language:    Haskell2010
 
 executable gonimo-back
   if flag(dev) 
