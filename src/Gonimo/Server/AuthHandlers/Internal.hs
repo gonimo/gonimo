@@ -7,6 +7,7 @@ import           Control.Monad.Freer             (Eff)
 import           Control.Monad.STM.Class         (liftSTM)
 import           Control.Monad.Trans.Maybe       (MaybeT (..), runMaybeT)
 import qualified Data.Map.Strict                 as M
+import           Data.Proxy                      (Proxy (Proxy))
 import qualified Data.Set                        as S
 import           Gonimo.Server.Auth              (AuthServerConstraint,
                                                   authorizeAuthData,
@@ -16,6 +17,8 @@ import           Gonimo.Server.DbEntities        (ClientId, FamilyId)
 import           Gonimo.Server.Effects           (atomically, getState, timeout)
 import           Gonimo.Server.State             (FamilyOnlineState,
                                                   onlineMembers)
+import           Gonimo.WebAPI                   (ListDevicesR)
+import           Servant.API                     ((:>))
 import           Utils.Control.Monad.Trans.Maybe (maybeT)
 
 
@@ -65,3 +68,6 @@ authorizedRecieve' f familyId toId = do
     a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
     MaybeT $ f a
   authorizeJust id x
+
+listDevicesEndpoint  :: Proxy ("onlineStatus" :> ListDevicesR)
+listDevicesEndpoint = Proxy

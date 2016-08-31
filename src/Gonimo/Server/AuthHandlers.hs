@@ -192,6 +192,7 @@ statusRegisterR familyId clientData@(clientId, _) = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isClient clientId
   updateFamilyEff familyId $ updateStatus clientData
+  notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
 
 statusUpdateR  :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientType -> Eff r ()
@@ -203,6 +204,7 @@ statusDeleteR familyId clientId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isClient clientId
   updateFamilyEff familyId $ deleteStatus clientId
+  notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
 
 statusListDevicesR  :: AuthServerConstraint r
                     => FamilyId -> Eff r [(ClientId, ClientType)]
