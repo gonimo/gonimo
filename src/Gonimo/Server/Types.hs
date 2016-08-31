@@ -32,8 +32,14 @@ import           Servant.PureScript     (jsonParseHeader, jsonParseUrlPiece,
 import           Web.HttpApiData        (FromHttpApiData (..),
                                          ToHttpApiData (..))
 
-type SenderName = Text
+data ClientType = Undefined
+                | Baby Text
+                deriving (Show, Eq, Generic)
 
+instance FromJSON ClientType
+instance ToJSON ClientType
+
+type SenderName = Text
 
 newtype Secret = Secret ByteString deriving (Generic, Show, Read, Ord, Eq)
 

@@ -12,7 +12,6 @@ import           Database.Persist              (Entity (..), Key)
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.Error
-import           Servant.Server                (err403)
 
 data AuthData = AuthData { _accountEntity   :: Entity Account
                          -- Usually just one ore two - so using list lookup
@@ -41,12 +40,14 @@ clientKey = entityKey . _clientEntity
 isFamilyMember :: FamilyId -> AuthData -> Bool
 isFamilyMember fid = (fid `elem`) . _allowedFamilies
 
+isClient :: ClientId -> AuthData -> Bool
+isClient clientId = (== clientId) . entityKey . _clientEntity
+
 authorize :: Member (Exc SomeException) r => (a -> Bool) -> a -> Eff r ()
-authorize check x = unless (check x) (throwServant err403)
+authorize check x = unless (check x) (throwServer Unauthorized)
 
 authorizeJust :: Member (Exc SomeException) r => (a -> Maybe b) -> a -> Eff r b
-authorizeJust check x = case check x of Nothing -> throwServant err403
-                                        Just y  -> return y
+authorizeJust check x = fromMaybeErr Unauthorized . check $ x
 
-authorizeAuthData :: (Member (Exc SomeException) r, AuthReaderMember r) =>  (AuthData -> Bool) -> Eff r ()
+authorizeAuthData :: (Member (Exc SomeException) r, AuthReaderMember r) => (AuthData -> Bool) -> Eff r ()
 authorizeAuthData check = authorize check =<< ask

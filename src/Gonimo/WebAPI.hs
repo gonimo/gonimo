@@ -3,15 +3,17 @@
 module Gonimo.WebAPI where
 
 import           Data.Proxy
-import           Data.Text (Text)
+import           Data.Text                       (Text)
 import           Gonimo.Server.DbEntities
 import           Gonimo.Server.Types
-import qualified Gonimo.WebAPI.Types as Client
-import Gonimo.WebAPI.Types (InvitationReply, InvitationInfo)
+import           Gonimo.WebAPI.Types             (InvitationInfo,
+                                                  InvitationReply)
+import qualified Gonimo.WebAPI.Types             as Client
 import           Gonimo.WebAPI.Verbs
 import           Servant.API
 import           Servant.API.BrowserHeader
 import           Servant.Subscriber.Subscribable
+import           Gonimo.Server.State
 
 
 type GonimoAPI =
@@ -36,18 +38,30 @@ type AuthGonimoAPI =
 
   :<|> "families" :> ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
   -- Create a family
-
   :<|> "socket" :> SocketAPI
-    
+
+  :<|> "onlineStatus" :> StatusAPI
+ 
 type SocketAPI =  CreateChannelR
              :<|> ReceiveSocketR
              :<|> PutChannelR
              :<|> ReceiveChannelR
 
-type CreateChannelR   = Capture "familyId" FamilyId :> To :> ReqBody '[JSON] ClientId :> PostCreated '[JSON] Secret
+type CreateChannelR  = Capture "familyId" FamilyId :> To :> ReqBody '[JSON] ClientId :> PostCreated '[JSON] Secret
 type ReceiveSocketR  = Capture "familyId" FamilyId :> To :> Subscribable :> Receive '[JSON] (ClientId, Secret)
+-- Receive should only work if to is a baby station
 type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
 type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Receive '[JSON] Text
+
+type StatusAPI =   RegisterR
+              :<|> UpdateR
+              :<|> DeleteR
+              :<|> ListDevicesR
+
+type RegisterR    = Capture "familyId" FamilyId :> ReqBody '[JSON] (ClientId, ClientType) :> PostCreated '[JSON] ()
+type UpdateR      = Capture "familyId" FamilyId :> Capture "clientId" ClientId  :> ReqBody '[JSON] ClientType :> Put '[JSON] ()
+type DeleteR      = Capture "familyId" FamilyId :> Capture "clientId" ClientId  :> Delete '[JSON] ()
+type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(ClientId,ClientType)]
 
 gonimoAPI :: Proxy GonimoAPI
 gonimoAPI = Proxy
