@@ -59,7 +59,7 @@ type StatusAPI =   RegisterR
               :<|> ListDevicesR
 
 type RegisterR    = Capture "familyId" FamilyId :> ReqBody '[JSON] (ClientId, ClientType) :> PostCreated '[JSON] ()
-type UpdateR      = Capture "familyId" FamilyId :> Capture "clientId" ClientId  :> ReqBody '[JSON] (ClientId,ClientType) :> Put '[JSON] ()
+type UpdateR      = Capture "familyId" FamilyId :> Capture "clientId" ClientId  :> ReqBody '[JSON] ClientType :> Put '[JSON] ()
 type DeleteR      = Capture "familyId" FamilyId :> Capture "clientId" ClientId  :> Delete '[JSON] ()
 type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(ClientId,ClientType)]
 
