@@ -21,6 +21,8 @@ module Gonimo.Server.Effects (
   , logTH
   , logWarn
   , notify
+  , updateFamilyEff
+  , getFamilyEff
   , runDb
   , runRandom
   , sendEmail
@@ -49,8 +51,12 @@ import           Servant.Subscriber             (Event, HasLink, IsElem,
 import           System.Random                  (StdGen)
 
 import           Gonimo.Database.Effects
+import           Gonimo.Server.DbEntities       (FamilyId)
 import           Gonimo.Server.Effects.Internal
-import           Gonimo.Server.State            (OnlineState)
+import           Gonimo.Server.Error            (ServerError (NoSuchFamily),
+                                                 fromMaybeErr)
+import           Gonimo.Server.State            (FamilyOnlineState, OnlineState,
+                                                 lookupFamily, updateFamily)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 
@@ -98,6 +104,20 @@ notify :: forall endpoint r. (ServerConstraint r, IsElem endpoint GonimoAPI, Has
                       => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> Eff r ()
 notify ev pE cb = sendServer $ Notify ev pE cb
 
+
+-- | Helper function for updating a family in Eff:
+updateFamilyEff :: ServerConstraint r
+                   => FamilyId -> (FamilyOnlineState -> FamilyOnlineState) -> Eff r ()
+updateFamilyEff familyId updateF = do
+  state <- getState
+  atomically $ updateFamily state familyId updateF
+
+getFamilyEff :: ServerConstraint r
+                =>  FamilyId -> Eff r FamilyOnlineState
+getFamilyEff familyId = do
+  state <- getState
+  mFamily <- atomically $ lookupFamily state familyId
+  fromMaybeErr NoSuchFamily mFamily
 
 -- We can not create an instance of MonadLogger for (Member Server r => Eff r).
 -- The right solution would be to define a Logger type together with an
