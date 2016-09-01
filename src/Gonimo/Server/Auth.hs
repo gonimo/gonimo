@@ -43,11 +43,14 @@ isFamilyMember fid = (fid `elem`) . _allowedFamilies
 isClient :: ClientId -> AuthData -> Bool
 isClient clientId = (== clientId) . entityKey . _clientEntity
 
+isAccount :: AccountId -> AuthData -> Bool
+isAccount accountId = (== accountId) . entityKey . _accountEntity
+
 authorize :: Member (Exc SomeException) r => (a -> Bool) -> a -> Eff r ()
-authorize check x = unless (check x) (throwServer Unauthorized)
+authorize check x = unless (check x) (throwServer Forbidden)
 
 authorizeJust :: Member (Exc SomeException) r => (a -> Maybe b) -> a -> Eff r b
-authorizeJust check x = fromMaybeErr Unauthorized . check $ x
+authorizeJust check x = fromMaybeErr Forbidden . check $ x
 
 authorizeAuthData :: (Member (Exc SomeException) r, AuthReaderMember r) => (AuthData -> Bool) -> Eff r ()
 authorizeAuthData check = authorize check =<< ask

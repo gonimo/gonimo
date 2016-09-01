@@ -7,7 +7,6 @@ import           Gonimo.CodeGen.PSTypes
 
 gonimoBridge :: BridgePart
 gonimoBridge = defaultBridge
-  <|> (typeName ^== "Family" >> psClientType)
   <|> (typeName ^== "Key" >> psClientType)
   <|> (typeName ^== "Secret" >> psClientType)
   <|> utcTimeBridge

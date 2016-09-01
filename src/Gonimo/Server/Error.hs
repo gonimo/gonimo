@@ -11,7 +11,7 @@ import           Control.Monad.Freer.Exception
 import           Data.Aeson
 import           Data.Typeable                 (Typeable)
 import           GHC.Generics
-import           Servant.Server                hiding (Unauthorized)
+import           Servant.Server
 
 -- Define an error type, so handling errors is easier at the client side.
 -- This makes it easier to handle them at the client side.
@@ -19,7 +19,8 @@ data ServerError = InvalidAuthToken
                  | InvitationAlreadyClaimed -- ^ Invitation was already claimed by someone else.
                  | AlreadyFamilyMember -- ^ If a client tries to become a member of a family he is already a member of.
                  | NoSuchFamily
-                 | Unauthorized
+                 | Forbidden
+                 | NotFound
                  | TransactionTimeout
   deriving (Generic)
 
@@ -53,7 +54,8 @@ getServantErr InvalidAuthToken = err403
 getServantErr InvitationAlreadyClaimed = err403
 getServantErr AlreadyFamilyMember = err409
 getServantErr NoSuchFamily = err404
-getServantErr Unauthorized = err403
+getServantErr NotFound = err404
+getServantErr Forbidden = err403
 getServantErr TransactionTimeout = err500
 
 instance ToJSON ServerError where

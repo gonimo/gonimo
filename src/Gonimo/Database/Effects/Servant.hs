@@ -9,15 +9,14 @@ import           Control.Monad.Freer.Exception (Exc (..))
 import           Database.Persist              (Entity, Key, Unique)
 import           Gonimo.Database.Effects
 import           Gonimo.Server.Error
-import           Servant.Server
 
 get404 :: FullDbConstraint backend a r => Key a -> Eff r a
-get404 = servantErrOnNothing err404 <=< get
+get404 = serverErrOnNothing NotFound <=< get
 
 
 getBy404 :: FullDbConstraint backend a r => Unique a -> Eff r (Entity a)
-getBy404 = servantErrOnNothing err404 <=< getBy
+getBy404 = serverErrOnNothing NotFound <=< getBy
 
-servantErrOnNothing :: (Member (Exc SomeException) r) => ServantErr -> Maybe a -> Eff r a
-servantErrOnNothing err Nothing = throwServant err
-servantErrOnNothing _ (Just v) = return v
+serverErrOnNothing :: (Member (Exc SomeException) r) => ServerError -> Maybe a -> Eff r a
+serverErrOnNothing err Nothing = throwServer err
+serverErrOnNothing _ (Just v) = return v

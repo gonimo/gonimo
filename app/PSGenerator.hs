@@ -36,10 +36,14 @@ myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy Invitation)
           , mkSumType (Proxy :: Proxy InvitationDelivery)
           , mkSumType (Proxy :: Proxy SendInvitation)
+          , mkSumType (Proxy :: Proxy ClientType)
+          , mkSumType (Proxy :: Proxy Family)
           ]
 
 mySettings :: Settings
-mySettings = addReaderParam "Authorization" defaultSettings & apiModuleName .~ "Gonimo.WebAPI"
+mySettings = (addReaderParam "Authorization" defaultSettings & apiModuleName .~ "Gonimo.WebAPI") {
+  _generateSubscriberAPI = True
+  }
 
 main :: IO ()
 main = do

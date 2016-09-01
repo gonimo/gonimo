@@ -72,6 +72,8 @@ library
                      , crypto-api
                      , either >= 4.4.1
                      , errors
+                     , esqueleto
+                     , extra
                      , fast-logger
                      , freer
                      , http-api-data
@@ -179,7 +181,7 @@ executable gonimo-back
   hs-source-dirs:      app
   default-language:    Haskell2010
 
-executable psGenerator
+executable gonimo-psGenerator
   main-is:            PSGenerator.hs
   default-extensions: ConstraintKinds
                     , DataKinds

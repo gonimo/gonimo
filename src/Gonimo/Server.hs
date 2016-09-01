@@ -48,11 +48,13 @@ authServer = createInvitation
         :<|> answerInvitation
         :<|> sendInvitation
         :<|> putInvitationInfo
-        :<|> createFamily
-        :<|> socketApi
-        :<|> statusApi
-  where socketApi = createChannel :<|> receiveSocket :<|> putChannel :<|> receiveChannel
-        statusApi = statusRegisterR :<|> statusUpdateR :<|> statusDeleteR :<|> statusListDevicesR
+        :<|> familyAPI
+        :<|> socketAPI
+        :<|> statusAPI
+  where
+    familyAPI = createFamily :<|> getAccountFamilies
+    socketAPI = createChannel :<|> receiveSocket :<|> putChannel :<|> receiveChannel
+    statusAPI = statusRegisterR :<|> statusUpdateR :<|> statusDeleteR :<|> statusListDevicesR
 
 
 -- Let's serve
@@ -78,11 +80,8 @@ authToEff' (Just s) m = do
       return $ AuthData (Entity clientAccountId account) fids client
     runReader m authData
   where
-    invalidAuthErr = err400 { errReasonPhrase = "The provided AuthToken is not valid!"
-      , errBody = encode InvalidAuthToken
-      }
-    getByAuthErr = servantErrOnNothing invalidAuthErr <=< Db.getBy
-    getAuthErr = servantErrOnNothing invalidAuthErr <=< Db.get
+    getByAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.getBy
+    getAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.get
 
 authToEff :: Maybe AuthToken -> AuthServerEffects :~> ServerEffects
 authToEff token = Nat $ authToEff' token

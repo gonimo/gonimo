@@ -9,15 +9,18 @@ import           Control.Monad.Trans.Maybe       (MaybeT (..), runMaybeT)
 import qualified Data.Map.Strict                 as M
 import           Data.Proxy                      (Proxy (Proxy))
 import qualified Data.Set                        as S
+import           Gonimo.Database.Effects.Servant (get404)
 import           Gonimo.Server.Auth              (AuthServerConstraint,
                                                   authorizeAuthData,
                                                   authorizeJust, clientKey,
                                                   isFamilyMember)
-import           Gonimo.Server.DbEntities        (ClientId, FamilyId)
+import           Gonimo.Server.DbEntities        (ClientId, Family, FamilyId)
 import           Gonimo.Server.Effects           (atomically, getState, timeout)
+import           Gonimo.Server.Effects
 import           Gonimo.Server.State             (FamilyOnlineState,
                                                   onlineMembers)
-import           Gonimo.WebAPI                   (ListDevicesR)
+import           Gonimo.WebAPI                   (ListDevicesR,
+                                                 ListFamiliesR)
 import           Servant.API                     ((:>))
 import           Utils.Control.Monad.Trans.Maybe (maybeT)
 
@@ -71,3 +74,15 @@ authorizedRecieve' f familyId toId = do
 
 listDevicesEndpoint  :: Proxy ("onlineStatus" :> ListDevicesR)
 listDevicesEndpoint = Proxy
+  
+listFamiliesEndpoint :: Proxy ("families" :> ListFamiliesR)
+listFamiliesEndpoint = Proxy
+
+-- The following stuff should go somewhere else someday (e.g. to paradise):
+
+-- | Get the family of the requesting device.
+--
+--   error 404 if not found.
+--   TODO: Get this from in memory data structure when available.
+getFamily :: ServerConstraint r => FamilyId -> Eff r Family
+getFamily fid = runDb $ get404 fid

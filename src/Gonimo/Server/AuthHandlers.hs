@@ -4,20 +4,21 @@ module Gonimo.Server.AuthHandlers where
 import           Control.Concurrent.STM              (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Freer                 (Eff)
 import           Control.Monad                       (guard)
+import           Control.Monad.Extra                 (whenM)
+import           Control.Monad.Freer                 (Eff)
 import           Control.Monad.Freer.Reader          (ask)
 import           Control.Monad.STM.Class             (liftSTM)
 import           Control.Monad.Trans.Class           (lift)
-import           Control.Monad.Trans.Maybe           (MaybeT(..), runMaybeT)
-import           Utils.Control.Monad.Trans.Maybe     (maybeT)
+import           Control.Monad.Trans.Maybe           (MaybeT (..), runMaybeT)
 import qualified Data.Map.Strict                     as M
 import           Data.Proxy                          (Proxy (..))
 import qualified Data.Set                            as S
 import           Data.Text                           (Text)
-import           Database.Persist                    (Entity (..))
+import           Database.Persist                    (Entity (..), (==.))
 import qualified Gonimo.Database.Effects             as Db
-import           Gonimo.Database.Effects.Servant
+import qualified Gonimo.Database.Effects             as Db
+import           Gonimo.Database.Effects.Servant     as Db
 import           Gonimo.Server.Auth                  as Auth
 import           Gonimo.Server.AuthHandlers.Internal
 import           Gonimo.Server.DbEntities
@@ -27,7 +28,8 @@ import           Gonimo.Server.Error
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
 import           Gonimo.WebAPI                       (ReceiveChannelR,
-                                                      ReceiveSocketR)
+                                                      ReceiveSocketR,
+                                                      ListFamiliesR)
 import           Gonimo.WebAPI.Types                 (InvitationInfo (..),
                                                       InvitationReply (..))
 import qualified Gonimo.WebAPI.Types                 as Client
@@ -35,6 +37,7 @@ import           Servant.API                         ((:>))
 import           Servant.Server                      (ServantErr (..), err400,
                                                       err403)
 import           Servant.Subscriber                  (Event (ModifyEvent))
+import           Utils.Control.Monad.Trans.Maybe     (maybeT)
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -54,7 +57,8 @@ createInvitation fid = do
   iid <- runDb $ Db.insert inv
   return (iid, inv)
 
-
+-- | Receive an invitation and mark it as received - it can no longer be claimed
+--   by any other device.
 putInvitationInfo :: AuthServerConstraint r => Secret -> Eff r InvitationInfo
 putInvitationInfo invSecret = do
   aid <- authView $ accountEntity . to entityKey
@@ -75,6 +79,7 @@ putInvitationInfo invSecret = do
                 , invitationInfoSendingUser = userLogin . entityVal <$> mInvUser
                 }
 
+-- | Actually accept or decline an invitation.
 answerInvitation :: AuthServerConstraint r => Secret -> InvitationReply -> Eff r ()
 answerInvitation invSecret reply = do
   authData <- ask
@@ -98,6 +103,8 @@ answerInvitation invSecret reply = do
         , familyAccountJoined = now
         , familyAccountInvitedBy = Just (invitationDelivery inv)
         }
+  when (reply == InvitationAccept ) $
+    notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
 
 sendInvitation :: AuthServerConstraint r => Client.SendInvitation -> Eff r ()
 sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
@@ -122,20 +129,31 @@ createFamily :: AuthServerConstraint r =>  FamilyName -> Eff r FamilyId
 createFamily n = do
   -- no authorization: - any valid user can create a family.
   now <- getCurrentTime
-  uid <- askAccountId
-  runDb $ do
+  aid <- askAccountId
+  fid <- runDb $ do
     fid <- Db.insert Family {
         familyName = n
       , familyCreated = now
       , familyLastAccessed = now
     }
     Db.insert_ FamilyAccount {
-      familyAccountAccountId = uid
+      familyAccountAccountId = aid
       , familyAccountFamilyId = fid
       , familyAccountJoined = now
       , familyAccountInvitedBy = Nothing
     }
     return fid
+  notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
+  return fid
+
+getAccountFamilies :: AuthServerConstraint r => AccountId -> Eff r [(FamilyId, Family)]
+getAccountFamilies accountId = do
+  authorizeAuthData $ isAccount accountId
+  runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
+    familyAccounts <- map entityVal <$> Db.selectList [FamilyAccountAccountId ==. accountId] []
+    families <- traverse Db.get404 . fmap familyAccountFamilyId $ familyAccounts
+    return $ zip (map familyAccountFamilyId familyAccounts) families
+
 
 createChannel :: AuthServerConstraint r
               => FamilyId -> ClientId -> ClientId -> Eff r Secret
@@ -163,7 +181,7 @@ putChannel :: AuthServerConstraint r
            => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
 putChannel familyId fromId toId token txt = do
 
-  authorizedPut (putData txt token fromId) familyId fromId toId 
+  authorizedPut (putData txt token fromId) familyId fromId toId
 
   notify ModifyEvent endpoint (\f -> f familyId fromId toId token)
   where
@@ -177,22 +195,21 @@ receiveChannel familyId fromId toId token =
   authorizeJust (\(fromId',t) -> do guard (fromId == fromId'); return t)
     =<< authorizedRecieve (receieveData token) familyId fromId toId
 
--- The following stuff should go somewhere else someday (e.g. to paradise):
-
--- | Get the family of the requesting device.
---
---   error 404 if not found.
---   TODO: Get this from in memory data structure when available.
-getFamily :: ServerConstraint r => FamilyId -> Eff r Family
-getFamily fid = runDb $ get404 fid
-
 statusRegisterR :: AuthServerConstraint r
                 => FamilyId -> (ClientId, ClientType) -> Eff r ()
-statusRegisterR familyId clientData@(clientId, _) = do
-  authorizeAuthData $ isFamilyMember familyId
-  authorizeAuthData $ isClient clientId
-  updateFamilyEff familyId $ updateStatus clientData
-  notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
+statusRegisterR familyId clientData@(clientId, clientType) = do
+    authorizeAuthData $ isFamilyMember familyId
+    authorizeAuthData $ isClient clientId
+    whenM hasChanged $ do -- < No need for a single atomically here!
+      updateFamilyEff familyId $ updateStatus clientData
+      notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
+  where
+    hasChanged = do
+      state <- getState
+      atomically $ do
+        mFamily <- lookupFamily state familyId
+        let mFound = join $ mFamily ^? _Just . onlineMembers . at clientId
+        return $ mFound /= Just clientType
 
 statusUpdateR  :: AuthServerConstraint r
                => FamilyId -> ClientId -> ClientType -> Eff r ()

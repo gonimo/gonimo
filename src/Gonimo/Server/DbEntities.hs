@@ -12,7 +12,7 @@ import           Database.Persist.TH
 
 
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
-                                        genericToJSON)
+                                        genericToJSON, genericToEncoding)
 import           Data.Text             (Text)
 import           Data.Time             (UTCTime)
 import           GHC.Generics          (Generic)
@@ -28,6 +28,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     name Text
     created UTCTime
     lastAccessed UTCTime
+    deriving Generic
 
   FamilyAccount
     accountId AccountId
@@ -70,5 +71,9 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
 instance FromJSON Invitation
 instance ToJSON Invitation where
   toJSON = genericToJSON defaultOptions
---  toEncoding = genericToEncoding defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
+instance FromJSON Family
+instance ToJSON Family where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
