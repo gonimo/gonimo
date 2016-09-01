@@ -46,7 +46,7 @@ data Server v where
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
   RunRandom      :: (StdGen -> (a,StdGen)) -> EServer a
   SendEmail      :: !Mail -> EServer ()
-  Timeout        :: ServerConstraint r => !Int -> Eff r a -> EServer a
+  Timeout        :: !Int -> ServerEffects a -> EServer a
   Notify         :: forall endpoint. (IsElem endpoint GonimoAPI, HasLink endpoint
                       , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
                       => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> EServer ()

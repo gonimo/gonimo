@@ -44,7 +44,7 @@ runServer c (E u' q) = case decomp u' of
     -- Throw away the new generator & make an exception of any occurred error:
     bimap toException fst . genBytes l <$> (newGenIO :: IO SystemRandom)
     >>= runServer c . qApp q
-
+  Right (Timeout n eff)            -> runExceptionServer c eff >>= runServer c . qApp q
   Right GetCurrentTime             -> execIO c q getCurrentTime
   Right GetState                   -> runServer c . qApp q $ Right (state c)
   Right (Notify ev pE cB)          -> execIO c q $ atomically (notify (subscriber c) ev pE cB)
@@ -73,4 +73,3 @@ getMailBody mail = let
                  _ -> "!Mail contained no text!"
   in
       T.decodeUtf8 . toStrict $ textPart
-      

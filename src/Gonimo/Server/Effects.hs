@@ -68,7 +68,7 @@ secretLength = 16
 atomically :: ServerConstraint r => STM a -> Eff r a
 atomically = sendServer . Atomically
 
-timeout :: ServerConstraint r => Int -> Eff r a -> Eff r a
+timeout :: ServerConstraint r => Int -> ServerEffects a -> Eff r a
 timeout n eff = sendServer $ Timeout n eff
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
