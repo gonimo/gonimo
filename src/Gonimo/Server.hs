@@ -48,6 +48,7 @@ authServer = createInvitation
         :<|> answerInvitation
         :<|> sendInvitation
         :<|> putInvitationInfo
+        :<|> getClientInfos
         :<|> familyAPI
         :<|> socketAPI
         :<|> statusAPI

@@ -28,7 +28,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     name Text
     created UTCTime
     lastAccessed UTCTime
-    deriving Generic
+    deriving Generic Show
 
   FamilyAccount
     accountId AccountId

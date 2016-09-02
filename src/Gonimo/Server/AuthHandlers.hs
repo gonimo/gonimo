@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Server.AuthHandlers where
 
 import           Control.Concurrent.STM              (STM, TVar, readTVar)
@@ -15,6 +16,7 @@ import qualified Data.Map.Strict                     as M
 import           Data.Proxy                          (Proxy (..))
 import qualified Data.Set                            as S
 import           Data.Text                           (Text)
+import qualified Data.Text                           as T
 import           Database.Persist                    (Entity (..), (==.))
 import qualified Gonimo.Database.Effects             as Db
 import qualified Gonimo.Database.Effects             as Db
@@ -27,9 +29,9 @@ import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
-import           Gonimo.WebAPI                       (ReceiveChannelR,
-                                                      ReceiveSocketR,
-                                                      ListFamiliesR)
+import           Gonimo.WebAPI                       (ListFamiliesR,
+                                                      ReceiveChannelR,
+                                                      ReceiveSocketR)
 import           Gonimo.WebAPI.Types                 (InvitationInfo (..),
                                                       InvitationReply (..))
 import qualified Gonimo.WebAPI.Types                 as Client
@@ -103,8 +105,9 @@ answerInvitation invSecret reply = do
         , familyAccountJoined = now
         , familyAccountInvitedBy = Just (invitationDelivery inv)
         }
-  when (reply == InvitationAccept ) $
+  when (reply == InvitationAccept ) $ do
     notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
+    notify ModifyEvent getDeviceInfosEndpoint (\f -> f (invitationFamilyId inv))
 
 sendInvitation :: AuthServerConstraint r => Client.SendInvitation -> Eff r ()
 sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
@@ -124,6 +127,16 @@ sendInvitation (Client.SendInvitation _ OtherDelivery) =
     errReasonPhrase = "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
   }
 
+getClientInfos :: AuthServerConstraint r => FamilyId -> Eff r [(ClientId, Client.ClientInfo)]
+getClientInfos familyId = do
+  authorizeAuthData $ isFamilyMember familyId
+  runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
+    familyAccounts <- Db.selectList [FamilyAccountFamilyId ==. familyId] []
+    let accountIds = familyAccountAccountId . entityVal <$> familyAccounts
+    let selectClients accountId = Db.selectList [ClientAccountId ==. accountId] []
+    clientEntities <- concat <$> traverse selectClients accountIds
+    let entityToPair (Entity key val) = (key, val)
+    return $ map (fmap Client.fromClient . entityToPair) clientEntities
 
 createFamily :: AuthServerConstraint r =>  FamilyName -> Eff r FamilyId
 createFamily n = do

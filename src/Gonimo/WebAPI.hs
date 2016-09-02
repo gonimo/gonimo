@@ -35,7 +35,7 @@ type AuthGonimoAPI =
   :<|> "invitationOutbox" :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()
   -- Retrieve InvitationInfo. Additional effect: The invitation is now restricted to the requesting account.
   :<|> "invitationInfo" :> Capture "invitationSecret" Secret :> Put '[JSON] InvitationInfo
-
+  :<|> "deviceInfos" :> Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(ClientId, Client.ClientInfo)]
   -- Create a family
   :<|> "families" :> FamilyAPI
   :<|> "socket" :> SocketAPI

@@ -21,8 +21,9 @@ import           Gonimo.Server.State             (FamilyOnlineState,
                                                   onlineMembers)
 import           Gonimo.WebAPI                   (ListDevicesR,
                                                  ListFamiliesR)
-import           Servant.API                     ((:>))
+import           Servant.API                     ((:>), Capture, Get, JSON)
 import           Utils.Control.Monad.Trans.Maybe (maybeT)
+import qualified Gonimo.WebAPI.Types              as Client
 
 
 authorizedPut :: AuthServerConstraint r
@@ -77,6 +78,9 @@ listDevicesEndpoint = Proxy
   
 listFamiliesEndpoint :: Proxy ("families" :> ListFamiliesR)
 listFamiliesEndpoint = Proxy
+
+getDeviceInfosEndpoint :: Proxy ("deviceInfos" :> Capture "familyId" FamilyId :> Get '[JSON] [(ClientId, Client.ClientInfo)])
+getDeviceInfosEndpoint = Proxy
 
 -- The following stuff should go somewhere else someday (e.g. to paradise):
 
