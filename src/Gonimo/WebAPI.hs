@@ -22,8 +22,8 @@ type GonimoAPI =
   :<|> "funnyName" :> Post '[JSON] Text
   :<|> "coffee" :> Get '[JSON] Coffee
 
-type From    = Capture "fromClient" ClientId
-type To      = Capture "toClient"   ClientId
+type From    = Capture "fromDevice" DeviceId
+type To      = Capture "toDevice"   DeviceId
 type Channel = Capture "channelId"  Secret
 
 type AuthGonimoAPI =
@@ -35,7 +35,7 @@ type AuthGonimoAPI =
   :<|> "invitationOutbox" :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()
   -- Retrieve InvitationInfo. Additional effect: The invitation is now restricted to the requesting account.
   :<|> "invitationInfo" :> Capture "invitationSecret" Secret :> Put '[JSON] InvitationInfo
-  :<|> "deviceInfos" :> Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(ClientId, Client.ClientInfo)]
+  :<|> "deviceInfos" :> Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId, Client.DeviceInfo)]
   -- Create a family
   :<|> "families" :> FamilyAPI
   :<|> "socket" :> SocketAPI
@@ -52,8 +52,8 @@ type SocketAPI =  CreateChannelR
              :<|> PutChannelR
              :<|> ReceiveChannelR
 
-type CreateChannelR  = Capture "familyId" FamilyId :> To :> ReqBody '[JSON] ClientId :> PostCreated '[JSON] Secret
-type ReceiveSocketR  = Capture "familyId" FamilyId :> To :> Subscribable :> Receive '[JSON] (ClientId, Secret)
+type CreateChannelR  = Capture "familyId" FamilyId :> To :> ReqBody '[JSON] DeviceId :> PostCreated '[JSON] Secret
+type ReceiveSocketR  = Capture "familyId" FamilyId :> To :> Subscribable :> Receive '[JSON] (DeviceId, Secret)
 -- Receive should only work if to is a baby station
 type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
 type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Receive '[JSON] Text
@@ -63,10 +63,10 @@ type StatusAPI =   RegisterR
               :<|> DeleteR
               :<|> ListDevicesR
 
-type RegisterR    = Capture "familyId" FamilyId :> ReqBody '[JSON] (ClientId, ClientType) :> PostCreated '[JSON] ()
-type UpdateR      = Capture "familyId" FamilyId :> Capture "clientId" ClientId  :> ReqBody '[JSON] ClientType :> Put '[JSON] ()
-type DeleteR      = Capture "familyId" FamilyId :> Capture "clientId" ClientId  :> Delete '[JSON] ()
-type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(ClientId,ClientType)]
+type RegisterR    = Capture "familyId" FamilyId :> ReqBody '[JSON] (DeviceId, DeviceType) :> PostCreated '[JSON] ()
+type UpdateR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> ReqBody '[JSON] DeviceType :> Put '[JSON] ()
+type DeleteR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Delete '[JSON] ()
+type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId,DeviceType)]
 
 gonimoAPI :: Proxy GonimoAPI
 gonimoAPI = Proxy

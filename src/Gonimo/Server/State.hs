@@ -13,17 +13,17 @@ import           Data.Set               (Set)
 import qualified Data.Set               as S
 import           Data.Text              (Text)
 
-import           Gonimo.Server.DbEntities (ClientId, FamilyId)
-import           Gonimo.Server.Types      (Secret, ClientType)
+import           Gonimo.Server.DbEntities (DeviceId, FamilyId)
+import           Gonimo.Server.Types      (Secret, DeviceType)
 
 -- | Baby station calls receiveSocket: Map of it's client id to the requester's client id and the channel secret.
-type ChannelSecrets = Map ClientId (ClientId, Secret)
-type ChannelData    = Map Secret (ClientId, Text)
+type ChannelSecrets = Map DeviceId (DeviceId, Secret)
+type ChannelData    = Map Secret (DeviceId, Text)
 
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets :: ChannelSecrets
                        , _channelData    :: ChannelData
-                       , _onlineMembers  :: Map ClientId ClientType
+                       , _onlineMembers  :: Map DeviceId DeviceType
                        } deriving (Show, Eq)
 
 $(makeLenses ''FamilyOnlineState)
@@ -39,7 +39,7 @@ emptyFamily = FamilyOnlineState {
   , _onlineMembers = M.empty
   }
 
-putSecret :: Secret -> ClientId -> ClientId -> TVar FamilyOnlineState -> STM ()
+putSecret :: Secret -> DeviceId -> DeviceId -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites
 putSecret secret fromId toId familyStateVar = do
   t <- _channelSecrets <$> readTVar familyStateVar
@@ -47,7 +47,7 @@ putSecret secret fromId toId familyStateVar = do
      then retry
      else modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
 
-receiveSecret :: ClientId -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Secret))
+receiveSecret :: DeviceId -> TVar FamilyOnlineState -> STM (Maybe (DeviceId, Secret))
 receiveSecret toId familyStateVar = do
   t <- _channelSecrets <$> readTVar familyStateVar
   case toId `M.lookup` t of
@@ -55,14 +55,14 @@ receiveSecret toId familyStateVar = do
     Just cs -> do modifyTVar familyStateVar (channelSecrets %~ M.delete toId)
                   return $ Just cs
 
---deleteSecret :: ClientId -> ChannelSecrets -> ChannelSecrets
+--deleteSecret :: DeviceId -> ChannelSecrets -> ChannelSecrets
 --deleteSecret toId = undefined -- ChannelSecrets . M.delete toId . fetch
 
-onlineMember :: ClientId -> TVar FamilyOnlineState -> STM Bool
+onlineMember :: DeviceId -> TVar FamilyOnlineState -> STM Bool
 onlineMember cid familyStateVar = do familyState <- readTVar familyStateVar
                                      return $ cid `S.member` (M.keysSet $ familyState^.onlineMembers)
 
-putData :: Text -> Secret -> ClientId -> TVar FamilyOnlineState -> STM ()
+putData :: Text -> Secret -> DeviceId -> TVar FamilyOnlineState -> STM ()
 -- | putSecret inserts possibly overwrites
 putData txt secret fromId familyStateVar = do
   t <- _channelData <$> readTVar familyStateVar
@@ -70,7 +70,7 @@ putData txt secret fromId familyStateVar = do
      then retry
      else modifyTVar familyStateVar (channelData %~ secret `M.insert` (fromId, txt))
 
-receieveData :: Secret -> TVar FamilyOnlineState -> STM (Maybe (ClientId, Text))
+receieveData :: Secret -> TVar FamilyOnlineState -> STM (Maybe (DeviceId, Text))
 receieveData secret familyStateVar = do
   t <- _channelData <$> readTVar familyStateVar
   case secret `M.lookup` t of
@@ -102,8 +102,8 @@ lookupFamily families familyId= do
   familiesP <- readTVar families
   traverse readTVar $ M.lookup familyId familiesP
 
-updateStatus :: (ClientId, ClientType) -> FamilyOnlineState -> FamilyOnlineState
+updateStatus :: (DeviceId, DeviceType) -> FamilyOnlineState -> FamilyOnlineState
 updateStatus (clientId, clientType) = onlineMembers . at clientId .~ Just clientType
 
-deleteStatus :: ClientId -> FamilyOnlineState -> FamilyOnlineState
+deleteStatus :: DeviceId -> FamilyOnlineState -> FamilyOnlineState
 deleteStatus clientId = onlineMembers . at clientId .~ Nothing

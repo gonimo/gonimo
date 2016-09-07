@@ -12,9 +12,9 @@ import qualified Data.Set                        as S
 import           Gonimo.Database.Effects.Servant (get404)
 import           Gonimo.Server.Auth              (AuthServerConstraint,
                                                   authorizeAuthData,
-                                                  authorizeJust, clientKey,
+                                                  authorizeJust, deviceKey,
                                                   isFamilyMember)
-import           Gonimo.Server.DbEntities        (ClientId, Family, FamilyId)
+import           Gonimo.Server.DbEntities        (DeviceId, Family, FamilyId)
 import           Gonimo.Server.Effects           (atomically, getState, timeout)
 import           Gonimo.Server.Effects
 import           Gonimo.Server.State             (FamilyOnlineState,
@@ -28,10 +28,10 @@ import qualified Gonimo.WebAPI.Types              as Client
 
 authorizedPut :: AuthServerConstraint r
               => (TVar FamilyOnlineState -> STM ())
-              ->  FamilyId -> ClientId -> ClientId -> Eff r ()
+              ->  FamilyId -> DeviceId -> DeviceId -> Eff r ()
 authorizedPut f familyId fromId toId = do
   authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . clientKey)
+  authorizeAuthData ((toId ==) . deviceKey)
 
   let fromto = S.fromList [fromId, toId]
   state <- getState
@@ -46,10 +46,10 @@ authorizedPut f familyId fromId toId = do
 
 authorizedRecieve :: AuthServerConstraint r
                   => (TVar FamilyOnlineState -> STM (Maybe a))
-                  ->  FamilyId -> ClientId -> ClientId -> Eff r a
+                  ->  FamilyId -> DeviceId -> DeviceId -> Eff r a
 authorizedRecieve f familyId fromId toId = do
   authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . clientKey)
+  authorizeAuthData ((toId ==) . deviceKey)
 
   let fromto = S.fromList [fromId, toId]
   state <- getState
@@ -62,10 +62,10 @@ authorizedRecieve f familyId fromId toId = do
 
 authorizedRecieve' :: AuthServerConstraint r
                   => (TVar FamilyOnlineState -> STM (Maybe a))
-                  ->  FamilyId -> ClientId -> Eff r a
+                  ->  FamilyId -> DeviceId -> Eff r a
 authorizedRecieve' f familyId toId = do
   authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . clientKey)
+  authorizeAuthData ((toId ==) . deviceKey)
 
   state <- getState
   x <- timeout 2000 $ atomically $ runMaybeT $ do
@@ -79,7 +79,7 @@ listDevicesEndpoint = Proxy
 listFamiliesEndpoint :: Proxy ("families" :> ListFamiliesR)
 listFamiliesEndpoint = Proxy
 
-getDeviceInfosEndpoint :: Proxy ("deviceInfos" :> Capture "familyId" FamilyId :> Get '[JSON] [(ClientId, Client.ClientInfo)])
+getDeviceInfosEndpoint :: Proxy ("deviceInfos" :> Capture "familyId" FamilyId :> Get '[JSON] [(DeviceId, Client.DeviceInfo)])
 getDeviceInfosEndpoint = Proxy
 
 -- The following stuff should go somewhere else someday (e.g. to paradise):

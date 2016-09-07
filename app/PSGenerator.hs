@@ -31,14 +31,14 @@ myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy Client.InvitationReply)
           , mkSumType (Proxy :: Proxy ServerError)
           , mkSumType (Proxy :: Proxy AuthToken)
-          , mkSumType (Proxy :: Proxy Client)
+          , mkSumType (Proxy :: Proxy Device)
           , mkSumType (Proxy :: Proxy Coffee)
           , mkSumType (Proxy :: Proxy Invitation)
           , mkSumType (Proxy :: Proxy InvitationDelivery)
           , mkSumType (Proxy :: Proxy SendInvitation)
-          , mkSumType (Proxy :: Proxy ClientType)
+          , mkSumType (Proxy :: Proxy DeviceType)
           , mkSumType (Proxy :: Proxy Family)
-          , mkSumType (Proxy :: Proxy ClientInfo)
+          , mkSumType (Proxy :: Proxy DeviceInfo)
           ]
 
 mySettings :: Settings

@@ -32,12 +32,12 @@ import           Servant.PureScript     (jsonParseHeader, jsonParseUrlPiece,
 import           Web.HttpApiData        (FromHttpApiData (..),
                                          ToHttpApiData (..))
 
-data ClientType = Undefined
+data DeviceType = NoBaby
                 | Baby Text
                 deriving (Show, Eq, Generic)
 
-instance FromJSON ClientType
-instance ToJSON ClientType
+instance FromJSON DeviceType
+instance ToJSON DeviceType
 
 type SenderName = Text
 

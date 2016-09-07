@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
--- Types which are only relevant to the Client.
--- They are either accepted from the client or sent to the client but have no further use
+-- Types which are only relevant to the device.
+-- They are either accepted from the device or sent to the device but have no further use
 -- on the server side.
 
 module Gonimo.WebAPI.Types where
@@ -17,7 +17,7 @@ import           Gonimo.Server.DbEntities
 
 data AuthData = AuthData {
     accountId :: !AccountId
-  , clientId  :: !ClientId
+  , deviceId  :: !DeviceId
   , authToken :: !AuthToken
   } deriving (Generic, Show)
 
@@ -31,7 +31,7 @@ instance ToJSON SendInvitation where
 
 data InvitationInfo = InvitationInfo {
     invitationInfoFamily          :: !Text
-  , invitationInfoSendingClient :: !Text
+  , invitationInfoSendingDevice :: !Text
   , invitationInfoSendingUser   :: !(Maybe Text)
   } deriving (Generic, Show)
 
@@ -45,21 +45,21 @@ instance FromJSON InvitationReply
 instance ToJSON InvitationReply where
   toEncoding = genericToEncoding defaultOptions
 
-data ClientInfo = ClientInfo
-  { clientInfoName :: !Text
-  , clientInfoAccountId :: !AccountId
-  , clientInfoLastAccessed :: !UTCTime
-  , clientInfoUserAgent :: !Text
+data DeviceInfo = DeviceInfo
+  { deviceInfoName :: !Text
+  , deviceInfoAccountId :: !AccountId
+  , deviceInfoLastAccessed :: !UTCTime
+  , deviceInfoUserAgent :: !Text
   } deriving (Generic, Show)
 
 
-fromClient :: Client -> ClientInfo
-fromClient client = ClientInfo
-  { clientInfoName = clientName client
-  , clientInfoAccountId = clientAccountId client
-  , clientInfoLastAccessed = clientLastAccessed client
-  , clientInfoUserAgent = clientUserAgent client
+fromDevice :: Device -> DeviceInfo
+fromDevice device = DeviceInfo
+  { deviceInfoName = deviceName device
+  , deviceInfoAccountId = deviceAccountId device
+  , deviceInfoLastAccessed = deviceLastAccessed device
+  , deviceInfoUserAgent = deviceUserAgent device
   }
 
-instance ToJSON ClientInfo where
+instance ToJSON DeviceInfo where
   toEncoding = genericToEncoding defaultOptions

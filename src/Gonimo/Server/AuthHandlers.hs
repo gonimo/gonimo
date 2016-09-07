@@ -47,7 +47,7 @@ createInvitation fid = do
   now <- getCurrentTime
   isecret <- generateSecret
   -- family <- getFamily fid  -- defined but not used (yet).
-  senderId' <- authView $ clientEntity.to entityKey
+  senderId' <- authView $ deviceEntity.to entityKey
   let inv = Invitation {
     invitationSecret = isecret
     , invitationFamilyId = fid
@@ -73,11 +73,11 @@ putInvitationInfo invSecret = do
           return True
         Just receiverId' -> return $ receiverId' == aid
     invFamily  <- get404   $ invitationFamilyId inv
-    invClient  <- get404   $ invitationSenderId inv
-    mInvUser   <- Db.getBy $ AccountIdUser (clientAccountId invClient)
+    invDevice  <- get404   $ invitationSenderId inv
+    mInvUser   <- Db.getBy $ AccountIdUser (deviceAccountId invDevice)
     return InvitationInfo
                 { invitationInfoFamily = familyName invFamily
-                , invitationInfoSendingClient = clientName invClient
+                , invitationInfoSendingDevice = deviceName invDevice
                 , invitationInfoSendingUser = userLogin . entityVal <$> mInvUser
                 }
 
@@ -127,16 +127,16 @@ sendInvitation (Client.SendInvitation _ OtherDelivery) =
     errReasonPhrase = "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
   }
 
-getClientInfos :: AuthServerConstraint r => FamilyId -> Eff r [(ClientId, Client.ClientInfo)]
-getClientInfos familyId = do
+getDeviceInfos :: AuthServerConstraint r => FamilyId -> Eff r [(DeviceId, Client.DeviceInfo)]
+getDeviceInfos familyId = do
   authorizeAuthData $ isFamilyMember familyId
   runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
     familyAccounts <- Db.selectList [FamilyAccountFamilyId ==. familyId] []
     let accountIds = familyAccountAccountId . entityVal <$> familyAccounts
-    let selectClients accountId = Db.selectList [ClientAccountId ==. accountId] []
-    clientEntities <- concat <$> traverse selectClients accountIds
+    let selectDevices accountId = Db.selectList [DeviceAccountId ==. accountId] []
+    deviceEntities <- concat <$> traverse selectDevices accountIds
     let entityToPair (Entity key val) = (key, val)
-    return $ map (fmap Client.fromClient . entityToPair) clientEntities
+    return $ map (fmap Client.fromDevice . entityToPair) deviceEntities
 
 createFamily :: AuthServerConstraint r =>  FamilyName -> Eff r FamilyId
 createFamily n = do
@@ -169,7 +169,7 @@ getAccountFamilies accountId = do
 
 
 createChannel :: AuthServerConstraint r
-              => FamilyId -> ClientId -> ClientId -> Eff r Secret
+              => FamilyId -> DeviceId -> DeviceId -> Eff r Secret
 createChannel familyId toId fromId = do
   -- is it a good idea to expose the db-id in the route - people know how to use
   -- a packet sniffer
@@ -185,13 +185,13 @@ createChannel familyId toId fromId = do
 
 
 receiveSocket :: AuthServerConstraint r
-               => FamilyId -> ClientId -> Eff r (ClientId, Secret)
+               => FamilyId -> DeviceId -> Eff r (DeviceId, Secret)
 -- | in this request @to@ is the one receiving the secret
 receiveSocket familyId toId =
   authorizedRecieve'(receiveSecret toId) familyId toId
 
 putChannel :: AuthServerConstraint r
-           => FamilyId -> ClientId -> ClientId -> Secret -> Text -> Eff r ()
+           => FamilyId -> DeviceId -> DeviceId -> Secret -> Text -> Eff r ()
 putChannel familyId fromId toId token txt = do
 
   authorizedPut (putData txt token fromId) familyId fromId toId
@@ -203,41 +203,41 @@ putChannel familyId fromId toId token txt = do
 
 
 receiveChannel :: AuthServerConstraint r
-               => FamilyId -> ClientId -> ClientId -> Secret -> Eff r Text
+               => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r Text
 receiveChannel familyId fromId toId token =
   authorizeJust (\(fromId',t) -> do guard (fromId == fromId'); return t)
     =<< authorizedRecieve (receieveData token) familyId fromId toId
 
 statusRegisterR :: AuthServerConstraint r
-                => FamilyId -> (ClientId, ClientType) -> Eff r ()
-statusRegisterR familyId clientData@(clientId, clientType) = do
+                => FamilyId -> (DeviceId, DeviceType) -> Eff r ()
+statusRegisterR familyId deviceData@(deviceId, deviceType) = do
     authorizeAuthData $ isFamilyMember familyId
-    authorizeAuthData $ isClient clientId
+    authorizeAuthData $ isDevice deviceId
     whenM hasChanged $ do -- < No need for a single atomically here!
-      updateFamilyEff familyId $ updateStatus clientData
+      updateFamilyEff familyId $ updateStatus deviceData
       notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
   where
     hasChanged = do
       state <- getState
       atomically $ do
         mFamily <- lookupFamily state familyId
-        let mFound = join $ mFamily ^? _Just . onlineMembers . at clientId
-        return $ mFound /= Just clientType
+        let mFound = join $ mFamily ^? _Just . onlineMembers . at deviceId
+        return $ mFound /= Just deviceType
 
 statusUpdateR  :: AuthServerConstraint r
-               => FamilyId -> ClientId -> ClientType -> Eff r ()
+               => FamilyId -> DeviceId -> DeviceType -> Eff r ()
 statusUpdateR familyId = curry $ statusRegisterR familyId
 
 statusDeleteR  :: AuthServerConstraint r
-               => FamilyId -> ClientId -> Eff r ()
-statusDeleteR familyId clientId = do
+               => FamilyId -> DeviceId -> Eff r ()
+statusDeleteR familyId deviceId = do
   authorizeAuthData $ isFamilyMember familyId
-  authorizeAuthData $ isClient clientId
-  updateFamilyEff familyId $ deleteStatus clientId
+  authorizeAuthData $ isDevice deviceId
+  updateFamilyEff familyId $ deleteStatus deviceId
   notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
 
 statusListDevicesR  :: AuthServerConstraint r
-                    => FamilyId -> Eff r [(ClientId, ClientType)]
+                    => FamilyId -> Eff r [(DeviceId, DeviceType)]
 statusListDevicesR familyId = do
   authorizeAuthData $ isFamilyMember familyId
   M.toList . _onlineMembers <$> getFamilyEff familyId

@@ -38,7 +38,7 @@ import           Servant.Server         (err400, err401)
 
 
 effServer :: ServerT GonimoAPI ServerEffects
-effServer =  createClient
+effServer =  createDevice
         :<|> getAuthServer
         :<|> createFunnyName
         :<|> getCoffee
@@ -48,7 +48,7 @@ authServer = createInvitation
         :<|> answerInvitation
         :<|> sendInvitation
         :<|> putInvitationInfo
-        :<|> getClientInfos
+        :<|> getDeviceInfos
         :<|> familyAPI
         :<|> socketAPI
         :<|> statusAPI
@@ -74,11 +74,11 @@ authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don'
                          }
 authToEff' (Just s) m = do
     authData <- runDb $ do
-      client@(Entity _ Client{..}) <- getByAuthErr $ AuthTokenClient s
-      account <- getAuthErr clientAccountId
+      device@(Entity _ Device{..}) <- getByAuthErr $ AuthTokenDevice s
+      account <- getAuthErr deviceAccountId
       fids <- map (familyAccountFamilyId . entityVal)
-              <$> Db.selectList [FamilyAccountAccountId ==. clientAccountId] []
-      return $ AuthData (Entity clientAccountId account) fids client
+              <$> Db.selectList [FamilyAccountAccountId ==. deviceAccountId] []
+      return $ AuthData (Entity deviceAccountId account) fids device
     runReader m authData
   where
     getByAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.getBy

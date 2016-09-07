@@ -17,7 +17,7 @@ data AuthData = AuthData { _accountEntity   :: Entity Account
                          -- Usually just one ore two - so using list lookup
                          -- should be fine.
                          , _allowedFamilies :: [FamilyId]
-                         , _clientEntity    :: Entity Client
+                         , _deviceEntity    :: Entity Device
                          }
 $(makeLenses ''AuthData)
 
@@ -34,14 +34,14 @@ askAccountId = entityKey . _accountEntity <$> ask
 authView :: AuthReaderMember r => Getter AuthData a -> Eff r a
 authView g = (^. g) <$> ask
 
-clientKey :: AuthData -> Key Client
-clientKey = entityKey . _clientEntity
+deviceKey :: AuthData -> Key Device
+deviceKey = entityKey . _deviceEntity
 
 isFamilyMember :: FamilyId -> AuthData -> Bool
 isFamilyMember fid = (fid `elem`) . _allowedFamilies
 
-isClient :: ClientId -> AuthData -> Bool
-isClient clientId = (== clientId) . entityKey . _clientEntity
+isDevice :: DeviceId -> AuthData -> Bool
+isDevice deviceId = (== deviceId) . entityKey . _deviceEntity
 
 isAccount :: AccountId -> AuthData -> Bool
 isAccount accountId = (== accountId) . entityKey . _accountEntity

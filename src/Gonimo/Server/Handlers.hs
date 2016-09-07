@@ -23,12 +23,12 @@ maxUserAgentLength :: Int
 maxUserAgentLength = 300
 
 
--- | Create an anonymous account and a client.
---   Each device is uniquely identified by a ClientId, multiple
---   Client's can share a single account in case a user login was provided,
---   otherwise every client corresponds to a single Account.
-createClient :: ServerConstraint r => Maybe Text -> Eff r Client.AuthData
-createClient mUserAgent = do
+-- | Create an anonymous account and a device.
+--   Each device is uniquely identified by a DeviceId, multiple
+--   Device's can share a single account in case a user login was provided,
+--   otherwise every device corresponds to a single Account.
+createDevice :: ServerConstraint r => Maybe Text -> Eff r Client.AuthData
+createDevice mUserAgent = do
   now <- getCurrentTime
   authToken <- GonimoSecret <$> generateSecret
   let userAgent = maybe noUserAgentDefault (take maxUserAgentLength) mUserAgent
@@ -36,15 +36,15 @@ createClient mUserAgent = do
   runDb $ do
     aid <- Db.insert Account { accountCreated     = now
                              }
-    cid <- Db.insert Client  { clientName         = funnyName
-                             , clientAuthToken    = authToken
-                             , clientAccountId    = aid
-                             , clientLastAccessed = now
-                             , clientUserAgent    = userAgent
+    cid <- Db.insert Device  { deviceName         = funnyName
+                             , deviceAuthToken    = authToken
+                             , deviceAccountId    = aid
+                             , deviceLastAccessed = now
+                             , deviceUserAgent    = userAgent
                              }
     return Client.AuthData {
         Client.accountId = aid
-      , Client.clientId  = cid
+      , Client.deviceId  = cid
       , Client.authToken = authToken
       }
 

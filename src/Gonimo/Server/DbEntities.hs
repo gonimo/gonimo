@@ -42,18 +42,18 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     familyId FamilyId
     created UTCTime
     delivery InvitationDelivery
-    senderId ClientId -- Use ClientId here as it is the most precise information about the sender.
+    senderId DeviceId -- Use DeviceId here as it is the most precise information about the sender.
     receiverId AccountId Maybe  -- To be set on put InvitationInfo
     SecretInvitation secret
     deriving Show Generic
 
-  Client -- think of "device", or more precise: a browser on a device
+  Device -- or more precise: a browser on a device
     name Text
     authToken AuthToken
     accountId AccountId
     lastAccessed UTCTime
     userAgent Text
-    AuthTokenClient authToken
+    AuthTokenDevice authToken
     deriving Generic
 
   User
