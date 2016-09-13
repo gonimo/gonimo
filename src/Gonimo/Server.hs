@@ -49,11 +49,12 @@ authServer = createInvitation
         :<|> sendInvitation
         :<|> putInvitationInfo
         :<|> getDeviceInfos
+        :<|> getAccountFamilies
         :<|> familyAPI
         :<|> socketAPI
         :<|> statusAPI
   where
-    familyAPI = createFamily :<|> getAccountFamilies
+    familyAPI = createFamily
     socketAPI = createChannel :<|> receiveSocket :<|> putChannel :<|> receiveChannel
     statusAPI = statusRegisterR :<|> statusUpdateR :<|> statusDeleteR :<|> statusListDevicesR
 

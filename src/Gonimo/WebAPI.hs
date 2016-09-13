@@ -36,16 +36,15 @@ type AuthGonimoAPI =
   -- Retrieve InvitationInfo. Additional effect: The invitation is now restricted to the requesting account.
   :<|> "invitationInfo" :> Capture "invitationSecret" Secret :> Put '[JSON] InvitationInfo
   :<|> "deviceInfos" :> Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId, Client.DeviceInfo)]
+  :<|> "accounts" :> Capture "accountId" AccountId :> "families" :> Subscribable :> Get '[JSON] [(FamilyId, Family)]
   -- Create a family
   :<|> "families" :> FamilyAPI
   :<|> "socket" :> SocketAPI
   :<|> "onlineStatus" :> StatusAPI
 
 type FamilyAPI = CreateFamilyR
-            :<|> ListFamiliesR
 
 type CreateFamilyR = ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
-type ListFamiliesR = Capture "accountId" AccountId :> Subscribable :> Get '[JSON] [(FamilyId, Family)]
 
 type SocketAPI =  CreateChannelR
              :<|> ReceiveSocketR

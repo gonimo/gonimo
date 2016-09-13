@@ -29,8 +29,7 @@ import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
 import           Gonimo.Server.State
 import           Gonimo.Server.Types
-import           Gonimo.WebAPI                       (ListFamiliesR,
-                                                      ReceiveChannelR,
+import           Gonimo.WebAPI                       (ReceiveChannelR,
                                                       ReceiveSocketR)
 import           Gonimo.WebAPI.Types                 (InvitationInfo (..),
                                                       InvitationReply (..))
