@@ -16,7 +16,7 @@ import           Control.Error.Safe     (rightZ)
 
 import           Data.Aeson.Types       (FromJSON (..), FromJSON, ToJSON (..),
                                          ToJSON (..), Value (String),
-                                         defaultOptions, genericToJSON)
+                                         defaultOptions, genericToJSON, genericToEncoding)
 
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
@@ -71,7 +71,7 @@ derivePersistField "AuthToken"
 instance FromJSON AuthToken
 instance ToJSON AuthToken where
   toJSON = genericToJSON defaultOptions
---  toEncoding = genericToEncoding defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 instance FromHttpApiData AuthToken where
     parseUrlPiece :: Text -> Either Text AuthToken
@@ -82,7 +82,7 @@ data Coffee = Tea deriving Generic
 instance FromJSON Coffee
 instance ToJSON Coffee where
   toJSON = genericToJSON defaultOptions
---  toEncoding = genericToEncoding defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 
 
