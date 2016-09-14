@@ -117,7 +117,7 @@ getFamilyEff :: ServerConstraint r
 getFamilyEff familyId = do
   state <- getState
   mFamily <- atomically $ lookupFamily state familyId
-  fromMaybeErr NoSuchFamily mFamily
+  fromMaybeErr (NoSuchFamily familyId) mFamily
 
 -- We can not create an instance of MonadLogger for (Member Server r => Eff r).
 -- The right solution would be to define a Logger type together with an
