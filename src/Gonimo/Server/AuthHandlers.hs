@@ -64,7 +64,7 @@ putInvitationInfo :: AuthServerConstraint r => Secret -> Eff r InvitationInfo
 putInvitationInfo invSecret = do
   aid <- authView $ accountEntity . to entityKey
   runDb $ do
-    Entity invId inv <- getBy404 $ SecretInvitation invSecret
+    Entity invId inv <- getByErr NoSuchInvitation $ SecretInvitation invSecret
     guardWithM InvitationAlreadyClaimed
       $ case invitationReceiverId inv of
         Nothing -> do
@@ -87,7 +87,7 @@ answerInvitation invSecret reply = do
   let aid = authData ^. accountEntity . to entityKey
   now <- getCurrentTime
   inv <- runDb $ do
-    Entity iid inv <- getBy404 (SecretInvitation invSecret)
+    Entity iid inv <- getByErr NoSuchInvitation (SecretInvitation invSecret)
     guardWith InvitationAlreadyClaimed
       $ case invitationReceiverId inv of
           Nothing -> True

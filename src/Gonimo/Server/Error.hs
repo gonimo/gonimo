@@ -20,6 +20,7 @@ data ServerError = InvalidAuthToken
                  | InvitationAlreadyClaimed -- ^ Invitation was already claimed by someone else.
                  | AlreadyFamilyMember -- ^ If a client tries to become a member of a family he is already a member of.
                  | NoSuchFamily FamilyId
+                 | NoSuchInvitation
                  | Forbidden
                  | NotFound
                  | TransactionTimeout
@@ -55,6 +56,7 @@ getServantErr InvalidAuthToken = err403
 getServantErr InvitationAlreadyClaimed = err403
 getServantErr AlreadyFamilyMember = err409
 getServantErr (NoSuchFamily _) = err404
+getServantErr NoSuchInvitation = err404
 getServantErr NotFound = err404
 getServantErr Forbidden = err403
 getServantErr TransactionTimeout = err500

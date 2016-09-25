@@ -11,11 +11,16 @@ import           Gonimo.Database.Effects
 import           Gonimo.Server.Error
 
 get404 :: FullDbConstraint backend a r => Key a -> Eff r a
-get404 = serverErrOnNothing NotFound <=< get
+get404 = getErr NotFound
 
+getErr :: FullDbConstraint backend a r => ServerError -> Key a -> Eff r a
+getErr err = serverErrOnNothing err <=< get
 
 getBy404 :: FullDbConstraint backend a r => Unique a -> Eff r (Entity a)
-getBy404 = serverErrOnNothing NotFound <=< getBy
+getBy404 = getByErr NotFound
+
+getByErr :: FullDbConstraint backend a r => ServerError -> Unique a -> Eff r (Entity a)
+getByErr err = serverErrOnNothing err <=< getBy
 
 serverErrOnNothing :: (Member (Exc SomeException) r) => ServerError -> Maybe a -> Eff r a
 serverErrOnNothing err Nothing = throwServer err
