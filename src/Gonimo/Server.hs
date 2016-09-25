@@ -44,19 +44,40 @@ effServer =  createDevice
         :<|> getCoffee
 
 authServer :: ServerT AuthGonimoAPI AuthServerEffects
-authServer = createInvitation
-        :<|> answerInvitation
-        :<|> sendInvitation
-        :<|> putInvitationInfo
-        :<|> getDeviceInfos
-        :<|> getAccountFamilies
-        :<|> familyAPI
-        :<|> socketAPI
-        :<|> statusAPI
-  where
-    familyAPI = createFamily
-    socketAPI = createChannel :<|> receiveSocket :<|> putChannel :<|> receiveChannel
-    statusAPI = statusRegisterR :<|> statusUpdateR :<|> statusDeleteR :<|> statusListDevicesR
+authServer = invitationsServer
+        :<|> accountsServer
+        :<|> familiesServer
+        :<|> socketServer
+        :<|> statusServer
+
+invitationsServer :: ServerT InvitationsAPI AuthServerEffects
+invitationsServer = createInvitation
+               :<|> answerInvitation
+               :<|> sendInvitation
+               :<|> putInvitationInfo
+
+accountsServer :: ServerT AccountsAPI AuthServerEffects
+accountsServer = getAccountFamilies
+
+familiesServer :: ServerT FamiliesAPI AuthServerEffects
+familiesServer = createFamily
+            :<|> familyServer
+
+familyServer :: FamilyId -> ServerT FamilyAPI AuthServerEffects
+familyServer familyId = getLastBabyNames familyId
+                   :<|> getDeviceInfos familyId
+
+socketServer :: ServerT SocketAPI AuthServerEffects
+socketServer = createChannel
+          :<|> receiveSocket
+          :<|> putChannel
+          :<|> receiveChannel
+
+statusServer :: ServerT StatusAPI AuthServerEffects
+statusServer = statusRegisterR
+          :<|> statusUpdateR
+          :<|> statusDeleteR
+          :<|> statusListDevicesR
 
 
 -- Let's serve

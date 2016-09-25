@@ -147,6 +147,7 @@ createFamily n = do
         familyName = n
       , familyCreated = now
       , familyLastAccessed = now
+      , familyLastUsedBabyNames = []
     }
     Db.insert_ FamilyAccount {
       familyAccountAccountId = aid
@@ -165,6 +166,11 @@ getAccountFamilies accountId = do
     familyAccounts <- map entityVal <$> Db.selectList [FamilyAccountAccountId ==. accountId] []
     families <- traverse Db.get404 . fmap familyAccountFamilyId $ familyAccounts
     return $ zip (map familyAccountFamilyId familyAccounts) families
+
+getLastBabyNames :: AuthServerConstraint r => FamilyId -> Eff r [Text]
+getLastBabyNames familyId = do
+  authorizeAuthData $ isFamilyMember familyId
+  fmap familyLastUsedBabyNames . runDb $ Db.getErr (NoSuchFamily familyId) familyId
 
 
 createChannel :: AuthServerConstraint r

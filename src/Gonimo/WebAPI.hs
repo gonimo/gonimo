@@ -17,35 +17,65 @@ import           Gonimo.Server.State
 
 
 type GonimoAPI =
-       "accounts" :> BrowserHeader "User-Agent" Text :> Post '[JSON] Client.AuthData
+       "accounts"                       :> BrowserHeader "User-Agent" Text :> Post '[JSON] Client.AuthData
   :<|> Header "Authorization" AuthToken :> AuthGonimoAPI
-  :<|> "funnyName" :> Post '[JSON] Text
-  :<|> "coffee" :> Get '[JSON] Coffee
+  :<|> "funnyName"                      :> Post '[JSON] Text
+  :<|> "coffee"                         :> Get '[JSON] Coffee
 
 type From    = Capture "fromDevice" DeviceId
 type To      = Capture "toDevice"   DeviceId
 type Channel = Capture "channelId"  Secret
 
-type AuthGonimoAPI =
-  -- Create an invitation
-  "invitations" :> ReqBody '[JSON] FamilyId :> Post '[JSON] (InvitationId, Invitation)
-  -- Accept/Reject the invitation ...
-  :<|> "invitations" :> Capture "invitationSecret" Secret :> ReqBody '[JSON] InvitationReply :> Delete '[JSON] ()
-  -- Send an invitation email/telegram message/...
-  :<|> "invitationOutbox" :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()
-  -- Retrieve InvitationInfo. Additional effect: The invitation is now restricted to the requesting account.
-  :<|> "invitationInfo" :> Capture "invitationSecret" Secret :> Put '[JSON] InvitationInfo
-  :<|> "deviceInfos" :> Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId, Client.DeviceInfo)]
-  :<|> "accounts" :> Capture "accountId" AccountId :> "families" :> Subscribable :> Get '[JSON] [(FamilyId, Family)]
-  -- Create a family
-  :<|> "families" :> FamilyAPI
-  :<|> "socket" :> SocketAPI
-  :<|> "onlineStatus" :> StatusAPI
+type AuthGonimoAPI = "invitations"  :> InvitationsAPI
+                :<|> "accounts"     :> AccountsAPI
+                :<|> "families"     :> FamiliesAPI
+                :<|> "socket"       :> SocketAPI
+                :<|> "onlineStatus" :> StatusAPI
 
-type FamilyAPI = CreateFamilyR
+
+-- invitations API:
+type InvitationsAPI = CreateInvitationR
+                 :<|> AnswerInvitationR
+                 :<|> SendInvitationR
+                 :<|> PutInvitationInfoR
+
+type CreateInvitationR = Capture "familyId" FamilyId :> Post '[JSON] (InvitationId, Invitation)
+
+type AnswerInvitationR  =
+  Capture "invitationSecret" Secret :> ReqBody '[JSON] InvitationReply :> Delete '[JSON] ()
+
+-- Send an invitation email/telegram message/...
+type SendInvitationR    =
+  "outbox"                          :> ReqBody '[JSON] Client.SendInvitation :> Post '[JSON] ()
+
+-- | Retrieve information about an invitation and claim it - no other device will
+--   no be able to claim or accept this invitation.
+type PutInvitationInfoR =
+  "info"                            :> Capture "invitationSecret" Secret :> Put '[JSON] InvitationInfo
+
+
+-- AccountsAPI:
+type AccountsAPI = Capture "accountId" AccountId :> AccountAPI
+type AccountAPI  = GetAccountFamiliesR
+
+type GetAccountFamiliesR = "families" :> Subscribable :> Get '[JSON] [(FamilyId, Family)]
+
+
+-- FamiliesAPI:
+type FamiliesAPI = CreateFamilyR
+              :<|> Capture "familyId" FamilyId :> FamilyAPI
 
 type CreateFamilyR = ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
 
+
+-- FamilyAPI:
+type FamilyAPI = GetLastBabyNamesR
+            :<|> GetFamilyDevicesR
+
+type GetLastBabyNamesR = Subscribable  :> Get '[JSON] [Text]
+type GetFamilyDevicesR = "deviceInfos" :> Subscribable :> Get '[JSON] [(DeviceId, Client.DeviceInfo)]
+
+-- SocketAPI:
 type SocketAPI =  CreateChannelR
              :<|> ReceiveSocketR
              :<|> PutChannelR
@@ -57,6 +87,8 @@ type ReceiveSocketR  = Capture "familyId" FamilyId :> To :> Subscribable :> Rece
 type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
 type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Receive '[JSON] Text
 
+
+-- StatusAPI:
 type StatusAPI =   RegisterR
               :<|> UpdateR
               :<|> DeleteR
@@ -72,6 +104,18 @@ gonimoAPI = Proxy
 
 authGonimoAPI :: Proxy AuthGonimoAPI
 authGonimoAPI = Proxy
+
+invitationsAPI :: Proxy InvitationsAPI
+invitationsAPI = Proxy
+
+accountsAPI :: Proxy AccountsAPI
+accountsAPI = Proxy
+
+familiesAPI :: Proxy FamiliesAPI
+familiesAPI = Proxy
+
+socketAPI :: Proxy SocketAPI
+socketAPI = Proxy
 
 gonimoLink :: (IsElem endpoint GonimoAPI, HasLink endpoint) => Proxy endpoint -> MkLink endpoint
 gonimoLink = safeLink gonimoAPI
