@@ -14,6 +14,7 @@ import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Maybe           (MaybeT (..), runMaybeT)
 import qualified Data.Map.Strict                     as M
 import           Data.Proxy                          (Proxy (..))
+import           Data.Maybe                          (fromMaybe)
 import qualified Data.Set                            as S
 import           Data.Text                           (Text)
 import qualified Data.Text                           as T
@@ -220,8 +221,23 @@ statusRegisterR familyId deviceData@(deviceId, deviceType) = do
     authorizeAuthData $ isDevice deviceId
     whenM hasChanged $ do -- < No need for a single atomically here!
       updateFamilyEff familyId $ updateStatus deviceData
+      whenM updateLastUsedBabyNames $
+        notify ModifyEvent getLastBabyNamesEndpoint (\f -> f familyId)
       notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
   where
+    updateLastUsedBabyNames = fmap (fromMaybe False) . runMaybeT $ do
+        name <- toBabyName deviceType
+        MaybeT . runDb . runMaybeT $ do
+          oldFamily <- lift $ Db.getErr (NoSuchFamily familyId) familyId
+          let oldBabies = familyLastUsedBabyNames oldFamily
+          guard $ not (name `elem` oldBabies)
+          let newFamily
+                = oldFamily
+                  { familyLastUsedBabyNames = take 5 (name : familyLastUsedBabyNames oldFamily)
+                  }
+          lift $ Db.replace familyId newFamily
+          return True
+
     hasChanged = do
       state <- getState
       atomically $ do

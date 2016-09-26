@@ -19,7 +19,7 @@ import           Gonimo.Server.Effects           (atomically, getState, timeout)
 import           Gonimo.Server.Effects
 import           Gonimo.Server.State             (FamilyOnlineState,
                                                   onlineMembers)
-import           Gonimo.WebAPI                   (ListDevicesR, GetFamilyDevicesR)
+import           Gonimo.WebAPI                   (ListDevicesR, GetFamilyDevicesR, GetLastBabyNamesR)
 import           Servant.API                     ((:>), Capture, Get, JSON)
 import           Utils.Control.Monad.Trans.Maybe (maybeT)
 import qualified Gonimo.WebAPI.Types              as Client
@@ -74,12 +74,15 @@ authorizedRecieve' f familyId toId = do
 
 listDevicesEndpoint  :: Proxy ("onlineStatus" :> ListDevicesR)
 listDevicesEndpoint = Proxy
-  
+
 listFamiliesEndpoint :: Proxy ("accounts" :> Capture "accountId" AccountId :> "families" :> Get '[JSON] [(FamilyId, Family)])
 listFamiliesEndpoint = Proxy
 
 getDeviceInfosEndpoint :: Proxy ("families" :> Capture "familyId" FamilyId :> GetFamilyDevicesR)
 getDeviceInfosEndpoint = Proxy
+
+getLastBabyNamesEndpoint :: Proxy ("families" :> Capture "familyId" FamilyId :> GetLastBabyNamesR)
+getLastBabyNamesEndpoint = Proxy
 
 -- The following stuff should go somewhere else someday (e.g. to paradise):
 

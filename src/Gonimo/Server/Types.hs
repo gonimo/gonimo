@@ -31,10 +31,15 @@ import           Servant.PureScript     (jsonParseHeader, jsonParseUrlPiece,
                                          jsonToHeader, jsonToUrlPiece)
 import           Web.HttpApiData        (FromHttpApiData (..),
                                          ToHttpApiData (..))
+import           Control.Monad          (MonadPlus, mzero)
 
 data DeviceType = NoBaby
                 | Baby Text
                 deriving (Show, Eq, Generic)
+
+toBabyName :: MonadPlus m => DeviceType -> m Text
+toBabyName NoBaby = mzero
+toBabyName (Baby name) = pure name
 
 instance FromJSON DeviceType
 instance ToJSON DeviceType
