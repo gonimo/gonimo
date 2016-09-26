@@ -160,18 +160,17 @@ createFamily n = do
   notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
   return fid
 
-getAccountFamilies :: AuthServerConstraint r => AccountId -> Eff r [(FamilyId, Family)]
+getAccountFamilies :: AuthServerConstraint r => AccountId -> Eff r [FamilyId]
 getAccountFamilies accountId = do
   authorizeAuthData $ isAccount accountId
   runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
-    familyAccounts <- map entityVal <$> Db.selectList [FamilyAccountAccountId ==. accountId] []
-    families <- traverse Db.get404 . fmap familyAccountFamilyId $ familyAccounts
-    return $ zip (map familyAccountFamilyId familyAccounts) families
+    map (familyAccountFamilyId . entityVal)
+      <$> Db.selectList [FamilyAccountAccountId ==. accountId] []
 
-getLastBabyNames :: AuthServerConstraint r => FamilyId -> Eff r [Text]
-getLastBabyNames familyId = do
+getFamily :: AuthServerConstraint r => FamilyId -> Eff r Family
+getFamily familyId = do
   authorizeAuthData $ isFamilyMember familyId
-  fmap familyLastUsedBabyNames . runDb $ Db.getErr (NoSuchFamily familyId) familyId
+  runDb $ Db.getErr (NoSuchFamily familyId) familyId
 
 
 createChannel :: AuthServerConstraint r
@@ -222,7 +221,7 @@ statusRegisterR familyId deviceData@(deviceId, deviceType) = do
     whenM hasChanged $ do -- < No need for a single atomically here!
       updateFamilyEff familyId $ updateStatus deviceData
       whenM updateLastUsedBabyNames $
-        notify ModifyEvent getLastBabyNamesEndpoint (\f -> f familyId)
+        notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
       notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
   where
     updateLastUsedBabyNames = fmap (fromMaybe False) . runMaybeT $ do

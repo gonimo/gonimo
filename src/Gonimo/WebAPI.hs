@@ -58,7 +58,7 @@ type PutInvitationInfoR =
 type AccountsAPI = Capture "accountId" AccountId :> AccountAPI
 type AccountAPI  = GetAccountFamiliesR
 
-type GetAccountFamiliesR = "families" :> Subscribable :> Get '[JSON] [(FamilyId, Family)]
+type GetAccountFamiliesR = "families" :> Subscribable :> Get '[JSON] [FamilyId]
 
 
 -- FamiliesAPI:
@@ -69,10 +69,10 @@ type CreateFamilyR = ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
 
 
 -- FamilyAPI:
-type FamilyAPI = GetLastBabyNamesR
+type FamilyAPI = GetFamilyR
             :<|> GetFamilyDevicesR
 
-type GetLastBabyNamesR = Subscribable  :> Get '[JSON] [Text]
+type GetFamilyR = Subscribable :> Get '[JSON] Family
 type GetFamilyDevicesR = "deviceInfos" :> Subscribable :> Get '[JSON] [(DeviceId, Client.DeviceInfo)]
 
 -- SocketAPI:

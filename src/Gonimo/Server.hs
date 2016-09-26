@@ -64,7 +64,7 @@ familiesServer = createFamily
             :<|> familyServer
 
 familyServer :: FamilyId -> ServerT FamilyAPI AuthServerEffects
-familyServer familyId = getLastBabyNames familyId
+familyServer familyId = getFamily familyId
                    :<|> getDeviceInfos familyId
 
 socketServer :: ServerT SocketAPI AuthServerEffects
