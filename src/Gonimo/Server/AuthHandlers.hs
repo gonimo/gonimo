@@ -176,7 +176,7 @@ getFamily familyId = do
 --
 --   The baby station must call receiveSocket within a given timeout,
 --   this handler will only return a secret if the baby station did so,
---   otherwise an error is thrown (not found - `NoSuchBaby`)
+--   otherwise an error is thrown (not found - `NoSuchSocket`)
 createChannel :: AuthServerConstraint r
               => FamilyId -> DeviceId -> DeviceId -> Eff r Secret
 createChannel familyId toId fromId = do
