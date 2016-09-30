@@ -172,7 +172,11 @@ getFamily familyId = do
   authorizeAuthData $ isFamilyMember familyId
   runDb $ Db.getErr (NoSuchFamily familyId) familyId
 
-
+-- | Create a channel for communication with  a baby station
+--
+--   The baby station must call receiveSocket within a given timeout,
+--   this handler will only return a secret if the baby station did so,
+--   otherwise an error is thrown (not found - `NoSuchBaby`)
 createChannel :: AuthServerConstraint r
               => FamilyId -> DeviceId -> DeviceId -> Eff r Secret
 createChannel familyId toId fromId = do
