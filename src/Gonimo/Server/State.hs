@@ -27,7 +27,7 @@ type ToId   = DeviceId
 -- | Baby station calls receiveSocket: Map of it's client id to the requester's client id and the channel secret.
 type ChannelSecrets = Map ToId (FromId, Secret)
 
-type ChannelData a  = Map (FromId, ToId, Secret) Text
+type ChannelData a  = Map (FromId, ToId, Secret) a
 
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets :: ChannelSecrets
