@@ -1,28 +1,37 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module Gonimo.Server.State where
 
-import           Control.Concurrent.STM (STM, TVar, modifyTVar, newTVar,
-                                         readTVar, retry)
+import           Control.Concurrent.STM    (STM, TVar, modifyTVar, newTVar,
+                                            readTVar)
 import           Control.Lens
-import           Control.Monad          (when)
-import           Data.Map.Strict        (Map)
-import qualified Data.Map.Strict        as M
-import           Data.Maybe             (fromMaybe)
-import           Data.Set               (Set)
-import qualified Data.Set               as S
-import           Data.Text              (Text)
+import           Control.Monad             (MonadPlus (mzero), when)
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.Maybe
+import           Control.Monad.Trans.State
+import           Data.Map.Strict           (Map)
+import qualified Data.Map.Strict           as M
+import qualified Data.Set                  as S
+import           Data.Text                 (Text)
 
-import           Gonimo.Server.DbEntities (DeviceId, FamilyId)
-import           Gonimo.Server.Types      (Secret, DeviceType)
+import           Gonimo.Server.DbEntities  (DeviceId, FamilyId)
+import           Gonimo.Server.Error       (ServerError (TransactionTimeout),
+                                            makeServantErr)
+import           Gonimo.Server.Types       (DeviceType, Secret)
+
+import           Utils.Constants           (Microseconds)
+import           Utils.STM
+
+type FromId = DeviceId
+type ToId   = DeviceId
 
 -- | Baby station calls receiveSocket: Map of it's client id to the requester's client id and the channel secret.
-type ChannelSecrets = Map DeviceId (DeviceId, Secret)
-type ChannelData    = Map Secret (DeviceId, Text)
+type ChannelSecrets = Map ToId (FromId, Secret)
+
+type ChannelData a  = Map (FromId, ToId, Secret) Text
 
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets :: ChannelSecrets
-                       , _channelData    :: ChannelData
+                       , _channelData    :: ChannelData Text
                        , _onlineMembers  :: Map DeviceId DeviceType
                        } deriving (Show, Eq)
 
@@ -32,6 +41,8 @@ type FamilyMap = Map FamilyId (TVar FamilyOnlineState)
 
 type OnlineState = TVar FamilyMap
 
+type PleaseNameMeT m a = StateT FamilyOnlineState (MaybeT m) a
+
 emptyFamily :: FamilyOnlineState
 emptyFamily = FamilyOnlineState {
     _channelSecrets = M.empty
@@ -39,49 +50,50 @@ emptyFamily = FamilyOnlineState {
   , _onlineMembers = M.empty
   }
 
-putSecret :: Secret -> DeviceId -> DeviceId -> TVar FamilyOnlineState -> STM ()
--- | putSecret inserts possibly overwrites
-putSecret secret fromId toId familyStateVar = do
-  t <- _channelSecrets <$> readTVar familyStateVar
-  if toId `M.member` t
-     then retry
-     else modifyTVar familyStateVar (channelSecrets %~ toId `M.insert` (fromId, secret))
+putSecret :: Monad m => Secret -> FromId -> ToId -> PleaseNameMeT m ()
+putSecret secret fromId toId = do
+  secrets <- gets _channelSecrets
+  case (fromId ==) . fst <$> toId `M.lookup` secrets of
+    Just True -> mzero
+    _         -> modify (channelSecrets %~ toId `M.insert` (fromId, secret))
 
-receiveSecret :: DeviceId -> TVar FamilyOnlineState -> STM (Maybe (DeviceId, Secret))
-receiveSecret toId familyStateVar = do
-  t <- _channelSecrets <$> readTVar familyStateVar
-  case toId `M.lookup` t of
-    Nothing ->  return Nothing
-    Just cs -> do modifyTVar familyStateVar (channelSecrets %~ M.delete toId)
-                  return $ Just cs
+receiveSecret :: Monad m => DeviceId -> PleaseNameMeT m (DeviceId, Secret)
+receiveSecret toId = do
+  secrets <- gets _channelSecrets
+  case toId `M.lookup` secrets of
+    Nothing -> mzero
+    Just cs -> do modify (channelSecrets %~ M.delete toId)
+                  return cs
 
---deleteSecret :: DeviceId -> ChannelSecrets -> ChannelSecrets
---deleteSecret toId = undefined -- ChannelSecrets . M.delete toId . fetch
+onlineMember :: Monad m => DeviceId -> PleaseNameMeT m Bool
+-- | TODO: does not actually change the state - should this be explicit in the
+-- type signature ??
+onlineMember cid = do
+  memberKeys <- gets (M.keysSet . _onlineMembers)
+  return $ cid `S.member` memberKeys
 
-onlineMember :: DeviceId -> TVar FamilyOnlineState -> STM Bool
-onlineMember cid familyStateVar = do familyState <- readTVar familyStateVar
-                                     return $ cid `S.member` (M.keysSet $ familyState^.onlineMembers)
+putData :: Monad m => Text -> (FromId, ToId, Secret) -> PleaseNameMeT m ()
+putData txt fromToSecret = do
+  cdata <- gets _channelData
+  if fromToSecret `M.member` cdata
+     then mzero
+     else modify (channelData %~ fromToSecret `M.insert` txt)
 
-putData :: Text -> Secret -> DeviceId -> TVar FamilyOnlineState -> STM ()
--- | putSecret inserts possibly overwrites
-putData txt secret fromId familyStateVar = do
-  t <- _channelData <$> readTVar familyStateVar
-  if secret `M.member` t
-     then retry
-     else modifyTVar familyStateVar (channelData %~ secret `M.insert` (fromId, txt))
-
-receieveData :: Secret -> TVar FamilyOnlineState -> STM (Maybe (DeviceId, Text))
-receieveData secret familyStateVar = do
-  t <- _channelData <$> readTVar familyStateVar
-  case secret `M.lookup` t of
-    Nothing ->  return Nothing
-    Just cs -> do modifyTVar familyStateVar (channelData %~ M.delete secret)
-                  return $ Just cs
+receieveData :: Monad m => (FromId, ToId, Secret) -> PleaseNameMeT m Text
+receieveData fromToSecret = do
+  cdata <- gets _channelData
+  case fromToSecret `M.lookup` cdata of
+    Nothing  -> mzero
+    Just txt -> do modify (channelData %~ M.delete fromToSecret)
+                   return txt
 
 -- | Update a family.
 --
 --   If `onlineMembers` is empty after the update the Family will be removed from the map.
 --   If the family does not exist yet - it will be created.
+--
+-- TODO: CHANGE Type Signature to ... (FamilyOnlineState -> MAYBE FamilyOnlineState) -> STM ()
+-- using the timeout function from Gonimo.Util.STM
 updateFamily :: OnlineState -> FamilyId -> (FamilyOnlineState -> FamilyOnlineState) -> STM ()
 updateFamily families familyId f = do
   familiesP <- readTVar families
@@ -102,8 +114,10 @@ lookupFamily families familyId= do
   familiesP <- readTVar families
   traverse readTVar $ M.lookup familyId familiesP
 
+-- TODO: Should this be ... -> PleaseNameMeT m () - to be coherent and timeoutable 
 updateStatus :: (DeviceId, DeviceType) -> FamilyOnlineState -> FamilyOnlineState
 updateStatus (clientId, clientType) = onlineMembers . at clientId .~ Just clientType
 
+-- TODO: Should this be ... -> PleaseNameMeT m () - to be coherent and timeoutable 
 deleteStatus :: DeviceId -> FamilyOnlineState -> FamilyOnlineState
 deleteStatus clientId = onlineMembers . at clientId .~ Nothing
