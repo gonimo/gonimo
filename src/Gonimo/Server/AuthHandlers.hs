@@ -9,12 +9,14 @@ import           Control.Monad                       (guard)
 import           Control.Monad.Extra                 (whenM)
 import           Control.Monad.Freer                 (Eff)
 import           Control.Monad.Freer.Reader          (ask)
+import           Control.Monad.Plus                  (mfromMaybe)
+import           Control.Monad.State.Class           (gets, modify)
 import           Control.Monad.STM.Class             (liftSTM)
 import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Maybe           (MaybeT (..), runMaybeT)
 import qualified Data.Map.Strict                     as M
-import           Data.Proxy                          (Proxy (..))
 import           Data.Maybe                          (fromMaybe)
+import           Data.Proxy                          (Proxy (..))
 import qualified Data.Set                            as S
 import           Data.Text                           (Text)
 import qualified Data.Text                           as T
@@ -180,32 +182,53 @@ getFamily familyId = do
 createChannel :: AuthServerConstraint r
               => FamilyId -> DeviceId -> DeviceId -> Eff r Secret
 createChannel familyId toId fromId = do
-  -- is it a good idea to expose the db-id in the route - people know how to use
-  -- a packet sniffer
+  authorizeAuthData (isFamilyMember familyId)
+  authorizeAuthData ((fromId ==) . deviceKey)
 
   secret <- generateSecret
-  authorizedPut (putSecret secret fromId toId) familyId fromId toId
+  updateFamilyRetryEff familyId $ createChannel' secret
 
   notify ModifyEvent endpoint (\f -> f familyId toId)
   return secret
  where
+   createChannel' :: Secret -> UpdateFamily ()
+   createChannel' secret = do
+     secrets <- gets _channelSecrets
+     if M.member toId secrets
+       then mzero
+       else channelSecrets.at toId .= Just (fromId, secret)
+     return ()
+
    endpoint :: Proxy ("socket" :> ReceiveSocketR)
    endpoint = Proxy
 
 
 receiveSocket :: AuthServerConstraint r
                => FamilyId -> DeviceId -> Eff r (DeviceId, Secret)
--- | in this request @to@ is the one receiving the secret
-receiveSocket familyId toId =
-  authorizedRecieve'(receiveSecret toId) familyId toId
+-- in this request @to@ is the one receiving the secret
+receiveSocket familyId toId = do
+    authorizeAuthData (isFamilyMember familyId)
+    authorizeAuthData ((toId ==) . deviceKey)
+
+    updateFamilyErrEff NoNewChannel familyId $ receiveSocket'
+  where
+    receiveSocket' :: UpdateFamily (DeviceId, Secret)
+    receiveSocket' = do
+      secrets <- gets _channelSecrets
+      cs <- mfromMaybe $ secrets ^. at toId
+      channelSecrets.at toId .= Nothing
+      return cs
+
 
 putChannel :: AuthServerConstraint r
            => FamilyId -> DeviceId -> DeviceId -> Secret -> Text -> Eff r ()
-putChannel familyId fromId toId token txt = do
+putChannel familyId fromId toId secret txt = do
+  authorizeAuthData (isFamilyMember familyId)
+  authorizeAuthData ((fromId ==) . deviceKey)
 
-  authorizedPut (putData txt token fromId) familyId fromId toId
+  updateFamilyRetryEff familyId $ putData txt (fromId, toId, secret)
 
-  notify ModifyEvent endpoint (\f -> f familyId fromId toId token)
+  notify ModifyEvent endpoint (\f -> f familyId fromId toId secret)
   where
    endpoint :: Proxy ("socket" :> ReceiveChannelR)
    endpoint = Proxy
@@ -213,9 +236,11 @@ putChannel familyId fromId toId token txt = do
 
 receiveChannel :: AuthServerConstraint r
                => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r Text
-receiveChannel familyId fromId toId token =
-  authorizeJust (\(fromId',t) -> do guard (fromId == fromId'); return t)
-    =<< authorizedRecieve (receieveData token) familyId fromId toId
+receiveChannel familyId fromId toId secret = do
+  authorizeAuthData (isFamilyMember familyId)
+  authorizeAuthData ((toId ==) . deviceKey)
+
+  updateFamilyErrEff NoDataAvailable familyId $ receiveData (fromId, toId, secret)
 
 statusRegisterR :: AuthServerConstraint r
                 => FamilyId -> (DeviceId, DeviceType) -> Eff r ()

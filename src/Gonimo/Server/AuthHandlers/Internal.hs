@@ -25,53 +25,6 @@ import           Utils.Control.Monad.Trans.Maybe (maybeT)
 import qualified Gonimo.WebAPI.Types              as Client
 
 
-authorizedPut :: AuthServerConstraint r
-              => (TVar FamilyOnlineState -> STM ())
-              ->  FamilyId -> DeviceId -> DeviceId -> Eff r ()
-authorizedPut f familyId fromId toId = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . deviceKey)
-
-  let fromto = S.fromList [fromId, toId]
-  state <- getState
-  x <- timeout 2000 $ atomically $ runMaybeT $ do
-    a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
-    b <- liftSTM $ readTVar a
-    guard $ fromto `S.isSubsetOf` (M.keysSet $ b^.onlineMembers)
-    liftSTM $ f a
-
-  authorizeJust id x
-
-
-authorizedRecieve :: AuthServerConstraint r
-                  => (TVar FamilyOnlineState -> STM (Maybe a))
-                  ->  FamilyId -> DeviceId -> DeviceId -> Eff r a
-authorizedRecieve f familyId fromId toId = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . deviceKey)
-
-  let fromto = S.fromList [fromId, toId]
-  state <- getState
-  x <- timeout 2000 $ atomically $ runMaybeT $ do
-    a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
-    b <- liftSTM $ readTVar a
-    guard $ fromto `S.isSubsetOf` (M.keysSet $ b^.onlineMembers)
-    MaybeT $ f a
-  authorizeJust id x
-
-authorizedRecieve' :: AuthServerConstraint r
-                  => (TVar FamilyOnlineState -> STM (Maybe a))
-                  ->  FamilyId -> DeviceId -> Eff r a
-authorizedRecieve' f familyId toId = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . deviceKey)
-
-  state <- getState
-  x <- timeout 2000 $ atomically $ runMaybeT $ do
-    a <- (maybeT . (familyId `M.lookup`)) =<< liftSTM (readTVar state)
-    MaybeT $ f a
-  authorizeJust id x
-
 listDevicesEndpoint  :: Proxy ("onlineStatus" :> ListDevicesR)
 listDevicesEndpoint = Proxy
 

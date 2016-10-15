@@ -21,6 +21,8 @@ module Gonimo.Server.Effects (
   , logTH
   , logWarn
   , notify
+  , updateFamilyRetryEff
+  , updateFamilyErrEff
   , updateFamilyEff
   , getFamilyEff
   , runDb
@@ -31,7 +33,7 @@ module Gonimo.Server.Effects (
 
 
 
-import           Control.Concurrent.STM         (STM)
+import           Control.Concurrent.STM         (STM, retry)
 import           Control.Exception              (SomeException)
 import           Control.Monad.Freer            (Eff)
 import           Control.Monad.Freer.Exception  (Exc)
@@ -54,11 +56,12 @@ import           Gonimo.Database.Effects
 import           Gonimo.Server.DbEntities       (FamilyId)
 import           Gonimo.Server.Effects.Internal
 import           Gonimo.Server.Error            (ServerError (NoSuchFamily),
-                                                 fromMaybeErr)
+                                                 fromMaybeErr, throwServer)
 import           Gonimo.Server.State            (FamilyOnlineState, OnlineState,
-                                                 lookupFamily, updateFamily)
+                                                 lookupFamily, updateFamily, UpdateFamily)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
+import           Utils.Constants                (standardDelay)
 
 
 secretLength :: Int
@@ -104,13 +107,35 @@ notify :: forall endpoint r. (ServerConstraint r, IsElem endpoint GonimoAPI, Has
                       => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> Eff r ()
 notify ev pE cb = sendServer $ Notify ev pE cb
 
+-- | Update family, retrying if updateF returns Nothing
+updateFamilyRetryEff :: ServerConstraint r
+                   => FamilyId -> UpdateFamily a -> Eff r a
+updateFamilyRetryEff familyId updateF = do
+  state <- getState
+  timeout standardDelay . atomically $ do
+    r <- updateFamily state familyId updateF
+    case r of
+      Nothing -> retry
+      Just v -> return v
 
--- | Helper function for updating a family in Eff:
+-- | Update family, throwing err if updateF returns Nothing
+updateFamilyErrEff :: ServerConstraint r
+                   => ServerError -> FamilyId -> UpdateFamily a -> Eff r a
+updateFamilyErrEff err familyId updateF = do
+  state <- getState
+  r <- atomically $ updateFamily state familyId updateF
+  case r of
+    Nothing -> throwServer err
+    Just v -> return v
+
+-- | Update family, ignoring Nothing.
 updateFamilyEff :: ServerConstraint r
-                   => FamilyId -> (FamilyOnlineState -> FamilyOnlineState) -> Eff r ()
+                   => FamilyId -> UpdateFamily () -> Eff r ()
 updateFamilyEff familyId updateF = do
   state <- getState
   atomically $ updateFamily state familyId updateF
+  pure ()
+
 
 getFamilyEff :: ServerConstraint r
                 =>  FamilyId -> Eff r FamilyOnlineState
