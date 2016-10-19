@@ -24,10 +24,7 @@ data ServerError = InvalidAuthToken
                  | NoSuchSocket
                  | Forbidden
                  | NotFound
-                 | NoDataAvailable
-                 | NoNewChannel
                  | TransactionTimeout
-                 | NotPossible -- For errors that actually cannot really happen.
   deriving (Generic)
 
 fromMaybeErr :: Member (Exc SomeException) r => ServerError -> Maybe a -> Eff r a
@@ -63,8 +60,6 @@ getServantErr (NoSuchFamily _) = err404
 getServantErr NoSuchInvitation = err404
 getServantErr NoSuchSocket = err404
 getServantErr NotFound = err404
-getServantErr NoDataAvailable = err404
-getServantErr NoNewChannel = err404
 getServantErr Forbidden = err403
 getServantErr TransactionTimeout = err500
 

@@ -5,7 +5,6 @@ import           Control.Concurrent.STM    (STM, TVar, modifyTVar, newTVar,
                                             readTVar, writeTVar)
 import           Control.Lens
 import           Control.Monad             (MonadPlus (mzero), when, unless)
-import           Control.Monad.Plus                  (mfromMaybe)
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.State
@@ -69,7 +68,7 @@ putData txt fromToSecret = do
 receiveData :: Monad m => (FromId, ToId, Secret) -> UpdateFamilyT m Text
 receiveData fromToSecret = do
   cdata <- gets _channelData
-  txt <- mfromMaybe $ cdata^.at fromToSecret
+  txt <- maybe mzero return $ cdata^.at fromToSecret
   channelData.at fromToSecret .= Nothing
   return txt
 
@@ -97,7 +96,7 @@ updateFamily families familyId f = do
     getFamily :: STM FamilyOnlineState
     getFamily = do
       familiesP <- readTVar families
-      case M.lookup familyId familiesP of
+      case familiesP ^. at familyId of
         Nothing -> return emptyFamily
         Just oldFamily -> readTVar oldFamily
 

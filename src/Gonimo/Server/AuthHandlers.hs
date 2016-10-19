@@ -9,12 +9,12 @@ import           Control.Monad                       (guard)
 import           Control.Monad.Extra                 (whenM)
 import           Control.Monad.Freer                 (Eff)
 import           Control.Monad.Freer.Reader          (ask)
-import           Control.Monad.Plus                  (mfromMaybe)
 import           Control.Monad.State.Class           (gets, modify)
 import           Control.Monad.STM.Class             (liftSTM)
 import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Maybe           (MaybeT (..), runMaybeT)
 import qualified Data.Map.Strict                     as M
+import           Data.Monoid
 import           Data.Maybe                          (fromMaybe)
 import           Data.Proxy                          (Proxy (..))
 import qualified Data.Set                            as S
@@ -42,6 +42,8 @@ import           Servant.Server                      (ServantErr (..), err400,
                                                       err403)
 import           Servant.Subscriber                  (Event (ModifyEvent))
 import           Utils.Control.Monad.Trans.Maybe     (maybeT)
+import Database.Persist.Class
+import Unsafe.Coerce
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -204,18 +206,18 @@ createChannel familyId toId fromId = do
 
 
 receiveSocket :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> Eff r (DeviceId, Secret)
+               => FamilyId -> DeviceId -> Eff r (Maybe (DeviceId, Secret))
 -- in this request @to@ is the one receiving the secret
 receiveSocket familyId toId = do
     authorizeAuthData (isFamilyMember familyId)
     authorizeAuthData ((toId ==) . deviceKey)
 
-    updateFamilyErrEff NoNewChannel familyId $ receiveSocket'
+    updateFamilyEff familyId $ receiveSocket'
   where
     receiveSocket' :: UpdateFamily (DeviceId, Secret)
     receiveSocket' = do
       secrets <- gets _channelSecrets
-      cs <- mfromMaybe $ secrets ^. at toId
+      cs <- maybe mzero return $ secrets ^. at toId
       channelSecrets.at toId .= Nothing
       return cs
 
@@ -227,20 +229,25 @@ putChannel familyId fromId toId secret txt = do
   authorizeAuthData ((fromId ==) . deviceKey)
 
   updateFamilyRetryEff familyId $ putData txt (fromId, toId, secret)
-
+  $logDebug $ "CHANNEL: Put data in channel " <> (T.pack . show) [prettyKey familyId, prettyKey fromId, prettyKey toId] <> ": " <> txt
   notify ModifyEvent endpoint (\f -> f familyId fromId toId secret)
   where
    endpoint :: Proxy ("socket" :> ReceiveChannelR)
    endpoint = Proxy
 
+prettyKey :: Key a -> Text
+prettyKey = T.pack . show . (unsafeCoerce :: Key a -> Int)
 
 receiveChannel :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r Text
+               => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r (Maybe Text)
 receiveChannel familyId fromId toId secret = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((toId ==) . deviceKey)
 
-  updateFamilyErrEff NoDataAvailable familyId $ receiveData (fromId, toId, secret)
+  txt <- updateFamilyEff familyId $ receiveData (fromId, toId, secret)
+
+  $logDebug $ "CHANNEL: Got data from channel " <> (T.pack . show) [ prettyKey familyId, prettyKey fromId, prettyKey toId ] <> ": " <> (T.pack . show) txt
+  pure txt
 
 statusRegisterR :: AuthServerConstraint r
                 => FamilyId -> (DeviceId, DeviceType) -> Eff r ()
@@ -248,7 +255,7 @@ statusRegisterR familyId deviceData@(deviceId, deviceType) = do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
     whenM hasChanged $ do -- < No need for a single atomically here!
-      updateFamilyEff familyId $ updateStatus deviceData
+      _ <- updateFamilyEff familyId $ updateStatus deviceData
       whenM updateLastUsedBabyNames $
         notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
       notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
@@ -282,7 +289,7 @@ statusDeleteR  :: AuthServerConstraint r
 statusDeleteR familyId deviceId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isDevice deviceId
-  updateFamilyEff familyId $ deleteStatus deviceId
+  _ <- updateFamilyEff familyId $ deleteStatus deviceId
   notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
 
 statusListDevicesR  :: AuthServerConstraint r
