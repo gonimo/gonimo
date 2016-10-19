@@ -130,11 +130,10 @@ updateFamilyErrEff err familyId updateF = do
 
 -- | Update family, ignoring Nothing.
 updateFamilyEff :: ServerConstraint r
-                   => FamilyId -> UpdateFamily () -> Eff r ()
+                   => FamilyId -> UpdateFamily a -> Eff r (Maybe a)
 updateFamilyEff familyId updateF = do
   state <- getState
   atomically $ updateFamily state familyId updateF
-  pure ()
 
 
 getFamilyEff :: ServerConstraint r
