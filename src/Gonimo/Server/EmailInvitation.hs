@@ -9,6 +9,7 @@ import           Data.Text                as T
 import           NeatInterpolation
 #else
 import           Data.Monoid
+import           Network.HTTP.Types (urlEncode, urlDecode)
 #endif
 import           Network.Mail.Mime        (Address (..), Mail, simpleMail')
 import           Web.HttpApiData
@@ -26,7 +27,7 @@ invitationText _inv _n = "New invitation for family "
     <> secret
     <> "\n"
   where
-    secret = toUrlPiece $ invitationSecret _inv
+    secret = T.decodeUtf8 . urlEncode False . T.encodeUtf8 . toUrlPiece $ invitationSecret _inv
 #else
 invitationText :: Invitation -> FamilyName -> Text
 invitationText _inv _n =
