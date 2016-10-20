@@ -5,15 +5,16 @@ module Gonimo.Server.EmailInvitation (
 
 import           Data.Text                ()
 import           Data.Text                as T
+import           Data.Text.Encoding       as T
 #ifndef DEVELOPMENT
 import           NeatInterpolation
 #else
 import           Data.Monoid
-import           Network.HTTP.Types (urlEncode, urlDecode)
 #endif
 import           Network.Mail.Mime        (Address (..), Mail, simpleMail')
 import           Web.HttpApiData
 import qualified Data.Text.Lazy           as TL
+import           Network.HTTP.Types (urlEncode)
 
 import           Gonimo.Server.DbEntities hiding (familyName)
 import           Gonimo.Server.Types
@@ -27,7 +28,7 @@ invitationText _inv _n = "New invitation for family "
     <> secret
     <> "\n"
   where
-    secret = T.decodeUtf8 . urlEncode False . T.encodeUtf8 . toUrlPiece $ invitationSecret _inv
+    secret = T.decodeUtf8 . urlEncode True . T.encodeUtf8 . toUrlPiece $ invitationSecret _inv
 #else
 invitationText :: Invitation -> FamilyName -> Text
 invitationText _inv _n =
@@ -44,7 +45,7 @@ invitationText _inv _n =
     Gonimo
   |]
   where
-    secret = toUrlPiece $ invitationSecret _inv
+    secret = T.decodeUtf8 . urlEncode True . T.encodeUtf8 . toUrlPiece $ invitationSecret _inv
 #endif
 
 makeInvitationEmail :: Invitation -> EmailAddress -> FamilyName -> Mail
