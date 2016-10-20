@@ -113,7 +113,7 @@ library
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall -fwarn-tabs -O0
   else
-      ghc-options:   -Werror -fwarn-tabs -O2
+      ghc-options:   -Wall -Werror -fwarn-tabs -O2
 
   extra-libraries:    pq
                     , crypto

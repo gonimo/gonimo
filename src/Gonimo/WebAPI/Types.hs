@@ -6,7 +6,7 @@
 module Gonimo.WebAPI.Types where
 
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
-                                        genericToJSON, genericToEncoding)
+                                        genericToEncoding)
 import           Data.Text           (Text)
 import           GHC.Generics
 import           Data.Time             (UTCTime)

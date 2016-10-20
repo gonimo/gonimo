@@ -1,28 +1,12 @@
 module Gonimo.Server.AuthHandlers.Internal where
 
-import           Control.Concurrent.STM          (STM, TVar, readTVar)
-import           Control.Lens                    ((^.))
-import           Control.Monad                   (guard)
 import           Control.Monad.Freer             (Eff)
-import           Control.Monad.STM.Class         (liftSTM)
-import           Control.Monad.Trans.Maybe       (MaybeT (..), runMaybeT)
-import qualified Data.Map.Strict                 as M
 import           Data.Proxy                      (Proxy (Proxy))
-import qualified Data.Set                        as S
 import           Gonimo.Database.Effects.Servant (get404)
-import           Gonimo.Server.Auth              (AuthServerConstraint,
-                                                  authorizeAuthData,
-                                                  authorizeJust, deviceKey,
-                                                  isFamilyMember)
-import           Gonimo.Server.DbEntities        (DeviceId, Family, FamilyId, AccountId)
-import           Gonimo.Server.Effects           (atomically, getState, timeout)
-import           Gonimo.Server.Effects
-import           Gonimo.Server.State             (FamilyOnlineState,
-                                                  onlineMembers)
+import           Gonimo.Server.DbEntities        (Family, FamilyId, AccountId)
 import           Gonimo.WebAPI                   (ListDevicesR, GetFamilyDevicesR, GetFamilyR)
 import           Servant.API                     ((:>), Capture, Get, JSON)
-import           Utils.Control.Monad.Trans.Maybe (maybeT)
-import qualified Gonimo.WebAPI.Types              as Client
+import           Gonimo.Server.Effects (runDb, ServerConstraint)
 
 
 listDevicesEndpoint  :: Proxy ("onlineStatus" :> ListDevicesR)

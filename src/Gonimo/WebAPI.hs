@@ -13,7 +13,6 @@ import           Gonimo.WebAPI.Verbs
 import           Servant.API
 import           Servant.API.BrowserHeader
 import           Servant.Subscriber.Subscribable
-import           Gonimo.Server.State
 
 
 type GonimoAPI =

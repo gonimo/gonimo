@@ -7,11 +7,12 @@ import           Data.Text                ()
 import           Data.Text                as T
 #ifndef DEVELOPMENT
 import           NeatInterpolation
+#else
+import           Data.Monoid
 #endif
 import           Network.Mail.Mime        (Address (..), Mail, simpleMail')
 import           Web.HttpApiData
 import qualified Data.Text.Lazy           as TL
-import           Data.Monoid
 
 import           Gonimo.Server.DbEntities hiding (familyName)
 import           Gonimo.Server.Types

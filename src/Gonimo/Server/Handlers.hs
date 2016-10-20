@@ -1,7 +1,6 @@
 module Gonimo.Server.Handlers where
 
 import           Control.Monad.Freer           (Eff)
-import           Data.Maybe                    (fromMaybe)
 import           Data.Text                     (Text, take, unwords)
 import qualified Gonimo.Database.Effects       as Db
 import           Gonimo.Server.DbEntities

@@ -11,7 +11,6 @@ import           Control.Monad.Except            (ExceptT (..))
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.Freer.Exception   (catchError, throwError)
 import           Control.Monad.Freer.Reader      (runReader)
-import           Data.Aeson                      (encode)
 import           Data.Bifunctor                  (first)
 import           Data.Monoid
 import qualified Data.Text                       as T
@@ -34,7 +33,7 @@ import           Gonimo.WebAPI
 import           Servant                ((:<|>) (..), (:~>) (..),
                                          ServantErr (..), Server, ServerT,
                                          enter, err500)
-import           Servant.Server         (err400, err401)
+import           Servant.Server         (err401)
 
 
 effServer :: ServerT GonimoAPI ServerEffects

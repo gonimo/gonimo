@@ -4,8 +4,7 @@ module Gonimo.Server.State where
 import           Control.Concurrent.STM    (STM, TVar, modifyTVar, newTVar,
                                             readTVar, writeTVar)
 import           Control.Lens
-import           Control.Monad             (MonadPlus (mzero), when, unless)
-import           Control.Monad.Trans.Class
+import           Control.Monad             (MonadPlus (mzero), unless)
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.State
 import           Data.Map.Strict           (Map)
@@ -14,12 +13,7 @@ import qualified Data.Set                  as S
 import           Data.Text                 (Text)
 
 import           Gonimo.Server.DbEntities  (DeviceId, FamilyId)
-import           Gonimo.Server.Error       (ServerError (TransactionTimeout),
-                                            makeServantErr)
 import           Gonimo.Server.Types       (DeviceType, Secret)
-
-import           Utils.Constants           (Microseconds)
-import           Utils.STM
 
 type FromId = DeviceId
 type ToId   = DeviceId
