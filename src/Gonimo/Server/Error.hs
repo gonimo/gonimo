@@ -22,6 +22,7 @@ data ServerError = InvalidAuthToken
                  | NoSuchFamily FamilyId
                  | NoSuchInvitation
                  | NoSuchSocket
+                 | NoSuchChannel
                  | Forbidden
                  | NotFound
                  | TransactionTimeout
@@ -59,6 +60,7 @@ getServantErr AlreadyFamilyMember = err409
 getServantErr (NoSuchFamily _) = err404
 getServantErr NoSuchInvitation = err404
 getServantErr NoSuchSocket = err404
+getServantErr NoSuchChannel = err404
 getServantErr NotFound = err404
 getServantErr Forbidden = err403
 getServantErr TransactionTimeout = err500

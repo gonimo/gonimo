@@ -5,22 +5,19 @@ module Gonimo.Server.Effects.Development (
   , ServerEffects ) where
 
 
-import           Control.Concurrent.STM                  (atomically)
-import           Control.Exception.Base                  (SomeException,
-                                                          toException,
-                                                          try)
-import           Control.Monad.Freer.Exception           (Exc (..), runError)
-import           Control.Monad.Freer.Internal            (Arrs, Eff (..),
-                                                          decomp, qApp)
-import           Control.Monad.Logger                    (ToLogStr (..))
-import           Crypto.Random                           (SystemRandom,
-                                                          genBytes, newGenIO)
+import           Control.Concurrent.STM        (atomically, registerDelay)
+import           Control.Exception.Base        (SomeException, toException, try)
+import           Control.Monad.Freer.Exception (Exc (..), runError)
+import           Control.Monad.Freer.Internal  (Arrs, Eff (..), decomp, qApp)
+import           Control.Monad.Logger          (ToLogStr (..))
+import           Crypto.Random                 (SystemRandom, genBytes,
+                                                newGenIO)
 import           Data.Bifunctor
 import           Data.ByteString.Lazy                    (toStrict)
 import           Data.Text                               (Text)
 import qualified Data.Text.IO                            as T
 import qualified Data.Text.Encoding                      as T
-import           Network.Mail.Mime                       
+import           Network.Mail.Mime
 import           Data.Time.Clock                         (getCurrentTime)
 import           Servant.Subscriber
 import           System.Random                           (getStdRandom)
@@ -32,6 +29,9 @@ import           Gonimo.Server.Effects.Internal
 runExceptionServer :: Config -> Eff (Exc SomeException ': '[Server]) w  -> IO (Either SomeException w)
 runExceptionServer c = runServer c . runError
 
+-- runTimeoutServer :: Config -> Int -> Eff (Exc SomeException ': '[Server]) w -> IO (Either SomeException w)
+-- runTimeoutServer c timeout action = do
+--   r <- runExceptionServer c action
 
 
 runServer :: forall w . Config -> Eff '[Server] (Either SomeException w) -> IO (Either SomeException w)
@@ -44,7 +44,8 @@ runServer c (E u' q) = case decomp u' of
     -- Throw away the new generator & make an exception of any occurred error:
     bimap toException fst . genBytes l <$> (newGenIO :: IO SystemRandom)
     >>= runServer c . qApp q
-  Right (Timeout _ eff)            -> runExceptionServer c eff >>= runServer c . qApp q
+  -- Right (Timeout _ eff)            -> runExceptionServer c eff >>= runServer c . qApp q
+  Right (RegisterDelay n)          -> execIO c q $ registerDelay n
   Right GetCurrentTime             -> execIO c q getCurrentTime
   Right GetState                   -> runServer c . qApp q $ Right (state c)
   Right (Notify ev pE cB)          -> execIO c q $ atomically (notify (subscriber c) ev pE cB)

@@ -5,18 +5,17 @@ module Gonimo.Server.Effects.Production (
   , ServerEffects ) where
 
 
-import           Control.Exception.Base                  (SomeException, toException, try)
-import           Control.Monad.Freer.Exception           (Exc (..), runError)
-import           Control.Monad.Freer.Internal            (Arrs, Eff (..),
-                                                          decomp, qApp)
-import           Control.Monad.Logger                    (ToLogStr (..))
-import           Crypto.Random                           (SystemRandom,
-                                                          genBytes, newGenIO)
+import           Control.Concurrent.STM        (atomically, registerDelay)
+import           Control.Exception.Base        (SomeException, toException, try)
+import           Control.Monad.Freer.Exception (Exc (..), runError)
+import           Control.Monad.Freer.Internal  (Arrs, Eff (..), decomp, qApp)
+import           Control.Monad.Logger          (ToLogStr (..))
+import           Crypto.Random                 (SystemRandom, genBytes,
+                                                newGenIO)
 import           Data.Bifunctor
-import           Data.Time.Clock                         (getCurrentTime)
-import           Network.Mail.SMTP                       (sendMail)
+import           Data.Time.Clock               (getCurrentTime)
+import           Network.Mail.SMTP             (sendMail)
 import           Servant.Subscriber
-import           Control.Concurrent.STM (atomically)
 
 import           Gonimo.Server.Effects.Internal
 import           Gonimo.Server.Effects.Common
@@ -39,7 +38,8 @@ runServer c (E u' q) = case decomp u' of
     -- Throw away the new generator & make an exception of any occurred error:
     bimap toException fst . genBytes l <$> (newGenIO :: IO SystemRandom)
     >>= runServer c . qApp q
-  Right (Timeout _ eff)            -> runExceptionServer c eff >>= runServer c . qApp q
+  -- Right (Timeout _ eff)            -> runExceptionServer c eff >>= runServer c . qApp q
+  Right (RegisterDelay n)          -> execIO c q $ registerDelay n
   Right GetCurrentTime             -> execIO c q getCurrentTime
   Right GetState                   -> runServer c . qApp q $ Right (state c)
   Right (Notify ev pE cB)          -> execIO c q $ atomically (notify (subscriber c) ev pE cB)

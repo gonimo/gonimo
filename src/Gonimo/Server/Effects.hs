@@ -25,31 +25,33 @@ module Gonimo.Server.Effects (
   , updateFamilyErrEff
   , updateFamilyEff
   , getFamilyEff
+  , registerDelay
   , runDb
   , runRandom
   , sendEmail
-  , timeout
+  -- , timeout
   ) where
 
 
 
-import           Control.Concurrent.STM         (STM, retry)
-import           Control.Exception              (SomeException)
-import           Control.Monad.Freer            (Eff)
-import           Control.Monad.Freer.Exception  (Exc)
-import           Control.Monad.Logger           (LogLevel (..), LogSource,
-                                                 ToLogStr, liftLoc)
-import           Data.ByteString                (ByteString)
+import           Control.Concurrent.STM        (STM, retry)
+import           Control.Concurrent.STM        (TVar)
+import           Control.Exception             (SomeException)
+import           Control.Monad.Freer           (Eff)
+import           Control.Monad.Freer.Exception (Exc)
+import           Control.Monad.Logger          (LogLevel (..), LogSource,
+                                                ToLogStr, liftLoc)
+import           Data.ByteString               (ByteString)
 import           Data.Proxy
 import           Data.Text
-import           Data.Time.Clock                (UTCTime)
-import           Database.Persist.Sql           (SqlBackend)
+import           Data.Time.Clock               (UTCTime)
+import           Database.Persist.Sql          (SqlBackend)
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
-import           Network.Mail.Mime              (Mail)
-import           Servant.Subscriber             (Event, HasLink, IsElem,
-                                                 IsSubscribable,
-                                                 IsValidEndpoint, MkLink, URI)
+import           Network.Mail.Mime             (Mail)
+import           Servant.Subscriber            (Event, HasLink, IsElem,
+                                                IsSubscribable, IsValidEndpoint,
+                                                MkLink, URI)
 import           System.Random                  (StdGen)
 
 import           Gonimo.Database.Effects
@@ -58,7 +60,7 @@ import           Gonimo.Server.Effects.Internal
 import           Gonimo.Server.Error            (ServerError (NoSuchFamily),
                                                  fromMaybeErr, throwServer)
 import           Gonimo.Server.State            (FamilyOnlineState, OnlineState,
-                                                 lookupFamily, updateFamily, UpdateFamily)
+                                                 lookupFamily, updateFamily, UpdateFamily, updateFamilyRetry)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardDelay)
@@ -71,8 +73,11 @@ secretLength = 16
 atomically :: ServerConstraint r => STM a -> Eff r a
 atomically = sendServer . Atomically
 
-timeout :: ServerConstraint r => Int -> ServerEffects a -> Eff r a
-timeout n eff = sendServer $ Timeout n eff 
+-- timeout :: ServerConstraint r => Int -> ServerEffects a -> Eff r a
+-- timeout n eff = sendServer $ Timeout n eff
+
+registerDelay :: ServerConstraint r => Int -> Eff r (TVar Bool)
+registerDelay = sendServer . RegisterDelay
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
@@ -109,14 +114,14 @@ notify ev pE cb = sendServer $ Notify ev pE cb
 
 -- | Update family, retrying if updateF returns Nothing
 updateFamilyRetryEff :: ServerConstraint r
-                   => FamilyId -> UpdateFamily a -> Eff r a
-updateFamilyRetryEff familyId updateF = do
+                   => ServerError -> FamilyId -> UpdateFamily a -> Eff r a
+updateFamilyRetryEff err familyId updateF = do
   state <- getState
-  timeout standardDelay . atomically $ do
-    r <- updateFamily state familyId updateF
-    case r of
-      Nothing -> retry
-      Just v -> return v
+  timeUp <- registerDelay standardDelay
+  r <- atomically $ updateFamilyRetry timeUp state familyId updateF
+  case r of
+    Nothing -> throwServer err
+    Just v -> pure v
 
 -- | Update family, throwing err if updateF returns Nothing
 updateFamilyErrEff :: ServerConstraint r

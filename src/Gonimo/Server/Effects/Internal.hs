@@ -8,6 +8,7 @@ module Gonimo.Server.Effects.Internal (
   ) where
 
 import           Control.Concurrent.STM        (STM)
+import           Control.Concurrent.STM        (TVar)
 import           Control.Exception.Base        (SomeException)
 import           Control.Monad.Freer           (Eff, Member, send)
 import           Control.Monad.Freer.Exception (Exc (..), throwError)
@@ -46,7 +47,8 @@ data Server v where
   RunDb          :: Eff '[Exc SomeException, Database SqlBackend]  a -> EServer a
   RunRandom      :: (StdGen -> (a,StdGen)) -> EServer a
   SendEmail      :: !Mail -> EServer ()
-  Timeout        :: !Int -> ServerEffects a -> EServer a
+  --Timeout        :: !Int -> ServerEffects a -> EServer a
+  RegisterDelay  :: Int -> EServer (TVar Bool)
   Notify         :: forall endpoint. (IsElem endpoint GonimoAPI, HasLink endpoint
                       , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
                       => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> EServer ()

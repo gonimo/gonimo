@@ -2,7 +2,7 @@
 module Gonimo.Server.State where
 
 import           Control.Concurrent.STM    (STM, TVar, modifyTVar, newTVar,
-                                            readTVar, writeTVar)
+                                            readTVar, writeTVar, retry)
 import           Control.Lens
 import           Control.Monad             (MonadPlus (mzero), unless)
 import           Control.Monad.Trans.Maybe
@@ -105,6 +105,17 @@ updateFamily families familyId f = do
           if newFamily ^. onlineMembers . to M.null -- Cleanup needed?
           then modifyTVar families $ at familyId .~ Nothing
           else writeTVar familyTVar newFamily -- Ok just write value.
+
+updateFamilyRetry :: TVar Bool -> OnlineState -> FamilyId -> UpdateFamily a -> STM (Maybe a)
+updateFamilyRetry timeUp families familyId f = do
+  timeUp' <- readTVar timeUp
+  if timeUp'
+    then pure Nothing
+    else do
+    r <- updateFamily families familyId f
+    case r of
+      Nothing -> retry
+      Just _ -> pure r
 
 
 lookupFamily :: OnlineState -> FamilyId -> STM (Maybe FamilyOnlineState)

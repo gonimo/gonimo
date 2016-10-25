@@ -188,7 +188,7 @@ createChannel familyId toId fromId = do
   authorizeAuthData ((fromId ==) . deviceKey)
 
   secret <- generateSecret
-  updateFamilyRetryEff familyId $ createChannel' secret
+  updateFamilyRetryEff NoSuchSocket familyId $ createChannel' secret
 
   notify ModifyEvent endpoint (\f -> f familyId toId)
   return secret
@@ -228,7 +228,7 @@ putChannel familyId fromId toId secret txt = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((fromId ==) . deviceKey)
 
-  updateFamilyRetryEff familyId $ putData txt (fromId, toId, secret)
+  updateFamilyRetryEff NoSuchChannel familyId $ putData txt (fromId, toId, secret)
   $logDebug $ "CHANNEL: Put data in channel " <> (T.pack . show) [prettyKey familyId, prettyKey fromId, prettyKey toId] <> ": " <> txt
   notify ModifyEvent endpoint (\f -> f familyId fromId toId secret)
   where
