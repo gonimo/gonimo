@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE RankNTypes   #-}
 {--
   Gonimo server uses the new effects API from the freer package. This
   is all IO effects of gonimo server will be modeled in an interpreter,
@@ -24,16 +25,18 @@ module Gonimo.Server.Effects (
   , updateFamilyRetryEff
   , updateFamilyErrEff
   , updateFamilyEff
+  , cleanReceivedEff
   , getFamilyEff
   , registerDelay
   , runDb
   , runRandom
   , sendEmail
+  , module Logging
   -- , timeout
   ) where
 
 
-
+import           Control.Lens
 import           Control.Concurrent.STM        (STM, retry)
 import           Control.Concurrent.STM        (TVar)
 import           Control.Exception             (SomeException)
@@ -57,14 +60,14 @@ import           System.Random                  (StdGen)
 import           Gonimo.Database.Effects
 import           Gonimo.Server.DbEntities       (FamilyId)
 import           Gonimo.Server.Effects.Internal
-import           Gonimo.Server.Error            (ServerError (NoSuchFamily),
+import           Gonimo.Server.Error            (ServerError (NoSuchFamily, InternalServerError),
                                                  fromMaybeErr, throwServer)
 import           Gonimo.Server.State            (FamilyOnlineState, OnlineState,
-                                                 lookupFamily, updateFamily, UpdateFamily, updateFamilyRetry)
+                                                 lookupFamily, updateFamily, UpdateFamily, updateFamilyRetry, cleanReceived, CleanReceivedResult(..), QueueStatus)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardDelay)
-
+import           Gonimo.Server.Effects.Logging         as Logging
 
 secretLength :: Int
 secretLength = 16
@@ -81,10 +84,6 @@ registerDelay = sendServer . RegisterDelay
 
 sendEmail :: ServerConstraint r => Mail -> Eff r ()
 sendEmail = sendServer . SendEmail
-
-
-logMessage :: (ServerConstraint r, ToLogStr msg)  => Loc -> LogSource -> LogLevel -> msg -> Eff r ()
-logMessage loc ls ll msg = sendServer $ LogMessage loc ls ll msg
 
 
 genRandomBytes :: ServerConstraint r => Int -> Eff r ByteString
@@ -148,25 +147,22 @@ getFamilyEff familyId = do
   mFamily <- atomically $ lookupFamily state familyId
   fromMaybeErr (NoSuchFamily familyId) mFamily
 
--- We can not create an instance of MonadLogger for (Member Server r => Eff r).
--- The right solution would be to define a Logger type together with an
--- interpreter, which is in fact a more flexible approach than typeclasses for
--- monads, but we don't live in this perfect world - so let's go the way of
--- least resistance and just redfine the TH functions we want to use:
-logTH :: LogLevel -> Q Exp
-logTH level =
-    [|logMessage $(qLocation >>= liftLoc) (pack "") $(lift level)
-     . (id :: Text -> Text)|]
+-- | The given Error is thrown on timeout.
+cleanReceivedEff :: ServerConstraint r
+                 => ServerError -> FamilyId
+                 -> Lens' FamilyOnlineState (Maybe (QueueStatus a))
+                 -> Eff r ()
+cleanReceivedEff err familyId queue = do
+  state <- getState
+  timeUp <- registerDelay standardDelay
+  r <- atomically $ cleanReceived state familyId timeUp queue
+  case r of
+    WasReceived -> return ()
+    WasNotReceived -> throwServer err
+    AlreadyCleaned -> do
+      $(logError) $ "Error: message/secret got wiped, but not by us! Damn stupid."
+      throwServer InternalServerError
+    FamilyNotFoundError -> do
+      $(logError) $ "Error: family not found - we just used it - WTF?!"
+      throwServer InternalServerError
 
-logDebug :: Q Exp
-logDebug = logTH LevelDebug
-
--- | See 'logDebug'
-logInfo :: Q Exp
-logInfo = logTH LevelInfo
--- | See 'logDebug'
-logWarn :: Q Exp
-logWarn = logTH LevelWarn
--- | See 'logDebug'
-logError :: Q Exp
-logError = logTH LevelError

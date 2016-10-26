@@ -21,11 +21,14 @@ data ServerError = InvalidAuthToken
                  | AlreadyFamilyMember -- ^ If a client tries to become a member of a family he is already a member of.
                  | NoSuchFamily FamilyId
                  | NoSuchInvitation
+                 | SocketBusy
+                 | ChannelBusy
                  | NoSuchSocket
                  | NoSuchChannel
                  | Forbidden
                  | NotFound
                  | TransactionTimeout
+                 | InternalServerError
   deriving (Generic)
 
 fromMaybeErr :: Member (Exc SomeException) r => ServerError -> Maybe a -> Eff r a
@@ -59,11 +62,14 @@ getServantErr InvitationAlreadyClaimed = err403
 getServantErr AlreadyFamilyMember = err409
 getServantErr (NoSuchFamily _) = err404
 getServantErr NoSuchInvitation = err404
+getServantErr SocketBusy = err503
+getServantErr ChannelBusy = err503
 getServantErr NoSuchSocket = err404
 getServantErr NoSuchChannel = err404
 getServantErr NotFound = err404
 getServantErr Forbidden = err403
 getServantErr TransactionTimeout = err500
+getServantErr InternalServerError = err500
 
 instance ToJSON ServerError where
     toJSON = genericToJSON defaultOptions

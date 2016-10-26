@@ -188,9 +188,11 @@ createChannel familyId toId fromId = do
   authorizeAuthData ((fromId ==) . deviceKey)
 
   secret <- generateSecret
-  updateFamilyRetryEff NoSuchSocket familyId $ createChannel' secret
+  updateFamilyRetryEff SocketBusy familyId $ createChannel' secret
 
   notify ModifyEvent endpoint (\f -> f familyId toId)
+
+  cleanReceivedEff NoSuchSocket familyId (channelSecrets.at toId)
   return secret
  where
    createChannel' :: Secret -> UpdateFamily ()
@@ -198,7 +200,7 @@ createChannel familyId toId fromId = do
      secrets <- gets _channelSecrets
      if M.member toId secrets
        then mzero
-       else channelSecrets.at toId .= Just (fromId, secret)
+       else channelSecrets.at toId .= Just (Written (fromId, secret))
      return ()
 
    endpoint :: Proxy ("socket" :> ReceiveSocketR)
@@ -217,9 +219,9 @@ receiveSocket familyId toId = do
     receiveSocket' :: UpdateFamily (DeviceId, Secret)
     receiveSocket' = do
       secrets <- gets _channelSecrets
-      cs <- maybe mzero return $ secrets ^. at toId
-      channelSecrets.at toId .= Nothing
-      return cs
+      val <- maybe mzero return $ secrets ^? at toId . _Just . _Written
+      channelSecrets.at toId .= Just Read
+      return val
 
 
 putChannel :: AuthServerConstraint r
@@ -228,9 +230,12 @@ putChannel familyId fromId toId secret txt = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((fromId ==) . deviceKey)
 
-  updateFamilyRetryEff NoSuchChannel familyId $ putData txt (fromId, toId, secret)
+  updateFamilyRetryEff ChannelBusy familyId $ putData txt (fromId, toId, secret)
   $logDebug $ "CHANNEL: Put data in channel " <> (T.pack . show) [prettyKey familyId, prettyKey fromId, prettyKey toId] <> ": " <> txt
+
   notify ModifyEvent endpoint (\f -> f familyId fromId toId secret)
+
+  cleanReceivedEff NoSuchChannel familyId (channelData.at (fromId, toId, secret))
   where
    endpoint :: Proxy ("socket" :> ReceiveChannelR)
    endpoint = Proxy
