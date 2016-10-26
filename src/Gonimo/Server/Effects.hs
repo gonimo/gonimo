@@ -15,12 +15,6 @@ module Gonimo.Server.Effects (
   , generateSecret
   , getCurrentTime
   , getState
-  , logDebug
-  , logError
-  , logInfo
-  , logMessage
-  , logTH
-  , logWarn
   , notify
   , updateFamilyRetryEff
   , updateFamilyErrEff
@@ -37,20 +31,15 @@ module Gonimo.Server.Effects (
 
 
 import           Control.Lens
-import           Control.Concurrent.STM        (STM, retry)
+import           Control.Concurrent.STM        (STM)
 import           Control.Concurrent.STM        (TVar)
 import           Control.Exception             (SomeException)
 import           Control.Monad.Freer           (Eff)
 import           Control.Monad.Freer.Exception (Exc)
-import           Control.Monad.Logger          (LogLevel (..), LogSource,
-                                                ToLogStr, liftLoc)
 import           Data.ByteString               (ByteString)
 import           Data.Proxy
-import           Data.Text
 import           Data.Time.Clock               (UTCTime)
 import           Database.Persist.Sql          (SqlBackend)
-import           Language.Haskell.TH
-import           Language.Haskell.TH.Syntax
 import           Network.Mail.Mime             (Mail)
 import           Servant.Subscriber            (Event, HasLink, IsElem,
                                                 IsSubscribable, IsValidEndpoint,
