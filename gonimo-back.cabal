@@ -75,7 +75,6 @@ library
                        , crypto-api
                        , either >= 4.4.1
                        , errors
-                       , esqueleto
                        , extra
                        , fast-logger
                        , freer
