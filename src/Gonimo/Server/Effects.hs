@@ -49,7 +49,7 @@ import           System.Random                  (StdGen)
 import           Gonimo.Database.Effects
 import           Gonimo.Server.DbEntities       (FamilyId)
 import           Gonimo.Server.Effects.Internal
-import           Gonimo.Server.Error            (ServerError (NoSuchFamily, InternalServerError),
+import           Gonimo.Server.Error            (ServerError (..),
                                                  fromMaybeErr, throwServer)
 import           Gonimo.Server.State            (FamilyOnlineState, OnlineState,
                                                  lookupFamily, updateFamily, UpdateFamily, updateFamilyRetry, cleanReceived, CleanReceivedResult(..), QueueStatus)
@@ -134,7 +134,7 @@ getFamilyEff :: ServerConstraint r
 getFamilyEff familyId = do
   state <- getState
   mFamily <- atomically $ lookupFamily state familyId
-  fromMaybeErr (NoSuchFamily familyId) mFamily
+  fromMaybeErr (FamilyNotOnline familyId) mFamily
 
 -- | The given Error is thrown on timeout.
 cleanReceivedEff :: ServerConstraint r
