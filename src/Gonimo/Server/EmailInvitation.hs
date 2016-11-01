@@ -38,7 +38,7 @@ invitationText _inv _n =
     You got invited to join gonimo family "$_n"!
     Just click on the link below and you are all set for the best baby monitoring on the planet!
 
-    https://test.gonimo.com/index.html?acceptInvitation=$secret
+    https://dev.gonimo.com/index.html?acceptInvitation=$secret
 
     Sincerely yours,
 
