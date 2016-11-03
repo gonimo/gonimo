@@ -255,12 +255,20 @@ receiveChannel familyId fromId toId secret = do
   pure txt
 
 statusRegisterR :: AuthServerConstraint r
-                => FamilyId -> (DeviceId, DeviceType) -> Eff r ()
-statusRegisterR familyId deviceData@(deviceId, deviceType) = do
+                => FamilyId -> DeviceId -> DeviceType -> Eff r SessionId
+statusRegisterR familyId deviceId deviceType = do
+    authorizeAuthData $ isFamilyMember familyId
+    authorizeAuthData $ isDevice deviceId
+
+
+
+statusUpdateR  :: AuthServerConstraint r
+               => FamilyId -> DeviceId -> SessionId -> DeviceType -> Eff r ()
+statusUpdateR familyId deviceId sessionId deviceType= do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
     whenM hasChanged $ do -- < No need for a single atomically here!
-      _ <- updateFamilyEff familyId $ updateStatus deviceData
+      _ <- updateFamilyEff familyId $ updateStatus deviceId sessionId deviceType
       whenM updateLastUsedBabyNames $
         notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
       notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
@@ -282,12 +290,9 @@ statusRegisterR familyId deviceData@(deviceId, deviceType) = do
       state <- getState
       atomically $ do
         mFamily <- lookupFamily state familyId
-        let mFound = join $ mFamily ^? _Just . onlineMembers . at deviceId
+        let mFound = onlineMember deviceId sessionId =<< mFamily
         return $ mFound /= Just deviceType
 
-statusUpdateR  :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> DeviceType -> Eff r ()
-statusUpdateR familyId = curry $ statusRegisterR familyId
 
 statusDeleteR  :: AuthServerConstraint r
                => FamilyId -> DeviceId -> Eff r ()

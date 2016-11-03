@@ -93,9 +93,9 @@ type StatusAPI =   RegisterR
               :<|> DeleteR
               :<|> ListDevicesR
 
-type RegisterR    = Capture "familyId" FamilyId :> ReqBody '[JSON] (DeviceId, DeviceType) :> PostCreated '[JSON] ()
-type UpdateR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> ReqBody '[JSON] DeviceType :> Put '[JSON] ()
-type DeleteR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Delete '[JSON] ()
+type RegisterR    = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId :> ReqBody '[JSON] DeviceType :> PostCreated '[JSON] SessionId
+type UpdateR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> ReqBody '[JSON] DeviceType :> Put '[JSON] ()
+type DeleteR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> Delete '[JSON] ()
 type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId,DeviceType)]
 
 gonimoAPI :: Proxy GonimoAPI

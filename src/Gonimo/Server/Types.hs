@@ -121,3 +121,7 @@ instance ToJSON FunnyWordType where
   toJSON = genericToJSON defaultOptions
 
 derivePersistField "FunnyWordType"
+
+
+-- | For online status to identify a particular session
+newtype SessionId = SessionId Int deriving (Ord, Eq, Show)

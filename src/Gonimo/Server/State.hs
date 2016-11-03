@@ -14,7 +14,7 @@ import qualified Data.Set                  as S
 import           Data.Text                 (Text)
 
 import           Gonimo.Server.DbEntities  (DeviceId, FamilyId)
-import           Gonimo.Server.Types       (DeviceType, Secret)
+import           Gonimo.Server.Types       (DeviceType, Secret, SessionId(..))
 
 type FromId = DeviceId
 type ToId   = DeviceId
@@ -39,7 +39,8 @@ type ChannelData a  = Map (FromId, ToId, Secret) (QueueStatus a)
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets :: ChannelSecrets
                        , _channelData    :: ChannelData Text
-                       , _onlineMembers  :: Map DeviceId DeviceType
+                       , _onlineMembers  :: Map (DeviceId, SessionId) DeviceType
+                       , _idCounter :: Int -- Used for SessionId's currently
                        } deriving (Show, Eq)
 
 $(makeLenses ''FamilyOnlineState)
@@ -56,14 +57,11 @@ emptyFamily = FamilyOnlineState {
     _channelSecrets = M.empty
   , _channelData = M.empty
   , _onlineMembers = M.empty
+  , _idCounter = 0
   }
 
-onlineMember :: Monad m => DeviceId -> UpdateFamilyT m Bool
--- | TODO: does not actually change the state - should this be explicit in the
--- type signature ??
-onlineMember cid = do
-  memberKeys <- gets (M.keysSet . _onlineMembers)
-  return $ cid `S.member` memberKeys
+onlineMember :: DeviceId -> SessionId -> FamilyOnlineState -> Maybe DeviceType
+onlineMember cid sid family' = family' ^. onlineMembers . at (cid, sid)
 
 putData :: Monad m => Text -> (FromId, ToId, Secret) -> UpdateFamilyT m ()
 putData txt fromToSecret = do
@@ -137,11 +135,17 @@ lookupFamily families familyId= do
   familiesP <- readTVar families
   traverse readTVar $ M.lookup familyId familiesP
 
-updateStatus :: (DeviceId, DeviceType) -> UpdateFamily ()
-updateStatus (clientId, clientType) = onlineMembers.at clientId .= Just clientType
+updateStatus :: DeviceId -> SessionId -> DeviceType -> UpdateFamily ()
+updateStatus clientId sessionId clientType = onlineMembers.at (clientId, sessionId) .= Just clientType
 
-deleteStatus :: DeviceId -> UpdateFamily ()
-deleteStatus clientId = onlineMembers.at clientId .= Nothing
+deleteStatus :: DeviceId -> SessionId -> UpdateFamily ()
+deleteStatus clientId sessionId = onlineMembers.at (clientId, sessionId) .= Nothing
+
+getNewSessionId :: UpdateFamily SessionId
+getNewSessionId = do
+  newId <- _idCounter <$> get
+  idCounter += 1
+  pure $ SessionId newId
 
 data CleanReceivedResult = WasReceived
                       | WasNotReceived
