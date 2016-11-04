@@ -4,7 +4,7 @@ module Gonimo.WebAPI where
 
 import           Data.Proxy
 import           Data.Text                       (Text)
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Types
 import           Gonimo.WebAPI.Types             (InvitationInfo,
                                                   InvitationReply)

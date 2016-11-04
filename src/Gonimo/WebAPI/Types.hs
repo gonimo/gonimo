@@ -12,7 +12,7 @@ import           GHC.Generics
 import           Data.Time             (UTCTime)
 
 import           Gonimo.Server.Types
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 
 
 data AuthData = AuthData {

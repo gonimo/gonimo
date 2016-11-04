@@ -5,7 +5,7 @@ import           Prelude        hiding (words, unwords, lines, readFile)
 import           Data.Text      hiding (count, map, concat)
 import           Data.Text.IO
 
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Types
 import           Database.Persist.Sqlite
 import           Control.Monad.Trans.Reader (ReaderT)

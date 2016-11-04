@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE GADTs                 #-}
 
-module Gonimo.Server.DbEntities where
+module Gonimo.Server.Db.Entities where
 
 
 
