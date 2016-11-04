@@ -25,7 +25,8 @@ gonimoProxy = Proxy
 data TestTypeConstructor m a = TestTypeConstructor (m a) deriving Generic
 
 myTypes :: [SumType 'Haskell]
-myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
+myTypes = moveToWebAPITypes <$>
+          [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy Account)
           , mkSumType (Proxy :: Proxy Client.InvitationInfo)
           , mkSumType (Proxy :: Proxy Client.InvitationReply)
@@ -40,6 +41,9 @@ myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy Family)
           , mkSumType (Proxy :: Proxy DeviceInfo)
           ]
+  where
+    moveToWebAPITypes :: SumType 'Haskell -> SumType 'Haskell
+    moveToWebAPITypes (SumType t args) = SumType (t&typeModule .~ "Gonimo.WebAPI.Types") args
 
 mySettings :: Settings
 mySettings = (addReaderParam "Authorization" defaultSettings & apiModuleName .~ "Gonimo.WebAPI") {
