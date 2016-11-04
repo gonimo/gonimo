@@ -1,4 +1,5 @@
 -- General utility functions that did not fit anywhere else (or are PRs for other projects):
+-- or should really exist somewhere in a suitable library but don't.
 module Gonimo.Util where
 
 

@@ -13,6 +13,7 @@ import           Gonimo.WebAPI.Verbs
 import           Servant.API
 import           Servant.API.BrowserHeader
 import           Servant.Subscriber.Subscribable
+import           Gonimo.Server.State.Types        (SessionId)
 
 
 type GonimoAPI =
@@ -29,7 +30,7 @@ type AuthGonimoAPI = "invitations"  :> InvitationsAPI
                 :<|> "accounts"     :> AccountsAPI
                 :<|> "families"     :> FamiliesAPI
                 :<|> "socket"       :> SocketAPI
-                :<|> "onlineStatus" :> StatusAPI
+                :<|> "session"     :> SessionAPI
 
 
 -- invitations API:
@@ -87,8 +88,8 @@ type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> R
 type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Receive '[JSON] (Maybe Text)
 
 
--- StatusAPI:
-type StatusAPI =   RegisterR
+-- SessionAPI:
+type SessionAPI =  RegisterR
               :<|> UpdateR
               :<|> DeleteR
               :<|> ListDevicesR

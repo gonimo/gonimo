@@ -19,7 +19,7 @@ import           Servant.Subscriber
 
 import qualified Gonimo.Database.Effects                 as Db
 import           Gonimo.Database.Effects.PersistDatabase (runExceptionDatabase)
-import           Gonimo.Server.State                     (OnlineState)
+import           Gonimo.Server.State.Types               (OnlineState)
 import           Gonimo.WebAPI                           (GonimoAPI)
 
 

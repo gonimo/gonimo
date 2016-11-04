@@ -11,7 +11,7 @@ import           Control.Monad.Freer.Exception
 import           Data.Aeson
 import           Data.Typeable                 (Typeable)
 import           GHC.Generics
-import           Gonimo.Server.DbEntities      (FamilyId)
+import           Gonimo.Server.Db.Entities      (FamilyId)
 import           Servant.Server
 
 -- Define an error type, so handling errors is easier at the client side.
@@ -29,13 +29,22 @@ data ServerError = InvalidAuthToken
                  | Forbidden
                  | NotFound
                  | TransactionTimeout
+                 | SessionInvalid -- There exists a session for this device, but it does not match
+                 | NoActiveSession -- There is no sessino for this device.
                  | InternalServerError
   deriving (Generic)
+
+-- | Errors that can be converted to a ServerError.
+class ToServerError e where
+  toServerError :: e -> ServerError
 
 fromMaybeErr :: Member (Exc SomeException) r => ServerError -> Maybe a -> Eff r a
 fromMaybeErr err ma = case ma of
   Nothing -> throwServer err
   Just a  -> return a
+
+throwLeft :: Member (Exc SomeException) r => Either ServerError a -> Eff r a
+throwLeft = either throwServer return
 
 throwServer :: Member (Exc SomeException) r => ServerError -> Eff r a
 throwServer = throwServant . makeServantErr
@@ -71,6 +80,8 @@ getServantErr NoSuchChannel = err404
 getServantErr NotFound = err404
 getServantErr Forbidden = err403
 getServantErr TransactionTimeout = err500
+getServantErr SessionInvalid = err409
+getServantErr NoActiveSession = err404
 getServantErr InternalServerError = err500
 
 instance ToJSON ServerError where

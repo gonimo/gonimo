@@ -29,27 +29,30 @@ library
                  , Gonimo.Database.Effects.Servant
                  , Gonimo.Server
                  , Gonimo.Server.Auth
-                 , Gonimo.Server.AuthHandlers
-                 , Gonimo.Server.DbEntities
+                 , Gonimo.Server.Db.Entities
                  , Gonimo.Server.Effects
-                 , Gonimo.Server.Effects.Internal
-                 , Gonimo.Server.Effects.Logging
-                 , Gonimo.Server.Effects.Servant
                  , Gonimo.Server.Effects.Common
                  , Gonimo.Server.Effects.Development
+                 , Gonimo.Server.Effects.Internal
+                 , Gonimo.Server.Effects.Logging
                  , Gonimo.Server.Effects.Production
+                 , Gonimo.Server.Effects.Servant
                  , Gonimo.Server.EmailInvitation
+                 , Gonimo.Server.Error
                  , Gonimo.Server.Handlers
+                 , Gonimo.Server.Handlers.Auth
+                 , Gonimo.Server.Handlers.Session
                  , Gonimo.Server.InitDb
                  , Gonimo.Server.Invitation
                  , Gonimo.Server.State
+                 , Gonimo.Server.State.Types
+                 , Gonimo.Server.State.Session
                  , Gonimo.Server.Types
+                 , Gonimo.Util
                  , Gonimo.WebAPI
-                 , Gonimo.Server.Error
                  , Gonimo.WebAPI.Types
                  , Gonimo.WebAPI.Verbs
-                 , Gonimo.Util
-  other-modules:   Gonimo.Server.AuthHandlers.Internal
+  other-modules:   Gonimo.Server.Handlers.Auth.Internal
                ,   Utils.Control.Monad.Trans.Maybe
                ,   Utils.System.Random
                ,   Utils.Constants

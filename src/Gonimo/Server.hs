@@ -48,7 +48,7 @@ authServer = invitationsServer
         :<|> accountsServer
         :<|> familiesServer
         :<|> socketServer
-        :<|> statusServer
+        :<|> sessionServer
 
 invitationsServer :: ServerT InvitationsAPI AuthServerEffects
 invitationsServer = createInvitation
@@ -73,11 +73,11 @@ socketServer = createChannel
           :<|> putChannel
           :<|> receiveChannel
 
-statusServer :: ServerT StatusAPI AuthServerEffects
-statusServer = statusRegisterR
-          :<|> statusUpdateR
-          :<|> statusDeleteR
-          :<|> statusListDevicesR
+sessionServer :: ServerT SessionAPI AuthServerEffects
+sessionServer = sessionRegisterR
+          :<|> sessionUpdateR
+          :<|> sessionDeleteR
+          :<|> sessionListDevicesR
 
 
 -- Let's serve

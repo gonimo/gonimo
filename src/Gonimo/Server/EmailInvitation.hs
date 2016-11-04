@@ -16,7 +16,7 @@ import           Web.HttpApiData
 import qualified Data.Text.Lazy           as TL
 import           Network.HTTP.Types (urlEncode)
 
-import           Gonimo.Server.DbEntities hiding (familyName)
+import           Gonimo.Server.Db.Entities hiding (familyName)
 import           Gonimo.Server.Types
 
 

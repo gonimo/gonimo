@@ -47,12 +47,12 @@ import           Servant.Subscriber            (Event, HasLink, IsElem,
 import           System.Random                  (StdGen)
 
 import           Gonimo.Database.Effects
-import           Gonimo.Server.DbEntities       (FamilyId)
+import           Gonimo.Server.Db.Entities       (FamilyId)
 import           Gonimo.Server.Effects.Internal
 import           Gonimo.Server.Error            (ServerError (..),
                                                  fromMaybeErr, throwServer)
-import           Gonimo.Server.State            (FamilyOnlineState, OnlineState,
-                                                 lookupFamily, updateFamily, UpdateFamily, updateFamilyRetry, cleanReceived, CleanReceivedResult(..), QueueStatus)
+import           Gonimo.Server.State.Types      (FamilyOnlineState, OnlineState, UpdateFamily, QueueStatus)
+import           Gonimo.Server.State            (lookupFamily, updateFamily, updateFamilyRetry, cleanReceived, CleanReceivedResult(..))
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardDelay)
