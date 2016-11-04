@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Gonimo.Server.AuthHandlers where
+module Gonimo.Server.Handlers.Auth where
 
 import           Control.Concurrent.STM              (STM, TVar, readTVar)
 import           Control.Lens
@@ -25,12 +25,13 @@ import qualified Gonimo.Database.Effects             as Db
 import qualified Gonimo.Database.Effects             as Db
 import           Gonimo.Database.Effects.Servant     as Db
 import           Gonimo.Server.Auth                  as Auth
-import           Gonimo.Server.AuthHandlers.Internal
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Handlers.Auth.Internal
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
 import           Gonimo.Server.State
+import           Gonimo.Server.State.Types
 import           Gonimo.Server.Types
 import           Gonimo.WebAPI                       (ReceiveChannelR,
                                                       ReceiveSocketR)
@@ -43,7 +44,7 @@ import           Servant.Server                      (ServantErr (..), err400,
 import           Servant.Subscriber                  (Event (ModifyEvent))
 import           Utils.Control.Monad.Trans.Maybe     (maybeT)
 import Database.Persist.Class
-import Unsafe.Coerce
+import Unsafe.Coerce -- For debugging - really!
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -254,56 +255,3 @@ receiveChannel familyId fromId toId secret = do
   $logDebug $ "CHANNEL: Got data from channel " <> (T.pack . show) [ prettyKey familyId, prettyKey fromId, prettyKey toId ] <> ": " <> (T.pack . show) txt
   pure txt
 
-statusRegisterR :: AuthServerConstraint r
-                => FamilyId -> DeviceId -> DeviceType -> Eff r SessionId
-statusRegisterR familyId deviceId deviceType = do
-    authorizeAuthData $ isFamilyMember familyId
-    authorizeAuthData $ isDevice deviceId
-
-
-
-statusUpdateR  :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> SessionId -> DeviceType -> Eff r ()
-statusUpdateR familyId deviceId sessionId deviceType= do
-    authorizeAuthData $ isFamilyMember familyId
-    authorizeAuthData $ isDevice deviceId
-    whenM hasChanged $ do -- < No need for a single atomically here!
-      _ <- updateFamilyEff familyId $ updateStatus deviceId sessionId deviceType
-      whenM updateLastUsedBabyNames $
-        notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
-      notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
-  where
-    updateLastUsedBabyNames = fmap (fromMaybe False) . runMaybeT $ do
-        name <- toBabyName deviceType
-        MaybeT . runDb . runMaybeT $ do
-          oldFamily <- lift $ Db.getErr (NoSuchFamily familyId) familyId
-          let oldBabies = familyLastUsedBabyNames oldFamily
-          guard $ not (name `elem` oldBabies)
-          let newFamily
-                = oldFamily
-                  { familyLastUsedBabyNames = take 5 (name : familyLastUsedBabyNames oldFamily)
-                  }
-          lift $ Db.replace familyId newFamily
-          return True
-
-    hasChanged = do
-      state <- getState
-      atomically $ do
-        mFamily <- lookupFamily state familyId
-        let mFound = onlineMember deviceId sessionId =<< mFamily
-        return $ mFound /= Just deviceType
-
-
-statusDeleteR  :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> Eff r ()
-statusDeleteR familyId deviceId = do
-  authorizeAuthData $ isFamilyMember familyId
-  authorizeAuthData $ isDevice deviceId
-  _ <- updateFamilyEff familyId $ deleteStatus deviceId
-  notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
-
-statusListDevicesR  :: AuthServerConstraint r
-                    => FamilyId -> Eff r [(DeviceId, DeviceType)]
-statusListDevicesR familyId = do
-  authorizeAuthData $ isFamilyMember familyId
-  M.toList . _onlineMembers <$> getFamilyEff familyId
