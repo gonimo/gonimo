@@ -55,7 +55,7 @@ update deviceId sessionId deviceType = do
   fullSession    <- maybe (throwError NotFoundError) return mFullSession
   let
     foundSession = fullSession^._1
-    foundDevice   = fullSession^._2
+    foundDevice  = fullSession^._2
   unless (foundSession == sessionId) $ throwError AlreadyPresentError
 
   when (foundDevice == deviceType) mzero
