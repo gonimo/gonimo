@@ -1,4 +1,5 @@
 -- | Functions for working with Family entity
+--   This module is intended to be imported qualified as Family
 module Gonimo.Server.Db.Family where
 
 import           Control.Lens
@@ -21,6 +22,11 @@ import qualified Gonimo.Database.Effects  as Db
 import           Gonimo.Database.Effects.Servant     as Db
 import           Gonimo.Server.Db.Entities (FamilyId, DeviceId)
 import Gonimo.Server.Db.Entities (Family(..))
+import           Database.Persist.Sql          (SqlBackend)
+import           Control.Monad.Freer.Exception (Exc)
+import           Control.Exception             (SomeException)
+import           Gonimo.Database.Effects       (Database)
+import           Control.Monad.Trans.Maybe     (MaybeT, runMaybeT)
 
 type UpdateFamilyT m a = StateT Family (MaybeT m) a
 type UpdateFamily a = UpdateFamilyT Identity a
@@ -34,8 +40,9 @@ pushBabyName name = do
     { familyLastUsedBabyNames = take 5 (name : familyLastUsedBabyNames oldFamily)
     }
 
-updateFamily :: (FullDbConstraint backend Family r) => FamilyId -> UpdateFamilyT (Eff r) a -> Eff r (Maybe a)
-updateFamily familyId f = do
+-- | Update db entity as specified by the given UpdateFamilyT - on Nothing, no update occurs.
+update :: FamilyId -> UpdateFamilyT (Eff '[Exc SomeException, Database SqlBackend]) a -> Eff '[Exc SomeException, Database SqlBackend] (Maybe a)
+update familyId f = do
   oldFamily <- Db.getErr (NoSuchFamily familyId) familyId
   mr <- runMaybeT . flip runStateT oldFamily $ do
     r <- f
