@@ -44,24 +44,28 @@ import           Servant.Server                      (ServantErr (..), err400,
 import           Servant.Subscriber                  (Event (ModifyEvent))
 import           Utils.Control.Monad.Trans.Maybe     (maybeT)
 import Database.Persist.Class
+import qualified Gonimo.Server.Db.Family as Family
 
 -- | A device registers itself as online.
 --
---   With the returned session id a device can keep itself online by calls to statusUpdateR or
---   make itself go offline with statusDeleteR.
+--   With the returned session id a device can keep itself online by calls to sessionUpdateR or
+--   make itself go offline with sessionDeleteR.
 --
---   Only one session per device is allowed, with statusRegisterR you can steal
---   a session. Any browser tab already online (triggering statusUpdateR
+--   Only one session per device is allowed, with sessionRegisterR you can steal
+--   a session. Any browser tab already online (triggering sessionUpdateR
 --   periodically), will be set offline and the user will get an appropriate
 --   error message.
-statusRegisterR :: AuthServerConstraint r
+sessionRegisterR :: AuthServerConstraint r
                 => FamilyId -> DeviceId -> DeviceType -> Eff r SessionId
-statusRegisterR familyId deviceId deviceType = do
+sessionRegisterR familyId deviceId deviceType = do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
 
+    sessionId <- updateFamilyEff familyId $ Session.register deviceId deviceType
+    -- Notify + update lastseen timestamp + update last used baby names!
+    pure sessionId
 
--- | Update status (you can change the device type any time)
+-- | Update session (you can change the device type any time)
 --
 --   Even if you don't change the device type, you have to trigger this handler
 --   at least every 30 seconds in order to stay online.
