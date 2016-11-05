@@ -71,57 +71,38 @@ statusRegisterR familyId deviceId deviceType = do
 --   user opened the app in more than one browser tab.
 --
 --   You will get error `NoActiveSession` if there is no session at all - you
---   came too late and have to call statusRegisterR again!
-statusUpdateR  :: AuthServerConstraint r
+--   came too late and have to call sessionRegisterR again!
+sessionUpdateR  :: AuthServerConstraint r
                => FamilyId -> DeviceId -> SessionId -> DeviceType -> Eff r ()
-statusUpdateR familyId deviceId sessionId deviceType= do
+sessionUpdateR familyId deviceId sessionId deviceType= do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
 
-    mr <- updateFamilyEff familyId . runErrorT
+    mr <- mayUpdateFamilyEff familyId . runErrorT
          $ Session.update deviceId sessionId deviceType
     maybe (return ()) handleUpdate mr
-    whenM hasChanged $ do -- < No need for a single atomically here!
-      _ <- updateFamilyEff familyId $ Session.update deviceId sessionId deviceType
-      whenM updateLastUsedBabyNames $
-        notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
-      notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
   where
     handleUpdate :: Either Session.UpdateError DeviceType -> Eff r ()
     handleUpdate er = do
       _ <- throwLeft $ er & over _Left toServerError
-      notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
-    updateLastUsedBabyNames = fmap (fromMaybe False) . runMaybeT $ do
+      mNotifyFamily <- runDb . runMaybeT $ do
         name <- toBabyName deviceType
-        MaybeT . runDb . runMaybeT $ do
-          oldFamily <- lift $ Db.getErr (NoSuchFamily familyId) familyId
-          let oldBabies = familyLastUsedBabyNames oldFamily
-          guard $ not (name `elem` oldBabies)
-          let newFamily
-                = oldFamily
-                  { familyLastUsedBabyNames = take 5 (name : familyLastUsedBabyNames oldFamily)
-                  }
-          lift $ Db.replace familyId newFamily
-          return True
-
-    hasChanged = do
-      state <- getState
-      atomically $ do
-        mFamily <- lookupFamily state familyId
-        let mFound = onlineMember deviceId sessionId =<< mFamily
-        return $ mFound /= Just deviceType
+        _ <- lift $ Family.update familyId (Family.pushBabyName name)
+        pure $ notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
+      sequence_ mNotifyFamily
+      notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
 
 -- | Tell the server that you are gone.
-statusDeleteR  :: AuthServerConstraint r
+sessionDeleteR  :: AuthServerConstraint r
                => FamilyId -> DeviceId -> Eff r ()
-statusDeleteR familyId deviceId = do
+sessionDeleteR familyId deviceId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isDevice deviceId
-  _ <- updateFamilyEff familyId $ deleteStatus deviceId
+  _ <- updateFamilyEff familyId $ Session.delete deviceId
   notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
 
-statusListDevicesR  :: AuthServerConstraint r
+sessionListDevicesR  :: AuthServerConstraint r
                     => FamilyId -> Eff r [(DeviceId, DeviceType)]
-statusListDevicesR familyId = do
+sessionListDevicesR familyId = do
   authorizeAuthData $ isFamilyMember familyId
-  Session.listStatus <$> getFamilyEff familyId
+  Session.list <$> getFamilyEff familyId

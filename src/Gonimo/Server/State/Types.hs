@@ -1,4 +1,6 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Gonimo.Server.State.Types where
 
@@ -50,7 +52,8 @@ type FamilyMap = Map FamilyId (TVar FamilyOnlineState)
 
 type OnlineState = TVar FamilyMap
 
-type UpdateFamilyT m a = StateT FamilyOnlineState (MaybeT m) a
+type UpdateFamilyT m a = StateT FamilyOnlineState m a
+type MayUpdateFamily a = UpdateFamilyT (MaybeT Identity) a
 type UpdateFamily a = UpdateFamilyT Identity a
 
 emptyFamily :: FamilyOnlineState
@@ -60,3 +63,21 @@ emptyFamily = FamilyOnlineState {
   , _sessions = M.empty
   , _idCounter = 0
   }
+
+-- | I don't want to write updateFamily twice
+--   but sometimes need an update which does not update in all cases and
+--   sometimes we have updates that succeed in all cases. We can model the later
+--   on the first one, but then we have a Nothing case, which never triggers but
+--   needs to be handled by the caller - this is ugly. So we abstract both cases
+--   with MonadMaybeAMaybe.
+class Monad m => MonadMaybeAMaybe m where
+  maybeRunMaybe :: m a -> Maybe a
+
+instance MonadMaybeAMaybe Identity where
+  maybeRunMaybe m = Just $ runIdentity m
+
+instance MonadMaybeAMaybe (MaybeT Identity) where
+  maybeRunMaybe m = runIdentity . runMaybeT $ m
+
+instance MonadMaybeAMaybe Maybe where
+  maybeRunMaybe = id

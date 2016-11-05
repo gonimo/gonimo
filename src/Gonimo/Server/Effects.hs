@@ -19,6 +19,7 @@ module Gonimo.Server.Effects (
   , updateFamilyRetryEff
   , updateFamilyErrEff
   , updateFamilyEff
+  , mayUpdateFamilyEff
   , cleanReceivedEff
   , getFamilyEff
   , registerDelay
@@ -51,7 +52,7 @@ import           Gonimo.Server.Db.Entities       (FamilyId)
 import           Gonimo.Server.Effects.Internal
 import           Gonimo.Server.Error            (ServerError (..),
                                                  fromMaybeErr, throwServer)
-import           Gonimo.Server.State.Types      (FamilyOnlineState, OnlineState, UpdateFamily, QueueStatus)
+import           Gonimo.Server.State.Types      (FamilyOnlineState, OnlineState, UpdateFamily, MayUpdateFamily, QueueStatus, maybeRunMaybe)
 import           Gonimo.Server.State            (lookupFamily, updateFamily, updateFamilyRetry, cleanReceived, CleanReceivedResult(..))
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
@@ -102,7 +103,7 @@ notify ev pE cb = sendServer $ Notify ev pE cb
 
 -- | Update family, retrying if updateF returns Nothing
 updateFamilyRetryEff :: ServerConstraint r
-                   => ServerError -> FamilyId -> UpdateFamily a -> Eff r a
+                   => ServerError -> FamilyId -> MayUpdateFamily a -> Eff r a
 updateFamilyRetryEff err familyId updateF = do
   state <- getState
   timeUp <- registerDelay standardDelay
@@ -113,20 +114,27 @@ updateFamilyRetryEff err familyId updateF = do
 
 -- | Update family, throwing err if updateF returns Nothing
 updateFamilyErrEff :: ServerConstraint r
-                   => ServerError -> FamilyId -> UpdateFamily a -> Eff r a
+                   => ServerError -> FamilyId -> MayUpdateFamily a -> Eff r a
 updateFamilyErrEff err familyId updateF = do
   state <- getState
-  r <- atomically $ updateFamily state familyId updateF
+  r <- atomically . fmap maybeRunMaybe $ updateFamily state familyId updateF
   case r of
     Nothing -> throwServer err
     Just v -> return v
 
--- | Update family, ignoring Nothing.
+-- | May update family if updateF does not return Nothing.
+mayUpdateFamilyEff :: ServerConstraint r
+                   => FamilyId -> MayUpdateFamily a -> Eff r (Maybe a)
+mayUpdateFamilyEff familyId updateF = do
+  state <- getState
+  atomically . fmap maybeRunMaybe $ updateFamily state familyId updateF
+
+-- | Update a family online state.
 updateFamilyEff :: ServerConstraint r
-                   => FamilyId -> UpdateFamily a -> Eff r (Maybe a)
+                   => FamilyId -> UpdateFamily a -> Eff r a
 updateFamilyEff familyId updateF = do
   state <- getState
-  atomically $ updateFamily state familyId updateF
+  atomically . fmap runIdentity $ updateFamily state familyId updateF
 
 
 getFamilyEff :: ServerConstraint r

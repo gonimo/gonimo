@@ -196,7 +196,7 @@ createChannel familyId toId fromId = do
   cleanReceivedEff NoSuchSocket familyId (channelSecrets.at toId)
   return secret
  where
-   createChannel' :: Secret -> UpdateFamily ()
+   createChannel' :: Secret -> MayUpdateFamily ()
    createChannel' secret = do
      secrets <- gets _channelSecrets
      if M.member toId secrets
@@ -215,9 +215,9 @@ receiveSocket familyId toId = do
     authorizeAuthData (isFamilyMember familyId)
     authorizeAuthData ((toId ==) . deviceKey)
 
-    updateFamilyEff familyId $ receiveSocket'
+    mayUpdateFamilyEff familyId $ receiveSocket'
   where
-    receiveSocket' :: UpdateFamily (DeviceId, Secret)
+    receiveSocket' :: MayUpdateFamily (DeviceId, Secret)
     receiveSocket' = do
       secrets <- gets _channelSecrets
       val <- maybe mzero return $ secrets ^? at toId . _Just . _Written
@@ -250,7 +250,7 @@ receiveChannel familyId fromId toId secret = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((toId ==) . deviceKey)
 
-  txt <- updateFamilyEff familyId $ receiveData (fromId, toId, secret)
+  txt <- mayUpdateFamilyEff familyId $ receiveData (fromId, toId, secret)
 
   $logDebug $ "CHANNEL: Got data from channel " <> (T.pack . show) [ prettyKey familyId, prettyKey fromId, prettyKey toId ] <> ": " <> (T.pack . show) txt
   pure txt

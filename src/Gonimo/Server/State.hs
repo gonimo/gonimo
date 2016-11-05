@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Server.State where
@@ -21,71 +22,48 @@ import           Gonimo.Server.Error       (ServerError (NoActiveSession, Sessio
 import           Gonimo.Server.State.Types
 import           Gonimo.Server.Types       (DeviceType, Secret)
 
-putData :: Monad m => Text -> (FromId, ToId, Secret) -> UpdateFamilyT m ()
+putData :: (MonadState FamilyOnlineState m, Monad m, MonadPlus m)
+           => Text -> (FromId, ToId, Secret) -> m ()
 putData txt fromToSecret = do
   cdata <- gets _channelData
   if fromToSecret `M.member` cdata
      then mzero
      else channelData.at fromToSecret .= Just (Written txt)
 
-receiveData :: Monad m => (FromId, ToId, Secret) -> UpdateFamilyT m Text
+receiveData :: (Monad m, MonadPlus m, MonadState FamilyOnlineState m)
+               => (FromId, ToId, Secret) -> m Text
 receiveData fromToSecret = do
   cdata <- gets _channelData
   txt <- maybe mzero return $ cdata^?at fromToSecret . _Just . _Written
   channelData.at fromToSecret .= Just Read
   return $ txt
 
--- Status/session API:
------
 
 -- | Update a family.
 --
 --   If `onlineMembers` is empty after the update the Family will be removed from the map.
 --   If the family does not exist yet - it will be created.
 --
-updateFamily :: OnlineState -> FamilyId -> UpdateFamily a -> STM (Maybe a)
+updateFamily :: MonadMaybeAMaybe m =>  OnlineState -> FamilyId -> UpdateFamilyT m a -> STM (m a)
 updateFamily families familyId f = do
-    oldFamily <- getFamily
+    oldFamily <- getFamily families familyId
+    let ir = runStateT f oldFamily
+    let newFamily =
+          case maybeRunMaybe ir of
+            Nothing -> oldFamily
+            Just (_, outFamily) -> outFamily
 
-    let (result, newFamily) =
-          case runIt f oldFamily of
-            Nothing -> (Nothing, oldFamily)
-            Just (val, outFamily) -> (Just val, outFamily)
-
-    writeFamily newFamily
-    return result
-  where
-
-    runIt :: UpdateFamily a -> FamilyOnlineState -> Maybe (a, FamilyOnlineState)
-    runIt f' = runIdentity . runMaybeT . runStateT f'
-
-    getFamily :: STM FamilyOnlineState
-    getFamily = do
-      familiesP <- readTVar families
-      case familiesP ^. at familyId of
-        Nothing -> return emptyFamily
-        Just oldFamily -> readTVar oldFamily
-
-    writeFamily :: FamilyOnlineState -> STM ()
-    writeFamily newFamily = do
-      familiesP <- readTVar families
-      case familiesP ^. at familyId of
-        Nothing -> unless (newFamily ^. sessions . to M.null) $ do
-          newFamilyTVar <- newTVar newFamily
-          modifyTVar' families $ at familyId .~ Just newFamilyTVar
-        Just familyTVar ->
-          if newFamily ^. sessions . to M.null -- Cleanup needed?
-          then modifyTVar' families $ at familyId .~ Nothing
-          else writeTVar familyTVar newFamily -- Ok just write value.
+    writeFamily families familyId newFamily
+    return (fst <$> ir)
 
 -- | Like updateFamily but retries until timeUp becomes true.
-updateFamilyRetry :: TVar Bool -> OnlineState -> FamilyId -> UpdateFamily a -> STM (Maybe a)
+updateFamilyRetry :: TVar Bool -> OnlineState -> FamilyId -> MayUpdateFamily a -> STM (Maybe a)
 updateFamilyRetry timeUp families familyId f = do
   timeUp' <- readTVar timeUp
   if timeUp'
     then pure Nothing
     else do
-    r <- updateFamily families familyId f
+    r <- maybeRunMaybe <$> updateFamily families familyId f
     case r of
       Nothing -> retry
       Just _ -> pure r
@@ -124,3 +102,28 @@ cleanReceived families familyId timeUp queue = do
             modifyTVar' family $ queue .~ Nothing
             pure WasReceived
           Just (Written _)  -> retry
+
+--  Internal helper functions
+
+-- | Get a family - creating one if not yet existing.
+getFamily :: OnlineState -> FamilyId -> STM FamilyOnlineState
+getFamily families familyId = do
+  familiesP <- readTVar families
+  case familiesP ^. at familyId of
+    Nothing -> return emptyFamily
+    Just oldFamily -> readTVar oldFamily
+
+
+-- | Write a family back
+writeFamily :: OnlineState -> FamilyId -> FamilyOnlineState -> STM ()
+writeFamily families familyId newFamily = do
+  familiesP <- readTVar families
+  case familiesP ^. at familyId of
+    Nothing -> unless (newFamily ^. sessions . to M.null) $ do
+      newFamilyTVar <- newTVar newFamily
+      modifyTVar' families $ at familyId .~ Just newFamilyTVar
+    Just familyTVar ->
+      if newFamily ^. sessions . to M.null -- Cleanup needed?
+      then modifyTVar' families $ at familyId .~ Nothing
+      else writeTVar familyTVar newFamily -- Ok just write value.
+
