@@ -9,7 +9,7 @@ import           Servant.API                     ((:>), Capture, Get, JSON)
 import           Gonimo.Server.Effects (runDb, ServerConstraint)
 
 
-listDevicesEndpoint  :: Proxy ("onlineStatus" :> ListDevicesR)
+listDevicesEndpoint  :: Proxy ("session" :> ListDevicesR)
 listDevicesEndpoint = Proxy
 
 listFamiliesEndpoint :: Proxy ("accounts" :> Capture "accountId" AccountId :> "families" :> Get '[JSON] [FamilyId])
