@@ -15,7 +15,7 @@ import           System.IO                         (Handle, stderr)
 import           System.Log.FastLogger             (fromLogStr)
 
 import           Gonimo.Server
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.InitDb
 #ifdef DEVELOPMENT
 import           Gonimo.Server.Effects.Development

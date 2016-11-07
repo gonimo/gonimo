@@ -7,7 +7,7 @@ import           GHC.Generics
 import           Servant.PureScript
 
 import           Gonimo.CodeGen.TypeBridges
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Types
 import           Gonimo.Server.Error
 import           Gonimo.WebAPI
