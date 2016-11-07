@@ -29,7 +29,10 @@ library
                  , Gonimo.Database.Effects.Servant
                  , Gonimo.Server
                  , Gonimo.Server.Auth
+                 , Gonimo.Server.Db.Internal
+                 , Gonimo.Server.Db.Device
                  , Gonimo.Server.Db.Entities
+                 , Gonimo.Server.Db.Family
                  , Gonimo.Server.Effects
                  , Gonimo.Server.Effects.Common
                  , Gonimo.Server.Effects.Development
@@ -45,8 +48,8 @@ library
                  , Gonimo.Server.InitDb
                  , Gonimo.Server.Invitation
                  , Gonimo.Server.State
-                 , Gonimo.Server.State.Types
                  , Gonimo.Server.State.Session
+                 , Gonimo.Server.State.Types
                  , Gonimo.Server.Types
                  , Gonimo.Util
                  , Gonimo.WebAPI
