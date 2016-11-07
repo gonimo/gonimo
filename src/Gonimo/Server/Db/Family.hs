@@ -2,34 +2,23 @@
 --   This module is intended to be imported qualified as Family
 module Gonimo.Server.Db.Family where
 
-import           Control.Lens
-import           Control.Monad             (MonadPlus, guard, unless, when)
-import           Control.Monad.Error.Class
+import           Control.Monad                   (MonadPlus, guard)
+import           Control.Monad.Freer             (Eff)
 import           Control.Monad.State.Class
-import           Control.Monad.State.Class
-import           Control.Monad.Trans.Class (lift)
-import           Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
-import           Control.Monad.Trans.State (StateT (..))
-import qualified Data.Map.Strict           as M
-import           Data.Text                 (Text)
-import           Control.Monad.Freer                 (Eff)
+import           Control.Monad.Trans.Maybe       (MaybeT, runMaybeT)
+import           Data.Text                       (Text)
 
-import           Gonimo.Server.Error      (ServerError (NoSuchFamily),
-                                           ToServerError, toServerError)
-import           Gonimo.Server.Types      (DeviceType)
-import           Gonimo.Database.Effects  (FullDbConstraint)
-import qualified Gonimo.Database.Effects  as Db
-import           Gonimo.Database.Effects.Servant     as Db
-import           Gonimo.Server.Db.Entities (FamilyId, DeviceId)
-import Gonimo.Server.Db.Entities (Family(..))
-import           Database.Persist.Sql          (SqlBackend)
-import           Control.Monad.Freer.Exception (Exc)
-import           Control.Exception             (SomeException)
-import           Gonimo.Database.Effects       (Database)
-import           Control.Monad.Trans.Maybe     (MaybeT, runMaybeT)
+import           Gonimo.Server.Error             (ServerError (NoSuchFamily))
 
-type UpdateFamilyT m a = StateT Family (MaybeT m) a
-type UpdateFamily a = UpdateFamilyT Identity a
+import           Control.Exception               (SomeException)
+import           Control.Monad.Freer.Exception   (Exc)
+import           Database.Persist.Sql            (SqlBackend)
+import           Gonimo.Database.Effects         (Database)
+import           Gonimo.Server.Db.Entities       (FamilyId)
+import           Gonimo.Server.Db.Entities       (Family (..))
+import           Gonimo.Server.Db.Internal       (updateRecord, UpdateT)
+
+type UpdateFamilyT m a = UpdateT Family m a
 
 pushBabyName :: (MonadState Family m, MonadPlus m) => Text -> m ()
 pushBabyName name = do
@@ -41,13 +30,7 @@ pushBabyName name = do
     }
 
 -- | Update db entity as specified by the given UpdateFamilyT - on Nothing, no update occurs.
-update :: FamilyId -> UpdateFamilyT (Eff '[Exc SomeException, Database SqlBackend]) a -> Eff '[Exc SomeException, Database SqlBackend] (Maybe a)
-update familyId f = do
-  oldFamily <- Db.getErr (NoSuchFamily familyId) familyId
-  mr <- runMaybeT . flip runStateT oldFamily $ do
-    r <- f
-    newFamily <- get
-    lift.lift $ Db.replace familyId newFamily
-    pure r
-  pure $ mr^?_Just._1
+update :: FamilyId -> UpdateFamilyT (Eff '[Exc SomeException, Database SqlBackend]) a
+       -> MaybeT (Eff '[Exc SomeException, Database SqlBackend]) a
+update = updateRecord NoSuchFamily
 
