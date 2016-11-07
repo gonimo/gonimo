@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 moduleNameOld=$1
 moduleNameNew=$2
-replaceString="s/${moduleNameOld}/${moduleNameNew}/g"
+replaceString="s/${moduleNameOld}\([ ]\|$\)/${moduleNameNew}\1/g"
 
 find src/ -type f -print0 | xargs -0 sed -i ${replaceString}
 sed -i ${replaceString} *.cabal
