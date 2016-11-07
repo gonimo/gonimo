@@ -6,9 +6,11 @@ module Gonimo.Server.State where
 import           Control.Concurrent.STM    (STM, TVar, modifyTVar', newTVar,
                                             readTVar, retry, writeTVar)
 import           Control.Lens
-import           Control.Monad             (MonadPlus (mzero), unless, when)
+import           Control.Applicative       ((<|>))
+import           Control.Monad             (MonadPlus (mzero), unless, when, guard)
 import           Control.Monad.Error.Class
 import           Control.Monad.State.Class
+import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.State (StateT (..))
 import           Data.Map.Strict           (Map)
@@ -44,29 +46,22 @@ receiveData fromToSecret = do
 --   If `onlineMembers` is empty after the update the Family will be removed from the map.
 --   If the family does not exist yet - it will be created.
 --
-updateFamily :: MonadMaybeAMaybe m =>  OnlineState -> FamilyId -> UpdateFamilyT m a -> STM (m a)
+updateFamily :: (Monad (t STM), MonadTrans t) =>
+                OnlineState -> FamilyId -> StateT FamilyOnlineState (t STM) a -> t STM a
 updateFamily families familyId f = do
-    oldFamily <- getFamily families familyId
-    let ir = runStateT f oldFamily
-    let newFamily =
-          case maybeRunMaybe ir of
-            Nothing -> oldFamily
-            Just (_, outFamily) -> outFamily
-
-    writeFamily families familyId newFamily
-    return (fst <$> ir)
+    oldFamily <- lift $ getFamily families familyId
+    r <- runStateT f oldFamily
+    lift $ writeFamily families familyId (r^._2)
+    return $ r^._1
 
 -- | Like updateFamily but retries until timeUp becomes true.
-updateFamilyRetry :: TVar Bool -> OnlineState -> FamilyId -> MayUpdateFamily a -> STM (Maybe a)
+updateFamilyRetry :: (MonadPlus (t STM), MonadTrans t) =>
+                     TVar Bool -> OnlineState -> FamilyId -> StateT FamilyOnlineState (t STM) a
+                  -> t STM a
 updateFamilyRetry timeUp families familyId f = do
-  timeUp' <- readTVar timeUp
-  if timeUp'
-    then pure Nothing
-    else do
-    r <- maybeRunMaybe <$> updateFamily families familyId f
-    case r of
-      Nothing -> retry
-      Just _ -> pure r
+  timeUp' <- lift $ readTVar timeUp
+  guard (not timeUp')
+  updateFamily families familyId f <|> lift retry
 
 
 lookupFamily :: OnlineState -> FamilyId -> STM (Maybe FamilyOnlineState)

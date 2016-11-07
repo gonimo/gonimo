@@ -1,50 +1,21 @@
 module Gonimo.Server.Handlers.Session where
 
-import           Control.Concurrent.STM              (STM, TVar, readTVar)
-import           Control.Lens
 import           Control.Monad
-import           Control.Monad                       (guard)
-import           Control.Monad.Extra                 (whenM)
-import           Control.Monad.Freer                 (Eff)
-import           Control.Monad.Freer.Reader          (ask)
-import           Control.Monad.State.Class           (gets, modify)
-import           Control.Monad.STM.Class             (liftSTM)
-import           Control.Monad.Trans.Class           (lift)
-import           Control.Monad.Trans.Maybe           (MaybeT (..), runMaybeT)
-import qualified Data.Map.Strict                     as M
-import           Data.Monoid
-import           Data.Maybe                          (fromMaybe)
-import           Data.Proxy                          (Proxy (..))
-import qualified Data.Set                            as S
-import           Data.Text                           (Text)
-import qualified Data.Text                           as T
-import           Database.Persist                    (Entity (..), (==.))
-import qualified Gonimo.Database.Effects             as Db
-import qualified Gonimo.Database.Effects             as Db
-import           Gonimo.Database.Effects.Servant     as Db
-import           Gonimo.Server.Auth                  as Auth
-import           Gonimo.Server.Handlers.Auth.Internal
+import           Control.Monad.Freer                  (Eff)
+import           Control.Monad.Trans.Class            (lift)
+import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
+import           Data.Maybe                           (isJust)
+import           Gonimo.Server.Auth                   as Auth
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
-import           Gonimo.Server.EmailInvitation
-import           Gonimo.Server.Error
-import           Gonimo.Server.State.Session               as Session
-import           Gonimo.Server.State.Types           (SessionId)
+import           Gonimo.Server.Handlers.Auth.Internal
+import           Gonimo.Server.State.Session          as Session
+import           Gonimo.Server.State.Types            (SessionId)
 
-import           Control.Monad.Trans.Error           (runErrorT)
 import           Gonimo.Server.Types
-import           Gonimo.WebAPI                       (ReceiveChannelR,
-                                                      ReceiveSocketR)
-import           Gonimo.WebAPI.Types                 (InvitationInfo (..),
-                                                      InvitationReply (..))
-import qualified Gonimo.WebAPI.Types                 as Client
-import           Servant.API                         ((:>))
-import           Servant.Server                      (ServantErr (..), err400,
-                                                      err403)
 import           Servant.Subscriber                  (Event (ModifyEvent))
-import           Utils.Control.Monad.Trans.Maybe     (maybeT)
-import Database.Persist.Class
 import qualified Gonimo.Server.Db.Family as Family
+import qualified Gonimo.Server.Db.Device as Device
 
 -- | A device registers itself as online.
 --
@@ -60,9 +31,14 @@ sessionRegisterR :: AuthServerConstraint r
 sessionRegisterR familyId deviceId deviceType = do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
+    now <- getCurrentTime
+    mNotify <- runDb . runMaybeT $ do
+      Device.update deviceId $ Device.setLastAccessed now
+      pure $ notify ModifyEvent getDeviceInfosEndpoint (\f -> f familyId)
+    sequence_ mNotify
 
     sessionId <- updateFamilyEff familyId $ Session.register deviceId deviceType
-    -- Notify + update lastseen timestamp + update last used baby names!
+    handleUpdate familyId deviceType
     pure sessionId
 
 -- | Update session (you can change the device type any time)
@@ -76,37 +52,42 @@ sessionRegisterR familyId deviceId deviceType = do
 --
 --   You will get error `NoActiveSession` if there is no session at all - you
 --   came too late and have to call sessionRegisterR again!
-sessionUpdateR  :: AuthServerConstraint r
+sessionUpdateR  :: forall r. AuthServerConstraint r
                => FamilyId -> DeviceId -> SessionId -> DeviceType -> Eff r ()
 sessionUpdateR familyId deviceId sessionId deviceType= do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
 
-    mr <- mayUpdateFamilyEff familyId . runErrorT
-         $ Session.update deviceId sessionId deviceType
-    maybe (return ()) handleUpdate mr
-  where
-    handleUpdate :: Either Session.UpdateError DeviceType -> Eff r ()
-    handleUpdate er = do
-      _ <- throwLeft $ er & over _Left toServerError
-      mNotifyFamily <- runDb . runMaybeT $ do
-        name <- toBabyName deviceType
-        _ <- lift $ Family.update familyId (Family.pushBabyName name)
-        pure $ notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
-      sequence_ mNotifyFamily
-      notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
+    _ <- runMaybeT $ do
+      _ <- updateFamilyErrEff familyId $ Session.update deviceId sessionId deviceType
+      lift $ handleUpdate familyId deviceType
+    return ()
 
 -- | Tell the server that you are gone.
 sessionDeleteR  :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> Eff r ()
-sessionDeleteR familyId deviceId = do
+               => FamilyId -> DeviceId -> SessionId ->  Eff r ()
+sessionDeleteR familyId deviceId sessionId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isDevice deviceId
-  _ <- updateFamilyEff familyId $ Session.delete deviceId
-  notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
+  _ <- runMaybeT $ do
+    mayUpdateFamilyEff familyId $ Session.delete deviceId sessionId
+    lift $ notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
+  return ()
 
 sessionListDevicesR  :: AuthServerConstraint r
                     => FamilyId -> Eff r [(DeviceId, DeviceType)]
 sessionListDevicesR familyId = do
   authorizeAuthData $ isFamilyMember familyId
   Session.list <$> getFamilyEff familyId
+
+-- Internal helpers:
+
+-- Update last used baby names and send out notifications.
+handleUpdate :: ServerConstraint r => FamilyId -> DeviceType -> Eff r ()
+handleUpdate familyId deviceType = do
+  mNotifyFamily <- runDb . runMaybeT $ do
+    name <- toBabyName deviceType
+    Family.update familyId (Family.pushBabyName name)
+    pure $ notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
+  sequence_ mNotifyFamily
+  notify ModifyEvent listDevicesEndpoint (\f -> f familyId)

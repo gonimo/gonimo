@@ -9,10 +9,11 @@ module Gonimo.Server.State.Session where
 
 
 import           Control.Lens
-import           Control.Monad             (unless, when, mzero, MonadPlus)
+import           Control.Monad             (unless, when, mzero, MonadPlus, guard)
 import qualified Data.Map.Strict           as M
 import           Control.Monad.Error.Class
 import           Control.Monad.State.Class
+import           Data.Monoid
 
 import           Gonimo.Server.Db.Entities (DeviceId)
 import           Gonimo.Server.Error      (ServerError (NoActiveSession, SessionInvalid),
@@ -27,11 +28,19 @@ import           Gonimo.Server.State.Types (FamilyOnlineState, sessions, idCount
 --   by the server, you have to re-register.
 --   `AlreadyPresentError` : A session for this device is already present, but
 --   session id does not match.
-data UpdateError = NotFoundError | AlreadyPresentError
+--   `NoUpdate` Not really an error, just saying that update did not really update anything, because there was no need.
+data UpdateError = NotFoundError | AlreadyPresentError | NoUpdate
+
+-- Needed for MonadPlus instance
+instance Monoid UpdateError where
+  mempty = NoUpdate
+  mappend NoUpdate b = b
+  mappend a _        = a
 
 instance ToServerError UpdateError where
-  toServerError NotFoundError = NoActiveSession
-  toServerError AlreadyPresentError = SessionInvalid
+  toServerError NotFoundError = return NoActiveSession
+  toServerError AlreadyPresentError = return SessionInvalid
+  toServerError NoUpdate = mzero
 
 
 -- | Register a session for a given device.
@@ -58,7 +67,7 @@ update deviceId sessionId deviceType = do
     foundDevice  = fullSession^._2
   unless (foundSession == sessionId) $ throwError AlreadyPresentError
 
-  when (foundDevice == deviceType) mzero
+  guard (foundDevice /= deviceType)
   sessions.at deviceId .= Just (sessionId, deviceType)
   return foundDevice
 
@@ -71,11 +80,11 @@ list = kickSessionId . getList
 -- | Delete your online session
 --
 --   If either device id or session id don't match - nothing happens.
-delete :: MonadState FamilyOnlineState m => DeviceId -> SessionId -> m ()
+delete :: (MonadState FamilyOnlineState m, MonadPlus m) => DeviceId -> SessionId -> m ()
 delete deviceId sessionId = do
   mFoundSession <- gets $ (^? sessions.at deviceId._Just._1)
-  when (Just sessionId == mFoundSession)
-    $ sessions.at deviceId .= Nothing
+  guard (Just sessionId == mFoundSession)
+  sessions.at deviceId .= Nothing
 
 
 -- Internal functions ....

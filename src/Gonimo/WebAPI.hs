@@ -73,6 +73,9 @@ type FamilyAPI = GetFamilyR
             :<|> GetFamilyDevicesR
 
 type GetFamilyR = Subscribable :> Get '[JSON] Family
+-- TODO: This list should really be just the ids! Once we get a separate endpoint for retrieving a
+-- DeviceInfor for a DeviceId, this _must_ be changed! For all information should only be retrievable from one endpoint - so handling notifications stays easy and efficient!!!
+-- Currently if a single device info changes - all clients will refetch the whole list!
 type GetFamilyDevicesR = "deviceInfos" :> Subscribable :> Get '[JSON] [(DeviceId, Client.DeviceInfo)]
 
 -- SocketAPI:

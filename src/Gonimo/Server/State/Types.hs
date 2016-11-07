@@ -7,11 +7,19 @@ module Gonimo.Server.State.Types where
 
 import           Control.Concurrent.STM    (TVar)
 import           Control.Lens
+import           Control.Monad.Except      (ExceptT, runExceptT)
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Trans.State (StateT(..))
+import           Control.Monad.Trans.State (StateT (..))
+import           Data.Aeson.Types          (FromJSON (..), FromJSON,
+                                            ToJSON (..), ToJSON (..),
+                                            Value (String), defaultOptions,
+                                            genericToEncoding, genericToJSON)
 import           Data.Map.Strict           (Map)
 import qualified Data.Map.Strict           as M
 import           Data.Text                 (Text)
+import           GHC.Generics              (Generic)
+import           Servant.PureScript     (jsonParseHeader, jsonParseUrlPiece)
+import           Web.HttpApiData        (FromHttpApiData (..))
 
 import           Gonimo.Server.Db.Entities (DeviceId, FamilyId)
 import           Gonimo.Server.Types      (DeviceType, Secret)
@@ -20,7 +28,17 @@ type FromId = DeviceId
 type ToId   = DeviceId
 
 -- | For online session to identify a particular session
-newtype SessionId = SessionId Int deriving (Ord, Eq, Show)
+newtype SessionId = SessionId Int deriving (Ord, Eq, Show, Generic)
+
+instance ToJSON SessionId where
+  toJSON     = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
+instance FromJSON SessionId
+
+instance FromHttpApiData SessionId where
+    parseUrlPiece = jsonParseUrlPiece
+    parseHeader   = jsonParseHeader
+
 
 -- | Writers wait for the receiver to receive a message,
 -- | the reader then signals that is has read it's message
@@ -63,21 +81,3 @@ emptyFamily = FamilyOnlineState {
   , _sessions = M.empty
   , _idCounter = 0
   }
-
--- | I don't want to write updateFamily twice
---   but sometimes need an update which does not update in all cases and
---   sometimes we have updates that succeed in all cases. We can model the later
---   on the first one, but then we have a Nothing case, which never triggers but
---   needs to be handled by the caller - this is ugly. So we abstract both cases
---   with MonadMaybeAMaybe.
-class Monad m => MonadMaybeAMaybe m where
-  maybeRunMaybe :: m a -> Maybe a
-
-instance MonadMaybeAMaybe Identity where
-  maybeRunMaybe m = Just $ runIdentity m
-
-instance MonadMaybeAMaybe (MaybeT Identity) where
-  maybeRunMaybe m = runIdentity . runMaybeT $ m
-
-instance MonadMaybeAMaybe Maybe where
-  maybeRunMaybe = id

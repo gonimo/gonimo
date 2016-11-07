@@ -5,7 +5,8 @@ module Gonimo.Server.Error where
 
 import           Control.Exception             (Exception, SomeException,
                                                 toException)
-import           Control.Monad                 (unless)
+import           Control.Monad                 (unless, MonadPlus, mzero, (<=<))
+import           Control.Monad.Trans.Maybe     (runMaybeT, MaybeT)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Data.Aeson
@@ -13,6 +14,7 @@ import           Data.Typeable                 (Typeable)
 import           GHC.Generics
 import           Gonimo.Server.Db.Entities      (FamilyId, DeviceId)
 import           Servant.Server
+import           Control.Monad.Trans.Class            (lift)
 
 -- Define an error type, so handling errors is easier at the client side.
 data ServerError = InvalidAuthToken
@@ -36,10 +38,10 @@ data ServerError = InvalidAuthToken
 
 -- | Errors that can be converted to a ServerError.
 class ToServerError e where
-  toServerError :: e -> Maybe ServerError
+  toServerError :: MonadPlus m => e -> m ServerError
 
 instance ToServerError ServerError where
-  toServerError = Just
+  toServerError = return
 
 fromMaybeErr :: Member (Exc SomeException) r => ServerError -> Maybe a -> Eff r a
 fromMaybeErr err ma = case ma of
@@ -50,8 +52,8 @@ throwLeft :: Member (Exc SomeException) r => Either ServerError a -> Eff r a
 throwLeft = either throwServer return
 
 -- | Throw left if actually a ServerError, otherwise return Nothing
-mayThrowLeft :: (Member (Exc SomeException) r, ToServerError e) => Either e a -> Eff r (Maybe a)
-mayThrowLeft = either (traverse throwServer . toServerError) (return . Just)
+mayThrowLeft :: (Member (Exc SomeException) r, ToServerError e) => Either e a -> MaybeT (Eff r) a
+mayThrowLeft = either (lift . throwServer <=< toServerError) return
 
 throwServer :: Member (Exc SomeException) r => ServerError -> Eff r a
 throwServer = throwServant . makeServantErr
