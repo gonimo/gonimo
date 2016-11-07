@@ -37,6 +37,9 @@ import           Control.Concurrent.STM        (TVar)
 import           Control.Exception             (SomeException)
 import           Control.Monad.Freer           (Eff)
 import           Control.Monad.Freer.Exception (Exc)
+import           Control.Monad.Error.Class     (MonadError)
+import           Control.Monad.Trans.Maybe     (runMaybeT)
+import           Control.Monad.Except          (ExceptT, runExcept)
 import           Data.ByteString               (ByteString)
 import           Data.Proxy
 import           Data.Time.Clock               (UTCTime)
@@ -51,8 +54,8 @@ import           Gonimo.Database.Effects
 import           Gonimo.Server.Db.Entities       (FamilyId)
 import           Gonimo.Server.Effects.Internal
 import           Gonimo.Server.Error            (ServerError (..),
-                                                 fromMaybeErr, throwServer)
-import           Gonimo.Server.State.Types      (FamilyOnlineState, OnlineState, UpdateFamily, MayUpdateFamily, QueueStatus, maybeRunMaybe)
+                                                 fromMaybeErr, throwServer, ToServerError, mayThrowLeft)
+import           Gonimo.Server.State.Types      (FamilyOnlineState, OnlineState, UpdateFamily, MayUpdateFamily, QueueStatus, maybeRunMaybe, MonadMaybeAMaybe, UpdateFamilyT)
 import           Gonimo.Server.State            (lookupFamily, updateFamily, updateFamilyRetry, cleanReceived, CleanReceivedResult(..))
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
@@ -112,22 +115,20 @@ updateFamilyRetryEff err familyId updateF = do
     Nothing -> throwServer err
     Just v -> pure v
 
--- | Update family, throwing err if updateF returns Nothing
-updateFamilyErrEff :: ServerConstraint r
-                   => ServerError -> FamilyId -> MayUpdateFamily a -> Eff r a
-updateFamilyErrEff err familyId updateF = do
+-- | Update family, throwing any ServerErrors.
+updateFamilyErrEff :: (ServerConstraint r, ToServerError e)
+                   => FamilyId -> UpdateFamilyT (ExceptT e Identity) a -> Eff r (Maybe a)
+updateFamilyErrEff familyId updateF = do
   state <- getState
-  r <- atomically . fmap maybeRunMaybe $ updateFamily state familyId updateF
-  case r of
-    Nothing -> throwServer err
-    Just v -> return v
+  er <- fmap runExcept . atomically $ updateFamily state familyId updateF
+  mayThrowLeft er
 
 -- | May update family if updateF does not return Nothing.
 mayUpdateFamilyEff :: ServerConstraint r
                    => FamilyId -> MayUpdateFamily a -> Eff r (Maybe a)
 mayUpdateFamilyEff familyId updateF = do
   state <- getState
-  atomically . fmap maybeRunMaybe $ updateFamily state familyId updateF
+  atomically . fmap (runIdentity . runMaybeT) $ updateFamily state familyId updateF
 
 -- | Update a family online state.
 updateFamilyEff :: ServerConstraint r

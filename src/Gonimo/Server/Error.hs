@@ -11,14 +11,14 @@ import           Control.Monad.Freer.Exception
 import           Data.Aeson
 import           Data.Typeable                 (Typeable)
 import           GHC.Generics
-import           Gonimo.Server.Db.Entities      (FamilyId)
+import           Gonimo.Server.Db.Entities      (FamilyId, DeviceId)
 import           Servant.Server
 
 -- Define an error type, so handling errors is easier at the client side.
--- This makes it easier to handle them at the client side.
 data ServerError = InvalidAuthToken
                  | InvitationAlreadyClaimed -- ^ Invitation was already claimed by someone else.
                  | AlreadyFamilyMember -- ^ If a client tries to become a member of a family he is already a member of.
+                 | NoSuchDevice DeviceId -- ^ The device could not be found in the database.
                  | NoSuchFamily FamilyId
                  | FamilyNotOnline FamilyId
                  | NoSuchInvitation
@@ -36,7 +36,10 @@ data ServerError = InvalidAuthToken
 
 -- | Errors that can be converted to a ServerError.
 class ToServerError e where
-  toServerError :: e -> ServerError
+  toServerError :: e -> Maybe ServerError
+
+instance ToServerError ServerError where
+  toServerError = Just
 
 fromMaybeErr :: Member (Exc SomeException) r => ServerError -> Maybe a -> Eff r a
 fromMaybeErr err ma = case ma of
@@ -45,6 +48,10 @@ fromMaybeErr err ma = case ma of
 
 throwLeft :: Member (Exc SomeException) r => Either ServerError a -> Eff r a
 throwLeft = either throwServer return
+
+-- | Throw left if actually a ServerError, otherwise return Nothing
+mayThrowLeft :: (Member (Exc SomeException) r, ToServerError e) => Either e a -> Eff r (Maybe a)
+mayThrowLeft = either (traverse throwServer . toServerError) (return . Just)
 
 throwServer :: Member (Exc SomeException) r => ServerError -> Eff r a
 throwServer = throwServant . makeServantErr
