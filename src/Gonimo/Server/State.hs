@@ -50,9 +50,9 @@ updateFamily :: (Monad (t STM), MonadTrans t) =>
                 OnlineState -> FamilyId -> StateT FamilyOnlineState (t STM) a -> t STM a
 updateFamily families familyId f = do
     oldFamily <- lift $ getFamily families familyId
-    r <- runStateT f oldFamily
-    lift $ writeFamily families familyId (r^._2)
-    return $ r^._1
+    (r, newFamily) <- runStateT f oldFamily
+    lift $ writeFamily families familyId newFamily
+    return $ r
 
 -- | Like updateFamily but retries until timeUp becomes true.
 updateFamilyRetry :: (MonadPlus (t STM), MonadTrans t) =>
