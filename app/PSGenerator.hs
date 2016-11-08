@@ -9,6 +9,7 @@ import           Servant.PureScript
 import           Gonimo.CodeGen.TypeBridges
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Types
+import           Gonimo.Server.State.Types (SessionId)
 import           Gonimo.Server.Error
 import           Gonimo.WebAPI
 import           Gonimo.WebAPI.Types as Client
@@ -25,8 +26,7 @@ gonimoProxy = Proxy
 data TestTypeConstructor m a = TestTypeConstructor (m a) deriving Generic
 
 myTypes :: [SumType 'Haskell]
-myTypes = moveToWebAPITypes <$>
-          [ mkSumType (Proxy :: Proxy Client.AuthData)
+myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy Account)
           , mkSumType (Proxy :: Proxy Client.InvitationInfo)
           , mkSumType (Proxy :: Proxy Client.InvitationReply)
@@ -40,10 +40,8 @@ myTypes = moveToWebAPITypes <$>
           , mkSumType (Proxy :: Proxy DeviceType)
           , mkSumType (Proxy :: Proxy Family)
           , mkSumType (Proxy :: Proxy DeviceInfo)
+          , mkSumType (Proxy :: Proxy SessionId)
           ]
-  where
-    moveToWebAPITypes :: SumType 'Haskell -> SumType 'Haskell
-    moveToWebAPITypes (SumType t args) = SumType (t&typeModule .~ "Gonimo.WebAPI.Types") args
 
 mySettings :: Settings
 mySettings = (addReaderParam "Authorization" defaultSettings & apiModuleName .~ "Gonimo.WebAPI") {
