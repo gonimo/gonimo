@@ -3,4 +3,4 @@ module Utils.Constants where
 type Microseconds = Int
 
 standardDelay :: Microseconds
-standardDelay = 2*10^(6::Int)
+standardDelay = 12*10^(6::Int)
