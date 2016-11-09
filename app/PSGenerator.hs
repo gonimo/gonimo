@@ -7,8 +7,9 @@ import           GHC.Generics
 import           Servant.PureScript
 
 import           Gonimo.CodeGen.TypeBridges
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Types
+import           Gonimo.Server.State.Types (SessionId)
 import           Gonimo.Server.Error
 import           Gonimo.WebAPI
 import           Gonimo.WebAPI.Types as Client
@@ -39,6 +40,7 @@ myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy DeviceType)
           , mkSumType (Proxy :: Proxy Family)
           , mkSumType (Proxy :: Proxy DeviceInfo)
+          , mkSumType (Proxy :: Proxy SessionId)
           ]
 
 mySettings :: Settings

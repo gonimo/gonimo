@@ -25,7 +25,7 @@ import           Servant.Subscriber            (Event, HasLink, IsElem,
 import           System.Random                 (StdGen)
 
 import           Gonimo.Database.Effects
-import           Gonimo.Server.State           (OnlineState)
+import           Gonimo.Server.State.Types     (OnlineState)
 import           Gonimo.WebAPI                 (GonimoAPI)
 
 -- Type synonym for constraints on Server API functions, requires ConstraintKinds language extension:

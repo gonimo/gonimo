@@ -1,15 +1,15 @@
-module Gonimo.Server.AuthHandlers.Internal where
+module Gonimo.Server.Handlers.Auth.Internal where
 
 import           Control.Monad.Freer             (Eff)
 import           Data.Proxy                      (Proxy (Proxy))
 import           Gonimo.Database.Effects.Servant (get404)
-import           Gonimo.Server.DbEntities        (Family, FamilyId, AccountId)
+import           Gonimo.Server.Db.Entities        (Family, FamilyId, AccountId)
 import           Gonimo.WebAPI                   (ListDevicesR, GetFamilyDevicesR, GetFamilyR)
 import           Servant.API                     ((:>), Capture, Get, JSON)
 import           Gonimo.Server.Effects (runDb, ServerConstraint)
 
 
-listDevicesEndpoint  :: Proxy ("onlineStatus" :> ListDevicesR)
+listDevicesEndpoint  :: Proxy ("session" :> ListDevicesR)
 listDevicesEndpoint = Proxy
 
 listFamiliesEndpoint :: Proxy ("accounts" :> Capture "accountId" AccountId :> "families" :> Get '[JSON] [FamilyId])

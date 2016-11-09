@@ -4,7 +4,7 @@ module Gonimo.WebAPI where
 
 import           Data.Proxy
 import           Data.Text                       (Text)
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Types
 import           Gonimo.WebAPI.Types             (InvitationInfo,
                                                   InvitationReply)
@@ -13,6 +13,7 @@ import           Gonimo.WebAPI.Verbs
 import           Servant.API
 import           Servant.API.BrowserHeader
 import           Servant.Subscriber.Subscribable
+import           Gonimo.Server.State.Types        (SessionId)
 
 
 type GonimoAPI =
@@ -29,7 +30,7 @@ type AuthGonimoAPI = "invitations"  :> InvitationsAPI
                 :<|> "accounts"     :> AccountsAPI
                 :<|> "families"     :> FamiliesAPI
                 :<|> "socket"       :> SocketAPI
-                :<|> "onlineStatus" :> StatusAPI
+                :<|> "session"     :> SessionAPI
 
 
 -- invitations API:
@@ -72,6 +73,9 @@ type FamilyAPI = GetFamilyR
             :<|> GetFamilyDevicesR
 
 type GetFamilyR = Subscribable :> Get '[JSON] Family
+-- TODO: This list should really be just the ids! Once we get a separate endpoint for retrieving a
+-- DeviceInfor for a DeviceId, this _must_ be changed! For all information should only be retrievable from one endpoint - so handling notifications stays easy and efficient!!!
+-- Currently if a single device info changes - all clients will refetch the whole list!
 type GetFamilyDevicesR = "deviceInfos" :> Subscribable :> Get '[JSON] [(DeviceId, Client.DeviceInfo)]
 
 -- SocketAPI:
@@ -87,15 +91,15 @@ type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> R
 type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Receive '[JSON] (Maybe Text)
 
 
--- StatusAPI:
-type StatusAPI =   RegisterR
+-- SessionAPI:
+type SessionAPI =  RegisterR
               :<|> UpdateR
               :<|> DeleteR
               :<|> ListDevicesR
 
-type RegisterR    = Capture "familyId" FamilyId :> ReqBody '[JSON] (DeviceId, DeviceType) :> PostCreated '[JSON] ()
-type UpdateR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> ReqBody '[JSON] DeviceType :> Put '[JSON] ()
-type DeleteR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Delete '[JSON] ()
+type RegisterR    = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId :> ReqBody '[JSON] DeviceType :> PostCreated '[JSON] SessionId
+type UpdateR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> ReqBody '[JSON] DeviceType :> Put '[JSON] ()
+type DeleteR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> Delete '[JSON] ()
 type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId,DeviceType)]
 
 gonimoAPI :: Proxy GonimoAPI

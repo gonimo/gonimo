@@ -105,7 +105,7 @@ instance FromJSON InvitationDelivery
 
 instance ToJSON InvitationDelivery where
   toJSON = genericToJSON defaultOptions
-  -- toEncoding = genericToEncoding defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 derivePersistField "InvitationDelivery"
 --------------------------------------------------
@@ -121,3 +121,5 @@ instance ToJSON FunnyWordType where
   toJSON = genericToJSON defaultOptions
 
 derivePersistField "FunnyWordType"
+
+

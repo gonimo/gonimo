@@ -9,7 +9,7 @@ import           Control.Monad.Freer           (Eff, Member)
 import           Control.Monad.Freer.Exception (Exc (..))
 import           Control.Monad.Freer.Reader    (Reader (..), ask)
 import           Database.Persist              (Entity (..), Key)
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.Error
 

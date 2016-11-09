@@ -19,6 +19,7 @@ module Gonimo.Server.Effects (
   , updateFamilyRetryEff
   , updateFamilyErrEff
   , updateFamilyEff
+  , mayUpdateFamilyEff
   , cleanReceivedEff
   , getFamilyEff
   , registerDelay
@@ -30,33 +31,46 @@ module Gonimo.Server.Effects (
   ) where
 
 
+import           Control.Concurrent.STM         (STM)
+import           Control.Concurrent.STM         (TVar)
+import           Control.Exception              (SomeException)
 import           Control.Lens
-import           Control.Concurrent.STM        (STM)
-import           Control.Concurrent.STM        (TVar)
-import           Control.Exception             (SomeException)
-import           Control.Monad.Freer           (Eff)
-import           Control.Monad.Freer.Exception (Exc)
-import           Data.ByteString               (ByteString)
+import           Control.Monad.Error.Class      (MonadError)
+import           Control.Monad.Except           (ExceptT, runExceptT)
+import           Control.Monad.Freer            (Eff)
+import           Control.Monad.Freer.Exception  (Exc)
+import           Control.Monad.Trans.Class      (lift)
+import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
+import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
+import           Control.Monad.Trans.State      (StateT (..))
+import           Data.ByteString                (ByteString)
 import           Data.Proxy
-import           Data.Time.Clock               (UTCTime)
-import           Database.Persist.Sql          (SqlBackend)
-import           Network.Mail.Mime             (Mail)
-import           Servant.Subscriber            (Event, HasLink, IsElem,
-                                                IsSubscribable, IsValidEndpoint,
-                                                MkLink, URI)
+import           Data.Time.Clock                (UTCTime)
+import           Database.Persist.Sql           (SqlBackend)
+import           Network.Mail.Mime              (Mail)
+import           Servant.Subscriber             (Event, HasLink, IsElem,
+                                                 IsSubscribable,
+                                                 IsValidEndpoint, MkLink, URI)
 import           System.Random                  (StdGen)
 
 import           Gonimo.Database.Effects
-import           Gonimo.Server.DbEntities       (FamilyId)
+import           Gonimo.Server.Db.Entities      (FamilyId)
 import           Gonimo.Server.Effects.Internal
+import           Gonimo.Server.Effects.Logging  as Logging
 import           Gonimo.Server.Error            (ServerError (..),
-                                                 fromMaybeErr, throwServer)
-import           Gonimo.Server.State            (FamilyOnlineState, OnlineState,
-                                                 lookupFamily, updateFamily, UpdateFamily, updateFamilyRetry, cleanReceived, CleanReceivedResult(..), QueueStatus)
+                                                 ToServerError, fromMaybeErr,
+                                                 mayThrowLeft, throwServer)
+import           Gonimo.Server.State            (CleanReceivedResult (..),
+                                                 cleanReceived, lookupFamily,
+                                                 updateFamily,
+                                                 updateFamilyRetry)
+import           Gonimo.Server.State.Types      (FamilyOnlineState,
+                                                 MayUpdateFamily, OnlineState,
+                                                 QueueStatus, UpdateFamily,
+                                                 UpdateFamilyT)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardDelay)
-import           Gonimo.Server.Effects.Logging         as Logging
 
 secretLength :: Int
 secretLength = 16
@@ -102,31 +116,37 @@ notify ev pE cb = sendServer $ Notify ev pE cb
 
 -- | Update family, retrying if updateF returns Nothing
 updateFamilyRetryEff :: ServerConstraint r
-                   => ServerError -> FamilyId -> UpdateFamily a -> Eff r a
+                   => ServerError -> FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> Eff r a
 updateFamilyRetryEff err familyId updateF = do
   state <- getState
   timeUp <- registerDelay standardDelay
-  r <- atomically $ updateFamilyRetry timeUp state familyId updateF
+  r <- atomically . runMaybeT $ updateFamilyRetry timeUp state familyId updateF
   case r of
     Nothing -> throwServer err
     Just v -> pure v
 
--- | Update family, throwing err if updateF returns Nothing
-updateFamilyErrEff :: ServerConstraint r
-                   => ServerError -> FamilyId -> UpdateFamily a -> Eff r a
-updateFamilyErrEff err familyId updateF = do
-  state <- getState
-  r <- atomically $ updateFamily state familyId updateF
-  case r of
-    Nothing -> throwServer err
-    Just v -> return v
+-- | Update family, throwing any ServerErrors.
+updateFamilyErrEff :: (ServerConstraint r, ToServerError e, Monoid e)
+                   => FamilyId -> UpdateFamilyT (ExceptT e STM) a -> MaybeT (Eff r) a
+updateFamilyErrEff familyId updateF = do
+  state <- lift getState
+  er <- lift . atomically . runExceptT $ updateFamily state familyId updateF
+  mayThrowLeft er
 
--- | Update family, ignoring Nothing.
+-- | May update family if updateF does not return Nothing.
+mayUpdateFamilyEff :: ServerConstraint r
+                   => FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> MaybeT (Eff r) a
+mayUpdateFamilyEff familyId updateF = do
+  state <- lift getState
+  MaybeT . atomically . runMaybeT $ updateFamily state familyId updateF
+
+
+-- | Update a family online state.
 updateFamilyEff :: ServerConstraint r
-                   => FamilyId -> UpdateFamily a -> Eff r (Maybe a)
+                   => FamilyId -> StateT FamilyOnlineState (IdentityT STM) a -> Eff r a
 updateFamilyEff familyId updateF = do
   state <- getState
-  atomically $ updateFamily state familyId updateF
+  atomically . runIdentityT $ updateFamily state familyId updateF
 
 
 getFamilyEff :: ServerConstraint r

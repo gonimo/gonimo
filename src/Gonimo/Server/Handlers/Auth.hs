@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Gonimo.Server.AuthHandlers where
+module Gonimo.Server.Handlers.Auth where
 
 import           Control.Concurrent.STM              (STM, TVar, readTVar)
 import           Control.Lens
@@ -9,8 +9,11 @@ import           Control.Monad                       (guard)
 import           Control.Monad.Extra                 (whenM)
 import           Control.Monad.Freer                 (Eff)
 import           Control.Monad.Freer.Reader          (ask)
+import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
 import           Control.Monad.State.Class           (gets, modify)
+import           Control.Monad.Trans.State      (StateT (..))
 import           Control.Monad.STM.Class             (liftSTM)
+import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
 import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Maybe           (MaybeT (..), runMaybeT)
 import qualified Data.Map.Strict                     as M
@@ -25,12 +28,13 @@ import qualified Gonimo.Database.Effects             as Db
 import qualified Gonimo.Database.Effects             as Db
 import           Gonimo.Database.Effects.Servant     as Db
 import           Gonimo.Server.Auth                  as Auth
-import           Gonimo.Server.AuthHandlers.Internal
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Handlers.Auth.Internal
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
 import           Gonimo.Server.State
+import           Gonimo.Server.State.Types
 import           Gonimo.Server.Types
 import           Gonimo.WebAPI                       (ReceiveChannelR,
                                                       ReceiveSocketR)
@@ -43,7 +47,7 @@ import           Servant.Server                      (ServantErr (..), err400,
 import           Servant.Subscriber                  (Event (ModifyEvent))
 import           Utils.Control.Monad.Trans.Maybe     (maybeT)
 import Database.Persist.Class
-import Unsafe.Coerce
+import Unsafe.Coerce -- For debugging - really!
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -195,13 +199,11 @@ createChannel familyId toId fromId = do
   cleanReceivedEff NoSuchSocket familyId (channelSecrets.at toId)
   return secret
  where
-   createChannel' :: Secret -> UpdateFamily ()
+   createChannel' :: Secret -> StateT FamilyOnlineState (MaybeT STM) ()
    createChannel' secret = do
      secrets <- gets _channelSecrets
-     if M.member toId secrets
-       then mzero
-       else channelSecrets.at toId .= Just (Written (fromId, secret))
-     return ()
+     guard (not $ M.member toId secrets)
+     channelSecrets.at toId .= Just (Written (fromId, secret))
 
    endpoint :: Proxy ("socket" :> ReceiveSocketR)
    endpoint = Proxy
@@ -214,9 +216,9 @@ receiveSocket familyId toId = do
     authorizeAuthData (isFamilyMember familyId)
     authorizeAuthData ((toId ==) . deviceKey)
 
-    updateFamilyEff familyId $ receiveSocket'
+    runMaybeT $ mayUpdateFamilyEff familyId $ receiveSocket'
   where
-    receiveSocket' :: UpdateFamily (DeviceId, Secret)
+    receiveSocket' :: StateT FamilyOnlineState (MaybeT STM) (DeviceId, Secret)
     receiveSocket' = do
       secrets <- gets _channelSecrets
       val <- maybe mzero return $ secrets ^? at toId . _Just . _Written
@@ -249,56 +251,8 @@ receiveChannel familyId fromId toId secret = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((toId ==) . deviceKey)
 
-  txt <- updateFamilyEff familyId $ receiveData (fromId, toId, secret)
+  txt <- runMaybeT . mayUpdateFamilyEff familyId $ receiveData (fromId, toId, secret)
 
   $logDebug $ "CHANNEL: Got data from channel " <> (T.pack . show) [ prettyKey familyId, prettyKey fromId, prettyKey toId ] <> ": " <> (T.pack . show) txt
   pure txt
 
-statusRegisterR :: AuthServerConstraint r
-                => FamilyId -> (DeviceId, DeviceType) -> Eff r ()
-statusRegisterR familyId deviceData@(deviceId, deviceType) = do
-    authorizeAuthData $ isFamilyMember familyId
-    authorizeAuthData $ isDevice deviceId
-    whenM hasChanged $ do -- < No need for a single atomically here!
-      _ <- updateFamilyEff familyId $ updateStatus deviceData
-      whenM updateLastUsedBabyNames $
-        notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
-      notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
-  where
-    updateLastUsedBabyNames = fmap (fromMaybe False) . runMaybeT $ do
-        name <- toBabyName deviceType
-        MaybeT . runDb . runMaybeT $ do
-          oldFamily <- lift $ Db.getErr (NoSuchFamily familyId) familyId
-          let oldBabies = familyLastUsedBabyNames oldFamily
-          guard $ not (name `elem` oldBabies)
-          let newFamily
-                = oldFamily
-                  { familyLastUsedBabyNames = take 5 (name : familyLastUsedBabyNames oldFamily)
-                  }
-          lift $ Db.replace familyId newFamily
-          return True
-
-    hasChanged = do
-      state <- getState
-      atomically $ do
-        mFamily <- lookupFamily state familyId
-        let mFound = join $ mFamily ^? _Just . onlineMembers . at deviceId
-        return $ mFound /= Just deviceType
-
-statusUpdateR  :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> DeviceType -> Eff r ()
-statusUpdateR familyId = curry $ statusRegisterR familyId
-
-statusDeleteR  :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> Eff r ()
-statusDeleteR familyId deviceId = do
-  authorizeAuthData $ isFamilyMember familyId
-  authorizeAuthData $ isDevice deviceId
-  _ <- updateFamilyEff familyId $ deleteStatus deviceId
-  notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
-
-statusListDevicesR  :: AuthServerConstraint r
-                    => FamilyId -> Eff r [(DeviceId, DeviceType)]
-statusListDevicesR familyId = do
-  authorizeAuthData $ isFamilyMember familyId
-  M.toList . _onlineMembers <$> getFamilyEff familyId

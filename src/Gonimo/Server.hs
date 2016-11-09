@@ -18,8 +18,9 @@ import           Database.Persist                (Entity (..), (==.))
 import qualified Gonimo.Database.Effects         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth
-import           Gonimo.Server.AuthHandlers
-import           Gonimo.Server.DbEntities
+import           Gonimo.Server.Handlers.Auth
+import           Gonimo.Server.Handlers.Session
+import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects           hiding (Server)
 import           Gonimo.Server.Error    (ServantException (..), throwServant, ServerError (..))
 #ifdef DEVELOPMENT
@@ -47,7 +48,7 @@ authServer = invitationsServer
         :<|> accountsServer
         :<|> familiesServer
         :<|> socketServer
-        :<|> statusServer
+        :<|> sessionServer
 
 invitationsServer :: ServerT InvitationsAPI AuthServerEffects
 invitationsServer = createInvitation
@@ -72,11 +73,11 @@ socketServer = createChannel
           :<|> putChannel
           :<|> receiveChannel
 
-statusServer :: ServerT StatusAPI AuthServerEffects
-statusServer = statusRegisterR
-          :<|> statusUpdateR
-          :<|> statusDeleteR
-          :<|> statusListDevicesR
+sessionServer :: ServerT SessionAPI AuthServerEffects
+sessionServer = sessionRegisterR
+          :<|> sessionUpdateR
+          :<|> sessionDeleteR
+          :<|> sessionListDevicesR
 
 
 -- Let's serve
