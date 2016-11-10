@@ -7,12 +7,11 @@ module Gonimo.Server.State.Types where
 
 import           Control.Concurrent.STM    (TVar)
 import           Control.Lens
-import           Control.Monad.Except      (ExceptT, runExceptT)
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.State (StateT (..))
 import           Data.Aeson.Types          (FromJSON (..), FromJSON,
                                             ToJSON (..), ToJSON (..),
-                                            Value (String), defaultOptions,
+                                            defaultOptions,
                                             genericToEncoding, genericToJSON)
 import           Data.Map.Strict           (Map)
 import qualified Data.Map.Strict           as M

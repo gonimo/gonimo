@@ -7,22 +7,16 @@ import           Control.Concurrent.STM    (STM, TVar, modifyTVar', newTVar,
                                             readTVar, retry, writeTVar)
 import           Control.Lens
 import           Control.Applicative       ((<|>))
-import           Control.Monad             (MonadPlus (mzero), unless, when, guard)
-import           Control.Monad.Error.Class
+import           Control.Monad             (MonadPlus (mzero), unless, guard)
 import           Control.Monad.State.Class
 import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.State (StateT (..))
-import           Data.Map.Strict           (Map)
 import qualified Data.Map.Strict           as M
-import qualified Data.Set                  as S
 import           Data.Text                 (Text)
 
-import           Gonimo.Server.Db.Entities (DeviceId, FamilyId)
-import           Gonimo.Server.Error       (ServerError (NoActiveSession, SessionInvalid),
-                                            ToServerError, toServerError)
+import           Gonimo.Server.Db.Entities (FamilyId)
 import           Gonimo.Server.State.Types
-import           Gonimo.Server.Types       (DeviceType, Secret)
+import           Gonimo.Server.Types       (Secret)
 
 putData :: (MonadState FamilyOnlineState m, Monad m, MonadPlus m)
            => Text -> (FromId, ToId, Secret) -> m ()

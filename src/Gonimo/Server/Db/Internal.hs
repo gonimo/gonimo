@@ -5,10 +5,10 @@ import           Control.Lens
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.State.Class
 import           Control.Monad.Trans.Class       (lift)
-import           Control.Monad.Trans.Maybe       (MaybeT, runMaybeT)
+import           Control.Monad.Trans.Maybe       (MaybeT)
 import           Control.Monad.Trans.State       (StateT (..))
 
-import           Gonimo.Server.Error             (ServerError (NoSuchFamily))
+import           Gonimo.Server.Error             (ServerError)
 import           Database.Persist.Class          (PersistEntity, Key)
 
 import           Control.Exception               (SomeException)

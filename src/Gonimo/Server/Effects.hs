@@ -35,7 +35,6 @@ import           Control.Concurrent.STM         (STM)
 import           Control.Concurrent.STM         (TVar)
 import           Control.Exception              (SomeException)
 import           Control.Lens
-import           Control.Monad.Error.Class      (MonadError)
 import           Control.Monad.Except           (ExceptT, runExceptT)
 import           Control.Monad.Freer            (Eff)
 import           Control.Monad.Freer.Exception  (Exc)
@@ -65,8 +64,8 @@ import           Gonimo.Server.State            (CleanReceivedResult (..),
                                                  updateFamily,
                                                  updateFamilyRetry)
 import           Gonimo.Server.State.Types      (FamilyOnlineState,
-                                                 MayUpdateFamily, OnlineState,
-                                                 QueueStatus, UpdateFamily,
+                                                 OnlineState,
+                                                 QueueStatus, 
                                                  UpdateFamilyT)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)

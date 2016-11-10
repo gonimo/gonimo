@@ -1,16 +1,16 @@
 module Gonimo.Server.Handlers.Session where
 
-import           Control.Monad
 import           Control.Monad.Freer                  (Eff)
 import           Control.Monad.Trans.Class            (lift)
 import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
-import           Data.Maybe                           (isJust)
+import           Data.Monoid
 import           Gonimo.Server.Auth                   as Auth
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.Handlers.Auth.Internal
 import           Gonimo.Server.State.Session          as Session
 import           Gonimo.Server.State.Types            (SessionId)
+import           Debug.Trace                          (trace)
 
 import           Gonimo.Server.Types
 import           Servant.Subscriber                  (Event (ModifyEvent))
@@ -39,7 +39,7 @@ sessionRegisterR familyId deviceId deviceType = do
 
     sessionId <- updateFamilyEff familyId $ Session.register deviceId deviceType
     handleUpdate familyId deviceType
-    pure sessionId
+    pure $ trace ("Registered session: " <> show sessionId) sessionId
 
 -- | Update session (you can change the device type any time)
 --
@@ -69,7 +69,7 @@ sessionDeleteR  :: AuthServerConstraint r
 sessionDeleteR familyId deviceId sessionId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isDevice deviceId
-  _ <- runMaybeT $ do
+  _ <- trace ("Deleting session: " <> show sessionId) $ runMaybeT $ do
     mayUpdateFamilyEff familyId $ Session.delete deviceId sessionId
     lift $ notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
   return ()

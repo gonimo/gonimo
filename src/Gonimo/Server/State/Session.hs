@@ -9,11 +9,10 @@ module Gonimo.Server.State.Session where
 
 
 import           Control.Lens
-import           Control.Monad             (unless, when, mzero, MonadPlus, guard)
+import           Control.Monad             (unless, mzero, MonadPlus, guard)
 import qualified Data.Map.Strict           as M
 import           Control.Monad.Error.Class
 import           Control.Monad.State.Class
-import           Data.Monoid
 
 import           Gonimo.Server.Db.Entities (DeviceId)
 import           Gonimo.Server.Error      (ServerError (NoActiveSession, SessionInvalid),

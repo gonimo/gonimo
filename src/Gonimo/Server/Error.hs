@@ -5,8 +5,8 @@ module Gonimo.Server.Error where
 
 import           Control.Exception             (Exception, SomeException,
                                                 toException)
-import           Control.Monad                 (unless, MonadPlus, mzero, (<=<))
-import           Control.Monad.Trans.Maybe     (runMaybeT, MaybeT)
+import           Control.Monad                 (unless, MonadPlus, (<=<))
+import           Control.Monad.Trans.Maybe     (MaybeT)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Data.Aeson
@@ -76,22 +76,23 @@ makeServantErr err = (getServantErr err) { errBody = encode err }
 
 -- | Internal
 getServantErr :: ServerError -> ServantErr
-getServantErr InvalidAuthToken = err403
+getServantErr InvalidAuthToken         = err403
 getServantErr InvitationAlreadyClaimed = err403
-getServantErr AlreadyFamilyMember = err409
-getServantErr (NoSuchFamily _) = err404
-getServantErr (FamilyNotOnline _) = err404
-getServantErr NoSuchInvitation = err404
-getServantErr SocketBusy = err503
-getServantErr ChannelBusy = err503
-getServantErr NoSuchSocket = err404
-getServantErr NoSuchChannel = err404
-getServantErr NotFound = err404
-getServantErr Forbidden = err403
-getServantErr TransactionTimeout = err500
-getServantErr SessionInvalid = err409
-getServantErr NoActiveSession = err404
-getServantErr InternalServerError = err500
+getServantErr AlreadyFamilyMember      = err409
+getServantErr (NoSuchFamily _)         = err404
+getServantErr (FamilyNotOnline _)      = err404
+getServantErr NoSuchInvitation         = err404
+getServantErr SocketBusy               = err503
+getServantErr ChannelBusy              = err503
+getServantErr NoSuchSocket             = err404
+getServantErr NoSuchChannel            = err404
+getServantErr (NoSuchDevice _)         = err404
+getServantErr NotFound                 = err404
+getServantErr Forbidden                = err403
+getServantErr TransactionTimeout       = err500
+getServantErr SessionInvalid           = err409
+getServantErr NoActiveSession          = err404
+getServantErr InternalServerError      = err500
 
 instance ToJSON ServerError where
     toJSON = genericToJSON defaultOptions

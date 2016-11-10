@@ -5,7 +5,7 @@ module Gonimo.Server.Db.Family where
 import           Control.Monad                   (MonadPlus, guard)
 import           Control.Monad.Freer             (Eff)
 import           Control.Monad.State.Class
-import           Control.Monad.Trans.Maybe       (MaybeT, runMaybeT)
+import           Control.Monad.Trans.Maybe       (MaybeT)
 import           Data.Text                       (Text)
 
 import           Gonimo.Server.Error             (ServerError (NoSuchFamily))
