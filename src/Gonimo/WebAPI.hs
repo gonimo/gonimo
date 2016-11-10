@@ -97,7 +97,10 @@ type SessionAPI =  RegisterR
               :<|> DeleteR
               :<|> ListDevicesR
 
-type RegisterR    = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId :> ReqBody '[JSON] DeviceType :> PostCreated '[JSON] SessionId
+-- RegisterR is subscribable although it is a post, it also never changes. But
+-- having it subscriable enables us to delegate registration to the subscriber
+-- in a pretty elegant way! :-)
+type RegisterR    = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId :> ReqBody '[JSON] DeviceType :> Subscribable :> PostCreated '[JSON] SessionId
 type UpdateR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> ReqBody '[JSON] DeviceType :> Put '[JSON] ()
 type DeleteR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> Delete '[JSON] ()
 type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId,DeviceType)]
