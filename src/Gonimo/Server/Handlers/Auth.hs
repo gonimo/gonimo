@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
 module Gonimo.Server.Handlers.Auth where
 
 import           Control.Concurrent.STM              (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad                       (guard)
 import           Control.Monad.Extra                 (whenM)
 import           Control.Monad.Freer                 (Eff)
 import           Control.Monad.Freer.Reader          (ask)
@@ -37,7 +37,7 @@ import           Gonimo.Server.State
 import           Gonimo.Server.State.Types
 import           Gonimo.Server.Types
 import           Gonimo.WebAPI                       (ReceiveChannelR,
-                                                      ReceiveSocketR)
+                                                      ReceiveChannelR)
 import           Gonimo.WebAPI.Types                 (InvitationInfo (..),
                                                       InvitationReply (..))
 import qualified Gonimo.WebAPI.Types                 as Client
@@ -48,6 +48,7 @@ import           Servant.Subscriber                  (Event (ModifyEvent))
 import           Utils.Control.Monad.Trans.Maybe     (maybeT)
 import Database.Persist.Class
 import Unsafe.Coerce -- For debugging - really!
+import           Gonimo.Server.State.MessageBox      as MsgBox
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -182,7 +183,7 @@ getFamily familyId = do
 
 -- | Create a channel for communication with  a baby station
 --
---   The baby station must call receiveSocket within a given timeout,
+--   The baby station must call receiveChannel within a given timeout,
 --   this handler will only return a secret if the baby station did so,
 --   otherwise an error is thrown (not found - `NoSuchSocket`)
 createChannel :: AuthServerConstraint r
@@ -192,58 +193,47 @@ createChannel familyId toId fromId = do
   authorizeAuthData ((fromId ==) . deviceKey)
 
   secret <- generateSecret
-  updateFamilyRetryEff SocketBusy familyId $ createChannel' secret
+  updateFamilyRetryEff SocketBusy familyId $ MsgBox.setData channelSecrets toId (fromId, secret)
 
   notify ModifyEvent endpoint (\f -> f familyId toId)
 
-  cleanReceivedEff NoSuchSocket familyId (channelSecrets.at toId)
+  waitForReaderEff NoSuchSocket familyId toId channelSecrets
   return secret
  where
-   createChannel' :: Secret -> StateT FamilyOnlineState (MaybeT STM) ()
-   createChannel' secret = do
-     secrets <- gets _channelSecrets
-     guard (not $ M.member toId secrets)
-     channelSecrets.at toId .= Just (Written (fromId, secret))
 
-   endpoint :: Proxy ("socket" :> ReceiveSocketR)
-   endpoint = Proxy
-
-
-receiveSocket :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> Eff r (Maybe (DeviceId, Secret))
--- in this request @to@ is the one receiving the secret
-receiveSocket familyId toId = do
-    authorizeAuthData (isFamilyMember familyId)
-    authorizeAuthData ((toId ==) . deviceKey)
-
-    runMaybeT $ mayUpdateFamilyEff familyId $ receiveSocket'
-  where
-    receiveSocket' :: StateT FamilyOnlineState (MaybeT STM) (DeviceId, Secret)
-    receiveSocket' = do
-      secrets <- gets _channelSecrets
-      val <- maybe mzero return $ secrets ^? at toId . _Just . _Written
-      channelSecrets.at toId .= Just Read
-      return val
-
-
-putChannel :: AuthServerConstraint r
-           => FamilyId -> DeviceId -> DeviceId -> Secret -> Text -> Eff r ()
-putChannel familyId fromId toId secret txt = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((fromId ==) . deviceKey)
-
-  updateFamilyRetryEff ChannelBusy familyId $ putData txt (fromId, toId, secret)
-  $logDebug $ "CHANNEL: Put data in channel " <> (T.pack . show) [prettyKey familyId, prettyKey fromId, prettyKey toId] <> ": " <> txt
-
-  notify ModifyEvent endpoint (\f -> f familyId fromId toId secret)
-
-  cleanReceivedEff NoSuchChannel familyId (channelData.at (fromId, toId, secret))
-  where
    endpoint :: Proxy ("socket" :> ReceiveChannelR)
    endpoint = Proxy
 
-prettyKey :: Key a -> Text
-prettyKey = T.pack . show . (unsafeCoerce :: Key a -> Int)
+
+receiveChannel :: AuthServerConstraint r
+               => FamilyId -> DeviceId -> Eff r (Maybe (MessageNumber, ChannelRequest))
+-- in this request @to@ is the one receiving the secret
+receiveChannel familyId toId = do
+    authorizeAuthData (isFamilyMember familyId)
+    authorizeAuthData ((toId ==) . deviceKey)
+
+    MsgBox.getData toId . _channelSecrets <$> getFamilyEff familyId
+
+deleteChannelRequest :: AuthServerConstraint r
+                        =>  FamilyId -> DeviceId ->  TODO! :-)
+
+putChannel :: forall r. AuthServerConstraint r
+           => FamilyId -> DeviceId -> DeviceId -> Secret -> Text -> Eff r ()
+putChannel familyId fromId toId secret txt = do
+    authorizeAuthData (isFamilyMember familyId)
+    authorizeAuthData ((fromId ==) . deviceKey)
+
+    let key = (fromId, toId, secret)
+    updateFamilyRetryEff ChannelBusy familyId $ MsgBox.setData channelData key txt
+
+    notify ModifyEvent endpoint (\f -> f familyId fromId toId secret)
+
+    waitForReaderEff NoSuchChannel familyId key channelData
+  where
+
+   endpoint :: Proxy ("socket" :> ReceiveChannelR)
+   endpoint = Proxy
+
 
 receiveChannel :: AuthServerConstraint r
                => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r (Maybe Text)
@@ -251,8 +241,15 @@ receiveChannel familyId fromId toId secret = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((toId ==) . deviceKey)
 
-  txt <- runMaybeT . mayUpdateFamilyEff familyId $ receiveData (fromId, toId, secret)
+  MsgBox.getData (fromId, toId, secret) . _channelData <$> getFamilyEff familyId
 
-  $logDebug $ "CHANNEL: Got data from channel " <> (T.pack . show) [ prettyKey familyId, prettyKey fromId, prettyKey toId ] <> ": " <> (T.pack . show) txt
-  pure txt
+markReadChannel :: AuthServerConstraint r => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r ()
+markReadChannel familyId fromId toId secret = do
+    let key = (fromId, toId, secret)
+    updateFamilyErrEff familyId $ markRead key channelData
 
+
+markReadChanError :: UpdateFamilyT (ExceptT )
+-- Internal function for debugging:
+prettyKey :: Key a -> Text
+prettyKey = T.pack . show . (unsafeCoerce :: Key a -> Int)
