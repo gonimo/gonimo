@@ -71,7 +71,7 @@ data CleanReceivedResult = WasReceived
 
 -- | Block until a value was received, if timeUp becomes true earlier, we clean the queue and return `WeCleared`.
 cleanReceived :: forall a. OnlineState -> FamilyId -> TVar Bool
-              -> Lens' FamilyOnlineState (Maybe (QueueStatus a))
+              -> Lens' FamilyOnlineState (Maybe (MessageBox a))
               -> STM CleanReceivedResult
 cleanReceived families familyId timeUp queue = do
   familiesP <- readTVar families
