@@ -50,6 +50,7 @@ library
                  , Gonimo.Server.State
                  , Gonimo.Server.State.Session
                  , Gonimo.Server.State.Types
+                 , Gonimo.Server.State.MessageBox
                  , Gonimo.Server.Types
                  , Gonimo.Util
                  , Gonimo.WebAPI

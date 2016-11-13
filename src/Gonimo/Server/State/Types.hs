@@ -38,9 +38,35 @@ instance FromHttpApiData SessionId where
     parseUrlPiece = jsonParseUrlPiece
     parseHeader   = jsonParseHeader
 
+-- | To identify messages on socket/channel to avoid race conditions when reading.
+newtype MessageNumber = MessageNumber Int deriving (Ord, Eq, Show, Generic)
+
+instance ToJSON MessageNumber where
+  toJSON     = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
+instance FromJSON MessageNumber
+
+instance FromHttpApiData MessageNumber where
+    parseUrlPiece = jsonParseUrlPiece
+    parseHeader   = jsonParseHeader
+
+
+data MessageState a = Written a | Read deriving (Eq, Show)
+$(makePrisms ''MessageState)
+
+-- | A request for opening a channel on a socket.
+data ChannelRequest = ChannelRequest DeviceId Secret deriving Generic
+
+instance FromJSON ChannelRequest
+instance ToJSON ChannelRequest where
+  toEncoding = genericToEncoding defaultOptions
+
+instance FromHttpApiData ChannelRequest where
+    parseUrlPiece = jsonParseUrlPiece
+    parseHeader   = jsonParseHeader
 
 -- | Writers wait for the receiver to receive a message,
--- | the reader then signals that is has read it's message
+-- | the reader then signals that it has read it's message
 -- | and the writer afterwards removes the message. In case the receiver does not
 -- | receive the message in time, the writer also removes the message.
 -- | The reader never removes a message, because then it would be possible
@@ -48,19 +74,23 @@ instance FromHttpApiData SessionId where
 -- |
 -- | The message could already have been received and replaced by a new one and we would delete
 -- | a message sent by someone else. This would have been a really nasty bug *phooooh*
-data QueueStatus a = Written a | Read deriving (Eq, Show)
-$(makePrisms ''QueueStatus)
+data MessageBox a = MessageBox { _messageNumber :: !MessageNumber -- We need message numbers to make sure the reader does not mark the wrong message as read!
+                               , _messageState  :: !(MessageState a) -- Signal the writer that the reader successfully retrieved a message.
+                               } deriving (Eq, Show)
+$(makePrisms ''MessageBox)
+
 
 -- | Baby station calls receiveSocket: Map of it's client id to the requester's client id and the channel secret.
-type ChannelSecrets = Map ToId (QueueStatus (FromId, Secret))
+type ChannelSecrets = Map ToId (MessageBox ChannelRequest)
 
-type ChannelData a  = Map (FromId, ToId, Secret) (QueueStatus a)
+type ChannelData a  = Map (FromId, ToId, Secret) (MessageBox a)
 
 data FamilyOnlineState = FamilyOnlineState
-                       { _channelSecrets :: ChannelSecrets
-                       , _channelData    :: ChannelData Text
-                       , _sessions  :: Map DeviceId (SessionId, DeviceType)
-                       , _idCounter :: Int -- Used for SessionId's currently
+                       { _channelSecrets  :: ChannelSecrets
+                       , _channelData     :: ChannelData Text
+                       , _sessions        :: Map DeviceId (SessionId, DeviceType)
+                       , _idCounter       :: Int -- Used for SessionId's currently
+                       , _channelSequence :: Int -- Used to identify messages on channels/sockets.
                        } deriving (Show, Eq)
 
 $(makeLenses ''FamilyOnlineState)
@@ -79,4 +109,5 @@ emptyFamily = FamilyOnlineState {
   , _channelData = M.empty
   , _sessions = M.empty
   , _idCounter = 0
+  , _channelSequence = 0
   }
