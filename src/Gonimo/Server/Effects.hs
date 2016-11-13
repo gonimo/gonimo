@@ -20,7 +20,7 @@ module Gonimo.Server.Effects (
   , updateFamilyErrEff
   , updateFamilyEff
   , mayUpdateFamilyEff
-  , cleanReceivedEff
+  , waitForReaderEff
   , getFamilyEff
   , registerDelay
   , runDb
@@ -37,6 +37,7 @@ import           Control.Exception              (SomeException)
 import           Control.Lens
 import           Control.Monad.Except           (ExceptT, runExceptT)
 import           Control.Monad.Freer            (Eff)
+import           Control.Monad.Freer.Exception  (throwError, catchError)
 import           Control.Monad.Freer.Exception  (Exc)
 import           Control.Monad.Trans.Class      (lift)
 import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
@@ -65,11 +66,13 @@ import           Gonimo.Server.State            (CleanReceivedResult (..),
                                                  updateFamilyRetry)
 import           Gonimo.Server.State.Types      (FamilyOnlineState,
                                                  OnlineState,
-                                                 QueueStatus, 
+                                                 MessageBox,
                                                  UpdateFamilyT)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardDelay)
+import           Gonimo.Server.State.MessageBox  as MsgBox
+import           Gonimo.Server.State.MessageBox  (MessageBoxes)
 
 secretLength :: Int
 secretLength = 16
@@ -155,22 +158,17 @@ getFamilyEff familyId = do
   mFamily <- atomically $ lookupFamily state familyId
   fromMaybeErr (FamilyNotOnline familyId) mFamily
 
--- | The given Error is thrown on timeout.
-cleanReceivedEff :: ServerConstraint r
-                 => ServerError -> FamilyId
-                 -> Lens' FamilyOnlineState (Maybe (QueueStatus a))
-                 -> Eff r ()
-cleanReceivedEff err familyId queue = do
-  state <- getState
-  timeUp <- registerDelay standardDelay
-  r <- atomically $ cleanReceived state familyId timeUp queue
-  case r of
-    WasReceived -> return ()
-    WasNotReceived -> throwServer err
-    AlreadyCleaned -> do
-      $(logError) $ "Error: message/secret got wiped, but not by us! Damn stupid."
-      throwServer InternalServerError
-    FamilyNotFoundError -> do
-      $(logError) $ "Error: family not found - we just used it - WTF?!"
-      throwServer InternalServerError
 
+waitForReaderEff :: forall r key val. (Ord key, ServerConstraint r)
+                 => ServerError -> FamilyId
+                 -> key -> Lens' FamilyOnlineState (MessageBoxes key val)
+                 -> Eff r ()
+waitForReaderEff onTimeout familyId key messageBoxes = catchError wait handleNotRead
+  where
+    wait = updateFamilyRetryEff onTimeout familyId
+           $ MsgBox.clearIfRead messageBoxes key
+
+    handleNotRead :: SomeException -> Eff r ()
+    handleNotRead e = do
+      updateFamilyEff familyId $ MsgBox.clearData messageBoxes key
+      throwError e
