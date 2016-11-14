@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -8,6 +9,7 @@ module Gonimo.Server.State.Types where
 import           Control.Concurrent.STM    (TVar)
 import           Control.Lens
 import           Control.Monad.Trans.Maybe
+import           Control.Monad.State.Class
 import           Control.Monad.Trans.State (StateT (..))
 import           Data.Aeson.Types          (FromJSON (..), FromJSON,
                                             ToJSON (..), ToJSON (..),
@@ -41,6 +43,7 @@ instance FromHttpApiData SessionId where
 -- | To identify messages on socket/channel to avoid race conditions when reading.
 newtype MessageNumber = MessageNumber Int deriving (Ord, Eq, Show, Generic)
 
+
 instance ToJSON MessageNumber where
   toJSON     = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
@@ -55,15 +58,7 @@ data MessageState a = Written a | Read deriving (Eq, Show)
 $(makePrisms ''MessageState)
 
 -- | A request for opening a channel on a socket.
-data ChannelRequest = ChannelRequest DeviceId Secret deriving Generic
-
-instance FromJSON ChannelRequest
-instance ToJSON ChannelRequest where
-  toEncoding = genericToEncoding defaultOptions
-
-instance FromHttpApiData ChannelRequest where
-    parseUrlPiece = jsonParseUrlPiece
-    parseHeader   = jsonParseHeader
+type ChannelRequest = (DeviceId, Secret)
 
 -- | Writers wait for the receiver to receive a message,
 -- | the reader then signals that it has read it's message
@@ -74,16 +69,17 @@ instance FromHttpApiData ChannelRequest where
 -- |
 -- | The message could already have been received and replaced by a new one and we would delete
 -- | a message sent by someone else. This would have been a really nasty bug *phooooh*
-data MessageBox a = MessageBox { _messageNumber :: !MessageNumber -- We need message numbers to make sure the reader does not mark the wrong message as read!
-                               , _messageState  :: !(MessageState a) -- Signal the writer that the reader successfully retrieved a message.
-                               } deriving (Eq, Show)
-$(makePrisms ''MessageBox)
+data MessageBox num val
+  = MessageBox { _messageNumber :: !num -- We need message numbers to make sure the reader does not mark the wrong message as read!
+               , _messageState  :: !(MessageState val) -- Signal the writer that the reader successfully retrieved a message.
+               } deriving (Eq, Show)
+$(makeLenses ''MessageBox)
 
 
 -- | Baby station calls receiveSocket: Map of it's client id to the requester's client id and the channel secret.
-type ChannelSecrets = Map ToId (MessageBox ChannelRequest)
+type ChannelSecrets = Map ToId (MessageBox ChannelRequest ChannelRequest)
 
-type ChannelData a  = Map (FromId, ToId, Secret) (MessageBox a)
+type ChannelData a  = Map (FromId, ToId, Secret) (MessageBox MessageNumber a)
 
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets  :: ChannelSecrets
@@ -111,3 +107,15 @@ emptyFamily = FamilyOnlineState {
   , _idCounter = 0
   , _channelSequence = 0
   }
+
+class GetMessageNumber state val number where
+  getMessageNumber :: MonadState state m => val -> m number
+
+instance GetMessageNumber FamilyOnlineState Text MessageNumber where
+  getMessageNumber _ = do
+    newId <- use channelSequence
+    channelSequence += 1
+    pure $ MessageNumber newId
+
+instance GetMessageNumber FamilyOnlineState (DeviceId, Secret) (DeviceId, Secret) where
+  getMessageNumber val = pure val

@@ -15,6 +15,7 @@ import           GHC.Generics
 import           Gonimo.Server.Db.Entities      (FamilyId, DeviceId)
 import           Servant.Server
 import           Control.Monad.Trans.Class            (lift)
+import           Gonimo.Server.State.Types      (MessageNumber, ChannelRequest)
 
 -- Define an error type, so handling errors is easier at the client side.
 data ServerError = InvalidAuthToken
@@ -30,6 +31,8 @@ data ServerError = InvalidAuthToken
                  | NoSuchChannel
                  | Forbidden
                  | NotFound
+                 | MessageAlreadyGone MessageNumber
+                 | ChannelAlreadyGone ChannelRequest
                  | TransactionTimeout
                  | SessionInvalid -- There exists a session for this device, but it does not match
                  | NoActiveSession -- There is no sessino for this device.
@@ -85,6 +88,8 @@ getServantErr NoSuchInvitation         = err404
 getServantErr SocketBusy               = err503
 getServantErr ChannelBusy              = err503
 getServantErr NoSuchSocket             = err404
+getServantErr (MessageAlreadyGone _)   = err410
+getServantErr (ChannelAlreadyGone _)   = err410
 getServantErr NoSuchChannel            = err404
 getServantErr (NoSuchDevice _)         = err404
 getServantErr NotFound                 = err404

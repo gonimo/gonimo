@@ -60,19 +60,16 @@ import           Gonimo.Server.Effects.Logging  as Logging
 import           Gonimo.Server.Error            (ServerError (..),
                                                  ToServerError, fromMaybeErr,
                                                  mayThrowLeft, throwServer)
-import           Gonimo.Server.State            (CleanReceivedResult (..),
-                                                 cleanReceived, lookupFamily,
+import           Gonimo.Server.State            (lookupFamily,
                                                  updateFamily,
                                                  updateFamilyRetry)
 import           Gonimo.Server.State.Types      (FamilyOnlineState,
                                                  OnlineState,
-                                                 MessageBox,
                                                  UpdateFamilyT)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardDelay)
 import           Gonimo.Server.State.MessageBox  as MsgBox
-import           Gonimo.Server.State.MessageBox  (MessageBoxes)
 
 secretLength :: Int
 secretLength = 16
@@ -159,9 +156,9 @@ getFamilyEff familyId = do
   fromMaybeErr (FamilyNotOnline familyId) mFamily
 
 
-waitForReaderEff :: forall r key val. (Ord key, ServerConstraint r)
+waitForReaderEff :: forall r key val num. (Ord key, ServerConstraint r)
                  => ServerError -> FamilyId
-                 -> key -> Lens' FamilyOnlineState (MessageBoxes key val)
+                 -> key -> Lens' FamilyOnlineState (MessageBoxes key val num)
                  -> Eff r ()
 waitForReaderEff onTimeout familyId key messageBoxes = catchError wait handleNotRead
   where
