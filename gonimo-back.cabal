@@ -45,6 +45,7 @@ library
                  , Gonimo.Server.Handlers
                  , Gonimo.Server.Handlers.Auth
                  , Gonimo.Server.Handlers.Session
+                 , Gonimo.Server.Handlers.Socket
                  , Gonimo.Server.InitDb
                  , Gonimo.Server.Invitation
                  , Gonimo.Server.State
