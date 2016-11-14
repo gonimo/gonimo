@@ -9,7 +9,7 @@ import           Servant.PureScript
 import           Gonimo.CodeGen.TypeBridges
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Types
-import           Gonimo.Server.State.Types (SessionId, ChannelRequest)
+import           Gonimo.Server.State.Types (SessionId)
 import           Gonimo.Server.Error
 import           Gonimo.WebAPI
 import           Gonimo.WebAPI.Types as Client
@@ -34,7 +34,6 @@ myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy AuthToken)
           , mkSumType (Proxy :: Proxy Device)
           , mkSumType (Proxy :: Proxy Coffee)
-          , mkSumType (Proxy :: Proxy ChannelRequest)
           , mkSumType (Proxy :: Proxy Invitation)
           , mkSumType (Proxy :: Proxy InvitationDelivery)
           , mkSumType (Proxy :: Proxy SendInvitation)
