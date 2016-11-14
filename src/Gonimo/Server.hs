@@ -20,6 +20,7 @@ import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth
 import           Gonimo.Server.Handlers.Auth
 import           Gonimo.Server.Handlers.Session
+import           Gonimo.Server.Handlers.Socket
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects           hiding (Server)
 import           Gonimo.Server.Error    (ServantException (..), throwServant, ServerError (..))
@@ -69,9 +70,11 @@ familyServer familyId = getFamily familyId
 
 socketServer :: ServerT SocketAPI AuthServerEffects
 socketServer = createChannel
-          :<|> receiveSocket
-          :<|> putChannel
           :<|> receiveChannel
+          :<|> deleteChannelRequest
+          :<|> putMessage
+          :<|> receiveMessage
+          :<|> deleteMessage
 
 sessionServer :: ServerT SessionAPI AuthServerEffects
 sessionServer = sessionRegisterR

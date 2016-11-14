@@ -1,53 +1,57 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
 module Gonimo.Server.Handlers.Auth where
 
-import           Control.Concurrent.STM              (STM, TVar, readTVar)
+import           Control.Applicative                  ((<|>))
+import           Control.Concurrent.STM               (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad                       (guard)
-import           Control.Monad.Extra                 (whenM)
-import           Control.Monad.Freer                 (Eff)
-import           Control.Monad.Freer.Reader          (ask)
-import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
-import           Control.Monad.State.Class           (gets, modify)
-import           Control.Monad.Trans.State      (StateT (..))
-import           Control.Monad.STM.Class             (liftSTM)
-import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
-import           Control.Monad.Trans.Class           (lift)
-import           Control.Monad.Trans.Maybe           (MaybeT (..), runMaybeT)
-import qualified Data.Map.Strict                     as M
+import           Control.Monad.Extra                  (whenM)
+import           Control.Monad.Freer                  (Eff)
+import           Control.Monad.Freer.Reader           (ask)
+import           Control.Monad.Freer.Exception        (throwError)
+import           Control.Monad.State.Class            (gets, modify)
+import           Control.Monad.STM.Class              (liftSTM)
+import           Control.Monad.Trans.Class            (lift)
+import           Control.Monad.Trans.Identity         (IdentityT, runIdentityT)
+import           Control.Monad.Trans.Maybe            (MaybeT (MaybeT),
+                                                       runMaybeT)
+import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
+import           Control.Monad.Trans.State            (StateT (..))
+import qualified Data.Map.Strict                      as M
+import           Data.Maybe                           (fromMaybe)
 import           Data.Monoid
-import           Data.Maybe                          (fromMaybe)
-import           Data.Proxy                          (Proxy (..))
-import qualified Data.Set                            as S
-import           Data.Text                           (Text)
-import qualified Data.Text                           as T
-import           Database.Persist                    (Entity (..), (==.))
-import qualified Gonimo.Database.Effects             as Db
-import qualified Gonimo.Database.Effects             as Db
-import           Gonimo.Database.Effects.Servant     as Db
-import           Gonimo.Server.Auth                  as Auth
-import           Gonimo.Server.Handlers.Auth.Internal
+import           Data.Proxy                           (Proxy (..))
+import qualified Data.Set                             as S
+import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import           Database.Persist                     (Entity (..), (==.))
+import           Database.Persist.Class
+import qualified Gonimo.Database.Effects              as Db
+import qualified Gonimo.Database.Effects              as Db
+import           Gonimo.Database.Effects.Servant      as Db
+import           Gonimo.Server.Auth                   as Auth
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
+import           Gonimo.Server.Handlers.Auth.Internal
 import           Gonimo.Server.State
+import qualified Gonimo.Server.State.MessageBox       as MsgBox
 import           Gonimo.Server.State.Types
 import           Gonimo.Server.Types
-import           Gonimo.WebAPI                       (ReceiveChannelR,
-                                                      ReceiveSocketR)
-import           Gonimo.WebAPI.Types                 (InvitationInfo (..),
-                                                      InvitationReply (..))
-import qualified Gonimo.WebAPI.Types                 as Client
-import           Servant.API                         ((:>))
-import           Servant.Server                      (ServantErr (..), err400,
-                                                      err403)
-import           Servant.Subscriber                  (Event (ModifyEvent))
-import           Utils.Control.Monad.Trans.Maybe     (maybeT)
-import Database.Persist.Class
-import Unsafe.Coerce -- For debugging - really!
+import           Gonimo.WebAPI                        (ReceiveChannelR,
+                                                       ReceiveMessageR)
+import           Gonimo.WebAPI.Types                  (InvitationInfo (..),
+                                                       InvitationReply (..))
+import qualified Gonimo.WebAPI.Types                  as Client
+import           Servant.API                          ((:>))
+import           Servant.Server                       (ServantErr (..), err400,
+                                                       err403)
+import           Servant.Subscriber                   (Event (ModifyEvent))
+import           Unsafe.Coerce
+import           Utils.Control.Monad.Trans.Maybe      (maybeT)
 
 createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
 createInvitation fid = do
@@ -180,79 +184,6 @@ getFamily familyId = do
   authorizeAuthData $ isFamilyMember familyId
   runDb $ Db.getErr (NoSuchFamily familyId) familyId
 
--- | Create a channel for communication with  a baby station
---
---   The baby station must call receiveSocket within a given timeout,
---   this handler will only return a secret if the baby station did so,
---   otherwise an error is thrown (not found - `NoSuchSocket`)
-createChannel :: AuthServerConstraint r
-              => FamilyId -> DeviceId -> DeviceId -> Eff r Secret
-createChannel familyId toId fromId = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((fromId ==) . deviceKey)
-
-  secret <- generateSecret
-  updateFamilyRetryEff SocketBusy familyId $ createChannel' secret
-
-  notify ModifyEvent endpoint (\f -> f familyId toId)
-
-  cleanReceivedEff NoSuchSocket familyId (channelSecrets.at toId)
-  return secret
- where
-   createChannel' :: Secret -> StateT FamilyOnlineState (MaybeT STM) ()
-   createChannel' secret = do
-     secrets <- gets _channelSecrets
-     guard (not $ M.member toId secrets)
-     channelSecrets.at toId .= Just (Written (fromId, secret))
-
-   endpoint :: Proxy ("socket" :> ReceiveSocketR)
-   endpoint = Proxy
-
-
-receiveSocket :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> Eff r (Maybe (DeviceId, Secret))
--- in this request @to@ is the one receiving the secret
-receiveSocket familyId toId = do
-    authorizeAuthData (isFamilyMember familyId)
-    authorizeAuthData ((toId ==) . deviceKey)
-
-    runMaybeT $ mayUpdateFamilyEff familyId $ receiveSocket'
-  where
-    receiveSocket' :: StateT FamilyOnlineState (MaybeT STM) (DeviceId, Secret)
-    receiveSocket' = do
-      secrets <- gets _channelSecrets
-      val <- maybe mzero return $ secrets ^? at toId . _Just . _Written
-      channelSecrets.at toId .= Just Read
-      return val
-
-
-putChannel :: AuthServerConstraint r
-           => FamilyId -> DeviceId -> DeviceId -> Secret -> Text -> Eff r ()
-putChannel familyId fromId toId secret txt = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((fromId ==) . deviceKey)
-
-  updateFamilyRetryEff ChannelBusy familyId $ putData txt (fromId, toId, secret)
-  $logDebug $ "CHANNEL: Put data in channel " <> (T.pack . show) [prettyKey familyId, prettyKey fromId, prettyKey toId] <> ": " <> txt
-
-  notify ModifyEvent endpoint (\f -> f familyId fromId toId secret)
-
-  cleanReceivedEff NoSuchChannel familyId (channelData.at (fromId, toId, secret))
-  where
-   endpoint :: Proxy ("socket" :> ReceiveChannelR)
-   endpoint = Proxy
-
+-- Internal function for debugging:
 prettyKey :: Key a -> Text
 prettyKey = T.pack . show . (unsafeCoerce :: Key a -> Int)
-
-receiveChannel :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r (Maybe Text)
-receiveChannel familyId fromId toId secret = do
-  authorizeAuthData (isFamilyMember familyId)
-  authorizeAuthData ((toId ==) . deviceKey)
-
-  txt <- runMaybeT . mayUpdateFamilyEff familyId $ receiveData (fromId, toId, secret)
-
-  $logDebug $ "CHANNEL: Got data from channel " <> (T.pack . show) [ prettyKey familyId, prettyKey fromId, prettyKey toId ] <> ": " <> (T.pack . show) txt
-  pure txt
-

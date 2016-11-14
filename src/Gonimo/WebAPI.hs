@@ -9,11 +9,10 @@ import           Gonimo.Server.Types
 import           Gonimo.WebAPI.Types             (InvitationInfo,
                                                   InvitationReply)
 import qualified Gonimo.WebAPI.Types             as Client
-import           Gonimo.WebAPI.Verbs
 import           Servant.API
 import           Servant.API.BrowserHeader
 import           Servant.Subscriber.Subscribable
-import           Gonimo.Server.State.Types        (SessionId)
+import           Gonimo.Server.State.Types        (SessionId, MessageNumber, ChannelRequest)
 
 
 type GonimoAPI =
@@ -80,15 +79,23 @@ type GetFamilyDevicesR = "deviceInfos" :> Subscribable :> Get '[JSON] [(DeviceId
 
 -- SocketAPI:
 type SocketAPI =  CreateChannelR
-             :<|> ReceiveSocketR
-             :<|> PutChannelR
              :<|> ReceiveChannelR
+             :<|> DeleteChannelRequestR
+             :<|> PutMessageR
+             :<|> ReceiveMessageR
+             :<|> DeleteMessageR
 
+-- Socket endpoints:
 type CreateChannelR  = Capture "familyId" FamilyId :> To :> ReqBody '[JSON] DeviceId :> PostCreated '[JSON] Secret
-type ReceiveSocketR  = Capture "familyId" FamilyId :> To :> Subscribable :> Receive '[JSON] (Maybe (DeviceId, Secret))
--- Receive should only work if to is a baby station
-type PutChannelR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
-type ReceiveChannelR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Receive '[JSON] (Maybe Text)
+type ReceiveChannelR  = Capture "familyId" FamilyId :> To :> Subscribable :> Get '[JSON] (Maybe ChannelRequest)
+-- Deletes a channel request, the clients can still use the channel afterwards - as channels don't really exist
+type DeleteChannelRequestR  = Capture "familyId" FamilyId :> To :> From :> Channel :> Delete '[JSON] ()
+
+-- Channel endpoint:
+type PutMessageR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
+type ReceiveMessageR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Get '[JSON] (Maybe (MessageNumber, Text))
+-- A reader can mark a message as read - the putchannel handler will then remove the message:
+type DeleteMessageR = Capture "familyId" FamilyId :> From :> To :> Channel :> "messages" :> Capture "messageNumber" MessageNumber :> Delete '[JSON] ()
 
 
 -- SessionAPI:
@@ -100,7 +107,7 @@ type SessionAPI =  RegisterR
 -- RegisterR is subscribable although it is a post, it also never changes. But
 -- having it subscriable enables us to delegate registration to the subscriber
 -- in a pretty elegant way! :-)
-type RegisterR    = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId :> ReqBody '[JSON] DeviceType :> Subscribable :> PostCreated '[JSON] SessionId
+type RegisterR    = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> ReqBody '[JSON] DeviceType :> Subscribable :> PostCreated '[JSON] SessionId
 type UpdateR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> ReqBody '[JSON] DeviceType :> Put '[JSON] ()
 type DeleteR      = Capture "familyId" FamilyId :> Capture "deviceId" DeviceId  :> Capture "sessionId" SessionId :> Delete '[JSON] ()
 type ListDevicesR = Capture "familyId" FamilyId :> Subscribable :> Get '[JSON] [(DeviceId,DeviceType)]

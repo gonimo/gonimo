@@ -58,7 +58,7 @@ sessionUpdateR familyId deviceId sessionId deviceType= do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
 
-    _ <- runMaybeT $ do
+    _ :: Maybe () <- runMaybeT $ do
       _ <- updateFamilyErrEff familyId $ Session.update deviceId sessionId deviceType
       lift $ handleUpdate familyId deviceType
     return ()
@@ -69,7 +69,7 @@ sessionDeleteR  :: AuthServerConstraint r
 sessionDeleteR familyId deviceId sessionId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isDevice deviceId
-  _ <- trace ("Deleting session: " <> show sessionId) $ runMaybeT $ do
+  _ :: Maybe () <- trace ("Deleting session: " <> show sessionId) $ runMaybeT $ do
     mayUpdateFamilyEff familyId $ Session.delete deviceId sessionId
     lift $ notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
   return ()
