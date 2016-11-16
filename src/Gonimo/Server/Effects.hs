@@ -68,7 +68,7 @@ import           Gonimo.Server.State.Types      (FamilyOnlineState,
                                                  UpdateFamilyT)
 import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
-import           Utils.Constants                (standardDelay)
+import           Utils.Constants                (standardTimeout)
 import           Gonimo.Server.State.MessageBox  as MsgBox
 
 secretLength :: Int
@@ -118,7 +118,7 @@ updateFamilyRetryEff :: ServerConstraint r
                    => ServerError -> FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> Eff r a
 updateFamilyRetryEff err familyId updateF = do
   state <- getState
-  timeUp <- registerDelay standardDelay
+  timeUp <- registerDelay standardTimeout
   r <- atomically . runMaybeT $ updateFamilyRetry timeUp state familyId updateF
   case r of
     Nothing -> throwServer err
