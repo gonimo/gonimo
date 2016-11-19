@@ -83,7 +83,7 @@ type ChannelData a  = Map (FromId, ToId, Secret) (MessageBox MessageNumber a)
 
 data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets  :: ChannelSecrets
-                       , _channelData     :: ChannelData Text
+                       , _channelData     :: ChannelData [Text]
                        , _sessions        :: Map DeviceId (SessionId, DeviceType)
                        , _idCounter       :: Int -- Used for SessionId's currently
                        , _channelSequence :: Int -- Used to identify messages on channels/sockets.
@@ -111,7 +111,7 @@ emptyFamily = FamilyOnlineState {
 class GetMessageNumber state val number where
   getMessageNumber :: MonadState state m => val -> m number
 
-instance GetMessageNumber FamilyOnlineState Text MessageNumber where
+instance GetMessageNumber FamilyOnlineState [Text] MessageNumber where
   getMessageNumber _ = do
     newId <- use channelSequence
     channelSequence += 1

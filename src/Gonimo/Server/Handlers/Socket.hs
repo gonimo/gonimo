@@ -64,7 +64,7 @@ deleteChannelRequest familyId toId fromId secret = do
     pure ()
 
 putMessage :: forall r. AuthServerConstraint r
-           => FamilyId -> DeviceId -> DeviceId -> Secret -> Text -> Eff r ()
+           => FamilyId -> DeviceId -> DeviceId -> Secret -> [Text] -> Eff r ()
 putMessage familyId fromId toId secret txt = do
     authorizeAuthData (isFamilyMember familyId)
     authorizeAuthData ((fromId ==) . deviceKey)
@@ -82,7 +82,7 @@ putMessage familyId fromId toId secret txt = do
 
 
 receiveMessage :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r (Maybe (MessageNumber, Text))
+               => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r (Maybe (MessageNumber, [Text]))
 receiveMessage familyId fromId toId secret = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((toId ==) . deviceKey)

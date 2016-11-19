@@ -92,8 +92,8 @@ type ReceiveChannelR  = Capture "familyId" FamilyId :> To :> Subscribable :> Get
 type DeleteChannelRequestR  = Capture "familyId" FamilyId :> To :> From :> Channel :> Delete '[JSON] ()
 
 -- Channel endpoint:
-type PutMessageR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] Text :> Put '[JSON] ()
-type ReceiveMessageR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Get '[JSON] (Maybe (MessageNumber, Text))
+type PutMessageR     = Capture "familyId" FamilyId :> From :> To :> Channel :> ReqBody '[JSON] [Text] :> Put '[JSON] ()
+type ReceiveMessageR = Capture "familyId" FamilyId :> From :> To :> Channel :> Subscribable :> Get '[JSON] (Maybe (MessageNumber, [Text]))
 -- A reader can mark a message as read - the putchannel handler will then remove the message:
 type DeleteMessageR = Capture "familyId" FamilyId :> From :> To :> Channel :> "messages" :> Capture "messageNumber" MessageNumber :> Delete '[JSON] ()
 
