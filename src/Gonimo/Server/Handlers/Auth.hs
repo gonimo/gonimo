@@ -94,7 +94,7 @@ putInvitationInfo invSecret = do
                 }
 
 -- | Actually accept or decline an invitation.
-answerInvitation :: AuthServerConstraint r => Secret -> InvitationReply -> Eff r ()
+answerInvitation :: AuthServerConstraint r => Secret -> InvitationReply -> Eff r (Maybe FamilyId)
 answerInvitation invSecret reply = do
   authData <- ask
   let aid = authData ^. accountEntity . to entityKey
@@ -117,9 +117,13 @@ answerInvitation invSecret reply = do
         , familyAccountJoined = now
         , familyAccountInvitedBy = Just (invitationDelivery inv)
         }
-  when (reply == InvitationAccept ) $ do
-    notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
-    notify ModifyEvent getDeviceInfosEndpoint (\f -> f (invitationFamilyId inv))
+  case reply of
+    InvitationAccept -> do
+      notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
+      notify ModifyEvent getDeviceInfosEndpoint (\f -> f (invitationFamilyId inv))
+      pure . Just $ invitationFamilyId inv
+    _ -> pure Nothing
+
 
 sendInvitation :: AuthServerConstraint r => Client.SendInvitation -> Eff r ()
 sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do

@@ -41,7 +41,7 @@ type InvitationsAPI = CreateInvitationR
 type CreateInvitationR = Capture "familyId" FamilyId :> Post '[JSON] (InvitationId, Invitation)
 
 type AnswerInvitationR  =
-  Capture "invitationSecret" Secret :> ReqBody '[JSON] InvitationReply :> Delete '[JSON] ()
+  Capture "invitationSecret" Secret :> ReqBody '[JSON] InvitationReply :> Delete '[JSON] (Maybe FamilyId)
 
 -- Send an invitation email/telegram message/...
 type SendInvitationR    =
