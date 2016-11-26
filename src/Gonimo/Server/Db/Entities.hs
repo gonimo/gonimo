@@ -27,7 +27,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Family
     name Text
     created UTCTime
-    lastAccessed UTCTime
+    lastAccessed UTCTime -- TODO: Should really by "lastModified", fix it once we have db migrations and smart client updates.
     lastUsedBabyNames [Text]
     deriving Generic Show
 
