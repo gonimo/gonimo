@@ -37,8 +37,7 @@ import           Control.Exception              (SomeException)
 import           Control.Lens
 import           Control.Monad.Except           (ExceptT, runExceptT)
 import           Control.Monad.Freer            (Eff)
-import           Control.Monad.Freer.Exception  (throwError, catchError)
-import           Control.Monad.Freer.Exception  (Exc)
+import           Control.Monad.Error.Class      (throwError, catchError, MonadError)
 import           Control.Monad.Trans.Class      (lift)
 import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
 import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
@@ -55,7 +54,6 @@ import           System.Random                  (StdGen)
 
 import           Gonimo.Database.Effects
 import           Gonimo.Server.Db.Entities      (FamilyId)
-import           Gonimo.Server.Effects.Internal
 import           Gonimo.Server.Effects.Logging  as Logging
 import           Gonimo.Server.Error            (ServerError (..),
                                                  ToServerError, fromMaybeErr,
@@ -70,52 +68,32 @@ import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardTimeout)
 import           Gonimo.Server.State.MessageBox  as MsgBox
+import           Control.Monad.Trans.Reader      (ReaderT)
 
 secretLength :: Int
 secretLength = 16
 
-
-atomically :: ServerConstraint r => STM a -> Eff r a
-atomically = sendServer . Atomically
-
--- timeout :: ServerConstraint r => Int -> ServerEffects a -> Eff r a
--- timeout n eff = sendServer $ Timeout n eff
-
-registerDelay :: ServerConstraint r => Int -> Eff r (TVar Bool)
-registerDelay = sendServer . RegisterDelay
-
-sendEmail :: ServerConstraint r => Mail -> Eff r ()
-sendEmail = sendServer . SendEmail
-
-
-genRandomBytes :: ServerConstraint r => Int -> Eff r ByteString
-genRandomBytes = sendServer . GenRandomBytes
-
-getCurrentTime :: ServerConstraint r => Eff r UTCTime
-getCurrentTime = sendServer GetCurrentTime
+class (Monad m, MonadError SomeException m) => Server m where
+  atomically :: STM a -> m a
+  registerDelay :: Int -> m Bool
+  sendEmail :: Mail -> m ()
+  genRandomBytes :: Int -> m ByteString
+  getCurrentTime :: m UTCTime
+  runDb :: ReaderT SqlBackend IO w -> m a
+  runRandom :: (StdGen -> (a, StdGen)) -> m a
+  getState :: m OnlineState
+  notify :: forall endpoint . (IsElem endpoint GonimoAPI, HasLink endpoint
+                              , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
+            => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> m ()
 
 
-runDb :: ServerConstraint r => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
-runDb = sendServer . RunDb
-
-runRandom :: ServerConstraint r => (StdGen -> (a,StdGen)) -> Eff r a
-runRandom = sendServer . RunRandom
-
-generateSecret :: ServerConstraint r => Eff r Secret
+generateSecret :: Server m => m Secret
 generateSecret = Secret <$> genRandomBytes secretLength
 
 
-getState :: ServerConstraint r => Eff r OnlineState
-getState = sendServer GetState
-
-notify :: forall endpoint r. (ServerConstraint r, IsElem endpoint GonimoAPI, HasLink endpoint
-                      , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
-                      => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> Eff r ()
-notify ev pE cb = sendServer $ Notify ev pE cb
-
 -- | Update family, retrying if updateF returns Nothing
-updateFamilyRetryEff :: ServerConstraint r
-                   => ServerError -> FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> Eff r a
+updateFamilyRetryEff :: Server m
+                   => ServerError -> FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> m a
 updateFamilyRetryEff err familyId updateF = do
   state <- getState
   timeUp <- registerDelay standardTimeout
@@ -125,47 +103,47 @@ updateFamilyRetryEff err familyId updateF = do
     Just v -> pure v
 
 -- | Update family, throwing any ServerErrors.
-updateFamilyErrEff :: (ServerConstraint r, ToServerError e, Monoid e)
-                   => FamilyId -> UpdateFamilyT (ExceptT e STM) a -> MaybeT (Eff r) a
+updateFamilyErrEff :: (Server m, ToServerError e, Monoid e)
+                   => FamilyId -> UpdateFamilyT (ExceptT e STM) a -> MaybeT m a
 updateFamilyErrEff familyId updateF = do
   state <- lift getState
   er <- lift . atomically . runExceptT $ updateFamily state familyId updateF
   mayThrowLeft er
 
 -- | May update family if updateF does not return Nothing.
-mayUpdateFamilyEff :: ServerConstraint r
-                   => FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> MaybeT (Eff r) a
+mayUpdateFamilyEff :: Server m
+                   => FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> MaybeT m a
 mayUpdateFamilyEff familyId updateF = do
   state <- lift getState
   MaybeT . atomically . runMaybeT $ updateFamily state familyId updateF
 
 
 -- | Update a family online state.
-updateFamilyEff :: ServerConstraint r
-                   => FamilyId -> StateT FamilyOnlineState (IdentityT STM) a -> Eff r a
+updateFamilyEff :: Server m
+                   => FamilyId -> StateT FamilyOnlineState (IdentityT STM) a -> m a
 updateFamilyEff familyId updateF = do
   state <- getState
   atomically . runIdentityT $ updateFamily state familyId updateF
 
 
-getFamilyEff :: ServerConstraint r
-                =>  FamilyId -> Eff r FamilyOnlineState
+getFamilyEff :: Server m
+                =>  FamilyId -> m FamilyOnlineState
 getFamilyEff familyId = do
   state <- getState
   mFamily <- atomically $ lookupFamily state familyId
   fromMaybeErr (FamilyNotOnline familyId) mFamily
 
 
-waitForReaderEff :: forall r key val num. (Ord key, ServerConstraint r)
+waitForReaderEff :: forall key val num m. (Ord key, Server m)
                  => ServerError -> FamilyId
                  -> key -> Lens' FamilyOnlineState (MessageBoxes key val num)
-                 -> Eff r ()
+                 -> m ()
 waitForReaderEff onTimeout familyId key messageBoxes = catchError wait handleNotRead
   where
     wait = updateFamilyRetryEff onTimeout familyId
            $ MsgBox.clearIfRead messageBoxes key
 
-    handleNotRead :: SomeException -> Eff r ()
+    handleNotRead :: SomeException -> m ()
     handleNotRead e = do
       updateFamilyEff familyId $ MsgBox.clearData messageBoxes key
       throwError e

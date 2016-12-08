@@ -6,22 +6,24 @@ import           Control.Exception             (SomeException)
 import           Control.Monad                 ((<=<))
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception (Exc (..))
-import           Database.Persist              (Entity, Key, Unique)
-import           Gonimo.Database.Effects
+import           Database.Persist              (Entity, Key, Unique, get, getBy)
 import           Gonimo.Server.Error
+import           Control.Monad.Error.Class      (throwError, MonadError)
+import           Control.Monad.Trans.Reader      (ReaderT)
+import           Database.Persist.Sql           (SqlBackend)
 
-get404 :: FullDbConstraint backend a r => Key a -> Eff r a
+get404 ::  Key a -> ReaderT SqlBackend IO a
 get404 = getErr NotFound
 
-getErr :: FullDbConstraint backend a r => ServerError -> Key a -> Eff r a
+getErr ::  ServerError -> Key a -> ReaderT SqlBackend IO a
 getErr err = serverErrOnNothing err <=< get
 
-getBy404 :: FullDbConstraint backend a r => Unique a -> Eff r (Entity a)
+getBy404 ::  Unique a -> ReaderT SqlBackend IO (Entity a)
 getBy404 = getByErr NotFound
 
-getByErr :: FullDbConstraint backend a r => ServerError -> Unique a -> Eff r (Entity a)
+getByErr ::  ServerError -> Unique a -> ReaderT SqlBackend IO (Entity a)
 getByErr err = serverErrOnNothing err <=< getBy
 
-serverErrOnNothing :: (Member (Exc SomeException) r) => ServerError -> Maybe a -> Eff r a
+serverErrOnNothing :: ServerError -> Maybe a -> ReaderT SqlBackend IO a
 serverErrOnNothing err Nothing = throwServer err
 serverErrOnNothing _ (Just v) = return v
