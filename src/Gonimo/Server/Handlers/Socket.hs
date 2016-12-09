@@ -2,7 +2,6 @@
 module Gonimo.Server.Handlers.Socket where
 
 import           Control.Applicative                  ((<|>))
-import           Control.Monad.Freer                  (Eff)
 import           Control.Monad.Trans.Maybe            (runMaybeT)
 import           Data.Proxy                           (Proxy (..))
 import           Data.Text                            (Text)
@@ -24,8 +23,8 @@ import           Gonimo.Server.Db.Entities            (FamilyId, DeviceId)
 --   The baby station must call receiveChannel within a given timeout,
 --   this handler will only return a secret if the baby station did so,
 --   otherwise an error is thrown (not found - `NoSuchSocket`)
-createChannel :: AuthServerConstraint r
-              => FamilyId -> DeviceId -> DeviceId -> Eff r Secret
+createChannel :: (AuthReader m, MonadServer m)
+              => FamilyId -> DeviceId -> DeviceId -> m Secret
 createChannel familyId toId fromId = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((fromId ==) . deviceKey)
@@ -42,8 +41,8 @@ createChannel familyId toId fromId = do
    endpoint = Proxy
 
 
-receiveChannel :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> Eff r (Maybe ChannelRequest)
+receiveChannel :: (AuthReader m, MonadServer m)
+               => FamilyId -> DeviceId -> m (Maybe ChannelRequest)
 -- in this request @to@ is the one receiving the secret
 receiveChannel familyId toId = do
     authorizeAuthData (isFamilyMember familyId)
@@ -51,8 +50,8 @@ receiveChannel familyId toId = do
 
     fmap fst . MsgBox.getData toId . _channelSecrets <$> getFamilyEff familyId
 
-deleteChannelRequest :: AuthServerConstraint r
-                        =>  FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r ()
+deleteChannelRequest :: (AuthReader m, MonadServer m)
+                        =>  FamilyId -> DeviceId -> DeviceId -> Secret -> m ()
 deleteChannelRequest familyId toId fromId secret = do
     authorizeAuthData (isFamilyMember familyId)
     authorizeAuthData ((toId ==) . deviceKey)
@@ -63,8 +62,8 @@ deleteChannelRequest familyId toId fromId secret = do
       markRead <|> lift (throwServer (ChannelAlreadyGone chanRequest))
     pure ()
 
-putMessage :: forall r. AuthServerConstraint r
-           => FamilyId -> DeviceId -> DeviceId -> Secret -> [Text] -> Eff r ()
+putMessage :: forall m. (AuthReader m, MonadServer m)
+           => FamilyId -> DeviceId -> DeviceId -> Secret -> [Text] -> m ()
 putMessage familyId fromId toId secret txt = do
     authorizeAuthData (isFamilyMember familyId)
     authorizeAuthData ((fromId ==) . deviceKey)
@@ -81,16 +80,16 @@ putMessage familyId fromId toId secret txt = do
    endpoint = Proxy
 
 
-receiveMessage :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> DeviceId -> Secret -> Eff r (Maybe (MessageNumber, [Text]))
+receiveMessage :: (AuthReader m, MonadServer m)
+               => FamilyId -> DeviceId -> DeviceId -> Secret -> m (Maybe (MessageNumber, [Text]))
 receiveMessage familyId fromId toId secret = do
   authorizeAuthData (isFamilyMember familyId)
   authorizeAuthData ((toId ==) . deviceKey)
 
   MsgBox.getData (fromId, toId, secret) . _channelData <$> getFamilyEff familyId
 
-deleteMessage :: AuthServerConstraint r => FamilyId -> DeviceId -> DeviceId -> Secret
-                -> MessageNumber -> Eff r ()
+deleteMessage :: (AuthReader m, MonadServer m) => FamilyId -> DeviceId -> DeviceId -> Secret
+                -> MessageNumber -> m ()
 deleteMessage familyId fromId toId secret num = do
     let key = (fromId, toId, secret)
     _ :: Maybe () <-runMaybeT $ do

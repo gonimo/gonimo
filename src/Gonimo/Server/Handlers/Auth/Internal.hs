@@ -1,12 +1,12 @@
 module Gonimo.Server.Handlers.Auth.Internal where
 
-import           Control.Monad.Freer             (Eff)
 import           Data.Proxy                      (Proxy (Proxy))
 import           Gonimo.Database.Effects.Servant (get404)
-import           Gonimo.Server.Db.Entities        (Family, FamilyId, AccountId)
-import           Gonimo.WebAPI                   (ListDevicesR, GetFamilyDevicesR, GetFamilyR)
+import           Gonimo.Server.Db.Entities       (AccountId, Family, FamilyId)
+import           Gonimo.Server.Effects           (MonadServer, runDb)
+import           Gonimo.WebAPI                   (GetFamilyDevicesR, GetFamilyR,
+                                                  ListDevicesR)
 import           Servant.API                     ((:>), Capture, Get, JSON)
-import           Gonimo.Server.Effects (runDb, ServerConstraint)
 
 
 listDevicesEndpoint  :: Proxy ("session" :> ListDevicesR)
@@ -27,5 +27,5 @@ getFamilyEndpoint = Proxy
 --
 --   error 404 if not found.
 --   TODO: Get this from in memory data structure when available.
-getFamily :: ServerConstraint r => FamilyId -> Eff r Family
+getFamily :: MonadServer m => FamilyId -> m Family
 getFamily fid = runDb $ get404 fid

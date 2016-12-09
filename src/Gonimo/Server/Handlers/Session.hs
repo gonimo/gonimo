@@ -1,6 +1,5 @@
 module Gonimo.Server.Handlers.Session where
 
-import           Control.Monad.Freer                  (Eff)
 import           Control.Monad.Trans.Class            (lift)
 import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
 import           Data.Monoid
@@ -26,8 +25,8 @@ import qualified Gonimo.Server.Db.Device as Device
 --   a session. Any browser tab already online (triggering sessionUpdateR
 --   periodically), will be set offline and the user will get an appropriate
 --   error message.
-sessionRegisterR :: AuthServerConstraint r
-                => FamilyId -> DeviceId -> DeviceType -> Eff r SessionId
+sessionRegisterR :: (AuthReader m, MonadServer m)
+                => FamilyId -> DeviceId -> DeviceType -> m SessionId
 sessionRegisterR familyId deviceId deviceType = do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
@@ -52,8 +51,8 @@ sessionRegisterR familyId deviceId deviceType = do
 --
 --   You will get error `NoActiveSession` if there is no session at all - you
 --   came too late and have to call sessionRegisterR again!
-sessionUpdateR  :: forall r. AuthServerConstraint r
-               => FamilyId -> DeviceId -> SessionId -> DeviceType -> Eff r ()
+sessionUpdateR  :: (AuthReader m, MonadServer m)
+               => FamilyId -> DeviceId -> SessionId -> DeviceType -> m ()
 sessionUpdateR familyId deviceId sessionId deviceType= do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
@@ -64,8 +63,8 @@ sessionUpdateR familyId deviceId sessionId deviceType= do
     return ()
 
 -- | Tell the server that you are gone.
-sessionDeleteR  :: AuthServerConstraint r
-               => FamilyId -> DeviceId -> SessionId ->  Eff r ()
+sessionDeleteR  :: (AuthReader m, MonadServer m)
+               => FamilyId -> DeviceId -> SessionId ->  m ()
 sessionDeleteR familyId deviceId sessionId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isDevice deviceId
@@ -74,8 +73,8 @@ sessionDeleteR familyId deviceId sessionId = do
     lift $ notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
   return ()
 
-sessionListDevicesR  :: AuthServerConstraint r
-                    => FamilyId -> Eff r [(DeviceId, DeviceType)]
+sessionListDevicesR  :: (AuthReader m, MonadServer m)
+                    => FamilyId -> m [(DeviceId, DeviceType)]
 sessionListDevicesR familyId = do
   authorizeAuthData $ isFamilyMember familyId
   Session.list <$> getFamilyEff familyId
@@ -83,7 +82,7 @@ sessionListDevicesR familyId = do
 -- Internal helpers:
 
 -- Update last used baby names and send out notifications.
-handleUpdate :: ServerConstraint r => FamilyId -> DeviceType -> Eff r ()
+handleUpdate :: MonadServer m => FamilyId -> DeviceType -> m ()
 handleUpdate familyId deviceType = do
   mNotifyFamily <- runDb . runMaybeT $ do
     name <- toBabyName deviceType

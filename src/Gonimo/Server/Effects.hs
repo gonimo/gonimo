@@ -1,6 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE RankNTypes   #-}
+{-# LANGUAGE MultiParamTypeClasses   #-}
+{-# LANGUAGE UndecidableInstances   #-} -- For MonadBaseControl instance
+{-# LANGUAGE TypeFamilies   #-} -- For MonadBaseControl instance
+{-# LANGUAGE ScopedTypeVariables   #-} -- For MonadBaseControl instance
 {--
   Gonimo server uses the new effects API from the freer package. This
   is all IO effects of gonimo server will be modeled in an interpreter,
@@ -8,8 +12,11 @@
   testing, one for development and one for production.
 --}
 module Gonimo.Server.Effects (
-    Server
-  , ServerConstraint
+    MonadServer
+  , Server
+  , ServerT
+  , runServer
+  , Config (..)
   , atomically
   , genRandomBytes
   , generateSecret
@@ -26,7 +33,6 @@ module Gonimo.Server.Effects (
   , runDb
   , runRandom
   , sendEmail
-  , module Logging
   -- , timeout
   ) where
 
@@ -34,15 +40,19 @@ module Gonimo.Server.Effects (
 import           Control.Concurrent.STM         (STM)
 import           Control.Concurrent.STM         (TVar)
 import           Control.Exception              (SomeException)
+import           Control.Exception.Lifted       (throwIO, catch)
 import           Control.Lens
 import           Control.Monad.Except           (ExceptT, runExceptT)
-import           Control.Monad.Freer            (Eff)
-import           Control.Monad.Freer.Exception  (throwError, catchError)
-import           Control.Monad.Freer.Exception  (Exc)
-import           Control.Monad.Trans.Class      (lift)
+import           Control.Monad.Base             (MonadBase, liftBase)
+import           Control.Monad.Trans.Control     (MonadBaseControl, liftBaseWith, restoreM, defaultLiftBaseWith, defaultRestoreM, StM, ComposeSt, MonadTransControl, StT, liftWith, restoreT, defaultLiftWith, defaultRestoreM)
+import           Control.Monad.IO.Class         (MonadIO, liftIO)
+import           Control.Monad.Error.Class      (throwError, catchError, MonadError)
+import           Control.Monad.Trans.Class      (lift, MonadTrans)
 import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
 import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
 import           Control.Monad.Trans.State      (StateT (..))
+import           Control.Monad.Reader           (ask, MonadReader)
+import           Control.Monad.Logger           (MonadLogger, LoggingT)
 import           Data.ByteString                (ByteString)
 import           Data.Proxy
 import           Data.Time.Clock                (UTCTime)
@@ -53,10 +63,7 @@ import           Servant.Subscriber             (Event, HasLink, IsElem,
                                                  IsValidEndpoint, MkLink, URI)
 import           System.Random                  (StdGen)
 
-import           Gonimo.Database.Effects
 import           Gonimo.Server.Db.Entities      (FamilyId)
-import           Gonimo.Server.Effects.Internal
-import           Gonimo.Server.Effects.Logging  as Logging
 import           Gonimo.Server.Error            (ServerError (..),
                                                  ToServerError, fromMaybeErr,
                                                  mayThrowLeft, throwServer)
@@ -70,52 +77,108 @@ import           Gonimo.Server.Types            (Secret (..))
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardTimeout)
 import           Gonimo.Server.State.MessageBox  as MsgBox
+import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
+import           Database.Persist.Sql            (SqlBackend, runSqlPool)
+import           Data.Pool                               (Pool)
+import           Servant.Subscriber              (Subscriber(..))
+import qualified Servant.Subscriber              as Subscriber
+import qualified Control.Concurrent.STM          as STM
+import           Network.Mail.SMTP             (sendMail)
+import           Control.Exception.Base        (SomeException, toException, try)
+import           Crypto.Random                 (SystemRandom,
+                                                newGenIO)
+import           Crypto.Classes.Exceptions      (genBytes)
+import qualified Data.Time.Clock               as Clock
+import           System.Random                           (getStdRandom)
+import           Control.Monad.Trans.Control    (MonadTransControl, defaultRestoreT)
 
 secretLength :: Int
 secretLength = 16
 
+class (MonadIO m, MonadBaseControl IO m, MonadLogger m) => MonadServer m where
+  atomically :: STM a -> m a
+  registerDelay :: Int -> m (TVar Bool)
+  sendEmail :: Mail -> m ()
+  genRandomBytes :: Int -> m ByteString
+  getCurrentTime :: m UTCTime
+  runDb :: ReaderT SqlBackend IO a -> m a
+  runRandom :: (StdGen -> (a, StdGen)) -> m a
+  getState :: m OnlineState
+  notify :: forall endpoint . (IsElem endpoint GonimoAPI, HasLink endpoint
+                              , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
+            => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> m ()
 
-atomically :: ServerConstraint r => STM a -> Eff r a
-atomically = sendServer . Atomically
+type DbPool = Pool SqlBackend
 
--- timeout :: ServerConstraint r => Int -> ServerEffects a -> Eff r a
--- timeout n eff = sendServer $ Timeout n eff
-
-registerDelay :: ServerConstraint r => Int -> Eff r (TVar Bool)
-registerDelay = sendServer . RegisterDelay
-
-sendEmail :: ServerConstraint r => Mail -> Eff r ()
-sendEmail = sendServer . SendEmail
+data Config = Config {
+  configPool :: !DbPool
+, state      :: !OnlineState
+, subscriber :: !(Subscriber GonimoAPI)
+}
 
 
-genRandomBytes :: ServerConstraint r => Int -> Eff r ByteString
-genRandomBytes = sendServer . GenRandomBytes
 
-getCurrentTime :: ServerConstraint r => Eff r UTCTime
-getCurrentTime = sendServer GetCurrentTime
+newtype ServerT m a = ServerT (ReaderT Config m a)
+                 deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config, MonadTrans)
 
 
-runDb :: ServerConstraint r => Eff '[Exc SomeException, Database SqlBackend]  a -> Eff r a
-runDb = sendServer . RunDb
+runServerT :: ServerT m a -> ReaderT Config m a
+runServerT (ServerT i) = i
 
-runRandom :: ServerConstraint r => (StdGen -> (a,StdGen)) -> Eff r a
-runRandom = sendServer . RunRandom
+-- newtype Server a = Server (ReaderT Config (LoggingT IO) a)
+--                  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config)
+type Server = ServerT (LoggingT IO)
 
-generateSecret :: ServerConstraint r => Eff r Secret
+runServer :: (forall m. MonadIO m => LoggingT m a -> m a) -> Config -> Server a -> IO a
+runServer runLoggingT c = runLoggingT . flip runReaderT c . runServerT
+
+instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
+  => MonadServer (ServerT m) where
+  atomically = liftIO . STM.atomically
+  registerDelay = liftIO . STM.registerDelay
+  sendEmail = liftIO . sendMail "localhost"
+  genRandomBytes l = fst . genBytes l <$> (liftIO newGenIO :: (ServerT m) SystemRandom)
+  getCurrentTime = liftIO Clock.getCurrentTime
+  runDb trans = do
+    c <- ask
+    liftIO $ flip runSqlPool (configPool c) trans
+  runRandom rand = liftIO $ getStdRandom rand
+  getState = state <$> ask
+  notify ev pE f = do
+    c <- ask
+    liftIO . STM.atomically $ Subscriber.notify (subscriber c) ev pE f
+
+instance MonadIO m => MonadBase IO (ServerT m) where
+  liftBase = liftIO
+
+instance (MonadBaseControl IO m, MonadIO m) => MonadBaseControl IO (ServerT m) where
+  type StM (ServerT m) a = ComposeSt ServerT m a
+  liftBaseWith = defaultLiftBaseWith
+  restoreM = defaultRestoreM
+
+instance MonadTransControl ServerT where
+    type StT ServerT a = StT (ReaderT Config) a
+    liftWith = defaultLiftWith ServerT runServerT
+    restoreT = defaultRestoreT ServerT
+
+instance MonadServer m => MonadServer (ReaderT c m) where
+  atomically = lift . atomically
+  registerDelay = lift . registerDelay
+  sendEmail = lift . sendEmail
+  genRandomBytes = lift . genRandomBytes
+  getCurrentTime = lift getCurrentTime
+  runDb = lift . runDb
+  runRandom = lift . runRandom
+  getState = lift getState
+  notify ev pE f = lift $ notify ev pE f
+
+generateSecret :: MonadServer m => m Secret
 generateSecret = Secret <$> genRandomBytes secretLength
 
 
-getState :: ServerConstraint r => Eff r OnlineState
-getState = sendServer GetState
-
-notify :: forall endpoint r. (ServerConstraint r, IsElem endpoint GonimoAPI, HasLink endpoint
-                      , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
-                      => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> Eff r ()
-notify ev pE cb = sendServer $ Notify ev pE cb
-
 -- | Update family, retrying if updateF returns Nothing
-updateFamilyRetryEff :: ServerConstraint r
-                   => ServerError -> FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> Eff r a
+updateFamilyRetryEff :: MonadServer m
+                   => ServerError -> FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> m a
 updateFamilyRetryEff err familyId updateF = do
   state <- getState
   timeUp <- registerDelay standardTimeout
@@ -125,47 +188,47 @@ updateFamilyRetryEff err familyId updateF = do
     Just v -> pure v
 
 -- | Update family, throwing any ServerErrors.
-updateFamilyErrEff :: (ServerConstraint r, ToServerError e, Monoid e)
-                   => FamilyId -> UpdateFamilyT (ExceptT e STM) a -> MaybeT (Eff r) a
+updateFamilyErrEff :: (MonadServer m, ToServerError e, Monoid e)
+                   => FamilyId -> UpdateFamilyT (ExceptT e STM) a -> MaybeT m a
 updateFamilyErrEff familyId updateF = do
   state <- lift getState
   er <- lift . atomically . runExceptT $ updateFamily state familyId updateF
   mayThrowLeft er
 
 -- | May update family if updateF does not return Nothing.
-mayUpdateFamilyEff :: ServerConstraint r
-                   => FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> MaybeT (Eff r) a
+mayUpdateFamilyEff :: MonadServer m
+                   => FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> MaybeT m a
 mayUpdateFamilyEff familyId updateF = do
   state <- lift getState
   MaybeT . atomically . runMaybeT $ updateFamily state familyId updateF
 
 
 -- | Update a family online state.
-updateFamilyEff :: ServerConstraint r
-                   => FamilyId -> StateT FamilyOnlineState (IdentityT STM) a -> Eff r a
+updateFamilyEff :: MonadServer m
+                   => FamilyId -> StateT FamilyOnlineState (IdentityT STM) a -> m a
 updateFamilyEff familyId updateF = do
   state <- getState
   atomically . runIdentityT $ updateFamily state familyId updateF
 
 
-getFamilyEff :: ServerConstraint r
-                =>  FamilyId -> Eff r FamilyOnlineState
+getFamilyEff :: MonadServer m
+                =>  FamilyId -> m FamilyOnlineState
 getFamilyEff familyId = do
   state <- getState
   mFamily <- atomically $ lookupFamily state familyId
   fromMaybeErr (FamilyNotOnline familyId) mFamily
 
 
-waitForReaderEff :: forall r key val num. (Ord key, ServerConstraint r)
+waitForReaderEff :: forall key val num m. (Ord key, MonadServer m)
                  => ServerError -> FamilyId
                  -> key -> Lens' FamilyOnlineState (MessageBoxes key val num)
-                 -> Eff r ()
-waitForReaderEff onTimeout familyId key messageBoxes = catchError wait handleNotRead
+                 -> m ()
+waitForReaderEff onTimeout familyId key messageBoxes = catch wait handleNotRead
   where
     wait = updateFamilyRetryEff onTimeout familyId
            $ MsgBox.clearIfRead messageBoxes key
 
-    handleNotRead :: SomeException -> Eff r ()
+    handleNotRead :: SomeException -> m ()
     handleNotRead e = do
       updateFamilyEff familyId $ MsgBox.clearData messageBoxes key
-      throwError e
+      throwIO e

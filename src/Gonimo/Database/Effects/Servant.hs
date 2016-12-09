@@ -2,26 +2,32 @@
 module Gonimo.Database.Effects.Servant where
 -- Little helpers integrating db functions with servant:
 
-import           Control.Exception             (SomeException)
 import           Control.Monad                 ((<=<))
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception (Exc (..))
-import           Database.Persist              (Entity, Key, Unique)
-import           Gonimo.Database.Effects
+import           Control.Monad.IO.Class        (MonadIO)
+import           Control.Monad.Base             (MonadBase)
+import           Database.Persist              (Entity, Key, Unique, getBy)
+import           Database.Persist.Class        (PersistStore, get, PersistEntityBackend, PersistEntity, PersistUnique)
 import           Gonimo.Server.Error
+import           Control.Monad.Trans.Reader      (ReaderT)
 
-get404 :: FullDbConstraint backend a r => Key a -> Eff r a
+type GetConstraint backend m a = (PersistStore backend, MonadIO m, backend ~ PersistEntityBackend a, PersistEntity a)
+
+get404 :: (GetConstraint backend m a, MonadBase IO m) => Key a -> ReaderT backend m a
 get404 = getErr NotFound
 
-getErr :: FullDbConstraint backend a r => ServerError -> Key a -> Eff r a
+getErr :: (GetConstraint backend m a, MonadBase IO m)
+          => ServerError -> Key a -> ReaderT backend m a
 getErr err = serverErrOnNothing err <=< get
 
-getBy404 :: FullDbConstraint backend a r => Unique a -> Eff r (Entity a)
+getBy404 :: (PersistUnique backend, MonadIO m, backend ~ PersistEntityBackend a, PersistEntity a, MonadBase IO m)
+            => Unique a -> ReaderT backend m (Entity a)
 getBy404 = getByErr NotFound
 
-getByErr :: FullDbConstraint backend a r => ServerError -> Unique a -> Eff r (Entity a)
+getByErr :: (PersistUnique backend, MonadIO m, backend ~ PersistEntityBackend a, PersistEntity a, MonadBase IO m)
+            => ServerError -> Unique a -> ReaderT backend m (Entity a)
 getByErr err = serverErrOnNothing err <=< getBy
 
-serverErrOnNothing :: (Member (Exc SomeException) r) => ServerError -> Maybe a -> Eff r a
+serverErrOnNothing :: (PersistStore backend, MonadIO m, MonadBase IO m)
+                      => ServerError -> Maybe a -> ReaderT backend m a
 serverErrOnNothing err Nothing = throwServer err
 serverErrOnNothing _ (Just v) = return v

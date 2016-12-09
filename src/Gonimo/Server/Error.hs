@@ -6,9 +6,9 @@ module Gonimo.Server.Error where
 import           Control.Exception             (Exception, SomeException,
                                                 toException)
 import           Control.Monad                 (unless, MonadPlus, (<=<))
+import           Control.Monad.Base             (MonadBase)
+import           Control.Exception.Lifted       (throwIO)
 import           Control.Monad.Trans.Maybe     (MaybeT)
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
 import           Data.Aeson
 import           Data.Typeable                 (Typeable)
 import           GHC.Generics
@@ -46,32 +46,32 @@ class ToServerError e where
 instance ToServerError ServerError where
   toServerError = return
 
-fromMaybeErr :: Member (Exc SomeException) r => ServerError -> Maybe a -> Eff r a
+fromMaybeErr :: MonadBase IO m => ServerError -> Maybe a -> m a
 fromMaybeErr err ma = case ma of
   Nothing -> throwServer err
   Just a  -> return a
 
-throwLeft :: Member (Exc SomeException) r => Either ServerError a -> Eff r a
+throwLeft :: MonadBase IO m => Either ServerError a -> m a
 throwLeft = either throwServer return
 
 -- | Throw left if actually a ServerError, otherwise return Nothing
-mayThrowLeft :: (Member (Exc SomeException) r, ToServerError e) => Either e a -> MaybeT (Eff r) a
+mayThrowLeft :: (MonadBase IO m, ToServerError e) => Either e a -> MaybeT (m) a
 mayThrowLeft = either (lift . throwServer <=< toServerError) return
 
-throwServer :: Member (Exc SomeException) r => ServerError -> Eff r a
+throwServer :: MonadBase IO m => ServerError -> m a
 throwServer = throwServant . makeServantErr
 
-guardWith :: Member (Exc SomeException) r => ServerError -> Bool -> Eff r ()
+guardWith :: MonadBase IO m => ServerError -> Bool -> m ()
 guardWith exc cond = unless cond $ throwServer exc
 
-guardWithM :: Member (Exc SomeException) r => ServerError -> Eff r Bool -> Eff r ()
+guardWithM :: MonadBase IO m => ServerError -> m Bool -> m ()
 guardWithM exc mCond = guardWith exc =<< mCond
 
-throwServant :: Member (Exc SomeException) r => ServantErr -> Eff r a
-throwServant = throwException . ServantException
+throwServant :: MonadBase IO m => ServantErr -> m a
+throwServant = throwIO
 
-throwException :: (Member (Exc SomeException) r, Exception e) => e -> Eff r a
-throwException = throwError . toException
+throwException :: (MonadBase IO m, Exception e) => e -> m a
+throwException = throwIO
 
 makeServantErr :: ServerError -> ServantErr
 makeServantErr err = (getServantErr err) { errBody = encode err }
@@ -101,11 +101,3 @@ getServantErr InternalServerError      = err500
 
 instance ToJSON ServerError where
     toJSON = genericToJSON defaultOptions
-
-
--- TODO: No longer needed, my PR making ServantErr an instance of Exception got already merged.
-newtype ServantException = ServantException {
-  unwrapServantErr :: ServantErr
-  } deriving (Show, Typeable)
-
-instance Exception ServantException
