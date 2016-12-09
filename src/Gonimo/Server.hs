@@ -4,15 +4,9 @@
 {-# LANGUAGE CPP #-}
 module Gonimo.Server where
 
-import           Control.Exception               (AsyncException, SomeException,
-                                                  asyncExceptionFromException,
-                                                  fromException, throw)
 import           Control.Monad                   ((<=<))
 import           Control.Monad.Except            (ExceptT (..))
-import           Data.Bifunctor                  (first)
-import           Data.Monoid
-import qualified Data.Text                       as T
-import           Database.Persist                (Entity (..), (==.))
+import           Database.Persist                (Entity(..), (==.))
 import qualified Database.Persist.Class         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth
@@ -28,11 +22,11 @@ import           Gonimo.Server.Types
 import           Gonimo.WebAPI
 import           Servant                ((:<|>) (..), (:~>) (..),
                                          ServantErr (..), Server, ServerT,
-                                         enter, err500)
+                                         enter)
 import           Servant.Server         (err401)
 import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
-import           Control.Exception.Lifted        (catch, try)
-import           Control.Monad.Logger           (MonadLogger, LoggingT)
+import           Control.Exception.Lifted        (try)
+import           Control.Monad.Logger           (LoggingT)
 import           Control.Monad.IO.Class         (MonadIO)
 
 -- TODO: This does not really belong here:

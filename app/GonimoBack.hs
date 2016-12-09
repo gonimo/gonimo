@@ -35,8 +35,8 @@ devMain = do
     initDb
   let config = Config {
     configPool = pool
-  , state      = families
-  , subscriber = subscriber'
+  , configState      = families
+  , configSubscriber = subscriber'
   }
   run 8081 $ addDevServer $ serveSubscriber subscriber' (getServer runGonimoLoggingT config)
 
@@ -52,8 +52,8 @@ prodMain = do
     initDb
   let config = Config {
     configPool = pool
-  , state      = families
-  , subscriber = subscriber'
+  , configState      = families
+  , configSubscriber = subscriber'
   }
   run 8081 $ serveSubscriber subscriber' (getServer runGonimoLoggingT config)
 

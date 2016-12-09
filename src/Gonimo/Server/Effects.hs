@@ -4,13 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses   #-}
 {-# LANGUAGE UndecidableInstances   #-} -- For MonadBaseControl instance
 {-# LANGUAGE TypeFamilies   #-} -- For MonadBaseControl instance
-{-# LANGUAGE ScopedTypeVariables   #-} -- For MonadBaseControl instance
-{--
-  Gonimo server uses the new effects API from the freer package. This
-  is all IO effects of gonimo server will be modeled in an interpreter,
-  which can then be interpreted in various ways, e.g. a interpreter for
-  testing, one for development and one for production.
---}
+{-# LANGUAGE ScopedTypeVariables   #-}
 module Gonimo.Server.Effects (
     MonadServer
   , Server
@@ -46,7 +40,6 @@ import           Control.Monad.Except           (ExceptT, runExceptT)
 import           Control.Monad.Base             (MonadBase, liftBase)
 import           Control.Monad.Trans.Control     (MonadBaseControl, liftBaseWith, restoreM, defaultLiftBaseWith, defaultRestoreM, StM, ComposeSt, MonadTransControl, StT, liftWith, restoreT, defaultLiftWith, defaultRestoreM)
 import           Control.Monad.IO.Class         (MonadIO, liftIO)
-import           Control.Monad.Error.Class      (throwError, catchError, MonadError)
 import           Control.Monad.Trans.Class      (lift, MonadTrans)
 import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
 import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
@@ -78,19 +71,18 @@ import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardTimeout)
 import           Gonimo.Server.State.MessageBox  as MsgBox
 import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
-import           Database.Persist.Sql            (SqlBackend, runSqlPool)
+import           Database.Persist.Sql            (runSqlPool)
 import           Data.Pool                               (Pool)
-import           Servant.Subscriber              (Subscriber(..))
+import           Servant.Subscriber              (Subscriber)
 import qualified Servant.Subscriber              as Subscriber
 import qualified Control.Concurrent.STM          as STM
 import           Network.Mail.SMTP             (sendMail)
-import           Control.Exception.Base        (SomeException, toException, try)
 import           Crypto.Random                 (SystemRandom,
                                                 newGenIO)
 import           Crypto.Classes.Exceptions      (genBytes)
 import qualified Data.Time.Clock               as Clock
 import           System.Random                           (getStdRandom)
-import           Control.Monad.Trans.Control    (MonadTransControl, defaultRestoreT)
+import           Control.Monad.Trans.Control    (defaultRestoreT)
 
 secretLength :: Int
 secretLength = 16
@@ -112,8 +104,8 @@ type DbPool = Pool SqlBackend
 
 data Config = Config {
   configPool :: !DbPool
-, state      :: !OnlineState
-, subscriber :: !(Subscriber GonimoAPI)
+, configState      :: !OnlineState
+, configSubscriber :: !(Subscriber GonimoAPI)
 }
 
 
@@ -143,10 +135,10 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
     c <- ask
     liftIO $ flip runSqlPool (configPool c) trans
   runRandom rand = liftIO $ getStdRandom rand
-  getState = state <$> ask
+  getState = configState <$> ask
   notify ev pE f = do
     c <- ask
-    liftIO . STM.atomically $ Subscriber.notify (subscriber c) ev pE f
+    liftIO . STM.atomically $ Subscriber.notify (configSubscriber c) ev pE f
 
 instance MonadIO m => MonadBase IO (ServerT m) where
   liftBase = liftIO

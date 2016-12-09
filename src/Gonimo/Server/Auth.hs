@@ -2,15 +2,12 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Server.Auth where
 
-import           Control.Exception             (SomeException)
 import           Control.Lens
 import           Control.Monad                 (unless)
-import           Control.Exception.Lifted      (throwIO)
 import           Control.Monad.Base            (MonadBase)
 import           Control.Monad.Reader          (MonadReader, ask)
 import           Database.Persist              (Entity (..), Key)
 import           Gonimo.Server.Db.Entities
-import           Gonimo.Server.Effects
 import           Gonimo.Server.Error
 
 data AuthData = AuthData { _accountEntity   :: Entity Account

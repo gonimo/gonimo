@@ -3,14 +3,12 @@
 module Gonimo.Server.Error where
 
 
-import           Control.Exception             (Exception, SomeException,
-                                                toException)
+import           Control.Exception             (Exception)
 import           Control.Monad                 (unless, MonadPlus, (<=<))
 import           Control.Monad.Base             (MonadBase)
 import           Control.Exception.Lifted       (throwIO)
 import           Control.Monad.Trans.Maybe     (MaybeT)
 import           Data.Aeson
-import           Data.Typeable                 (Typeable)
 import           GHC.Generics
 import           Gonimo.Server.Db.Entities      (FamilyId, DeviceId)
 import           Servant.Server
