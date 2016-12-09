@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE CPP #-}
@@ -8,27 +9,20 @@ import           Control.Exception               (AsyncException, SomeException,
                                                   fromException, throw)
 import           Control.Monad                   ((<=<))
 import           Control.Monad.Except            (ExceptT (..))
-import           Control.Monad.Freer             (Eff)
-import           Control.Monad.Freer.Exception   (catchError, throwError)
-import           Control.Monad.Freer.Reader      (runReader)
 import           Data.Bifunctor                  (first)
 import           Data.Monoid
 import qualified Data.Text                       as T
 import           Database.Persist                (Entity (..), (==.))
-import qualified Gonimo.Database.Effects         as Db
+import qualified Database.Persist.Class         as Db
 import           Gonimo.Database.Effects.Servant
 import           Gonimo.Server.Auth
 import           Gonimo.Server.Handlers.Auth
 import           Gonimo.Server.Handlers.Session
 import           Gonimo.Server.Handlers.Socket
 import           Gonimo.Server.Db.Entities
-import           Gonimo.Server.Effects           hiding (Server)
-import           Gonimo.Server.Error    (ServantException (..), throwServant, ServerError (..))
-#ifdef DEVELOPMENT
-import           Gonimo.Server.Effects.Development
-#else
-import           Gonimo.Server.Effects.Production
-#endif
+import           Gonimo.Server.Effects           hiding (Server, ServerT)
+import qualified Gonimo.Server.Effects           as Gonimo
+import           Gonimo.Server.Error    (throwServant, ServerError (..))
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Types
 import           Gonimo.WebAPI
@@ -36,39 +30,45 @@ import           Servant                ((:<|>) (..), (:~>) (..),
                                          ServantErr (..), Server, ServerT,
                                          enter, err500)
 import           Servant.Server         (err401)
+import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
+import           Control.Exception.Lifted        (catch, try)
+import           Control.Monad.Logger           (MonadLogger, LoggingT)
+import           Control.Monad.IO.Class         (MonadIO)
 
+-- TODO: This does not really belong here:
+type AuthServer = ReaderT AuthData (Gonimo.ServerT (LoggingT IO))
 
-effServer :: ServerT GonimoAPI ServerEffects
+effServer :: ServerT GonimoAPI Gonimo.Server
 effServer =  createDevice
         :<|> getAuthServer
         :<|> createFunnyName
         :<|> getCoffee
 
-authServer :: ServerT AuthGonimoAPI AuthServerEffects
+authServer :: ServerT AuthGonimoAPI AuthServer
 authServer = invitationsServer
         :<|> accountsServer
         :<|> familiesServer
         :<|> socketServer
         :<|> sessionServer
 
-invitationsServer :: ServerT InvitationsAPI AuthServerEffects
+invitationsServer :: ServerT InvitationsAPI AuthServer
 invitationsServer = createInvitation
                :<|> answerInvitation
                :<|> sendInvitation
                :<|> putInvitationInfo
 
-accountsServer :: ServerT AccountsAPI AuthServerEffects
+accountsServer :: ServerT AccountsAPI AuthServer
 accountsServer = getAccountFamilies
 
-familiesServer :: ServerT FamiliesAPI AuthServerEffects
+familiesServer :: ServerT FamiliesAPI AuthServer
 familiesServer = createFamily
             :<|> familyServer
 
-familyServer :: FamilyId -> ServerT FamilyAPI AuthServerEffects
+familyServer :: FamilyId -> ServerT FamilyAPI AuthServer
 familyServer familyId = getFamily familyId
                    :<|> getDeviceInfos familyId
 
-socketServer :: ServerT SocketAPI AuthServerEffects
+socketServer :: ServerT SocketAPI AuthServer
 socketServer = createChannel
           :<|> receiveChannel
           :<|> deleteChannelRequest
@@ -76,7 +76,7 @@ socketServer = createChannel
           :<|> receiveMessage
           :<|> deleteMessage
 
-sessionServer :: ServerT SessionAPI AuthServerEffects
+sessionServer :: ServerT SessionAPI AuthServer
 sessionServer = sessionRegisterR
           :<|> sessionUpdateR
           :<|> sessionDeleteR
@@ -84,16 +84,16 @@ sessionServer = sessionRegisterR
 
 
 -- Let's serve
-getServer :: Config -> Server GonimoAPI
-getServer c = enter (effToServant c) effServer
+getServer :: (forall m a. MonadIO m => LoggingT m a -> m a) -> Config -> Server GonimoAPI
+getServer runLoggingT c = enter (gonimoToServant runLoggingT c) effServer
 
-getAuthServer :: Maybe AuthToken -> ServerT AuthGonimoAPI ServerEffects
+getAuthServer :: Maybe AuthToken -> ServerT AuthGonimoAPI Gonimo.Server
 getAuthServer s = enter (authToEff s) authServer
 
 
 ----------------------- Natural transformations -------------------------
 
-authToEff' :: Maybe AuthToken -> AuthServerEffects a -> ServerEffects a
+authToEff' :: Maybe AuthToken -> AuthServer a -> Gonimo.Server a
 authToEff' Nothing _ = throwServant err401 { -- Not standard conform, but I don't care for now.
                           errReasonPhrase = "You need to provide an AuthToken!"
                          }
@@ -104,21 +104,23 @@ authToEff' (Just s) m = do
       fids <- map (familyAccountFamilyId . entityVal)
               <$> Db.selectList [FamilyAccountAccountId ==. deviceAccountId] []
       return $ AuthData (Entity deviceAccountId account) fids device
-    runReader m authData
+    runReaderT m authData
   where
     getByAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.getBy
     getAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.get
 
-authToEff :: Maybe AuthToken -> AuthServerEffects :~> ServerEffects
+authToEff :: Maybe AuthToken -> AuthServer :~> Gonimo.Server
 authToEff token = Nat $ authToEff' token
 
 -------
 
-effToServant' :: Config -> ServerEffects a -> ExceptT ServantErr IO a
-effToServant' c = ExceptT . fmap (first exceptionToServantErr) . runExceptionServer c . handleExceptions
+gonimoToServant' :: (forall m. MonadIO m => LoggingT m a -> m a)
+              -> Config -> Gonimo.Server a -> ExceptT ServantErr IO a
+gonimoToServant' runLoggerT c = handleExceptions . runServer runLoggerT c
 
-effToServant :: Config -> ServerEffects :~> ExceptT ServantErr IO
-effToServant c = Nat $ effToServant' c
+gonimoToServant :: (forall m a. MonadIO m => LoggingT m a -> m a)
+             -> Config -> Gonimo.Server :~> ExceptT ServantErr IO
+gonimoToServant runLoggerT c = Nat $ gonimoToServant' runLoggerT c
 
 
 -------------------------------------------------------------------------
@@ -126,18 +128,5 @@ effToServant c = Nat $ effToServant' c
 
 ---------------------- Exception handling -------------------------------
 
-handleExceptions :: ServerConstraint r => Eff r a -> Eff r a
-handleExceptions action = catchError action $ \e ->
-    case asyncExceptionFromException e of
-      -- A more reliable technique for this would be: https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions .
-      Just (ae :: AsyncException) -> throw ae -- Async exceptions are bad - just quit.
-      _ -> do
-        $(logError) $ "Error: " <> T.pack (show e) -- For now, try to carry on for all other exceptions.
-        throwError e                      -- Simply throwing an err500 to the user and log the error.
-
-
-exceptionToServantErr :: SomeException -> ServantErr
-exceptionToServantErr se = case fromException se of
-    Just (ServantException err) -> err
-    Nothing -> err500
-
+handleExceptions :: IO a -> ExceptT ServantErr IO a
+handleExceptions = ExceptT . try

@@ -8,10 +8,8 @@ import           Control.Concurrent.STM               (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Extra                  (whenM)
-import           Control.Monad.Freer                  (Eff)
-import           Control.Monad.Freer.Reader           (ask)
-import           Control.Monad.Freer.Exception        (throwError)
 import           Control.Monad.State.Class            (gets, modify)
+import           Control.Monad.Reader                 (ask)
 import           Control.Monad.STM.Class              (liftSTM)
 import           Control.Monad.Trans.Class            (lift)
 import           Control.Monad.Trans.Identity         (IdentityT, runIdentityT)
@@ -28,8 +26,7 @@ import           Data.Text                            (Text)
 import qualified Data.Text                            as T
 import           Database.Persist                     (Entity (..), (==.))
 import           Database.Persist.Class
-import qualified Gonimo.Database.Effects              as Db
-import qualified Gonimo.Database.Effects              as Db
+import qualified Database.Persist.Class              as Db
 import           Gonimo.Database.Effects.Servant      as Db
 import           Gonimo.Server.Auth                   as Auth
 import           Gonimo.Server.Db.Entities
@@ -53,7 +50,7 @@ import           Servant.Subscriber                   (Event (ModifyEvent))
 import           Unsafe.Coerce
 import           Utils.Control.Monad.Trans.Maybe      (maybeT)
 
-createInvitation :: AuthServerConstraint r => FamilyId -> Eff r (InvitationId, Invitation)
+createInvitation :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
 createInvitation fid = do
   authorizeAuthData $ isFamilyMember fid
   now <- getCurrentTime
@@ -73,7 +70,7 @@ createInvitation fid = do
 
 -- | Receive an invitation and mark it as received - it can no longer be claimed
 --   by any other device.
-putInvitationInfo :: AuthServerConstraint r => Secret -> Eff r InvitationInfo
+putInvitationInfo :: (AuthReader m, MonadServer m) => Secret -> m InvitationInfo
 putInvitationInfo invSecret = do
   aid <- authView $ accountEntity . to entityKey
   runDb $ do
@@ -94,7 +91,7 @@ putInvitationInfo invSecret = do
                 }
 
 -- | Actually accept or decline an invitation.
-answerInvitation :: AuthServerConstraint r => Secret -> InvitationReply -> Eff r (Maybe FamilyId)
+answerInvitation :: (AuthReader m, MonadServer m) => Secret -> InvitationReply -> m (Maybe FamilyId)
 answerInvitation invSecret reply = do
   authData <- ask
   let aid = authData ^. accountEntity . to entityKey
@@ -125,7 +122,7 @@ answerInvitation invSecret reply = do
     _ -> pure Nothing
 
 
-sendInvitation :: AuthServerConstraint r => Client.SendInvitation -> Eff r ()
+sendInvitation :: (AuthReader m, MonadServer m) => Client.SendInvitation -> m ()
 sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
   (inv, family) <- runDb $ do
@@ -143,7 +140,7 @@ sendInvitation (Client.SendInvitation _ OtherDelivery) =
     errReasonPhrase = "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
   }
 
-getDeviceInfos :: AuthServerConstraint r => FamilyId -> Eff r [(DeviceId, Client.DeviceInfo)]
+getDeviceInfos :: (AuthReader m, MonadServer m) => FamilyId -> m [(DeviceId, Client.DeviceInfo)]
 getDeviceInfos familyId = do
   authorizeAuthData $ isFamilyMember familyId
   runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
@@ -154,7 +151,7 @@ getDeviceInfos familyId = do
     let entityToPair (Entity key val) = (key, val)
     return $ map (fmap Client.fromDevice . entityToPair) deviceEntities
 
-createFamily :: AuthServerConstraint r =>  FamilyName -> Eff r FamilyId
+createFamily :: (AuthReader m, MonadServer m) =>  FamilyName -> m FamilyId
 createFamily n = do
   -- no authorization: - any valid user can create a family.
   now <- getCurrentTime
@@ -176,14 +173,14 @@ createFamily n = do
   notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
   return fid
 
-getAccountFamilies :: AuthServerConstraint r => AccountId -> Eff r [FamilyId]
+getAccountFamilies :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
 getAccountFamilies accountId = do
   authorizeAuthData $ isAccount accountId
   runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
     map (familyAccountFamilyId . entityVal)
       <$> Db.selectList [FamilyAccountAccountId ==. accountId] []
 
-getFamily :: AuthServerConstraint r => FamilyId -> Eff r Family
+getFamily :: (AuthReader m, MonadServer m) => FamilyId -> m Family
 getFamily familyId = do
   authorizeAuthData $ isFamilyMember familyId
   runDb $ Db.getErr (NoSuchFamily familyId) familyId

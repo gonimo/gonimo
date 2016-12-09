@@ -24,8 +24,6 @@ library
   default-language:    Haskell2010
   exposed-modules: Gonimo.CodeGen.PSTypes
                  , Gonimo.CodeGen.TypeBridges
-                 , Gonimo.Database.Effects
-                 , Gonimo.Database.Effects.PersistDatabase
                  , Gonimo.Database.Effects.Servant
                  , Gonimo.Server
                  , Gonimo.Server.Auth
@@ -34,12 +32,6 @@ library
                  , Gonimo.Server.Db.Entities
                  , Gonimo.Server.Db.Family
                  , Gonimo.Server.Effects
-                 , Gonimo.Server.Effects.Common
-                 , Gonimo.Server.Effects.Development
-                 , Gonimo.Server.Effects.Internal
-                 , Gonimo.Server.Effects.Logging
-                 , Gonimo.Server.Effects.Production
-                 , Gonimo.Server.Effects.Servant
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Error
                  , Gonimo.Server.Handlers
@@ -47,13 +39,11 @@ library
                  , Gonimo.Server.Handlers.Session
                  , Gonimo.Server.Handlers.Socket
                  , Gonimo.Server.InitDb
-                 , Gonimo.Server.Invitation
                  , Gonimo.Server.State
                  , Gonimo.Server.State.Session
                  , Gonimo.Server.State.Types
                  , Gonimo.Server.State.MessageBox
                  , Gonimo.Server.Types
-                 , Gonimo.Util
                  , Gonimo.WebAPI
                  , Gonimo.WebAPI.Types
                  , Gonimo.WebAPI.Verbs
@@ -85,13 +75,13 @@ library
                        , errors
                        , extra
                        , fast-logger
-                       , freer
                        , http-api-data
                        , http-types
                        , lens
                        , lens >= 4.13
                        , lifted-base >= 0.2.3.6
                        , mime-mail >= 0.4.11
+                       , monad-control
                        , monad-logger
                        , monad-stm
                        , mtl
@@ -114,6 +104,7 @@ library
                        , text >= 1.2.1.3
                        , time >= 1.5.0.1
                        , transformers >= 0.4.2.0
+                       , transformers-base
                        , wai
                        , warp
   if flag(dev) 
