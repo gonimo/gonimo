@@ -53,7 +53,7 @@ throwLeft :: MonadBase IO m => Either ServerError a -> m a
 throwLeft = either throwServer return
 
 -- | Throw left if actually a ServerError, otherwise return Nothing
-mayThrowLeft :: (MonadBase IO m, ToServerError e) => Either e a -> MaybeT (m) a
+mayThrowLeft :: (MonadBase IO m, ToServerError e) => Either e a -> MaybeT m a
 mayThrowLeft = either (lift . throwServer <=< toServerError) return
 
 throwServer :: MonadBase IO m => ServerError -> m a

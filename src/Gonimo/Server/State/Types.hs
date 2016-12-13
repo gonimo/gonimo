@@ -7,6 +7,7 @@ module Gonimo.Server.State.Types where
 
 
 import           Control.Concurrent.STM    (TVar)
+import           Control.Concurrent.Async  (Async)
 import           Control.Lens
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.State.Class
@@ -85,9 +86,10 @@ data FamilyOnlineState = FamilyOnlineState
                        { _channelSecrets  :: ChannelSecrets
                        , _channelData     :: ChannelData [Text]
                        , _sessions        :: Map DeviceId (SessionId, DeviceType)
+                       , _sessionThreads  :: Map DeviceId (Async ())
                        , _idCounter       :: Int -- Used for SessionId's currently
                        , _channelSequence :: Int -- Used to identify messages on channels/sockets.
-                       } deriving (Show, Eq)
+                       } deriving (Eq)
 
 $(makeLenses ''FamilyOnlineState)
 
@@ -104,6 +106,7 @@ emptyFamily = FamilyOnlineState {
     _channelSecrets = M.empty
   , _channelData = M.empty
   , _sessions = M.empty
+  , _sessionThreads = M.empty
   , _idCounter = 0
   , _channelSequence = 0
   }

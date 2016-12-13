@@ -2,7 +2,10 @@ module Gonimo.Server.Handlers.Session where
 
 import           Control.Monad.Trans.Class            (lift)
 import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
+import           Control.Monad.IO.Class               (liftIO)
+import           Control.Concurrent                   (threadDelay)
 import           Data.Monoid
+import           Data.Maybe                           (fromMaybe)
 import           Gonimo.Server.Auth                   as Auth
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
@@ -15,6 +18,10 @@ import           Gonimo.Server.Types
 import           Servant.Subscriber                  (Event (ModifyEvent))
 import qualified Gonimo.Server.Db.Family as Family
 import qualified Gonimo.Server.Db.Device as Device
+import           Utils.Constants                     (killSessionTimeout)
+import qualified Control.Concurrent.Async            as Async
+import           Control.Concurrent.Async            (Async)
+import           Gonimo.Server.State.SessionThread   as Thread
 
 -- | A device registers itself as online.
 --
@@ -35,9 +42,9 @@ sessionRegisterR familyId deviceId deviceType = do
       Device.update deviceId $ Device.setLastAccessed now
       pure $ notify ModifyEvent getDeviceInfosEndpoint (\f -> f familyId)
     sequence_ mNotify
-
     sessionId <- updateFamilyEff familyId $ Session.register deviceId deviceType
     handleUpdate familyId deviceType
+    handleRegisterKiller familyId deviceId sessionId
     pure $ trace ("Registered session: " <> show sessionId) sessionId
 
 -- | Update session (you can change the device type any time)
@@ -57,10 +64,11 @@ sessionUpdateR familyId deviceId sessionId deviceType= do
     authorizeAuthData $ isFamilyMember familyId
     authorizeAuthData $ isDevice deviceId
 
-    _ :: Maybe () <- runMaybeT $ do
-      _ <- updateFamilyErrEff familyId $ Session.update deviceId sessionId deviceType
+    fmap (fromMaybe ()) . runMaybeT $ do
+      _ :: DeviceType <- updateFamilyErrEff familyId
+                         $ Session.update deviceId sessionId deviceType
       lift $ handleUpdate familyId deviceType
-    return ()
+    handleRegisterKiller familyId deviceId sessionId
 
 -- | Tell the server that you are gone.
 sessionDeleteR  :: (AuthReader m, MonadServer m)
@@ -68,10 +76,7 @@ sessionDeleteR  :: (AuthReader m, MonadServer m)
 sessionDeleteR familyId deviceId sessionId = do
   authorizeAuthData $ isFamilyMember familyId
   authorizeAuthData $ isDevice deviceId
-  _ :: Maybe () <- trace ("Deleting session: " <> show sessionId) $ runMaybeT $ do
-    mayUpdateFamilyEff familyId $ Session.delete deviceId sessionId
-    lift $ notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
-  return ()
+  handleDelete familyId deviceId sessionId
 
 sessionListDevicesR  :: (AuthReader m, MonadServer m)
                     => FamilyId -> m [(DeviceId, DeviceType)]
@@ -90,3 +95,25 @@ handleUpdate familyId deviceType = do
     pure $ notify ModifyEvent getFamilyEndpoint (\f -> f familyId)
   sequence_ mNotifyFamily
   notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
+
+handleDelete :: MonadServer m => FamilyId -> DeviceId -> SessionId -> m ()
+handleDelete familyId deviceId sessionId = do
+  fmap (fromMaybe ()) . trace ("Deleting session: " <> show sessionId) . runMaybeT $ do
+    mayUpdateFamilyEff familyId $ Session.delete deviceId sessionId
+    lift $ notify ModifyEvent listDevicesEndpoint (\f -> f familyId)
+    -- Only remove killer if session was still valid, otherwise we kill the wrong killer!
+    old <- MaybeT . updateFamilyEff familyId $ Thread.remove deviceId
+    liftIO $ Async.cancel old
+
+
+deleteThread :: MonadServer m => FamilyId -> DeviceId -> SessionId -> m ()
+deleteThread familyId deviceId sessionId = do
+  liftIO $ threadDelay killSessionTimeout
+  handleDelete familyId deviceId sessionId
+
+
+handleRegisterKiller :: MonadServer m => FamilyId -> DeviceId -> SessionId -> m ()
+handleRegisterKiller familyId deviceId sessionId = fmap (fromMaybe ()) .  runMaybeT $ do
+  killer <- lift . async $ deleteThread familyId deviceId sessionId
+  old <- MaybeT . updateFamilyEff familyId $ Thread.register deviceId killer
+  liftIO $ Async.cancel old

@@ -11,6 +11,7 @@ module Gonimo.Server.Effects (
   , ServerT
   , runServer
   , Config (..)
+  , async
   , atomically
   , genRandomBytes
   , generateSecret
@@ -45,7 +46,7 @@ import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
 import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
 import           Control.Monad.Trans.State      (StateT (..))
 import           Control.Monad.Reader           (ask, MonadReader)
-import           Control.Monad.Logger           (MonadLogger, LoggingT)
+import           Control.Monad.Logger           (MonadLogger, LoggingT, runStderrLoggingT)
 import           Data.ByteString                (ByteString)
 import           Data.Proxy
 import           Data.Time.Clock                (UTCTime)
@@ -83,6 +84,8 @@ import           Crypto.Classes.Exceptions      (genBytes)
 import qualified Data.Time.Clock               as Clock
 import           System.Random                           (getStdRandom)
 import           Control.Monad.Trans.Control    (defaultRestoreT)
+import           Control.Concurrent.Async            (Async)
+import qualified Control.Concurrent.Async            as Async
 
 secretLength :: Int
 secretLength = 16
@@ -99,6 +102,7 @@ class (MonadIO m, MonadBaseControl IO m, MonadLogger m) => MonadServer m where
   notify :: forall endpoint . (IsElem endpoint GonimoAPI, HasLink endpoint
                               , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
             => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> m ()
+  async  :: Server a -> m (Async a)
 
 type DbPool = Pool SqlBackend
 
@@ -139,6 +143,12 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
   notify ev pE f = do
     c <- ask
     liftIO . STM.atomically $ Subscriber.notify (configSubscriber c) ev pE f
+  async (ServerT task) = do
+    c <- ask
+    -- Simply logging to stderr for now (there should be no messages), idealy we would log to our destination.
+    let ioTask = runStderrLoggingT . flip runReaderT c $ task
+    liftIO $ Async.async ioTask
+
 
 instance MonadIO m => MonadBase IO (ServerT m) where
   liftBase = liftIO
@@ -163,6 +173,7 @@ instance MonadServer m => MonadServer (ReaderT c m) where
   runRandom = lift . runRandom
   getState = lift getState
   notify ev pE f = lift $ notify ev pE f
+  async = lift . async
 
 generateSecret :: MonadServer m => m Secret
 generateSecret = Secret <$> genRandomBytes secretLength

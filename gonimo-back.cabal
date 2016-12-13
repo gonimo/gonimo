@@ -41,6 +41,7 @@ library
                  , Gonimo.Server.InitDb
                  , Gonimo.Server.State
                  , Gonimo.Server.State.Session
+                 , Gonimo.Server.State.SessionThread
                  , Gonimo.Server.State.Types
                  , Gonimo.Server.State.MessageBox
                  , Gonimo.Server.Types
@@ -63,8 +64,8 @@ library
                     , ScopedTypeVariables
                     , FlexibleContexts
 
-  build-depends:       
-                           aeson
+  build-depends:         aeson
+                       , async
                        , attoparsec
                        , base >=4.8 && <4.9
                        , base64-bytestring
@@ -107,6 +108,7 @@ library
                        , transformers-base
                        , wai
                        , warp
+
   if flag(dev) 
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall -fwarn-tabs -O0
