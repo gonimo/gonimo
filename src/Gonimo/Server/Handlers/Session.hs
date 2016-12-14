@@ -20,7 +20,6 @@ import qualified Gonimo.Server.Db.Family as Family
 import qualified Gonimo.Server.Db.Device as Device
 import           Utils.Constants                     (killSessionTimeout)
 import qualified Control.Concurrent.Async            as Async
-import           Control.Concurrent.Async            (Async)
 import           Gonimo.Server.State.SessionThread   as Thread
 
 -- | A device registers itself as online.
