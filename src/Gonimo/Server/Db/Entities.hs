@@ -62,11 +62,6 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     password Text
     accountId AccountId
     AccountIdUser accountId
-
-  FunnyWord
-    word Text
-    wordType FunnyWordType
-    deriving Show
 |]
 
 instance FromJSON Invitation

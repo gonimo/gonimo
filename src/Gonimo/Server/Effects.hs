@@ -33,6 +33,8 @@ module Gonimo.Server.Effects (
 
 
 import           Control.Concurrent.STM         (STM)
+import           Data.Text                      (Text)
+import           Data.Vector                    (Vector)
 import           Control.Concurrent.STM         (TVar)
 import           Control.Exception              (SomeException)
 import           Control.Exception.Lifted       (throwIO, catch)
@@ -107,12 +109,20 @@ class (MonadIO m, MonadBaseControl IO m, MonadLogger m) => MonadServer m where
 type DbPool = Pool SqlBackend
 
 data Config = Config {
-  configPool :: !DbPool
+  configPool       :: !DbPool
 , configState      :: !OnlineState
 , configSubscriber :: !(Subscriber GonimoAPI)
+, configNames      :: !FamilyNames
+, configPredicates :: !Predicates
 }
 
+data FamilyName
+  = FamilyName { familyMemberName :: !Text
+               , familyName :: !Text
+               }
 
+type FamilyNames = Vector Family
+type Predicates  = Vector Text
 
 newtype ServerT m a = ServerT (ReaderT Config m a)
                  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config, MonadTrans)
