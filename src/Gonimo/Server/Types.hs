@@ -21,7 +21,6 @@ import           Data.Aeson.Types       (FromJSON (..), FromJSON, ToJSON (..),
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
 import           Data.Monoid
-import           Data.Text              as T
 import           Data.Text.Encoding     (decodeUtf8, encodeUtf8)
 import           Database.Persist.TH
 import           Debug.Trace            (trace)
@@ -32,6 +31,12 @@ import           Servant.PureScript     (jsonParseHeader, jsonParseUrlPiece,
 import           Web.HttpApiData        (FromHttpApiData (..),
                                          ToHttpApiData (..))
 import           Control.Monad          (MonadPlus, mzero)
+import           Data.Vector                    (Vector)
+import           Database.Persist.Class (PersistField, toPersistValue, fromPersistValue)
+import           Database.Persist.Types (PersistValue(PersistText), SqlType(SqlString))
+import           Database.Persist.Sql   (PersistFieldSql, sqlType)
+import qualified Data.Text      as T
+import           Data.Text      (Text)
 
 data DeviceType = NoBaby
                 | Baby Text
@@ -91,7 +96,46 @@ instance ToJSON Coffee where
 
 
 
-type FamilyName = Text
+data FamilyName
+  = FamilyName { familyMemberName :: !Text
+               , familyName :: !Text
+               } deriving (Show, Generic, Eq)
+
+parseFamilyName :: Text -> FamilyName
+parseFamilyName t =
+  let
+    parseList :: [Text] -> Maybe FamilyName
+    parseList [ mN, fN ] = Just $ FamilyName mN fN
+    parseList _ = Nothing
+
+    parseLine = parseList . map T.strip . T.splitOn ","
+  in
+    case parseLine t of
+      Nothing -> FamilyName t t
+      Just f  -> f
+
+writeFamilyName :: FamilyName -> Text
+writeFamilyName (FamilyName mN fN) =
+  if mN == fN
+  then mN
+  else mN <> ", " <> fN
+
+instance FromJSON FamilyName
+instance ToJSON FamilyName where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
+
+instance PersistField FamilyName where
+  toPersistValue = PersistText . writeFamilyName
+  fromPersistValue (PersistText t) = Right (parseFamilyName t)
+  fromPersistValue _ = Left "A FamilyName must be PersistText"
+
+instance PersistFieldSql FamilyName where
+  sqlType _ = SqlString
+
+type FamilyNames = Vector FamilyName
+
+type Predicates  = Vector Text
 
 type EmailAddress = Text
 
@@ -108,18 +152,3 @@ instance ToJSON InvitationDelivery where
   toEncoding = genericToEncoding defaultOptions
 
 derivePersistField "InvitationDelivery"
---------------------------------------------------
-
-data FunnyWordType = FunnyPrefix
-                   | FunnyCharacter
-                   | FunnySuffix
-                   deriving (Read, Show, Generic)
-
-instance FromJSON FunnyWordType
-
-instance ToJSON FunnyWordType where
-  toJSON = genericToJSON defaultOptions
-
-derivePersistField "FunnyWordType"
-
-

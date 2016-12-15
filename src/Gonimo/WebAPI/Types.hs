@@ -10,6 +10,7 @@ import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
 import           Data.Text           (Text)
 import           GHC.Generics
 import           Data.Time             (UTCTime)
+import           Data.Maybe             (fromMaybe)
 
 import           Gonimo.Server.Types
 import           Gonimo.Server.Db.Entities
@@ -30,7 +31,7 @@ instance ToJSON SendInvitation where
 
 
 data InvitationInfo = InvitationInfo {
-    invitationInfoFamily          :: !Text
+    invitationInfoFamily        :: !FamilyName
   , invitationInfoSendingDevice :: !Text
   , invitationInfoSendingUser   :: !(Maybe Text)
   } deriving (Generic, Show)
@@ -55,7 +56,7 @@ data DeviceInfo = DeviceInfo
 
 fromDevice :: Device -> DeviceInfo
 fromDevice device = DeviceInfo
-  { deviceInfoName = deviceName device
+  { deviceInfoName = fromMaybe "" $ deviceName device
   , deviceInfoAccountId = deviceAccountId device
   , deviceInfoLastAccessed = deviceLastAccessed device
   , deviceInfoUserAgent = deviceUserAgent device

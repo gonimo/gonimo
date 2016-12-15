@@ -13,7 +13,7 @@ build-type:          Simple
 
 cabal-version:       >=1.10
 
-data-files:          data/*
+data-files:          data/*.txt
 
 Flag dev
     Description:   Turn on development settings.
@@ -31,6 +31,7 @@ library
                  , Gonimo.Server.Db.Device
                  , Gonimo.Server.Db.Entities
                  , Gonimo.Server.Db.Family
+                 , Gonimo.Server.Db.Account
                  , Gonimo.Server.Effects
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Error
@@ -38,7 +39,7 @@ library
                  , Gonimo.Server.Handlers.Auth
                  , Gonimo.Server.Handlers.Session
                  , Gonimo.Server.Handlers.Socket
-                 , Gonimo.Server.InitDb
+                 , Gonimo.Server.NameGenerator
                  , Gonimo.Server.State
                  , Gonimo.Server.State.Session
                  , Gonimo.Server.State.SessionThread

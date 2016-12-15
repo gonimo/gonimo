@@ -25,8 +25,8 @@ type UpdateDeviceT m a = UpdateT Device m a
 setName :: (MonadState Device m, MonadPlus m) => Text -> m ()
 setName name = do
   prevName <- deviceName <$> get
-  guard (prevName /= name)
-  modify $ \ d -> d { deviceName = name }
+  guard (prevName /= Just name)
+  modify $ \ d -> d { deviceName = Just name }
 
 setLastAccessed :: (MonadState Device m, MonadPlus m) => UTCTime -> m ()
 setLastAccessed time = do

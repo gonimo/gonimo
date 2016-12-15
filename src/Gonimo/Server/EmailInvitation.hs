@@ -16,13 +16,13 @@ import           Web.HttpApiData
 import qualified Data.Text.Lazy           as TL
 import           Network.HTTP.Types (urlEncode)
 
-import           Gonimo.Server.Db.Entities hiding (familyName)
+import           Gonimo.Server.Db.Entities (Invitation(..))
 import           Gonimo.Server.Types
 
 
 #ifdef DEVELOPMENT
 invitationText :: Invitation -> FamilyName -> Text
-invitationText _inv _n = "New invitation for family "
+invitationText _inv (FamilyName _ _n) = "New invitation for family "
     <> _n
     <> ":\nhttp://localhost:8081/index.html?acceptInvitation="
     <> secret
@@ -31,7 +31,7 @@ invitationText _inv _n = "New invitation for family "
     secret = T.decodeUtf8 . urlEncode True . T.encodeUtf8 . toUrlPiece $ invitationSecret _inv
 #else
 invitationText :: Invitation -> FamilyName -> Text
-invitationText _inv _n =
+invitationText _inv (FamilyName _ _n) =
   [text|
     Dear User of gonimo.com!
 

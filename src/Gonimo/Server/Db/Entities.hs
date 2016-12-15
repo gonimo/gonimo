@@ -17,7 +17,8 @@ import           Data.Text             (Text)
 import           Data.Time             (UTCTime)
 import           GHC.Generics          (Generic)
 
-import           Gonimo.Server.Types
+import           Gonimo.Server.Types   hiding (FamilyName, familyName)
+import qualified Gonimo.Server.Types   as Server
 
 share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
   Account
@@ -25,7 +26,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     deriving Generic
 
   Family
-    name Text
+    name Server.FamilyName
     created UTCTime
     lastAccessed UTCTime -- TODO: Should really by "lastModified", fix it once we have db migrations and smart client updates.
     lastUsedBabyNames [Text]
@@ -49,7 +50,7 @@ share [mkPersist sqlSettings,  mkMigrate "migrateAll"] [persistLowerCase|
     deriving Show Generic
 
   Device -- or more precise: a browser on a device
-    name Text
+    name Text Maybe
     authToken AuthToken
     accountId AccountId
     lastAccessed UTCTime
