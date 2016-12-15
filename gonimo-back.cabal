@@ -31,6 +31,7 @@ library
                  , Gonimo.Server.Db.Device
                  , Gonimo.Server.Db.Entities
                  , Gonimo.Server.Db.Family
+                 , Gonimo.Server.Db.Account
                  , Gonimo.Server.Effects
                  , Gonimo.Server.EmailInvitation
                  , Gonimo.Server.Error
@@ -38,7 +39,7 @@ library
                  , Gonimo.Server.Handlers.Auth
                  , Gonimo.Server.Handlers.Session
                  , Gonimo.Server.Handlers.Socket
-                 , Gonimo.Server.InitDb
+                 , Gonimo.Server.NameGenerator
                  , Gonimo.Server.State
                  , Gonimo.Server.State.Session
                  , Gonimo.Server.State.SessionThread
@@ -106,6 +107,7 @@ library
                        , time >= 1.5.0.1
                        , transformers >= 0.4.2.0
                        , transformers-base
+                       , vector
                        , wai
                        , warp
 

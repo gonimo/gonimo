@@ -28,11 +28,17 @@ module Gonimo.Server.Effects (
   , runDb
   , runRandom
   , sendEmail
+  , generateFamilyName
+  , getPredicatePool
   -- , timeout
   ) where
 
 
 import           Control.Concurrent.STM         (STM)
+import           Data.Text                      (Text)
+import           Data.Monoid
+import           Data.Vector                    (Vector, (!))
+import qualified Data.Vector                    as V
 import           Control.Concurrent.STM         (TVar)
 import           Control.Exception              (SomeException)
 import           Control.Exception.Lifted       (throwIO, catch)
@@ -45,7 +51,7 @@ import           Control.Monad.Trans.Class      (lift, MonadTrans)
 import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
 import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
 import           Control.Monad.Trans.State      (StateT (..))
-import           Control.Monad.Reader           (ask, MonadReader)
+import           Control.Monad.Reader           (ask, MonadReader, asks)
 import           Control.Monad.Logger           (MonadLogger, LoggingT, runStderrLoggingT)
 import           Data.ByteString                (ByteString)
 import           Data.Proxy
@@ -55,7 +61,7 @@ import           Network.Mail.Mime              (Mail)
 import           Servant.Subscriber             (Event, HasLink, IsElem,
                                                  IsSubscribable,
                                                  IsValidEndpoint, MkLink, URI)
-import           System.Random                  (StdGen)
+import           System.Random                  (StdGen, randomR)
 
 import           Gonimo.Server.Db.Entities      (FamilyId)
 import           Gonimo.Server.Error            (ServerError (..),
@@ -67,7 +73,7 @@ import           Gonimo.Server.State            (lookupFamily,
 import           Gonimo.Server.State.Types      (FamilyOnlineState,
                                                  OnlineState,
                                                  UpdateFamilyT)
-import           Gonimo.Server.Types            (Secret (..))
+import           Gonimo.Server.Types            (Secret (..), FamilyName(..), Predicates, FamilyNames, familyName, familyMemberName)
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardTimeout)
 import           Gonimo.Server.State.MessageBox  as MsgBox
@@ -86,6 +92,7 @@ import           System.Random                           (getStdRandom)
 import           Control.Monad.Trans.Control    (defaultRestoreT)
 import           Control.Concurrent.Async            (Async)
 import qualified Control.Concurrent.Async            as Async
+import qualified Gonimo.Server.NameGenerator   as Gen
 
 secretLength :: Int
 secretLength = 16
@@ -103,16 +110,18 @@ class (MonadIO m, MonadBaseControl IO m, MonadLogger m) => MonadServer m where
                               , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
             => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> m ()
   async  :: Server a -> m (Async a)
+  getFamilyNamePool :: m FamilyNames
+  getPredicatePool  :: m Predicates
 
 type DbPool = Pool SqlBackend
 
 data Config = Config {
-  configPool :: !DbPool
+  configPool       :: !DbPool
 , configState      :: !OnlineState
 , configSubscriber :: !(Subscriber GonimoAPI)
+, configNames      :: !FamilyNames
+, configPredicates :: !Predicates
 }
-
-
 
 newtype ServerT m a = ServerT (ReaderT Config m a)
                  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config, MonadTrans)
@@ -148,6 +157,8 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
     -- Simply logging to stderr for now (there should be no messages), idealy we would log to our destination.
     let ioTask = runStderrLoggingT . flip runReaderT c $ task
     liftIO $ Async.async ioTask
+  getFamilyNamePool = asks configNames
+  getPredicatePool  = asks configPredicates
 
 
 instance MonadIO m => MonadBase IO (ServerT m) where
@@ -174,10 +185,17 @@ instance MonadServer m => MonadServer (ReaderT c m) where
   getState = lift getState
   notify ev pE f = lift $ notify ev pE f
   async = lift . async
+  getFamilyNamePool = lift getFamilyNamePool
+  getPredicatePool  = lift getPredicatePool
 
 generateSecret :: MonadServer m => m Secret
 generateSecret = Secret <$> genRandomBytes secretLength
 
+generateFamilyName :: MonadServer m => m FamilyName
+generateFamilyName = do
+  preds <- getPredicatePool
+  fNames <- getFamilyNamePool
+  Gen.generateFamilyName preds fNames
 
 -- | Update family, retrying if updateF returns Nothing
 updateFamilyRetryEff :: MonadServer m

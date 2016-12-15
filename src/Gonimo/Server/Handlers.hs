@@ -30,11 +30,10 @@ createDevice mUserAgent = do
   now <- getCurrentTime
   authToken <- GonimoSecret <$> generateSecret
   let userAgent = maybe noUserAgentDefault (take maxUserAgentLength) mUserAgent
-  funnyName <- createFunnyName
   runDb $ do
     aid <- Db.insert Account { accountCreated     = now
                              }
-    cid <- Db.insert Device  { deviceName         = funnyName
+    cid <- Db.insert Device  { deviceName         = Nothing -- Will be set on join of first family
                              , deviceAuthToken    = authToken
                              , deviceAccountId    = aid
                              , deviceLastAccessed = now
@@ -47,19 +46,19 @@ createDevice mUserAgent = do
       }
 
 
--- | Generate a funny user name.
---   You may this part of the API by running the shell command:
---   curl --request POST http://localhost:8081/funnyName
-createFunnyName :: MonadServer m => m Text
-createFunnyName = do
-  let scaffold    = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
-      fetch t     = Db.selectList [FunnyWordWordType ==. t] []
-      word       :: Entity FunnyWord -> Text
-      word        = funnyWordWord . entityVal
-  funnyWordPools <- map (map word) <$>
-                      (runDb $ mapM fetch scaffold)
-  funnyWords     <- runRandom $ randomLs funnyWordPools
-  return $ unwords funnyWords
+-- -- | Generate a funny user name.
+-- --   You may this part of the API by running the shell command:
+-- --   curl --request POST http://localhost:8081/funnyName
+-- createFunnyName :: MonadServer m => m Text
+-- createFunnyName = do
+--   let scaffold    = [FunnyPrefix, FunnyPrefix, FunnyCharacter, FunnySuffix]
+--       fetch t     = Db.selectList [FunnyWordWordType ==. t] []
+--       word       :: Entity FunnyWord -> Text
+--       word        = funnyWordWord . entityVal
+--   funnyWordPools <- map (map word) <$>
+--                       (runDb $ mapM fetch scaffold)
+--   funnyWords     <- runRandom $ randomLs funnyWordPools
+--   return $ unwords funnyWords
 
 
 getCoffee :: MonadServer m => m Coffee

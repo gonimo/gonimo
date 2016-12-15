@@ -8,8 +8,8 @@ import           Control.Concurrent.STM               (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Extra                  (whenM)
-import           Control.Monad.State.Class            (gets, modify)
 import           Control.Monad.Reader                 (ask)
+import           Control.Monad.State.Class            (gets, modify)
 import           Control.Monad.STM.Class              (liftSTM)
 import           Control.Monad.Trans.Class            (lift)
 import           Control.Monad.Trans.Identity         (IdentityT, runIdentityT)
@@ -26,18 +26,18 @@ import           Data.Text                            (Text)
 import qualified Data.Text                            as T
 import           Database.Persist                     (Entity (..), (==.))
 import           Database.Persist.Class
-import qualified Database.Persist.Class              as Db
+import qualified Database.Persist.Class               as Db
 import           Gonimo.Database.Effects.Servant      as Db
 import           Gonimo.Server.Auth                   as Auth
-import           Gonimo.Server.Db.Entities
-import           Gonimo.Server.Effects
+import           Gonimo.Server.Db.Entities            as Db
+import           Gonimo.Server.Effects                as Eff
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
 import           Gonimo.Server.Handlers.Auth.Internal
 import           Gonimo.Server.State
 import qualified Gonimo.Server.State.MessageBox       as MsgBox
 import           Gonimo.Server.State.Types
-import           Gonimo.Server.Types
+import           Gonimo.Server.Types                  as Server
 import           Gonimo.WebAPI                        (ReceiveChannelR,
                                                        ReceiveMessageR)
 import           Gonimo.WebAPI.Types                  (InvitationInfo (..),
@@ -49,6 +49,7 @@ import           Servant.Server                       (ServantErr (..), err400,
 import           Servant.Subscriber                   (Event (ModifyEvent))
 import           Unsafe.Coerce
 import           Utils.Control.Monad.Trans.Maybe      (maybeT)
+import qualified Gonimo.Server.Db.Account             as Account
 
 createInvitation :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
 createInvitation fid = do
@@ -85,8 +86,8 @@ putInvitationInfo invSecret = do
     invDevice  <- get404   $ invitationSenderId inv
     mInvUser   <- Db.getBy $ AccountIdUser (deviceAccountId invDevice)
     return InvitationInfo
-                { invitationInfoFamily = familyName invFamily
-                , invitationInfoSendingDevice = deviceName invDevice
+                { invitationInfoFamily = Db.familyName invFamily
+                , invitationInfoSendingDevice = fromMaybe "" $ deviceName invDevice
                 , invitationInfoSendingUser = userLogin . entityVal <$> mInvUser
                 }
 
@@ -104,11 +105,12 @@ answerInvitation invSecret reply = do
           Just receiverId' -> receiverId' == aid
     Db.delete iid
     return inv
+  predPool <- getPredicatePool
   runDb $ do -- Separate transaction - we want the invitation to be deleted now!
     when (reply == InvitationAccept ) $ do
       guardWith AlreadyFamilyMember
         $ not $ isFamilyMember (invitationFamilyId inv) authData
-      Db.insert_  FamilyAccount {
+      Account.joinFamily predPool $ FamilyAccount {
           familyAccountAccountId = aid
         , familyAccountFamilyId = invitationFamilyId inv
         , familyAccountJoined = now
@@ -134,7 +136,7 @@ sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
     Db.replace iid newInv
     family <- get404 (invitationFamilyId inv)
     return (newInv, family)
-  sendEmail $ makeInvitationEmail inv email (familyName family)
+  sendEmail $ makeInvitationEmail inv email (Db.familyName family)
 sendInvitation (Client.SendInvitation _ OtherDelivery) =
   throwServant err400 {
     errReasonPhrase = "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
@@ -151,19 +153,21 @@ getDeviceInfos familyId = do
     let entityToPair (Entity key val) = (key, val)
     return $ map (fmap Client.fromDevice . entityToPair) deviceEntities
 
-createFamily :: (AuthReader m, MonadServer m) =>  FamilyName -> m FamilyId
-createFamily n = do
+createFamily :: (AuthReader m, MonadServer m) =>  m FamilyId
+createFamily = do
   -- no authorization: - any valid user can create a family.
   now <- getCurrentTime
   aid <- askAccountId
+  n <- generateFamilyName
+  predPool <- getPredicatePool
   fid <- runDb $ do
     fid <- Db.insert Family {
-        familyName = n
+        Db.familyName = n
       , familyCreated = now
       , familyLastAccessed = now
       , familyLastUsedBabyNames = []
     }
-    Db.insert_ FamilyAccount {
+    Account.joinFamily predPool $ FamilyAccount {
       familyAccountAccountId = aid
       , familyAccountFamilyId = fid
       , familyAccountJoined = now

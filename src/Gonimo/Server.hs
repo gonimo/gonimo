@@ -35,7 +35,6 @@ type AuthServer = ReaderT AuthData (Gonimo.ServerT (LoggingT IO))
 effServer :: ServerT GonimoAPI Gonimo.Server
 effServer =  createDevice
         :<|> getAuthServer
-        :<|> createFunnyName
         :<|> getCoffee
 
 authServer :: ServerT AuthGonimoAPI AuthServer

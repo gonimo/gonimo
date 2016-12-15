@@ -18,7 +18,6 @@ import           Gonimo.Server.State.Types        (SessionId, MessageNumber, Cha
 type GonimoAPI =
        "accounts"                       :> BrowserHeader "User-Agent" Text :> Post '[JSON] Client.AuthData
   :<|> Header "Authorization" AuthToken :> AuthGonimoAPI
-  :<|> "funnyName"                      :> Post '[JSON] Text
   :<|> "coffee"                         :> Get '[JSON] Coffee
 
 type From    = Capture "fromDevice" DeviceId
@@ -64,7 +63,7 @@ type GetAccountFamiliesR = "families" :> Subscribable :> Get '[JSON] [FamilyId]
 type FamiliesAPI = CreateFamilyR
               :<|> Capture "familyId" FamilyId :> FamilyAPI
 
-type CreateFamilyR = ReqBody '[JSON] FamilyName :> Post '[JSON] FamilyId
+type CreateFamilyR = Post '[JSON] FamilyId
 
 
 -- FamilyAPI:

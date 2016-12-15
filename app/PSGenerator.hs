@@ -42,6 +42,7 @@ myTypes = [ mkSumType (Proxy :: Proxy Client.AuthData)
           , mkSumType (Proxy :: Proxy DeviceInfo)
           , mkSumType (Proxy :: Proxy SessionId)
           , mkSumType (Proxy :: Proxy MessageNumber)
+          , mkSumType (Proxy :: Proxy FamilyName)
           ]
 
 mySettings :: Settings
