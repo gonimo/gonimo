@@ -50,7 +50,7 @@ joinFamily predPool familyAccount' = do
   let blackList = Set.fromList $ mapMaybe (Db.deviceName . entityVal) familyDevices
   family <- Db.get404 (Db.familyAccountFamilyId familyAccount')
   let initList = fmap (flip Gen.makeDeviceName $ Db.familyName family) predPool
-  let filtered = V.filter (flip Set.member blackList) initList
+  let filtered = V.filter (not . flip Set.member blackList) initList
   fixedDevices <- flip evalStateT filtered $ traverse fixDeviceName brokenDevices
   let myReplace (Entity k v) = Db.replace k v
   traverse_ myReplace fixedDevices
