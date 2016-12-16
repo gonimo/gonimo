@@ -35,10 +35,6 @@ module Gonimo.Server.Effects (
 
 
 import           Control.Concurrent.STM         (STM)
-import           Data.Text                      (Text)
-import           Data.Monoid
-import           Data.Vector                    (Vector, (!))
-import qualified Data.Vector                    as V
 import           Control.Concurrent.STM         (TVar)
 import           Control.Exception              (SomeException)
 import           Control.Exception.Lifted       (throwIO, catch)
@@ -61,7 +57,7 @@ import           Network.Mail.Mime              (Mail)
 import           Servant.Subscriber             (Event, HasLink, IsElem,
                                                  IsSubscribable,
                                                  IsValidEndpoint, MkLink, URI)
-import           System.Random                  (StdGen, randomR)
+import           System.Random                  (StdGen)
 
 import           Gonimo.Server.Db.Entities      (FamilyId)
 import           Gonimo.Server.Error            (ServerError (..),
@@ -73,7 +69,7 @@ import           Gonimo.Server.State            (lookupFamily,
 import           Gonimo.Server.State.Types      (FamilyOnlineState,
                                                  OnlineState,
                                                  UpdateFamilyT)
-import           Gonimo.Server.Types            (Secret (..), FamilyName(..), Predicates, FamilyNames, familyName, familyMemberName)
+import           Gonimo.Server.Types            (Secret (..), FamilyName(..), Predicates, FamilyNames)
 import           Gonimo.WebAPI                  (GonimoAPI)
 import           Utils.Constants                (standardTimeout)
 import           Gonimo.Server.State.MessageBox  as MsgBox

@@ -3,32 +3,23 @@
 --   This module is intended to be imported qualified as FamilyAccount
 module Gonimo.Server.Db.Account (joinFamily) where
 
-import           Control.Monad                   (MonadPlus, guard)
 import           Control.Monad.State.Class
-import           Control.Monad.Trans.Maybe       (MaybeT)
 import           Data.Text                       (Text)
 import           Data.Maybe
 
-import           Gonimo.Server.Error             (ServerError (NoSuchFamily))
 
-import           Control.Monad.Base               (MonadBase)
 import           Control.Monad.IO.Class           (MonadIO)
 import           Control.Monad.Trans.Reader       (ReaderT (..))
 import           Control.Monad.Trans.State.Strict (evalStateT)
 import           Data.Foldable                    (traverse_)
 import qualified Data.Set                         as Set
-import qualified Data.Set                         as Set
 import qualified Data.Vector                      as V
 import           Database.Persist                 (Entity, entityVal, (==.))
-import           Database.Persist                 (Entity (..), (==.))
-import           Database.Persist.Class           (PersistEntity,
-                                                   PersistEntityBackend,
-                                                   PersistStore)
+import           Database.Persist                 (Entity (..))
 import qualified Database.Persist.Class           as Db
 import           Database.Persist.Sql             (SqlBackend)
 import qualified Gonimo.Database.Effects.Servant  as Db
 import qualified Gonimo.Server.Db.Entities        as Db
-import           Gonimo.Server.Db.Internal        (UpdateT, updateRecord)
 import qualified Gonimo.Server.NameGenerator      as Gen
 import           Gonimo.Server.Types              (Predicates)
 

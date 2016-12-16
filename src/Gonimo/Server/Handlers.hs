@@ -1,6 +1,6 @@
 module Gonimo.Server.Handlers where
 
-import           Data.Text                     (Text, take, unwords)
+import           Data.Text                     (Text, take)
 import qualified Database.Persist.Class       as Db
 import           Gonimo.Server.Db.Entities
 import           Gonimo.Server.Effects
@@ -9,8 +9,6 @@ import           Gonimo.Server.Error
 import qualified Gonimo.WebAPI.Types as Client
 import           Prelude                       hiding (take, unwords)
 import           Servant                       (ServantErr (..))
-import           Database.Persist              (entityVal, (==.), Entity)
-import           Utils.System.Random
 
 
 
