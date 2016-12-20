@@ -1,4 +1,4 @@
-resolver: lts-6.0
+resolver: lts-7.14
 packages:
 - '.'
 - ../servant-purescript 
@@ -7,6 +7,7 @@ packages:
 
 extra-deps:
 - monad-stm-0.1.0.2
+- hsc2hs-0.68
 
 flags:
   gonimo-back:
@@ -15,4 +16,4 @@ flags:
 extra-package-dbs: []
 
 nix:
-  shell-file: stack.nix
+  shell-file: stack-8.0.nix
