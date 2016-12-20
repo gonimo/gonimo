@@ -68,7 +68,7 @@ library
   build-depends:         aeson
                        , async
                        , attoparsec
-                       , base >=4.8 && <4.9
+                       , base >=4.8 && <4.10
                        , base64-bytestring
                        , bytestring >= 0.10.6.0
                        , containers
@@ -144,7 +144,7 @@ executable gonimo-back
 
   build-depends:       aeson
                      , attoparsec
-                     , base >=4.8 && <4.9
+                     , base >=4.8 && <4.10
                      , base64-bytestring
                      , bytestring >= 0.10.6.0
                      , containers
@@ -152,7 +152,6 @@ executable gonimo-back
                      , either >= 4.4.1
                      , errors
                      , fast-logger
-                     , freer
                      , gonimo-back
                      , http-api-data
                      , lens >= 4.13
@@ -201,14 +200,13 @@ executable gonimo-psGenerator
                     , FlexibleContexts
   build-depends:       aeson
                      , attoparsec
-                     , base              >= 4.8 && <4.9
+                     , base              >= 4.8 && <4.10
                      , base64-bytestring
                      , bytestring        >= 0.10.6.0
                      , crypto-api
                      , either            >= 4.4.1
                      , errors
                      , fast-logger
-                     , freer
                      , gonimo-back
                      , http-api-data
                      , lens
@@ -251,8 +249,7 @@ test-suite test
   default-language:   Haskell2010
   build-depends:      
                           QuickCheck
-                      , base              >= 4.8 && <4.9
-                      , freer
+                      , base              >= 4.8 && <4.10
                       , gonimo-back
                       , hspec
                       , hspec-discover

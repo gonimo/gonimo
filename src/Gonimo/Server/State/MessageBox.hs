@@ -18,7 +18,7 @@ import           Gonimo.Server.State.Types (MessageBox (..),
 
 type MessageBoxes key val num = Map key (MessageBox num val)
 
-setData :: (MonadState state m, Monad m, MonadPlus m, Ord key, GetMessageNumber state val num)
+setData :: (MonadState state m, MonadPlus m, Ord key, GetMessageNumber state val num)
            => Lens' state (MessageBoxes key val num) -> key -> val -> m ()
 setData messageBoxes key val = do
   boxes <- use messageBoxes
@@ -26,13 +26,13 @@ setData messageBoxes key val = do
   next <- getMessageNumber val
   messageBoxes.at key .= Just (MessageBox next (Written val))
 
-clearIfRead :: (MonadState state m, Monad m, MonadPlus m, Ord key)
+clearIfRead :: (MonadState state m, MonadPlus m, Ord key)
            => Lens' state (MessageBoxes key val num) -> key -> m ()
 clearIfRead messageBoxes key = do
   guard =<< use (messageBoxes.to (isRead key))
   messageBoxes.at key .= Nothing
 
-clearData :: (MonadState state m, Monad m, Ord key)
+clearData :: (MonadState state m, Ord key)
            => Lens' state (MessageBoxes key val num) -> key -> m ()
 clearData messageBoxes key = messageBoxes.at key .= Nothing
 
@@ -46,7 +46,7 @@ getData key messageBoxes =
 
 -- | A reader does not clear the data itself, it just marks it as read.
 --   This is to avoid race conditions between writers.
-markRead :: (MonadState state m, Monad m, MonadPlus m, Ord key, Eq num)
+markRead :: (MonadState state m, MonadPlus m, Ord key, Eq num)
            => Lens' state (MessageBoxes key val num) -> key -> num -> m ()
 markRead messageBoxes key number = do
   box <- use (messageBoxes.at key)

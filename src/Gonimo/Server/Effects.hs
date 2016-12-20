@@ -205,7 +205,7 @@ updateFamilyRetryEff err familyId updateF = do
     Just v -> pure v
 
 -- | Update family, throwing any ServerErrors.
-updateFamilyErrEff :: (MonadServer m, ToServerError e, Monoid e)
+updateFamilyErrEff :: (MonadServer m, ToServerError e)
                    => FamilyId -> UpdateFamilyT (ExceptT e STM) a -> MaybeT m a
 updateFamilyErrEff familyId updateF = do
   state <- lift getState

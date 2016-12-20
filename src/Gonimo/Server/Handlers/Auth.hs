@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Gonimo.Server.Handlers.Auth where
 
 import           Control.Applicative                  ((<|>))

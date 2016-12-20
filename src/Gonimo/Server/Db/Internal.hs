@@ -12,17 +12,15 @@ import           Gonimo.Server.Error             (ServerError)
 
 import           Control.Monad.Base              (MonadBase)
 import           Control.Monad.IO.Class          (MonadIO)
-import           Database.Persist.Class          (Key, PersistEntity,
-                                                  PersistEntityBackend,
-                                                  PersistStore)
+import           Database.Persist.Class          (Key, PersistStoreWrite, PersistRecordBackend)
 import qualified Database.Persist.Class          as Db
 import qualified Gonimo.Database.Effects.Servant as Db
 
 type UpdateT entity m a = StateT entity (MaybeT m) a
 
 -- | Update db entity as specified by the given UpdateFamilyT - on Nothing, no update occurs.
-updateRecord :: (PersistEntity record, backend ~ PersistEntityBackend record
-                , MonadIO m, MonadBase IO m, PersistStore backend)
+updateRecord :: ( PersistStoreWrite backend, PersistRecordBackend record backend
+                , MonadIO m, MonadBase IO m)
                 => (Key record -> ServerError) -> Key record
                 -> UpdateT record (ReaderT backend m) a
                 -> MaybeT (ReaderT backend m) a
