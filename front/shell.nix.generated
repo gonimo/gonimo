@@ -1,0 +1,39 @@
+{ nixpkgs ? import <nixpkgs> {}, compiler ? "ghcjs" }:
+
+let
+
+  inherit (nixpkgs) pkgs;
+
+  f = { mkDerivation, aeson, attoparsec, base, base64-bytestring
+      , bytestring, containers, errors, http-api-data
+      , lens, persistent, persistent-template, reflex, reflex-dom, safe
+      , stdenv, text, time, vector
+      }:
+      mkDerivation {
+        pname = "gonimo-front";
+        version = "0.9.1.0";
+        src = ./.;
+        configureFlags = [ "-fdev" ];
+        isLibrary = true;
+        isExecutable = true;
+        libraryHaskellDepends = [ aeson base bytestring errors text ];
+        executableHaskellDepends = [
+          aeson attoparsec base base64-bytestring bytestring containers
+          errors http-api-data lens persistent
+          persistent-template reflex reflex-dom safe text time vector
+        ];
+        doHaddock = false;
+        doCheck = false;
+        homepage = "gonimo.com";
+        license = stdenv.lib.licenses.agpl3;
+      };
+
+  haskellPackages = if compiler == "default"
+                       then pkgs.haskellPackages
+                       else pkgs.haskell.packages.${compiler};
+
+  drv = haskellPackages.callPackage f {};
+
+in
+
+  if pkgs.lib.inNixShell then drv.env else drv
