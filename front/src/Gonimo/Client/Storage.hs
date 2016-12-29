@@ -9,7 +9,6 @@ import qualified Data.Aeson as Aeson
 import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as BL
-import Control.Monad ((<=<))
 
 
 getItem ::  (MonadIO m, ToJSON (key result), FromJSON result) => GHCJS.Storage -> key result -> m (Maybe result)

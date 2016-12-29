@@ -7,28 +7,17 @@ import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToEncoding)
 import qualified Gonimo.SocketAPI.Types as Client
 import GHC.Generics (Generic)
+import qualified Data.ByteString.Lazy as BL
 
 type MessageId = Int
-data RequestBody = ReqMakeDevice (Maybe Text) deriving (Generic)
+data ServerRequest = ReqMakeDevice (Maybe Text) deriving (Generic)
 
-data ResponseBody = ResMakeDevice !Client.AuthData deriving (Generic)
+data ServerResponse = ResMakeDevice !Client.AuthData deriving (Generic)
 
-data APIRequest = APIRequest !MessageId !RequestBody deriving (Generic)
-
-data APIResponse = APIResponse !MessageId !ResponseBody deriving (Generic)
-
-instance FromJSON APIResponse
-instance ToJSON APIResponse where
+instance FromJSON ServerRequest
+instance ToJSON ServerRequest where
   toEncoding = genericToEncoding defaultOptions
 
-instance FromJSON APIRequest
-instance ToJSON APIRequest where
-  toEncoding = genericToEncoding defaultOptions
-
-instance FromJSON RequestBody
-instance ToJSON RequestBody where
-  toEncoding = genericToEncoding defaultOptions
-
-instance FromJSON ResponseBody
-instance ToJSON ResponseBody where
+instance FromJSON ServerResponse
+instance ToJSON ServerResponse where
   toEncoding = genericToEncoding defaultOptions

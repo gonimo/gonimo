@@ -26,12 +26,8 @@ import qualified Network.Wai.Handler.WebSockets as Wai
 import qualified Data.Text as T
 
 
-handleAPIRequest :: MonadServer m => APIRequest -> m APIResponse
-handleAPIRequest req = case req of
-  APIRequest mId reqBody -> APIResponse mId <$> handleRequestBody reqBody
-
-handleRequestBody :: MonadServer m => RequestBody -> m ResponseBody
-handleRequestBody reqBody = case reqBody of
+handleServerRequest :: MonadServer m => ServerRequest -> m ServerResponse
+handleServerRequest reqBody = case reqBody of
   ReqMakeDevice userAgent -> ResMakeDevice <$> createDevice userAgent
 
 
@@ -41,13 +37,13 @@ serveWebSocket conn = forever handleIncoming
     handleIncoming :: m ()
     handleIncoming = do
       raw <- liftIO $ WS.receiveDataMessage conn
-      case raw of
-        WS.Binary _ -> error "Sorry - binary connections are currently not supported!"
-        WS.Text bs -> do
-          decoded <- decodeLogError bs
-          r <- handleAPIRequest decoded
-          let encoded = Aeson.encode r
-          liftIO . WS.sendDataMessage conn $ WS.Text encoded
+      let bs = case raw of
+                WS.Binary bs' -> bs'
+                WS.Text bs' -> bs'
+      decoded <- decodeLogError bs
+      r <- handleServerRequest decoded
+      let encoded = Aeson.encode r
+      liftIO . WS.sendDataMessage conn $ WS.Text encoded
 
     decodeLogError :: forall a. FromJSON a => LB.ByteString -> m a
     decodeLogError bs = do

@@ -13,9 +13,6 @@ import qualified Data.Map.Strict as Map
 import qualified Gonimo.SocketAPI.Types as API
 import qualified GHCJS.DOM.JSFFI.Generated.Storage as Storage
 import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
-import qualified GHCJS.DOM as DOM
-import qualified Gonimo.Client.Storage as GStorage
-import qualified Gonimo.Client.Storage.Keys as GStorage
 
 data ArithOp = Plus | Minus | Mult | Division deriving (Ord, Eq)
 
@@ -31,11 +28,9 @@ doOp Minus = (-)
 doOp Mult = (*)
 doOp Division = (/)
 
+
 main :: IO ()
 main = do
-  window <- DOM.currentWindowUnchecked
-  storage <- Window.getLocalStorageUnsafe window
-  mAuth <- GStorage.getItem storage GStorage.keyAuthData
   pure ()
 
 --   Storage.getItem 

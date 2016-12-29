@@ -54,7 +54,5 @@ library
                       , persistent
                       , errors
                       , http-api-data
-                      , ghcjs-dom
-                      , jsaddle
                       , safe
                       , transformers

@@ -42,8 +42,13 @@ library
                     , text
                     , ghcjs-dom-jsffi
                     , gonimo-common
+                    , reflex
+                    , reflex-dom
+                    , lens
+                    , dependent-map
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Storage.Keys
+                    , Gonimo.Client.Auth
 
 
 executable gonimo-front
