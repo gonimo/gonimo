@@ -19,57 +19,30 @@ import qualified Gonimo.Client.Server as Server
 import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv)
 import qualified Gonimo.Client.Auth as Auth
 import Gonimo.Client.Auth (AuthConfig(..), Auth, authConfigResponse, authRequest)
+import Gonimo.Client.Invite (invite)
+import Control.Monad
 
 
 
 main :: IO ()
-main = mainWidget $ mdo
+main = mainWidgetWithHead headTag $ mdo
   let wsConfig = def & webSocketConfig_send .~ serverRequests
   server <- Server.server "ws://localhost:8081" wsConfig
   let authConfig = AuthConfig { _authConfigResponse = server^.webSocket_recv }
   auth <- Auth.auth authConfig
   let serverRequests = (:[]) <$> auth^.authRequest
+  invite
   pure ()
 
---   Storage.getItem 
--- mainWidget
---   $ el "div" $ do
---     el "ul" $ do
---       el "li" $ text "one"
---       el "li" $ text "two"
---       el "li" $ text "three"
---     a1 <- numberInput
---     d <- opInput
---     a2 <- numberInput
---     text "="
---     let values = (,) <$> a1 <*> a2
---     let r = zipDynWith (\op (a, b) -> doOp <$> pure op <*> a <*> b) (d^.dropdown_value) values
---     let strR = T.pack . maybe "" show <$> r
---     dynText strR
-
--- numberInput :: forall t m. MonadWidget t m => m (Dynamic t (Maybe Double))
--- numberInput = mdo
---         let
---           readDouble :: T.Text -> Maybe Double
---           readDouble = readMay . T.unpack
-
-
---         let
---           validState = "style" =: "border-color : blue"
---           errorState = "style" =: "border-color : red"
-
---         input <- textInput $ def & textInputConfig_inputType .~ "text"
---                                  & textInputConfig_initialValue .~ "0"
---                                  & textInputConfig_attributes .~ attrs
-
---         let result = readDouble <$> input^.textInput_value
---         let attrs = maybe errorState (const validState) <$> result
---         pure result
-
--- opInput :: forall t m. MonadWidget t m => m (Dropdown t ArithOp)
--- opInput = do
---    let ops = [ Plus, Minus, Mult, Division]
---    let strOps = map (T.pack . show) ops
---    let opMap = Map.fromList $ zip ops strOps
---    dropdown Plus (constDyn opMap) def
--- 1c50bdd928..da70d3da0f
+headTag :: forall x. Widget x ()
+headTag = do
+  forM_ [ "//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" --TODO Make these links local
+        , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+        ] $ \x -> elAttr "link" ("rel" =: "stylesheet" <> "href" =: x) $ pure ()
+  forM_ [ "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        , "//ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"
+        ] $ \x -> elAttr "script" ("src" =: x) $ pure ()
+  elAttr "meta" ("name" =: "viewport"
+                 <> "content" =: "width=device-width, initial-scale=1, user-scalable=no"
+                ) $ pure ()

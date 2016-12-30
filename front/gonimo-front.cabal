@@ -50,6 +50,7 @@ library
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Auth
                     , Gonimo.Client.Server
+                    , Gonimo.Client.Invite
 
 
 executable gonimo-front
