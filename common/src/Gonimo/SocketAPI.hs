@@ -7,7 +7,6 @@ import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToEncoding)
 import qualified Gonimo.SocketAPI.Types as Client
 import GHC.Generics (Generic)
-import qualified Data.ByteString.Lazy as BL
 
 type MessageId = Int
 data ServerRequest = ReqMakeDevice (Maybe Text) deriving (Generic)
