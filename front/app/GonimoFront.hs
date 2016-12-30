@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings, RecursiveDo, ScopedTypeVariables #-}
+{-# LANGUAGE RecursiveDo #-}
 
 import Reflex
-import Reflex.Dom
+import Reflex.Dom hiding (webSocketConfig_send, webSocket_recv)
 import qualified Data.Text as T
 import Control.Lens
 import Safe
@@ -13,24 +14,21 @@ import qualified Data.Map.Strict as Map
 import qualified Gonimo.SocketAPI.Types as API
 import qualified GHCJS.DOM.JSFFI.Generated.Storage as Storage
 import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
+import Data.Default
+import qualified Gonimo.Client.Server as Server
+import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv)
+import qualified Gonimo.Client.Auth as Auth
+import Gonimo.Client.Auth (AuthConfig(..), Auth, authConfigResponse, authRequest)
 
-data ArithOp = Plus | Minus | Mult | Division deriving (Ord, Eq)
-
-instance Show ArithOp where
-  show Plus = "+"
-  show Minus = "-"
-  show Mult = "*"
-  show Division = "/"
-
-doOp :: ArithOp -> Double -> Double -> Double
-doOp Plus = (+)
-doOp Minus = (-)
-doOp Mult = (*)
-doOp Division = (/)
 
 
 main :: IO ()
-main = do
+main = mainWidget $ mdo
+  let wsConfig = def & webSocketConfig_send .~ serverRequests
+  server <- Server.server "ws://localhost:8081" wsConfig
+  let authConfig = AuthConfig { _authConfigResponse = server^.webSocket_recv }
+  auth <- Auth.auth authConfig
+  let serverRequests = (:[]) <$> auth^.authRequest
   pure ()
 
 --   Storage.getItem 
