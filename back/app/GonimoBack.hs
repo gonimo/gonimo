@@ -66,4 +66,4 @@ main = prodMain
 #endif
 
 addDevServer :: Application -> Application
-addDevServer = staticPolicy $ addBase "../../gonimo-front/dist" <|> addSlash
+addDevServer = staticPolicy $ addBase "../front/dist/build/gonimo-front/gonimo-front.jsexe" <|> addSlash
