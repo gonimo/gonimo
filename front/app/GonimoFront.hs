@@ -16,7 +16,7 @@ import qualified GHCJS.DOM.JSFFI.Generated.Storage as Storage
 import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
 import Data.Default
 import qualified Gonimo.Client.Server as Server
-import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv)
+import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
 import qualified Gonimo.Client.Auth as Auth
 import Gonimo.Client.Auth (AuthConfig(..), Auth, authConfigResponse, authRequest)
 import Gonimo.Client.Invite (invite)
@@ -28,9 +28,11 @@ main :: IO ()
 main = mainWidgetWithHead headTag $ mdo
   let wsConfig = def & webSocketConfig_send .~ serverRequests
   server <- Server.server "ws://localhost:8081" wsConfig
-  let authConfig = AuthConfig { _authConfigResponse = server^.webSocket_recv }
+  let authConfig = AuthConfig { _authConfigResponse = server^.webSocket_recv
+                              , _authConfigServerOpen = server^.webSocket_open
+                              }
   auth <- Auth.auth authConfig
-  let serverRequests = (:[]) <$> auth^.authRequest
+  let serverRequests = auth^.authRequest
   invite
   pure ()
 

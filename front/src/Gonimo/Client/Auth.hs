@@ -13,22 +13,23 @@ import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
 import qualified GHCJS.DOM.JSFFI.Generated.Navigator as Navigator
+import GHCJS.DOM.JSFFI.Generated.Storage (Storage)
 import Data.Text (Text)
+import Safe (headMay)
 
 import Control.Monad.IO.Class
 import Control.Monad (when)
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, isJust, catMaybes)
 
 -- data AuthCommand = AuthCreateDevice
 
 data AuthConfig t
   = AuthConfig { _authConfigResponse :: Event t API.ServerResponse
-               -- , _authCommand :: Event t AuthCommand
+               , _authConfigServerOpen :: Event t ()
                }
 
 data Auth t
-  = Auth { _authRequest :: Event t API.ServerRequest
-         , _authData :: Dynamic t (Maybe API.AuthData)
+  = Auth { _authRequest :: Event t [ API.ServerRequest ]
          }
 
 makeLenses ''AuthConfig
@@ -36,40 +37,63 @@ makeLenses ''Auth
 
 auth :: forall t m. (HasWebView m, MonadWidget t m) => AuthConfig t -> m (Auth t)
 auth config = do
-  window  <- DOM.currentWindowUnchecked
-  storage <- Window.getLocalStorageUnsafe window
-  mAuth   <- GStorage.getItem storage GStorage.keyAuthData
-  navigator <- Window.getNavigatorUnsafe window
-  mUserAgent :: Maybe Text <- Just <$> Navigator.getUserAgent navigator
-
-  let
-    writeLocalStorage :: MonadIO m1 => Maybe API.AuthData -> m1 ()
-    writeLocalStorage Nothing = pure ()
-    writeLocalStorage (Just auth') = GStorage.setItem storage GStorage.keyAuthData auth'
-
-  (mAuthInitEvent, triggerEvent) <- newTriggerEvent
-
-  when (isNothing mAuth)
-    $ liftIO $ triggerEvent (API.ReqMakeDevice mUserAgent)
-
-  authDataDyn <- makeAuthData mAuth config
-
-  performEvent_ $ fmap writeLocalStorage (updated authDataDyn)
-
-  pure $ Auth { _authRequest = mAuthInitEvent
-              , _authData = authDataDyn
+  (makeDeviceEvent, authDataDyn) <- makeAuthData config
+  let authenticateEvent = authenticate config authDataDyn
+  pure $ Auth { _authRequest = mconcat
+                               . map (fmap (:[]))
+                               $ [ makeDeviceEvent
+                                 , authenticateEvent
+                                 ]
               }
 
-makeAuthData :: forall t m. (MonadHold t m, Reflex t) => Maybe API.AuthData -> AuthConfig t -> m (Dynamic t (Maybe API.AuthData))
-makeAuthData initial config = do
-    let
-      fromServerResponse :: API.ServerResponse -> Maybe API.AuthData
-      fromServerResponse resp = case resp of
-        API.ResMakeDevice auth' -> Just auth'
-        _ -> Nothing
+makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)
+  => AuthConfig t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
+makeAuthData config = do
+    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
 
-      serverAuth :: Event t API.AuthData
-      serverAuth = push (pure . fromServerResponse) $ config^.authConfigResponse
+    initial <- loadAuthData storage
+    makeDevice <- if isNothing initial
+                  then Just . API.ReqMakeDevice . Just <$> getUserAgentString
+                  else pure Nothing
+    let makeDeviceEvent = push (pure . const makeDevice) $ config^.authConfigServerOpen
+    authDataDyn <- holdDyn initial (Just <$> serverAuth)
 
-    holdDyn initial (fmap Just serverAuth)
+    performEvent_
+      $ writeAuthData storage <$> updated authDataDyn
 
+    pure (makeDeviceEvent, authDataDyn)
+  where
+    serverAuth :: Event t API.AuthData
+    serverAuth = push (pure . fromServerResponse) $ config^.authConfigResponse
+
+    fromServerResponse :: API.ServerResponse -> Maybe API.AuthData
+    fromServerResponse resp = case resp of
+      API.ResMadeDevice auth' -> Just auth'
+      _ -> Nothing
+
+
+authenticate :: forall t. Reflex t => AuthConfig t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
+authenticate config authDataDyn=
+  let
+    authDataList = catMaybes
+                   <$> (mconcat . map (fmap (:[])))
+                   [ tag (current authDataDyn) $ config^.authConfigServerOpen
+                   , updated authDataDyn
+                   ]
+    authData = push (pure . headMay) authDataList
+  in
+    API.ReqAuthenticate . API.authToken <$> authData
+
+writeAuthData :: MonadIO m => Storage -> Maybe API.AuthData -> m ()
+writeAuthData _ Nothing = pure ()
+writeAuthData storage (Just auth') = GStorage.setItem storage GStorage.keyAuthData auth'
+
+
+loadAuthData :: MonadIO m => Storage -> m (Maybe API.AuthData)
+loadAuthData storage = GStorage.getItem storage GStorage.keyAuthData
+
+getUserAgentString :: MonadIO m => m Text
+getUserAgentString = do
+  window  <- DOM.currentWindowUnchecked
+  navigator <- Window.getNavigatorUnsafe window
+  Navigator.getUserAgent navigator
