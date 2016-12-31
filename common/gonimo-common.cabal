@@ -30,6 +30,8 @@ library
                  , Gonimo.SocketAPI.Types
                  , Gonimo.Types
                  , Gonimo.Db.Entities
+                 , Gonimo.Server.Error
+                 , Gonimo.Server.State.Types
 
   default-extensions: ConstraintKinds
                     , DataKinds
@@ -56,3 +58,9 @@ library
                       , http-api-data
                       , safe
                       , transformers
+                      , transformers-base
+                      , lifted-base
+                      , stm
+                      , async
+                      , lens
+                      , mtl

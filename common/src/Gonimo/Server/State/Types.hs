@@ -20,8 +20,6 @@ import           Data.Map.Strict           (Map)
 import qualified Data.Map.Strict           as M
 import           Data.Text                 (Text)
 import           GHC.Generics              (Generic)
-import           Servant.PureScript     (jsonParseHeader, jsonParseUrlPiece)
-import           Web.HttpApiData        (FromHttpApiData (..))
 
 import           Gonimo.Db.Entities (DeviceId, FamilyId)
 import           Gonimo.Types      (DeviceType, Secret)
@@ -37,10 +35,6 @@ instance ToJSON SessionId where
   toEncoding = genericToEncoding defaultOptions
 instance FromJSON SessionId
 
-instance FromHttpApiData SessionId where
-    parseUrlPiece = jsonParseUrlPiece
-    parseHeader   = jsonParseHeader
-
 -- | To identify messages on socket/channel to avoid race conditions when reading.
 newtype MessageNumber = MessageNumber Int deriving (Ord, Eq, Show, Generic)
 
@@ -49,10 +43,6 @@ instance ToJSON MessageNumber where
   toJSON     = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
 instance FromJSON MessageNumber
-
-instance FromHttpApiData MessageNumber where
-    parseUrlPiece = jsonParseUrlPiece
-    parseHeader   = jsonParseHeader
 
 
 data MessageState a = Written a | Read deriving (Eq, Show)

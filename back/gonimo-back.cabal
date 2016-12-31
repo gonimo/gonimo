@@ -34,7 +34,6 @@ library
   exposed-modules: Gonimo.CodeGen.PSTypes
                 , Gonimo.CodeGen.TypeBridges
                 , Gonimo.Database.Effects.Servant
-                , Gonimo.Server
                 , Gonimo.Server.Auth
                 , Gonimo.Server.Db.Internal
                 , Gonimo.Server.Db.Device
@@ -42,7 +41,6 @@ library
                 , Gonimo.Server.Db.Account
                 , Gonimo.Server.Effects
                 , Gonimo.Server.EmailInvitation
-                , Gonimo.Server.Error
                 , Gonimo.Server.Handlers
                 , Gonimo.Server.Handlers.Auth
                 , Gonimo.Server.Handlers.Session
@@ -51,7 +49,6 @@ library
                 , Gonimo.Server.State
                 , Gonimo.Server.State.Session
                 , Gonimo.Server.State.SessionThread
-                , Gonimo.Server.State.Types
                 , Gonimo.Server.State.MessageBox
                 , Gonimo.SocketServer
 

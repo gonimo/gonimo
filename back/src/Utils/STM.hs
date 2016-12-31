@@ -2,8 +2,7 @@ module Utils.STM where
 
 import           Control.Concurrent.STM
 import           Control.Exception
-import           Gonimo.Server.Error    (ServerError (TransactionTimeout),
-                                         makeServantErr)
+import           Gonimo.Server.Error    (ServerError (TransactionTimeout))
 import           Utils.Constants
 
 gTimeoutSTM :: Exception e => Int -> STM (Maybe a) -> e -> IO a
@@ -17,4 +16,4 @@ gTimeoutSTM μs action ex = do
                              maybe retry {-or-} return result
 
 timeoutSTM :: Microseconds -> STM (Maybe a) -> IO a
-timeoutSTM μs action = gTimeoutSTM μs action (makeServantErr TransactionTimeout)
+timeoutSTM μs action = gTimeoutSTM μs action TransactionTimeout

@@ -59,9 +59,9 @@ createDevice mUserAgent = do
 --   return $ unwords funnyWords
 
 
-getCoffee :: MonadServer m => m Coffee
-getCoffee = throwServant ServantErr { errReasonPhrase = "I am a tea pot!"
-                                                        , errHTTPCode = 418
-                                                        , errBody = ""
-                                                        , errHeaders = []
-                                                        }
+-- getCoffee :: MonadServer m => m Coffee
+-- getCoffee = throwServant ServantErr { errReasonPhrase = "I am a tea pot!"
+--                                                         , errHTTPCode = 418
+--                                                         , errBody = ""
+--                                                         , errHeaders = []
+--                                                         }

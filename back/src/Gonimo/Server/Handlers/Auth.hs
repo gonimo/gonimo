@@ -139,10 +139,7 @@ sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
     family <- get404 (invitationFamilyId inv)
     return (newInv, family)
   sendEmail $ makeInvitationEmail inv email (Db.familyName family)
-sendInvitation (Client.SendInvitation _ OtherDelivery) =
-  throwServant err400 {
-    errReasonPhrase = "OtherDelivery means - you took care of the delivery. How am I supposed to perform an 'OtherDelivery'?"
-  }
+sendInvitation (Client.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 
 getDeviceInfos :: (AuthReader m, MonadServer m) => FamilyId -> m [(DeviceId, Client.DeviceInfo)]
 getDeviceInfos familyId = do

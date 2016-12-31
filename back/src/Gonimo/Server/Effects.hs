@@ -184,6 +184,20 @@ instance MonadServer m => MonadServer (ReaderT c m) where
   getFamilyNamePool = lift getFamilyNamePool
   getPredicatePool  = lift getPredicatePool
 
+instance MonadServer m => MonadServer (StateT c m) where
+  atomically = lift . atomically
+  registerDelay = lift . registerDelay
+  sendEmail = lift . sendEmail
+  genRandomBytes = lift . genRandomBytes
+  getCurrentTime = lift getCurrentTime
+  runDb = lift . runDb
+  runRandom = lift . runRandom
+  getState = lift getState
+  notify ev pE f = lift $ notify ev pE f
+  async = lift . async
+  getFamilyNamePool = lift getFamilyNamePool
+  getPredicatePool  = lift getPredicatePool
+
 generateSecret :: MonadServer m => m Secret
 generateSecret = Secret <$> genRandomBytes secretLength
 

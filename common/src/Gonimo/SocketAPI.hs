@@ -7,11 +7,24 @@ import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToEncoding)
 import qualified Gonimo.SocketAPI.Types as Client
 import GHC.Generics (Generic)
+import Gonimo.Server.Error (ServerError)
+import Gonimo.Db.Entities (FamilyId, InvitationId, Invitation)
+import Gonimo.Types (AuthToken)
 
 type MessageId = Int
-data ServerRequest = ReqMakeDevice (Maybe Text) deriving (Generic)
+data ServerRequest
+  = ReqMakeDevice !(Maybe Text)
+  | ReqAuthenticate !AuthToken
+  | ReqCreateFamily
+  | ReqCreateInvitation !FamilyId
+  deriving (Generic)
 
-data ServerResponse = ResMakeDevice !Client.AuthData deriving (Generic)
+data ServerResponse = ResMadeDevice !Client.AuthData
+  | ResAuthenticated
+  | ResCreatedFamily !FamilyId
+  | ResCreatedInvitation !(InvitationId, Invitation)
+  | ResError !ServerRequest !ServerError
+  deriving (Generic)
 
 instance FromJSON ServerRequest
 instance ToJSON ServerRequest where

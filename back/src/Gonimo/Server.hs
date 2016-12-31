@@ -16,7 +16,7 @@ import           Gonimo.Server.Handlers.Socket
 import           Gonimo.Db.Entities
 import           Gonimo.Server.Effects           hiding (Server, ServerT)
 import qualified Gonimo.Server.Effects           as Gonimo
-import           Gonimo.Server.Error    (throwServant, ServerError (..))
+import           Gonimo.Server.Error    (ServerError (..))
 import           Gonimo.Server.Handlers
 import           Gonimo.Types
 import           Gonimo.WebAPI
