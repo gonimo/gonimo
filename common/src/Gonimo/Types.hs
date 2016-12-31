@@ -62,7 +62,7 @@ derivePersistField "Secret"
 -- Other auth methods might be added later on, like oauth bearer tokens:
 data AuthToken = GonimoSecret Secret
                | PlaceHolder____
-               deriving (Read, Show, Generic)
+               deriving (Read, Show, Generic, Eq, Ord)
 
 derivePersistField "AuthToken"
 

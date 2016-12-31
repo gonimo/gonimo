@@ -51,6 +51,8 @@ library
                 , Gonimo.Server.State.SessionThread
                 , Gonimo.Server.State.MessageBox
                 , Gonimo.SocketServer
+                , Gonimo.Server.Subscriber.Types
+                , Gonimo.Server.Subscriber
 
   other-modules:   Gonimo.Server.Handlers.Auth.Internal
               ,   Utils.Control.Monad.Trans.Maybe
