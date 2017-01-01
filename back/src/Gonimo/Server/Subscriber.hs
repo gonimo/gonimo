@@ -50,6 +50,11 @@ data Snapshot = Snapshot {
 , fullMonitor     :: StatusMonitor
 }
 
+makeClient :: Subscriber -> STM Client
+makeClient subscriber = do
+  ms <- newTVar Map.empty
+  return Client subscriber ms
+
 processRequest :: Client -> [ServerRequest] -> STM ()
 processRequest c req = do
   oldMonitors <- readTVar (monitors c)
@@ -92,22 +97,25 @@ fromWebSocket sub myRef c = do
   , closeCommandRef = closeVar
   }
 
-run :: (MonadLogger m, MonadBaseControl IO m, MonadIO m, Backend backend)
-       => backend -> Client -> m ()
-run b c = do
-  let
-    sub     = subscriber c
-    work    = liftIO $ race_ (runMonitor b c) (handleRequests b c)
-    cleanup = do
-      close <- liftIO . atomically $ do
-        ms <- readTVar (monitors c)
-        mapM_ (unsubscribeMonitor sub) ms
-        readTVar (closeCommandRef c)
-      liftIO close
-  r <- try $ finally work cleanup
-  case r of
-    Left e -> $logDebug $ T.pack $ displayException (e :: SomeException)
-    Right _ -> return ()
+-- run :: (MonadLogger m, MonadBaseControl IO m, MonadIO m, Backend backend)
+--        => backend -> Client -> m ()
+-- run b c = do
+--   let
+--     sub     = subscriber c
+--     work    = liftIO $ race_ (runMonitor b c) (handleRequests b c)
+--   r <- try $ finally work cleanup
+--   case r of
+--     Left e -> $logDebug $ T.pack $ displayException (e :: SomeException)
+--     Right _ -> return ()
+
+run :: (MonadBaseControl IO m, MonadIO m)
+       => Client -> m ()
+cleanup c = do
+  close <- liftIO . atomically $ do
+    ms <- readTVar (monitors c)
+    mapM_ (unsubscribeMonitor (subscriber c)) ms
+    readTVar (closeCommandRef c)
+  liftIO close
 
 addRequest :: Client -> ServerRequest -> STM ()
 addRequest c req = do
@@ -134,10 +142,10 @@ unsubscribeMonitor sub m =
     unsubscribe req mon sub
 
 
-runMonitor :: Backend backend => backend -> Client -> IO ()
-runMonitor b c = forever $ do
+runMonitor :: MonadIO m => Client -> (ServerRequest -> m ()) -> m ()
+runMonitor c handleRequest = forever $ do
     changes <- atomically $ monitorChanges c
-    mapM_ (handleUpdates b c) changes
+    mapM_ (handleRequest . fst) $ changes
 
 monitorChanges :: Client -> STM [(ServerRequest, ResourceStatus)]
 monitorChanges c = do

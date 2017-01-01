@@ -17,7 +17,7 @@ data ServerRequest
   | ReqAuthenticate !AuthToken
   | ReqCreateFamily
   | ReqCreateInvitation !FamilyId
-  | SetSubscriptions !([ServerRequest])
+  | ReqSetSubscriptions !([ServerRequest])
   deriving (Generic, Ord, Eq)
 
 data ServerResponse = ResMadeDevice !Client.AuthData

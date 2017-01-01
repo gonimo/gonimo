@@ -25,7 +25,7 @@ import           Database.Persist               (Entity (..), (==.))
 import qualified Database.Persist.Class         as Db
 import           Gonimo.Db.Entities
 import           Gonimo.Server.Auth             (AuthData(..), AuthReader)
-import           Gonimo.Server.Effects
+import           Gonimo.Server.Effects          as Server
 import           Gonimo.Server.Error            (ServerError (..), fromMaybeErr)
 import qualified Gonimo.Server.Error            as Error
 import           Gonimo.Server.Handlers
@@ -38,34 +38,44 @@ import qualified Network.Wai.Handler.WebSockets as Wai
 import qualified Network.WebSockets             as WS
 import qualified Network.WebSockets.Connection  as WS
 import           Gonimo.Database.Effects.Servant (serverErrOnNothing)
+import qualified Gonimo.Server.Subscriber as Subscriber
 
 
-handleServerRequest :: (MonadState (Maybe AuthData) m, MonadServer m) => ServerRequest -> m ServerResponse
-handleServerRequest reqBody = case reqBody of
+handleServerRequest :: (MonadState (Maybe AuthData) m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
+handleServerRequest sub reqBody = case reqBody of
   ReqMakeDevice userAgent -> ResMadeDevice <$> createDevice userAgent
   ReqAuthenticate token    -> authenticate token
   _                       -> do
     authData' <- fromMaybeErr NotAuthenticated =<< get
     flip runReaderT authData' $ handleAuthServerRequest reqBody
 
-handleAuthServerRequest :: (AuthReader m, MonadServer m) => ServerRequest -> m ServerResponse
-handleAuthServerRequest req = case req of
+handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
+handleAuthServerRequest sub req = case req of
   ReqMakeDevice _    -> error "ReqMakeDevice should have been handled already!"
   ReqAuthenticate _  -> error "ReqAuthenticate should have been handled already!"
   ReqCreateFamily    -> ResCreatedFamily <$> createFamily
   ReqCreateInvitation familyId' -> ResCreatedInvitation <$> createInvitation familyId'
+  ReqSetSubscriptions subs -> liftIO . atomically . liftIO $ Subscriber.processRequest sub subs
 
-serveWebSocket :: forall m. (MonadState (Maybe AuthData) m, MonadServer m) => WS.Connection -> m ()
-serveWebSocket conn = forever handleIncoming
+serveWebSocket :: forall m. (MonadState (Maybe AuthData) m, MonadServer m, MonadReader Server.Config m) => WS.Connection -> m ()
+serveWebSocket conn = finally work cleanup
   where
+    work = do
+      sub <- configSubscriber <$> ask
+      client <- atomically $ Subscriber.makeClient sub
+    race_ (runMonitor client respondToRequest) handleIncoming
+
     handleIncoming :: m ()
     handleIncoming = do
       raw <- liftIO $ WS.receiveDataMessage conn
       let bs = case raw of
                 WS.Binary bs' -> bs'
                 WS.Text bs' -> bs'
-      decoded <- decodeLogError bs
-      r <- handleServerRequest decoded
+      respondToRequest =<< decodeLogError bs
+
+    respondToRequest :: ServerRequest -> m ()
+    respondToRequest req = do
+      r <- handleServerRequest req
       let encoded = Aeson.encode r
       liftIO . WS.sendDataMessage conn $ WS.Text encoded
 
