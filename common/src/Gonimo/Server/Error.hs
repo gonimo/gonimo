@@ -13,7 +13,6 @@ import           Data.Aeson
 import           GHC.Generics
 import           Gonimo.Db.Entities      (FamilyId, DeviceId)
 import           Control.Monad.Trans.Class            (lift)
-import           Gonimo.Server.State.Types      (MessageNumber, ChannelRequest)
 import           Data.Typeable (Typeable)
 
 -- Define an error type, so handling errors is easier at the client side.
@@ -28,12 +27,9 @@ data ServerError = InvalidAuthToken
                  | NoSuchInvitation
                  | SocketBusy
                  | ChannelBusy
-                 | NoSuchSocket
-                 | NoSuchChannel
+                 | DeviceOffline -- ^ You tried to send a message to an offline device.
                  | Forbidden
                  | NotFound
-                 | MessageAlreadyGone MessageNumber
-                 | ChannelAlreadyGone ChannelRequest
                  | TransactionTimeout
                  | SessionInvalid -- There exists a session for this device, but it does not match
                  | NoActiveSession -- There is no sessino for this device.

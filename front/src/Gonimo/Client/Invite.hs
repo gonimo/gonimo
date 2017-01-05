@@ -5,12 +5,19 @@ import Reflex.Dom
 import Control.Monad
 import Data.Monoid
 import Data.Text (Text)
+import Gonimo.Db.Entities (FamilyId)
 
-data InviteConfig
-  = InviteConfig {}
+data InviteConfig t
+  = InviteConfig { _inviteConfigSelectedFamily :: Dynamic t FamilyId
+                 }
 
-invite :: forall x. Widget x ()
-invite = do
+data Invite
+  = Invite {
+    
+           }
+
+invite :: forall m t. (DomBuilder t m, PostBuild t m) => InviteConfig t -> m ()
+invite config = do
   divClass "container" $ do
     divClass "row" $ do
       elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
@@ -53,7 +60,7 @@ invite = do
           elAttr "img" ("src" =: img <> "style" =: "height: 80%;") $ pure ()
 
 
-awesomeAddon :: forall x. Text -> Widget x ()
+awesomeAddon :: forall m t. (DomBuilder t m) =>  Text -> m ()
 awesomeAddon t =
   elAttr "span" ( "class" =: "input-group-addon") $
     elAttr "i" ("class" =: ("fa " <> t)) blank

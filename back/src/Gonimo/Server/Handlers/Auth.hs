@@ -120,8 +120,8 @@ answerInvitation invSecret reply = do
         }
   case reply of
     InvitationAccept -> do
-      notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
-      notify ModifyEvent getDeviceInfosEndpoint (\f -> f (invitationFamilyId inv))
+      -- notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
+      -- notify ModifyEvent getDeviceInfosEndpoint (\f -> f (invitationFamilyId inv))
       pure . Just $ invitationFamilyId inv
     _ -> pure Nothing
 
@@ -173,7 +173,7 @@ createFamily = do
       , familyAccountInvitedBy = Nothing
     }
     return fid
-  notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
+  -- notify ModifyEvent listFamiliesEndpoint (\f -> f aid)
   return fid
 
 getAccountFamilies :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]

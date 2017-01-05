@@ -54,9 +54,8 @@ import           Data.Proxy
 import           Data.Time.Clock                (UTCTime)
 import           Database.Persist.Sql           (SqlBackend)
 import           Network.Mail.Mime              (Mail)
-import           Servant.Subscriber             (Event, HasLink, IsElem,
-                                                 IsSubscribable,
-                                                 IsValidEndpoint, MkLink, URI)
+import           Gonimo.Server.Subscriber.Types
+import           Gonimo.Server.Subscriber
 import           System.Random                  (StdGen)
 
 import           Gonimo.Db.Entities      (FamilyId)
@@ -76,8 +75,6 @@ import           Gonimo.Server.State.MessageBox  as MsgBox
 import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
 import           Database.Persist.Sql            (runSqlPool)
 import           Data.Pool                               (Pool)
-import           Servant.Subscriber              (Subscriber)
-import qualified Servant.Subscriber              as Subscriber
 import qualified Control.Concurrent.STM          as STM
 import           Network.Mail.SMTP             (sendMail)
 import           Crypto.Random                 (SystemRandom,
@@ -89,6 +86,7 @@ import           Control.Monad.Trans.Control    (defaultRestoreT)
 import           Control.Concurrent.Async            (Async)
 import qualified Control.Concurrent.Async            as Async
 import qualified Gonimo.Server.NameGenerator   as Gen
+import           Gonimo.SocketAPI (ServerRequest)
 
 secretLength :: Int
 secretLength = 16
@@ -102,9 +100,7 @@ class (MonadIO m, MonadBaseControl IO m, MonadLogger m) => MonadServer m where
   runDb :: ReaderT SqlBackend IO a -> m a
   runRandom :: (StdGen -> (a, StdGen)) -> m a
   getState :: m OnlineState
-  notify :: forall endpoint . (IsElem endpoint GonimoAPI, HasLink endpoint
-                              , IsValidEndpoint endpoint, IsSubscribable endpoint GonimoAPI)
-            => Event -> Proxy endpoint -> (MkLink endpoint -> URI) -> m ()
+  notify :: ServerRequest -> m ()
   async  :: Server a -> m (Async a)
   getFamilyNamePool :: m FamilyNames
   getPredicatePool  :: m Predicates
@@ -114,7 +110,7 @@ type DbPool = Pool SqlBackend
 data Config = Config {
   configPool       :: !DbPool
 , configState      :: !OnlineState
-, configSubscriber :: !(Subscriber GonimoAPI)
+, configSubscriber :: !Subscriber
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
 }
@@ -145,9 +141,9 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
     liftIO $ flip runSqlPool (configPool c) trans
   runRandom rand = liftIO $ getStdRandom rand
   getState = configState <$> ask
-  notify ev pE f = do
+  notify req = do
     c <- ask
-    liftIO . STM.atomically $ Subscriber.notify (configSubscriber c) ev pE f
+    liftIO $ notifyChangeIO (configSubscriber c) req
   async (ServerT task) = do
     c <- ask
     -- Simply logging to stderr for now (there should be no messages), idealy we would log to our destination.
@@ -179,7 +175,7 @@ instance MonadServer m => MonadServer (ReaderT c m) where
   runDb = lift . runDb
   runRandom = lift . runRandom
   getState = lift getState
-  notify ev pE f = lift $ notify ev pE f
+  notify = lift . notify
   async = lift . async
   getFamilyNamePool = lift getFamilyNamePool
   getPredicatePool  = lift getPredicatePool
@@ -193,7 +189,7 @@ instance MonadServer m => MonadServer (StateT c m) where
   runDb = lift . runDb
   runRandom = lift . runRandom
   getState = lift getState
-  notify ev pE f = lift $ notify ev pE f
+  notify = lift . notify
   async = lift . async
   getFamilyNamePool = lift getFamilyNamePool
   getPredicatePool  = lift getPredicatePool

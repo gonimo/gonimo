@@ -6,16 +6,16 @@
 {-# LANGUAGE RecordWildCards #-}
 module Gonimo.SocketServer where
 
-import           Control.Exception.Lifted       (throwIO)
+import           Control.Exception.Lifted       (throwIO, finally)
 import           Control.Monad
 import           Control.Monad.IO.Class         (liftIO)
 import           Control.Monad.IO.Class         (MonadIO)
 import           Control.Monad.Logger           (LoggingT)
 import           Control.Monad.Logger           (logError)
-import           Control.Monad.Reader.Class     (MonadReader)
 import           Control.Monad.State.Class      (MonadState, get, put)
-import           Control.Monad.Trans.Reader     (ReaderT, runReaderT)
+import           Control.Monad.Reader.Class      (MonadReader, ask)
 import           Control.Monad.Trans.State      (StateT, evalStateT)
+import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
 import           Data.Aeson                     (FromJSON)
 import qualified Data.Aeson                     as Aeson
 import qualified Data.ByteString.Lazy           as LB
@@ -27,7 +27,6 @@ import           Gonimo.Db.Entities
 import           Gonimo.Server.Auth             (AuthData(..), AuthReader)
 import           Gonimo.Server.Effects          as Server
 import           Gonimo.Server.Error            (ServerError (..), fromMaybeErr)
-import qualified Gonimo.Server.Error            as Error
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Handlers.Auth
 import           Gonimo.SocketAPI
@@ -36,9 +35,12 @@ import qualified Network.HTTP.Types.Status      as Http
 import qualified Network.Wai                    as Wai
 import qualified Network.Wai.Handler.WebSockets as Wai
 import qualified Network.WebSockets             as WS
-import qualified Network.WebSockets.Connection  as WS
 import           Gonimo.Database.Effects.Servant (serverErrOnNothing)
 import qualified Gonimo.Server.Subscriber as Subscriber
+import qualified Gonimo.Server.Subscriber.Types as Subscriber
+import           Control.Concurrent.Async.Lifted (race_)
+
+
 
 
 handleServerRequest :: (MonadState (Maybe AuthData) m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
@@ -47,7 +49,7 @@ handleServerRequest sub reqBody = case reqBody of
   ReqAuthenticate token    -> authenticate token
   _                       -> do
     authData' <- fromMaybeErr NotAuthenticated =<< get
-    flip runReaderT authData' $ handleAuthServerRequest reqBody
+    flip runReaderT authData' $ handleAuthServerRequest sub reqBody
 
 handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
 handleAuthServerRequest sub req = case req of
@@ -55,38 +57,42 @@ handleAuthServerRequest sub req = case req of
   ReqAuthenticate _  -> error "ReqAuthenticate should have been handled already!"
   ReqCreateFamily    -> ResCreatedFamily <$> createFamily
   ReqCreateInvitation familyId' -> ResCreatedInvitation <$> createInvitation familyId'
-  ReqSetSubscriptions subs -> liftIO . atomically . liftIO $ Subscriber.processRequest sub subs
+  ReqSetSubscriptions subs -> do
+    Server.atomically $ Subscriber.processRequest sub subs
+    pure ResSubscribed
 
-serveWebSocket :: forall m. (MonadState (Maybe AuthData) m, MonadServer m, MonadReader Server.Config m) => WS.Connection -> m ()
-serveWebSocket conn = finally work cleanup
-  where
-    work = do
-      sub <- configSubscriber <$> ask
-      client <- atomically $ Subscriber.makeClient sub
-    race_ (runMonitor client respondToRequest) handleIncoming
+serveWebSocket :: WS.Connection -> StateT (Maybe AuthData) Server ()
+serveWebSocket conn = do
+    sub <- configSubscriber <$> ask
+    client <- atomically $ Subscriber.makeClient sub
+    let
+      work = race_ (Subscriber.runMonitor client respondToRequest) handleIncoming
+      cleanup = Subscriber.cleanup client
 
-    handleIncoming :: m ()
-    handleIncoming = do
-      raw <- liftIO $ WS.receiveDataMessage conn
-      let bs = case raw of
-                WS.Binary bs' -> bs'
-                WS.Text bs' -> bs'
-      respondToRequest =<< decodeLogError bs
+      handleIncoming = do
+        raw <- liftIO $ WS.receiveDataMessage conn
+        let bs = case raw of
+                  WS.Binary bs' -> bs'
+                  WS.Text bs' -> bs'
+        respondToRequest =<< decodeLogError bs
 
-    respondToRequest :: ServerRequest -> m ()
-    respondToRequest req = do
-      r <- handleServerRequest req
-      let encoded = Aeson.encode r
-      liftIO . WS.sendDataMessage conn $ WS.Text encoded
+      respondToRequest :: ServerRequest -> StateT (Maybe AuthData) Server ()
+      respondToRequest req = do
+        r <- handleServerRequest client req
+        let encoded = Aeson.encode r
+        liftIO . WS.sendDataMessage conn $ WS.Text encoded
 
-    decodeLogError :: forall a. FromJSON a => LB.ByteString -> m a
-    decodeLogError bs = do
-      let r = Aeson.eitherDecode bs
-      case r of
-        Left err -> do
-          $logError ("Request could not be decoded: " <> T.pack err)
-          throwIO $ userError "Request could not be decoded!"
-        Right ok -> pure ok
+      decodeLogError :: forall a. FromJSON a => LB.ByteString -> StateT (Maybe AuthData) Server a
+      decodeLogError bs = do
+        let r = Aeson.eitherDecode bs
+        case r of
+          Left err -> do
+            $logError ("Request could not be decoded: " <> T.pack err)
+            throwIO $ userError "Request could not be decoded!"
+          Right ok -> pure ok
+
+    finally work cleanup
+
 
 serve :: (forall a m. MonadIO m => LoggingT m a -> m a) -> Config -> Wai.Application
 serve runLoggingT config = do

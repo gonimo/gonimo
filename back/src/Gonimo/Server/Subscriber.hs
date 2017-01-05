@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 module Gonimo.Server.Subscriber where
 
 
@@ -29,41 +30,66 @@ import qualified Data.Text.IO                  as T
 import qualified Network.WebSockets            as WS
 import           Network.WebSockets.Connection as WS
 import Debug.Trace (trace)
+import           Control.Monad.Logger
 
 import           Gonimo.Server.Subscriber.Types
+import           Gonimo.SocketAPI (ServerRequest)
 
-type ClientMonitors = Map ServerRequest StatusMonitor
+makeSubscriber :: LogRunner -> STM Subscriber
+makeSubscriber runner = do
+  state' <- newTVar Map.empty
+  pure $ Subscriber { subState = state'
+                    , runLogging = runner
+                    }
 
-data Client = Client {
-    subscriber      :: !Subscriber
-  , monitors        :: !(TVar ClientMonitors)
-  }
+notifyChange :: Subscriber -> ServerRequest -> STM ()
+notifyChange subscriber req' = do
+  rMap <- readTVar (subState subscriber)
+  case Map.lookup req' rMap of
+    Nothing -> return ()
+    Just refStatus -> do
+      modifyTVar refStatus $ fmap (\(Modified n) -> Modified (n+1))
 
-data StatusMonitor = StatusMonitor {
-  request     :: !ServerRequest
-, monitor     :: !(TVar (RefCounted ResourceStatus))
-, oldStatus   :: !(Maybe ResourceStatus) -- Nothing when added so we get a notification in any case.
-}
+-- | Version of notify that lives in 'IO' - for your convenience.
+notifyChangeIO :: Subscriber -> ServerRequest -> IO ()
+notifyChangeIO sub req' = atomically $ notifyChange sub req'
 
-data Snapshot = Snapshot {
-  snapshotCurrent :: ResourceStatus
-, fullMonitor     :: StatusMonitor
-}
+-- | Subscribe to a ResourceStatus - it will be created when not present
+subscribe :: ServerRequest -> Subscriber -> STM (TVar (RefCounted ResourceStatus))
+subscribe p sub = do
+      states <- readTVar $ subState sub
+      let mState = Map.lookup p states
+      case mState of
+        Nothing -> do
+           state <- newTVar $ RefCounted 1 (Modified 0)
+           writeTVar (subState sub) $ Map.insert p state states
+           return state
+        Just state -> do
+           modifyTVar' state $ \s -> s { refCount = refCount s + 1}
+           return state
+
+-- | Unget a previously got ResourceState - make sure you match every call to subscribe with a call to unsubscribe!
+unsubscribe :: ServerRequest -> TVar (RefCounted ResourceStatus) -> Subscriber -> STM ()
+unsubscribe p tv sub = do
+  v <- (\a -> a { refCount = refCount a - 1}) <$> readTVar tv
+  if refCount v == 0
+    then modifyTVar' (subState sub) (Map.delete p)
+    else writeTVar tv v
 
 makeClient :: Subscriber -> STM Client
 makeClient subscriber = do
   ms <- newTVar Map.empty
-  return Client subscriber ms
+  return $ Client subscriber ms
 
 processRequest :: Client -> [ServerRequest] -> STM ()
 processRequest c req = do
   oldMonitors <- readTVar (monitors c)
   let reqSet = Set.fromList req
-  let oldSet = Set.fromList . Map.keys . monitors $ oldMonitors
+  let oldSet = Set.fromList . Map.keys $ oldMonitors
   let removeSet = oldSet \\ reqSet
   let addSet = reqSet \\ oldSet
-  traverse (removeRequest c) . toList $ removeSet
-  traverse (addRequest c) . toList $ addSet
+  traverse_ (removeRequest c) . Set.toList $ removeSet
+  traverse_ (addRequest c) . Set.toList $ addSet
 
 
 snapshotOld :: Snapshot -> Maybe ResourceStatus
@@ -80,42 +106,10 @@ toSnapshot mon = do
 snapshotRequest :: Snapshot -> ServerRequest
 snapshotRequest = request . fullMonitor
 
-fromWebSocket :: Subscriber api -> IORef (IO ()) -> WS.Connection -> STM (Client)
-fromWebSocket sub myRef c = do
-  ms <- newTVar Map.empty
-  closeVar <- newTVar (return ())
-  return Client {
-    subscriber = sub
-  , monitors = ms
-  , readRequest = do
-      msg <- WS.receiveDataMessage c
-      case msg of
-        WS.Text bs  -> return $ decode bs
-        WS.Binary _ -> error "Sorry - binary connections currently unsupported!"
-  , writeResponse = sendDataMessage c . WS.Text . encode
-  , pongCommandRef = myRef
-  , closeCommandRef = closeVar
-  }
-
--- run :: (MonadLogger m, MonadBaseControl IO m, MonadIO m, Backend backend)
---        => backend -> Client -> m ()
--- run b c = do
---   let
---     sub     = subscriber c
---     work    = liftIO $ race_ (runMonitor b c) (handleRequests b c)
---   r <- try $ finally work cleanup
---   case r of
---     Left e -> $logDebug $ T.pack $ displayException (e :: SomeException)
---     Right _ -> return ()
-
-run :: (MonadBaseControl IO m, MonadIO m)
-       => Client -> m ()
-cleanup c = do
-  close <- liftIO . atomically $ do
+cleanup :: MonadIO m => Client ->  m ()
+cleanup c = liftIO . atomically $ do
     ms <- readTVar (monitors c)
     mapM_ (unsubscribeMonitor (subscriber c)) ms
-    readTVar (closeCommandRef c)
-  liftIO close
 
 addRequest :: Client -> ServerRequest -> STM ()
 addRequest c req = do
@@ -133,7 +127,7 @@ removeRequest c req = do
     modifyTVar' (monitors c) $ at req .~ Nothing
 
 -- | Does not remove the monitor - use removeRequest if you want this!
-unsubscribeMonitor :: Subscriber api -> StatusMonitor -> STM ()
+unsubscribeMonitor :: Subscriber -> StatusMonitor -> STM ()
 unsubscribeMonitor sub m =
   let
     req = request m
@@ -144,7 +138,7 @@ unsubscribeMonitor sub m =
 
 runMonitor :: MonadIO m => Client -> (ServerRequest -> m ()) -> m ()
 runMonitor c handleRequest = forever $ do
-    changes <- atomically $ monitorChanges c
+    changes <- liftIO . atomically $ monitorChanges c
     mapM_ (handleRequest . fst) $ changes
 
 monitorChanges :: Client -> STM [(ServerRequest, ResourceStatus)]
@@ -169,7 +163,7 @@ toChangeReport :: Snapshot -> (ServerRequest, ResourceStatus)
 toChangeReport m = (snapshotRequest m, snapshotCurrent m)
 
 updateMonitors :: [Snapshot] -> [StatusMonitor]
-updateMonitors = map updateOldStatus . filter ((/= S.Deleted) . snapshotCurrent)
+updateMonitors = map updateOldStatus
 
 updateOldStatus :: Snapshot -> StatusMonitor
 updateOldStatus m = (fullMonitor m) {

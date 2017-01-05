@@ -9,7 +9,7 @@ import           Database.Persist.Sqlite
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Static
-import           Servant.Subscriber
+import           Gonimo.Server.Subscriber
 
 import           Gonimo.SocketServer (serve)
 import           Gonimo.Server.Effects             (Config(..))
@@ -23,8 +23,7 @@ runGonimoLoggingT = runStdoutLoggingT
 
 devMain :: IO ()
 devMain = do
-  let subscriberPath = "subscriber"
-  subscriber' <- atomically $ makeSubscriber subscriberPath runGonimoLoggingT
+  subscriber' <- atomically $ makeSubscriber runGonimoLoggingT
   pool        <- runGonimoLoggingT (createSqlitePool "testdb" 1)
   families    <- newTVarIO Map.empty
   flip runSqlPool pool $ runMigration migrateAll
@@ -41,8 +40,7 @@ devMain = do
 
 prodMain :: IO ()
 prodMain = do
-  let subscriberPath = "subscriber"
-  subscriber' <- atomically $ makeSubscriber subscriberPath runGonimoLoggingT
+  subscriber' <- atomically $ makeSubscriber runGonimoLoggingT
   -- empty connection string means settings are fetched from env.
   pool        <- runGonimoLoggingT (createPostgresqlPool "" 10)
   families    <- newTVarIO Map.empty

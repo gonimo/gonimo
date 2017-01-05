@@ -48,8 +48,6 @@ library
                 , Gonimo.Server.NameGenerator
                 , Gonimo.Server.State
                 , Gonimo.Server.State.Session
-                , Gonimo.Server.State.SessionThread
-                , Gonimo.Server.State.MessageBox
                 , Gonimo.SocketServer
                 , Gonimo.Server.Subscriber.Types
                 , Gonimo.Server.Subscriber
@@ -83,10 +81,12 @@ library
                       , errors
                       , extra
                       , fast-logger
+                      , gonimo-common
                       , http-api-data
                       , http-types
                       , lens
                       , lens >= 4.13
+                      , lifted-async
                       , lifted-base >= 0.2.3.6
                       , mime-mail >= 0.4.11
                       , monad-control
@@ -118,7 +118,6 @@ library
                       , wai-websockets
                       , warp
                       , websockets
-                      , gonimo-common
 
 
 executable gonimo-back

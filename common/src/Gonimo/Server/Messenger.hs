@@ -1,11 +1,4 @@
--- | Device Session management.
---
---   A session as known in this module, simply tracks whether a given device is
---   currently online and whtether it acts as a baby station or not.
-
---   This module is meant to be imported qualified:
---   import Gonimo.Server.State.Session as Session
-module Gonimo.Server.State.Session where
+module Gonimo.Server.Messenger where
 
 
 import           Control.Lens
@@ -19,6 +12,7 @@ import           Gonimo.Server.Error      (ServerError (NoActiveSession, Session
                                            ToServerError, toServerError)
 import           Gonimo.Types      (DeviceType)
 import           Gonimo.Server.State.Types (Online, sessions, idCounter, SessionId(..))
+import           Control.Monad.Extra (whenJust)
 
 
 -- | update might fail.
@@ -39,13 +33,15 @@ instance ToServerError UpdateError where
   toServerError NoUpdate = mzero
 
 
--- | Register a session for a given device.
+-- | Register a receiver for a given device.
 --
---   Any previous online session will simply be overridden. We steal the session.
-register :: MonadState Online m => DeviceId -> OnlineDevice -> m (Maybe OnlineDevice)
-register deviceId onlineDevice = do
-  mOld <- use $ onlineDevices.at deviceId
-  onlineDevices.at deviceId .= Just onlineDevice
+--   Any previous receiver will simply be overridden. We steal the session.
+registerReceiver :: MonadState Messenger m => DeviceId -> Receiver -> m (Maybe Receiver)
+registerReceiver deviceId receiver = do
+  mOld <- use $ messengerReceivers.at deviceId
+  messengerReceivers.at deviceId .= Just receiver
+  whenJust receiver^.receiverFamily
+    $ \familyId' -> messengerFamilies.at familyId' . non Set.empty %~ Set.insert deviceId
   return mOld
 
 
