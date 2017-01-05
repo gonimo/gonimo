@@ -16,14 +16,8 @@ module Gonimo.Server.Effects (
   , genRandomBytes
   , generateSecret
   , getCurrentTime
-  , getState
+  , getMessenger
   , notify
-  , updateFamilyRetryEff
-  , updateFamilyErrEff
-  , updateFamilyEff
-  , mayUpdateFamilyEff
-  , waitForReaderEff
-  , getFamilyEff
   , registerDelay
   , runDb
   , runRandom
@@ -65,8 +59,8 @@ import           Gonimo.Server.Error            (ServerError (..),
 import           Gonimo.Server.State            (lookupFamily,
                                                  updateFamily,
                                                  updateFamilyRetry)
-import           Gonimo.Server.State.Types      (FamilyOnlineState,
-                                                 OnlineState,
+import           Gonimo.Server.State.Types      (FamilyMessengerVar,
+                                                 MessengerVar,
                                                  UpdateFamilyT)
 import           Gonimo.Types            (Secret (..), FamilyName(..), Predicates, FamilyNames)
 import           Gonimo.WebAPI                  (GonimoAPI)
@@ -99,7 +93,7 @@ class (MonadIO m, MonadBaseControl IO m, MonadLogger m) => MonadServer m where
   getCurrentTime :: m UTCTime
   runDb :: ReaderT SqlBackend IO a -> m a
   runRandom :: (StdGen -> (a, StdGen)) -> m a
-  getState :: m OnlineState
+  getMessenger :: m MessengerVar
   notify :: ServerRequest -> m ()
   async  :: Server a -> m (Async a)
   getFamilyNamePool :: m FamilyNames
@@ -109,7 +103,7 @@ type DbPool = Pool SqlBackend
 
 data Config = Config {
   configPool       :: !DbPool
-, configState      :: !OnlineState
+, configState      :: !MessengerVar
 , configSubscriber :: !Subscriber
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
@@ -140,7 +134,7 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
     c <- ask
     liftIO $ flip runSqlPool (configPool c) trans
   runRandom rand = liftIO $ getStdRandom rand
-  getState = configState <$> ask
+  getMessenger = configState <$> ask
   notify req = do
     c <- ask
     liftIO $ notifyChangeIO (configSubscriber c) req
@@ -174,7 +168,7 @@ instance MonadServer m => MonadServer (ReaderT c m) where
   getCurrentTime = lift getCurrentTime
   runDb = lift . runDb
   runRandom = lift . runRandom
-  getState = lift getState
+  getMessenger = lift getMessenger
   notify = lift . notify
   async = lift . async
   getFamilyNamePool = lift getFamilyNamePool
@@ -188,7 +182,21 @@ instance MonadServer m => MonadServer (StateT c m) where
   getCurrentTime = lift getCurrentTime
   runDb = lift . runDb
   runRandom = lift . runRandom
-  getState = lift getState
+  getMessenger = lift getMessenger
+  notify = lift . notify
+  async = lift . async
+  getFamilyNamePool = lift getFamilyNamePool
+  getPredicatePool  = lift getPredicatePool
+
+instance MonadServer m => MonadServer (MaybeT m) where
+  atomically = lift . atomically
+  registerDelay = lift . registerDelay
+  sendEmail = lift . sendEmail
+  genRandomBytes = lift . genRandomBytes
+  getCurrentTime = lift getCurrentTime
+  runDb = lift . runDb
+  runRandom = lift . runRandom
+  getMessenger = lift getMessenger
   notify = lift . notify
   async = lift . async
   getFamilyNamePool = lift getFamilyNamePool
@@ -202,60 +210,3 @@ generateFamilyName = do
   preds <- getPredicatePool
   fNames <- getFamilyNamePool
   Gen.generateFamilyName preds fNames
-
--- | Update family, retrying if updateF returns Nothing
-updateFamilyRetryEff :: MonadServer m
-                   => ServerError -> FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> m a
-updateFamilyRetryEff err familyId updateF = do
-  state <- getState
-  timeUp <- registerDelay standardTimeout
-  r <- atomically . runMaybeT $ updateFamilyRetry timeUp state familyId updateF
-  case r of
-    Nothing -> throwServer err
-    Just v -> pure v
-
--- | Update family, throwing any ServerErrors.
-updateFamilyErrEff :: (MonadServer m, ToServerError e)
-                   => FamilyId -> UpdateFamilyT (ExceptT e STM) a -> MaybeT m a
-updateFamilyErrEff familyId updateF = do
-  state <- lift getState
-  er <- lift . atomically . runExceptT $ updateFamily state familyId updateF
-  mayThrowLeft er
-
--- | May update family if updateF does not return Nothing.
-mayUpdateFamilyEff :: MonadServer m
-                   => FamilyId -> StateT FamilyOnlineState (MaybeT STM) a -> MaybeT m a
-mayUpdateFamilyEff familyId updateF = do
-  state <- lift getState
-  MaybeT . atomically . runMaybeT $ updateFamily state familyId updateF
-
-
--- | Update a family online state.
-updateFamilyEff :: MonadServer m
-                   => FamilyId -> StateT FamilyOnlineState (IdentityT STM) a -> m a
-updateFamilyEff familyId updateF = do
-  state <- getState
-  atomically . runIdentityT $ updateFamily state familyId updateF
-
-
-getFamilyEff :: MonadServer m
-                =>  FamilyId -> m FamilyOnlineState
-getFamilyEff familyId = do
-  state <- getState
-  mFamily <- atomically $ lookupFamily state familyId
-  fromMaybeErr (FamilyNotOnline familyId) mFamily
-
-
-waitForReaderEff :: forall key val num m. (Ord key, MonadServer m)
-                 => ServerError -> FamilyId
-                 -> key -> Lens' FamilyOnlineState (MessageBoxes key val num)
-                 -> m ()
-waitForReaderEff onTimeout familyId key messageBoxes = catch wait handleNotRead
-  where
-    wait = updateFamilyRetryEff onTimeout familyId
-           $ MsgBox.clearIfRead messageBoxes key
-
-    handleNotRead :: SomeException -> m ()
-    handleNotRead e = do
-      updateFamilyEff familyId $ MsgBox.clearData messageBoxes key
-      throwIO e

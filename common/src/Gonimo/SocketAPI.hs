@@ -23,6 +23,7 @@ data ServerRequest
   | ReqGetOnlineDevices !FamilyId
   | ReqCreateChannel !FromId !ToId
   | ReqSendMessage !FromId !ToId !Secret !Text
+  | ReqSaveBabyName !FamilyId !Text
   deriving (Generic, Ord, Eq)
 
 -- | Constructors starting with "Res" are responses to requests.
@@ -33,6 +34,7 @@ data ServerResponse = ResMadeDevice !Client.AuthData
   | ResCreatedInvitation !(InvitationId, Invitation)
   | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
   | ResCreatedChannel !FromId !ToId !Secret
+  | ResSavedBabyName
   | EventSessionGotStolen
   | EventChannelRequested !FromId !Secret
   | EventMessageReceived !FromId !Secret !Text

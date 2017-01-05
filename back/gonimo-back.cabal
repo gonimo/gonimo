@@ -43,11 +43,11 @@ library
                 , Gonimo.Server.EmailInvitation
                 , Gonimo.Server.Handlers
                 , Gonimo.Server.Handlers.Auth
-                , Gonimo.Server.Handlers.Session
+                , Gonimo.Server.Handlers.Messenger
                 , Gonimo.Server.Handlers.Socket
                 , Gonimo.Server.NameGenerator
-                , Gonimo.Server.State
-                , Gonimo.Server.State.Session
+                , Gonimo.Server.Messenger
+                , Gonimo.Server.Messenger.Internal
                 , Gonimo.SocketServer
                 , Gonimo.Server.Subscriber.Types
                 , Gonimo.Server.Subscriber

@@ -31,7 +31,6 @@ library
                  , Gonimo.Types
                  , Gonimo.Db.Entities
                  , Gonimo.Server.Error
-                 , Gonimo.Server.State.Types
 
   default-extensions: ConstraintKinds
                     , DataKinds
