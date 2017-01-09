@@ -30,21 +30,16 @@ module Gonimo.Server.Effects (
 
 import           Control.Concurrent.STM         (STM)
 import           Control.Concurrent.STM         (TVar)
-import           Control.Exception              (SomeException)
-import           Control.Exception.Lifted       (throwIO, catch)
-import           Control.Lens
-import           Control.Monad.Except           (ExceptT, runExceptT)
 import           Control.Monad.Base             (MonadBase, liftBase)
 import           Control.Monad.Trans.Control     (MonadBaseControl, liftBaseWith, restoreM, defaultLiftBaseWith, defaultRestoreM, StM, ComposeSt, MonadTransControl, StT, liftWith, restoreT, defaultLiftWith, defaultRestoreM)
 import           Control.Monad.IO.Class         (MonadIO, liftIO)
 import           Control.Monad.Trans.Class      (lift, MonadTrans)
-import           Control.Monad.Trans.Identity   (runIdentityT, IdentityT)
-import           Control.Monad.Trans.Maybe      (MaybeT (MaybeT), runMaybeT)
+import           Control.Monad.Trans.Maybe      (MaybeT)
 import           Control.Monad.Trans.State      (StateT (..))
 import           Control.Monad.Reader           (ask, MonadReader, asks)
-import           Control.Monad.Logger           (MonadLogger, LoggingT, runStderrLoggingT)
+import           Control.Monad.Logger           ( MonadLoggerIO, MonadLogger
+                                                , askLoggerIO, LoggingT, runLoggingT)
 import           Data.ByteString                (ByteString)
-import           Data.Proxy
 import           Data.Time.Clock                (UTCTime)
 import           Database.Persist.Sql           (SqlBackend)
 import           Network.Mail.Mime              (Mail)
@@ -52,20 +47,7 @@ import           Gonimo.Server.Subscriber.Types
 import           Gonimo.Server.Subscriber
 import           System.Random                  (StdGen)
 
-import           Gonimo.Db.Entities      (FamilyId)
-import           Gonimo.Server.Error            (ServerError (..),
-                                                 ToServerError, fromMaybeErr,
-                                                 mayThrowLeft, throwServer)
-import           Gonimo.Server.State            (lookupFamily,
-                                                 updateFamily,
-                                                 updateFamilyRetry)
-import           Gonimo.Server.State.Types      (FamilyMessengerVar,
-                                                 MessengerVar,
-                                                 UpdateFamilyT)
 import           Gonimo.Types            (Secret (..), FamilyName(..), Predicates, FamilyNames)
-import           Gonimo.WebAPI                  (GonimoAPI)
-import           Utils.Constants                (standardTimeout)
-import           Gonimo.Server.State.MessageBox  as MsgBox
 import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
 import           Database.Persist.Sql            (runSqlPool)
 import           Data.Pool                               (Pool)
@@ -81,11 +63,12 @@ import           Control.Concurrent.Async            (Async)
 import qualified Control.Concurrent.Async            as Async
 import qualified Gonimo.Server.NameGenerator   as Gen
 import           Gonimo.SocketAPI (ServerRequest)
+import           Gonimo.Server.Messenger (MessengerVar)
 
 secretLength :: Int
 secretLength = 16
 
-class (MonadIO m, MonadBaseControl IO m, MonadLogger m) => MonadServer m where
+class (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m) => MonadServer m where
   atomically :: STM a -> m a
   registerDelay :: Int -> m (TVar Bool)
   sendEmail :: Mail -> m ()
@@ -103,14 +86,14 @@ type DbPool = Pool SqlBackend
 
 data Config = Config {
   configPool       :: !DbPool
-, configState      :: !MessengerVar
+, configMessenger  :: !MessengerVar
 , configSubscriber :: !Subscriber
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
 }
 
 newtype ServerT m a = ServerT (ReaderT Config m a)
-                 deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config, MonadTrans)
+                 deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadLoggerIO, MonadReader Config, MonadTrans)
 
 
 runServerT :: ServerT m a -> ReaderT Config m a
@@ -121,9 +104,9 @@ runServerT (ServerT i) = i
 type Server = ServerT (LoggingT IO)
 
 runServer :: (forall m. MonadIO m => LoggingT m a -> m a) -> Config -> Server a -> IO a
-runServer runLoggingT c = runLoggingT . flip runReaderT c . runServerT
+runServer runLogging c = runLogging . flip runReaderT c . runServerT
 
-instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
+instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
   => MonadServer (ServerT m) where
   atomically = liftIO . STM.atomically
   registerDelay = liftIO . STM.registerDelay
@@ -134,14 +117,14 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLogger m)
     c <- ask
     liftIO $ flip runSqlPool (configPool c) trans
   runRandom rand = liftIO $ getStdRandom rand
-  getMessenger = configState <$> ask
+  getMessenger = configMessenger <$> ask
   notify req = do
     c <- ask
     liftIO $ notifyChangeIO (configSubscriber c) req
   async (ServerT task) = do
     c <- ask
-    -- Simply logging to stderr for now (there should be no messages), idealy we would log to our destination.
-    let ioTask = runStderrLoggingT . flip runReaderT c $ task
+    logFunc <- askLoggerIO
+    let ioTask = flip runLoggingT logFunc . flip runReaderT c $ task
     liftIO $ Async.async ioTask
   getFamilyNamePool = asks configNames
   getPredicatePool  = asks configPredicates

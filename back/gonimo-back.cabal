@@ -52,12 +52,11 @@ library
                 , Gonimo.Server.Subscriber.Types
                 , Gonimo.Server.Subscriber
 
-  other-modules:   Gonimo.Server.Handlers.Auth.Internal
-              ,   Utils.Control.Monad.Trans.Maybe
-              ,   Utils.System.Random
-              ,   Utils.Constants
-              ,   Utils.STM
-              ,   Paths_gonimo_back
+  other-modules:  Utils.Control.Monad.Trans.Maybe
+                , Utils.System.Random
+                , Utils.Constants
+                , Utils.STM
+                , Paths_gonimo_back
 
   default-extensions: ConstraintKinds
                     , DataKinds
@@ -182,58 +181,6 @@ executable gonimo-back
 
 
 
--- executable gonimo-psGenerator
---   main-is:            PSGenerator.hs
-
---   default-extensions: ConstraintKinds
---                     , DataKinds
---                     , DeriveGeneric
---                     , GADTs
---                     , GeneralizedNewtypeDeriving
---                     , OverloadedStrings
---                     , PolyKinds
---                     , TypeFamilies
---                     , TypeOperators
---                     , ScopedTypeVariables
---                     , FlexibleContexts
---   build-depends:       aeson
---                     , attoparsec
---                     , base              >= 4.8 && <4.10
---                     , base64-bytestring
---                     , bytestring        >= 0.10.6.0
---                     , crypto-api
---                     , either            >= 4.4.1
---                     , errors
---                     , fast-logger
---                     , gonimo-back
---                     , http-api-data
---                     , lens
---                     , lens >= 4.13
---                     , lifted-base       >= 0.2.3.6
---                     , mime-mail         >= 0.4.11
---                     , monad-logger
---                     , mtl
---                     , neat-interpolation
---                     , persistent
---                     , persistent-postgresql
---                     , persistent-sqlite
---                     , persistent-template
---                     , purescript-bridge
---                     , resource-pool
---                     , servant
---                     , servant-docs
---                     , servant-purescript
---                     , servant-server
---                     , smtp-mail
---                     , text              >= 1.2.1.3
---                     , time              >= 1.5.0.1
---                     , transformers      >= 0.4.2.0
---                     , wai
---                     , warp
---                     , gonimo-common
---   ghc-options: -Wall
---   hs-source-dirs:      app
---   default-language:    Haskell2010
 
 -- test-suite test
 --   ghc-options:       -Wall

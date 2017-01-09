@@ -4,24 +4,17 @@ module Gonimo.Server.Messenger ( module I
                                , getReceiverFamilySTM
                                , setDeviceTypeSTM
                                , getOnlineDevicesSTM
-                               , switchFamilyStM
                                , deleteReceiverSTM
+                               , switchFamilySTM
                                ) where
 
 
-import           Control.Lens
-import           Control.Monad             (unless, mzero, MonadPlus, guard)
-import qualified Data.Map.Strict           as M
-import           Control.Monad.Error.Class
-import           Control.Monad.Trans.State (runState, State)
 
 import           Gonimo.Db.Entities (DeviceId)
-import           Gonimo.Server.Error      (ServerError (NoActiveSession, SessionInvalid),
-                                           ToServerError, toServerError)
 import           Gonimo.Types      (DeviceType)
-import           Gonimo.Server.State.Types (Online, sessions, idCounter, SessionId(..))
-import           Control.Monad.Extra (whenJust)
-import           Data.Maybe (catMaybes)
+import           Control.Concurrent.STM (STM)
+import           Control.Concurrent.STM.TVar (readTVar)
+import           Gonimo.Db.Entities
 
 
 import Gonimo.Server.Messenger.Internal as I ( FromId
@@ -29,7 +22,7 @@ import Gonimo.Server.Messenger.Internal as I ( FromId
                                              , Message(..)
                                              , Messenger
                                              , MessengerVar
-                                             , emptyMessenger
+                                             , empty
                                              )
 
 import Gonimo.Server.Messenger.Internal
@@ -40,13 +33,13 @@ registerReceiverSTM mesVar deviceId receiver = runStateSTM mesVar $ registerRece
 setDeviceTypeSTM :: MessengerVar -> DeviceId -> DeviceType -> STM ()
 setDeviceTypeSTM mesVar deviceId deviceType = runStateSTM mesVar $ setDeviceType deviceId deviceType
 
-getOnlineDevicesSTM :: MessengerVar -> FamilyId ->  [(DeviceId, DeviceType)]
+getOnlineDevicesSTM :: MessengerVar -> FamilyId -> STM [(DeviceId, DeviceType)]
 getOnlineDevicesSTM mesVar familyId = getOnlineDevices familyId <$> readTVar mesVar
 
-getReceiverSTM :: MessengerVar -> DeviceId ->  Maybe (Message -> IO ())
+getReceiverSTM :: MessengerVar -> DeviceId ->  STM (Maybe (Message -> IO ()))
 getReceiverSTM mesVar deviceId = getReceiver deviceId <$> readTVar mesVar
 
-getReceiverFamilySTM :: MessengerVar -> DeviceId ->  Maybe Family
+getReceiverFamilySTM :: MessengerVar -> DeviceId ->  STM (Maybe FamilyId)
 getReceiverFamilySTM mesVar deviceId = getReceiverFamily deviceId <$> readTVar mesVar
 
 switchFamilySTM :: MessengerVar -> DeviceId -> FamilyId -> STM ()

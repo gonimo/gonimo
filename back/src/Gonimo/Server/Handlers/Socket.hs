@@ -7,6 +7,7 @@ import           Gonimo.Server.Error
 import           Gonimo.Server.Messenger
 import           Gonimo.Types
 import           Gonimo.Db.Entities            (FamilyId, DeviceId)
+import           Control.Monad.IO.Class (liftIO)
 
 -- | Create a channel for communication with  a baby station
 createChannelR :: (AuthReader m, MonadServer m)
@@ -34,11 +35,11 @@ sendMessage :: MonadServer m => FamilyId -> DeviceId -> Message -> m ()
 sendMessage familyId toId msg = do
   messenger <- getMessenger
   (mFamily, mSend) <- atomically $ do
-    mSend' <- getReceiverSTM messenger deviceId
-    mFamily' <- getReceiverSTM messenger deviceId
-    pure (mFamily', mSend)
+    mSend' <- getReceiverSTM messenger toId
+    mFamily' <- getReceiverFamilySTM messenger toId
+    pure (mFamily', mSend')
 
   authorize (Just familyId ==) mFamily -- Ensure that only devices that are seen as online can send messages!
   case mSend of
     Nothing -> throwServer DeviceOffline
-    Just send -> send msg
+    Just send -> liftIO $ send msg

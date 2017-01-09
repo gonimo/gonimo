@@ -2,18 +2,18 @@ module Gonimo.Server.Handlers.Messenger where
 
 import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
 import           Control.Monad.IO.Class               (liftIO)
-import           Data.Monoid
 import           Data.Maybe                           (fromMaybe)
 import           Gonimo.Server.Auth                   as Auth
 import           Gonimo.Db.Entities
 import           Gonimo.Server.Effects
-import           Gonimo.Server.Handlers.Auth.Internal
 import           Gonimo.Server.Messenger
-import           Debug.Trace                          (trace)
+import           Data.Text (Text)
+import           Data.Foldable (traverse_)
 
 import           Gonimo.Types
 import qualified Gonimo.Server.Db.Family as Family
 import qualified Gonimo.Server.Db.Device as Device
+import Gonimo.SocketAPI
 
 -- | A device registers itself (happens at authentication)
 --
@@ -29,22 +29,22 @@ registerReceiverR deviceId receiver = do
       pure . notify $ ReqGetDeviceInfo deviceId
     sequence_ mNotify
 
-    runMaybeT $ do
+    fmap (fromMaybe ()) . runMaybeT $ do
       messenger <- getMessenger
-      old <- atomically $ registerReceiverSTM messenger deviceId receiver
-      liftIO $ (old^.onlineDeviceSend) MessageSessionGotStolen
-    handleUpdate familyId deviceType
+      old <- MaybeT . atomically $ registerReceiverSTM messenger deviceId receiver
+      liftIO $ old MessageSessionGotStolen
 
 -- | Change device type (become a baby or stop being one)
 setDeviceTypeR  :: (AuthReader m, MonadServer m)
                => DeviceId -> DeviceType -> m ()
-setDeviceTypeR deviceId deviceType= do
+setDeviceTypeR deviceId deviceType = do
     authorizeAuthData $ isDevice deviceId
 
     messenger <- getMessenger
-    atomically $ setDeviceTypeSTM messenger deviceId deviceType
-
-    notify $ ReqGetReceivers familyId
+    mFamilyId <- atomically $ do
+      setDeviceTypeSTM messenger deviceId deviceType
+      getReceiverFamilySTM messenger deviceId
+    traverse_ (notify . ReqGetOnlineDevices) mFamilyId
 
 -- | Tell the server that you are gone.
 deleteReceiverR  :: (AuthReader m, MonadServer m)
@@ -53,9 +53,12 @@ deleteReceiverR deviceId = do
   authorizeAuthData $ isDevice deviceId
 
   messenger <- getMessenger
-  atomically $ deleteReceiverSTM messenger deviceId
+  mFamilyId <- atomically $ do
+    mFamilyId' <- getReceiverFamilySTM messenger deviceId
+    deleteReceiverSTM messenger deviceId
+    pure mFamilyId'
 
-  notify $ ReqGetReceivers familyId
+  traverse_ (notify . ReqGetOnlineDevices) mFamilyId
 
 getOnlineDevicesR  :: (AuthReader m, MonadServer m)
                     => FamilyId -> m [(DeviceId, DeviceType)]
@@ -66,17 +69,23 @@ getOnlineDevicesR familyId = do
   atomically $ getOnlineDevicesSTM messenger familyId
 
 switchFamilyR  :: (AuthReader m, MonadServer m)
-                    => DeviceId -> FamilyId -> m [(DeviceId, DeviceType)]
+                    => DeviceId -> FamilyId -> m ()
 switchFamilyR deviceId familyId = do
   authorizeAuthData $ isDevice deviceId
   authorizeAuthData $ isFamilyMember familyId
 
   messenger <- getMessenger
-  atomically $ switchFamilySTM messenger deviceId familyId
+  mOld <- atomically $ do
+    mOld' <- getReceiverFamilySTM messenger deviceId
+    switchFamilySTM messenger deviceId familyId
+    pure mOld'
+  traverse_ (notify . ReqGetOnlineDevices) mOld
+  notify $ ReqGetOnlineDevices familyId
+
 
 -- Update last used baby names and send out notifications on change.
 -- TODO: Does not really belong here!
-putBabyNameR :: MonadServer m => FamilyId -> Text -> m ()
+putBabyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
 putBabyNameR familyId babyName = do
   authorizeAuthData $ isFamilyMember familyId
 

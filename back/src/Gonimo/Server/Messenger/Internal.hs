@@ -6,19 +6,22 @@
 module Gonimo.Server.Messenger.Internal where
 
 
-import           Control.Concurrent.STM    (TVar)
+import           Control.Concurrent.STM    (TVar, readTVar, writeTVar)
 import           Control.Lens
+import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.State.Class (MonadState, gets)
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Trans.State (StateT (..))
-import           Control.Monad.State.Class (MonadState, get, gets)
+import           Control.Monad.Trans.State (State, runState)
 import           Data.Map.Strict           (Map)
 import qualified Data.Map.Strict           as Map
-import qualified Data.Set           as Set
-import           Data.Maybe (catMaybes)
-import           Control.Monad.Extra (whenJust)
+import           Data.Maybe
+import           Data.Set                  (Set)
+import qualified Data.Set                  as Set
 
-import           Gonimo.Db.Entities (DeviceId, FamilyId)
-import           Gonimo.Types (DeviceType)
+import           Data.Text                 (Text)
+import           Gonimo.Db.Entities        (DeviceId, FamilyId)
+import           Gonimo.Types              (DeviceType(..), Secret)
+import           Control.Concurrent.STM (STM)
 
 type FromId = DeviceId
 type ToId   = DeviceId
@@ -36,7 +39,7 @@ data Receiver
 $(makeLenses ''Receiver)
 
 data Messenger
-  = Messenger { _messengerReceivers :: Map DeviceId Messenger
+  = Messenger { _messengerReceivers :: Map DeviceId Receiver
               , _messengerFamilies :: Map FamilyId (Set DeviceId)
               }
 $(makeLenses ''Messenger)
@@ -44,9 +47,10 @@ $(makeLenses ''Messenger)
 
 type MessengerVar = TVar Messenger
 
-emptyMessenger :: Messenger
-emptyMessenger = Messenger {
-    _messengerMessengers = Map.empty
+empty :: Messenger
+empty = Messenger {
+    _messengerReceivers = Map.empty
+  , _messengerFamilies = Map.empty
   }
 
 -- | Register a receiver for a given device.
@@ -58,14 +62,15 @@ registerReceiver deviceId receiver = do
 
   deleteReceiver deviceId -- Delete old one (leave any family!)
 
-  messengerReceivers.at deviceId .= Just $ Receiver receiver NoBaby Nothing
-  return mOld
+  messengerReceivers.at deviceId .= Just (Receiver receiver NoBaby Nothing)
+  return $ mOld^?_Just.receiverSend
 
 getReceiver :: DeviceId -> Messenger -> Maybe (Message -> IO ())
-getReceiver deviceId messenger = messenger^? at deviceId . _Just . receiverSend
+getReceiver deviceId messenger = messenger^? messengerReceivers . at deviceId . _Just . receiverSend
 
-getReceiverFamily :: DeviceId -> Messenger -> Maybe (FamilyId)
-getReceiverFamily deviceId messenger = messenger^? at deviceId . _Just . receiverFamily
+getReceiverFamily :: DeviceId -> Messenger -> Maybe FamilyId
+getReceiverFamily deviceId messenger = messenger^? messengerReceivers
+                                       .  at deviceId . _Just . receiverFamily . _Just
 
 
 -- | Update a given receiver's device type.
@@ -73,13 +78,13 @@ setDeviceType :: MonadState Messenger m => DeviceId -> DeviceType -> m ()
 setDeviceType deviceId deviceType = messengerReceivers.at deviceId._Just.receiverType .= deviceType
 
 -- | Retrieve all devices that are online in a given family.
-getOnlineDevices :: FamilyId -> Messenger ->  [(DeviceId, DeviceType)]
+getOnlineDevices :: FamilyId -> Messenger -> [(DeviceId, DeviceType)]
 getOnlineDevices familyId messenger =
   let
-    ids = messenger^.at familyId . Set.toList
+    ids = messenger^.messengerFamilies . at familyId . non Set.empty . to Set.toList
     getType :: DeviceId -> Maybe DeviceType
-    getType deviceId' = messenger.messengerReceivers.at.deviceId'.receiverType
-    mTypes = ids %~ mapped getType
+    getType deviceId' = messenger^?messengerReceivers.at deviceId'._Just.receiverType
+    mTypes = fmap getType ids
     mList = zipWith (\id' mType -> (,) <$> pure id' <*> mType) ids mTypes
   in
     catMaybes mList
@@ -93,7 +98,7 @@ switchFamily deviceId newFamily = do
 
   -- Set new:
   messengerFamilies.at newFamily . non Set.empty %= Set.insert deviceId
-  messengerReceivers.at deviceId . receiverFamily .= Just newFamily
+  messengerReceivers.at deviceId . _Just . receiverFamily .= Just newFamily
 
 
 -- | Delete your online session
@@ -103,8 +108,8 @@ deleteReceiver :: (MonadState Messenger m) => DeviceId -> m ()
 deleteReceiver deviceId = do
   fmap (fromMaybe ()) . runMaybeT $ do
     oldFamily <- MaybeT $ gets (getFamily deviceId)
-    lift $ messengerFamilies.at oldFamily . non Set.empty %= Set.delete oldFamily
-  sessions.at deviceId .= Nothing
+    lift $ messengerFamilies.at oldFamily . non Set.empty %= Set.delete deviceId
+  messengerReceivers.at deviceId .= Nothing
 
 
 -- Helper functions:
@@ -114,6 +119,6 @@ getFamily deviceId messenger = messenger^?messengerReceivers.at deviceId._Just.r
 runStateSTM :: MessengerVar -> State Messenger a -> STM a
 runStateSTM mesVar m = do
   messengerOld <- readTVar mesVar
-  (val, messengerNew) <- runState m
+  let (val, messengerNew) = runState m messengerOld
   writeTVar mesVar messengerNew
   pure val

@@ -5,46 +5,28 @@
 module Gonimo.Server.Subscriber where
 
 
-import           Control.Concurrent.Async
 import           Control.Lens
 import           Control.Concurrent.STM        (STM, atomically, retry)
 import           Control.Concurrent.STM.TVar
-import           Control.Exception             (SomeException, displayException)
-import           Control.Exception.Lifted      (finally, try)
 import           Control.Monad
 import           Control.Monad.IO.Class
-import           Control.Monad.Logger          (MonadLogger, logDebug)
-import           Control.Monad.Trans.Control   (MonadBaseControl)
-import           Data.Aeson
-import qualified Data.ByteString.Lazy          as BS
-import           Data.IORef                    (IORef, writeIORef)
-import           Data.Map                      (Map)
 import qualified Data.Map.Strict               as Map
-import           Data.Monoid                   ((<>))
 import           Data.Foldable                 (traverse_)
-import           Data.Set                      (Set, (\\))
+import           Data.Set                      ((\\))
 import qualified Data.Set                      as Set
-import qualified Data.Text                     as T
-import qualified Data.Text.Encoding            as T
-import qualified Data.Text.IO                  as T
-import qualified Network.WebSockets            as WS
-import           Network.WebSockets.Connection as WS
-import Debug.Trace (trace)
-import           Control.Monad.Logger
 
 import           Gonimo.Server.Subscriber.Types
 import           Gonimo.SocketAPI (ServerRequest)
 
-makeSubscriber :: LogRunner -> STM Subscriber
-makeSubscriber runner = do
+makeSubscriber :: STM Subscriber
+makeSubscriber = do
   state' <- newTVar Map.empty
   pure $ Subscriber { subState = state'
-                    , runLogging = runner
                     }
 
 notifyChange :: Subscriber -> ServerRequest -> STM ()
-notifyChange subscriber req' = do
-  rMap <- readTVar (subState subscriber)
+notifyChange subscriber' req' = do
+  rMap <- readTVar (subState subscriber')
   case Map.lookup req' rMap of
     Nothing -> return ()
     Just refStatus -> do
@@ -77,9 +59,9 @@ unsubscribe p tv sub = do
     else writeTVar tv v
 
 makeClient :: Subscriber -> STM Client
-makeClient subscriber = do
+makeClient subscriber' = do
   ms <- newTVar Map.empty
-  return $ Client subscriber ms
+  return $ Client subscriber' ms
 
 processRequest :: Client -> [ServerRequest] -> STM ()
 processRequest c req = do

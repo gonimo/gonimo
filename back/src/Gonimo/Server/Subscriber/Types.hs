@@ -8,7 +8,6 @@ module Gonimo.Server.Subscriber.Types where
 
 import           Control.Concurrent.STM
 import           Control.Monad.IO.Class
-import           Control.Monad.Logger
 import           Data.Map (Map)
 import qualified Data.Map as Map
 
@@ -30,11 +29,8 @@ instance Functor RefCounted where
 
 data Subscriber = Subscriber {
   subState   :: !(TVar ResourceStatusMap)
-, runLogging :: LogRunner
 }
 
-
-type LogRunner = forall m a. MonadIO m => LoggingT m a -> m a
 
 type ClientMonitors = Map ServerRequest StatusMonitor
 

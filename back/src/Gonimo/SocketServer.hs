@@ -6,63 +6,63 @@
 {-# LANGUAGE RecordWildCards #-}
 module Gonimo.SocketServer where
 
-import           Control.Exception.Lifted       (throwIO, finally)
+import           Control.Concurrent.Async.Lifted (race_)
+import           Control.Exception.Lifted        (finally, throwIO, try, catch)
 import           Control.Monad
-import           Control.Monad.IO.Class         (liftIO)
-import           Control.Monad.IO.Class         (MonadIO)
-import           Control.Monad.Logger           (LoggingT)
-import           Control.Monad.Logger           (logError)
-import           Control.Monad.State.Class      (MonadState, get, put)
+import           Control.Monad.IO.Class          (liftIO)
+import           Control.Monad.IO.Class          (MonadIO)
+import           Control.Monad.Logger            (LoggingT)
+import           Control.Monad.Logger            (logError)
 import           Control.Monad.Reader.Class      (MonadReader, ask)
-import           Control.Monad.Trans.State      (StateT, evalStateT)
-import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
-import           Data.Aeson                     (FromJSON)
-import qualified Data.Aeson                     as Aeson
-import qualified Data.ByteString.Lazy           as LB
-import           Data.Monoid                    ((<>))
-import qualified Data.Text                      as T
-import           Database.Persist               (Entity (..), (==.))
-import qualified Database.Persist.Class         as Db
+import           Control.Monad.Trans.Reader      (runReaderT)
+import           Data.Aeson                      (FromJSON)
+import qualified Data.Aeson                      as Aeson
+import qualified Data.ByteString.Lazy            as LB
+import           Data.IORef
+import           Data.Monoid                     ((<>))
+import qualified Data.Text                       as T
+import           Database.Persist                (Entity (..), (==.))
+import qualified Database.Persist.Class          as Db
+import           Gonimo.Database.Effects.Servant (serverErrOnNothing)
 import           Gonimo.Db.Entities
-import           Gonimo.Server.Auth             (AuthData(..), AuthReader)
-import           Gonimo.Server.Effects          as Server
-import           Gonimo.Server.Error            (ServerError (..), fromMaybeErr)
+import           Gonimo.Server.Auth              (AuthData (..), AuthReader)
+import qualified Gonimo.Server.Auth              as Auth
+import           Gonimo.Server.Effects           as Server
+import           Gonimo.Server.Error             (ServerError (..),
+                                                  fromMaybeErr)
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Handlers.Auth
+import           Gonimo.Server.Handlers.Messenger
+import           Gonimo.Server.Messenger         (Message (..))
+import qualified Gonimo.Server.Subscriber        as Subscriber
+import qualified Gonimo.Server.Subscriber.Types  as Subscriber
 import           Gonimo.SocketAPI
-import           Gonimo.Types                   (AuthToken(..))
-import qualified Network.HTTP.Types.Status      as Http
-import qualified Network.Wai                    as Wai
-import qualified Network.Wai.Handler.WebSockets as Wai
-import qualified Network.WebSockets             as WS
-import           Gonimo.Database.Effects.Servant (serverErrOnNothing)
-import qualified Gonimo.Server.Subscriber as Subscriber
-import qualified Gonimo.Server.Subscriber.Types as Subscriber
-import           Control.Concurrent.Async.Lifted (race_)
+import           Gonimo.Types                    (AuthToken (..))
+import qualified Network.HTTP.Types.Status       as Http
+import qualified Network.Wai                     as Wai
+import qualified Network.Wai.Handler.WebSockets  as Wai
+import qualified Network.WebSockets              as WS
+
+type AuthDataRef = IORef (Maybe AuthData)
+
+serve :: (forall a m. MonadIO m => LoggingT m a -> m a) -> Config -> Wai.Application
+serve runLoggingT config = do
+  let handleWSConnection pending = do
+        connection <- WS.acceptRequest pending
+        WS.forkPingThread connection 28
+        noAuthRef <- newIORef Nothing
+        runServer runLoggingT config $ serveWebSocket noAuthRef connection
+  let
+    errorApp :: Wai.Request -> (Wai.Response -> IO Wai.ResponseReceived) -> IO Wai.ResponseReceived
+    errorApp _ sendResponse =  do
+      let response = Wai.responseLBS (Http.Status 400 "WebSocket Only Server") [] ""
+      sendResponse response
+
+  Wai.websocketsOr WS.defaultConnectionOptions handleWSConnection errorApp
 
 
-
-
-handleServerRequest :: (MonadState (Maybe AuthData) m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
-handleServerRequest sub reqBody = case reqBody of
-  ReqMakeDevice userAgent -> ResMadeDevice <$> createDevice userAgent
-  ReqAuthenticate token    -> authenticate token
-  _                       -> do
-    authData' <- fromMaybeErr NotAuthenticated =<< get
-    flip runReaderT authData' $ handleAuthServerRequest sub reqBody
-
-handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
-handleAuthServerRequest sub req = case req of
-  ReqMakeDevice _    -> error "ReqMakeDevice should have been handled already!"
-  ReqAuthenticate _  -> error "ReqAuthenticate should have been handled already!"
-  ReqCreateFamily    -> ResCreatedFamily <$> createFamily
-  ReqCreateInvitation familyId' -> ResCreatedInvitation <$> createInvitation familyId'
-  ReqSetSubscriptions subs -> do
-    Server.atomically $ Subscriber.processRequest sub subs
-    pure ResSubscribed
-
-serveWebSocket :: WS.Connection -> StateT (Maybe AuthData) Server ()
-serveWebSocket conn = do
+serveWebSocket :: AuthDataRef -> WS.Connection -> Server ()
+serveWebSocket authRef conn = do
     sub <- configSubscriber <$> ask
     client <- atomically $ Subscriber.makeClient sub
     let
@@ -76,13 +76,33 @@ serveWebSocket conn = do
                   WS.Text bs' -> bs'
         respondToRequest =<< decodeLogError bs
 
-      respondToRequest :: ServerRequest -> StateT (Maybe AuthData) Server ()
-      respondToRequest req = do
-        r <- handleServerRequest client req
+      respondToRequest :: ServerRequest -> Server ()
+      respondToRequest req = fmap (const ()) . async $ do -- Let's fork off :-)
+        r <- flip runReaderT authRef
+             $ handleServerRequest receiver client req -- Does handle user interesting exceptions ...
+        sendWSMessage r
+
+      sendWSMessage r = do
         let encoded = Aeson.encode r
         liftIO . WS.sendDataMessage conn $ WS.Text encoded
 
-      decodeLogError :: forall a. FromJSON a => LB.ByteString -> StateT (Maybe AuthData) Server a
+      receiver :: Message -> IO ()
+      receiver message = wsExceptionToServerError $ case message of
+          MessageSessionGotStolen
+            -> sendWSMessage EventSessionGotStolen
+          MessageCreateChannel fromId secret
+            -> sendWSMessage $ EventChannelRequested fromId secret
+          MessageSendMessage fromId secret msg
+            -> sendWSMessage $ EventMessageReceived fromId secret msg
+        where
+          wsExceptionToServerError :: IO () -> IO ()
+          wsExceptionToServerError action = catch action
+            $ \e -> case e of
+                      WS.CloseRequest _ _ -> throwIO DeviceOffline
+                      WS.ConnectionClosed -> throwIO DeviceOffline
+                      _ -> throwIO InternalServerError
+
+      decodeLogError :: forall a. FromJSON a => LB.ByteString -> Server a
       decodeLogError bs = do
         let r = Aeson.eitherDecode bs
         case r of
@@ -94,25 +114,36 @@ serveWebSocket conn = do
     finally work cleanup
 
 
-serve :: (forall a m. MonadIO m => LoggingT m a -> m a) -> Config -> Wai.Application
-serve runLoggingT config = do
-  let handleWSConnection pending = do
-        connection <- WS.acceptRequest pending
-        WS.forkPingThread connection 28
-        runServer runLoggingT config . flip evalStateT Nothing $ serveWebSocket connection
-  let
-    errorApp :: Wai.Request -> (Wai.Response -> IO Wai.ResponseReceived) -> IO Wai.ResponseReceived
-    errorApp _ sendResponse =  do
-      let response = Wai.responseLBS (Http.Status 400 "WebSocket Only Server") [] ""
-      sendResponse response
 
-  Wai.websocketsOr WS.defaultConnectionOptions handleWSConnection errorApp
+handleServerRequest :: forall m. (MonadReader AuthDataRef m, MonadServer m)
+                       => (Message -> IO ()) -> Subscriber.Client -> ServerRequest -> m ServerResponse
+handleServerRequest receiver sub req = errorToResponse $ case req of
+    ReqMakeDevice userAgent -> ResMadeDevice <$> createDevice userAgent
+    ReqAuthenticate token   -> authenticate receiver token
+    _                       -> do
+      authData' <- fromMaybeErr NotAuthenticated =<< liftIO . readIORef =<< ask
+      flip runReaderT authData' $ handleAuthServerRequest sub req
+  where
+    errorToResponse :: m ServerResponse -> m ServerResponse
+    errorToResponse action = either (ResError req) id <$> try action
 
-authenticate :: forall m. (MonadState (Maybe AuthData) m, MonadServer m)
-  => AuthToken -> m ServerResponse
-authenticate token = do
+handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
+handleAuthServerRequest sub req = case req of
+  ReqMakeDevice _    -> error "ReqMakeDevice should have been handled already!"
+  ReqAuthenticate _  -> error "ReqAuthenticate should have been handled already!"
+  ReqCreateFamily    -> ResCreatedFamily <$> createFamily
+  ReqCreateInvitation familyId' -> ResCreatedInvitation <$> createInvitation familyId'
+  ReqSetSubscriptions subs -> do
+    Server.atomically $ Subscriber.processRequest sub subs
+    pure ResSubscribed
+
+authenticate :: forall m. (MonadReader AuthDataRef m, MonadServer m)
+  => (Message -> IO ()) -> AuthToken -> m ServerResponse
+authenticate receiver token = do
   authData' <- makeAuthData token
-  put $ Just authData'
+  authRef <- ask
+  liftIO . writeIORef authRef $ Just authData'
+  flip runReaderT authData' $ registerReceiverR (Auth.deviceKey authData') receiver
   pure ResAuthenticated
 
 makeAuthData :: MonadServer m => AuthToken -> m AuthData

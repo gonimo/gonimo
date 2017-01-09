@@ -25,8 +25,6 @@ data ServerError = InvalidAuthToken
                  | FamilyNotOnline FamilyId
                  | CantSendInvitation
                  | NoSuchInvitation
-                 | SocketBusy
-                 | ChannelBusy
                  | DeviceOffline -- ^ You tried to send a message to an offline device.
                  | Forbidden
                  | NotFound

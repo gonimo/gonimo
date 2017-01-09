@@ -19,7 +19,6 @@ import qualified Gonimo.Server.Effects           as Gonimo
 import           Gonimo.Server.Error    (ServerError (..))
 import           Gonimo.Server.Handlers
 import           Gonimo.Types
-import           Gonimo.WebAPI
 import           Servant                ((:<|>) (..), (:~>) (..),
                                          ServantErr (..), Server, ServerT,
                                          enter)

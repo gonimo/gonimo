@@ -35,13 +35,7 @@ import           Gonimo.Db.Entities            as Db
 import           Gonimo.Server.Effects                as Eff
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
-import           Gonimo.Server.Handlers.Auth.Internal
-import           Gonimo.Server.State
-import qualified Gonimo.Server.State.MessageBox       as MsgBox
-import           Gonimo.Server.State.Types
 import           Gonimo.Types                  as Server
-import           Gonimo.WebAPI                        (ReceiveChannelR,
-                                                       ReceiveMessageR)
 import           Gonimo.SocketAPI.Types                  (InvitationInfo (..),
                                                        InvitationReply (..))
 import qualified Gonimo.SocketAPI.Types                  as Client

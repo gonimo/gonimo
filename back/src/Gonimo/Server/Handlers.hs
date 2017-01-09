@@ -5,10 +5,8 @@ import qualified Database.Persist.Class       as Db
 import           Gonimo.Db.Entities
 import           Gonimo.Server.Effects
 import           Gonimo.Types
-import           Gonimo.Server.Error
 import qualified Gonimo.SocketAPI.Types as Client
 import           Prelude                       hiding (take, unwords)
-import           Servant                       (ServantErr (..))
 
 
 
