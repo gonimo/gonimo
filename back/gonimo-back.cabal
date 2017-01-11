@@ -31,9 +31,7 @@ library
                         , crypto
                         , ssl
 
-  exposed-modules: Gonimo.CodeGen.PSTypes
-                , Gonimo.CodeGen.TypeBridges
-                , Gonimo.Database.Effects.Servant
+  exposed-modules:  Gonimo.Database.Effects.Servant
                 , Gonimo.Server.Auth
                 , Gonimo.Server.Db.Internal
                 , Gonimo.Server.Db.Device
