@@ -9,37 +9,73 @@ import qualified Gonimo.SocketAPI.Types as Client
 import Gonimo.SocketAPI.Types (FromId, ToId)
 import GHC.Generics (Generic)
 import Gonimo.Server.Error (ServerError)
-import Gonimo.Db.Entities (FamilyId, InvitationId, Invitation, DeviceId)
+import Gonimo.Db.Entities (FamilyId, InvitationId, Invitation, DeviceId, AccountId)
 import Gonimo.Types (AuthToken, Secret)
 
 type MessageId = Int
 data ServerRequest
   = ReqMakeDevice !(Maybe Text)
-  | ReqAuthenticate !AuthToken
-  | ReqCreateFamily
-  | ReqCreateInvitation !FamilyId
-  | ReqSetSubscriptions !([ServerRequest])
   | ReqGetDeviceInfo !DeviceId
+  | ReqSetDeviceType !DeviceId !DeviceType
+  | ReqSwitchFamily  !DeviceId !FamilyId
+
+  | ReqAuthenticate !AuthToken
+
+  | ReqCreateFamily
   | ReqGetFamily !FamilyId
+  | ReqGetFamilyMembers !FamilyId
   | ReqGetOnlineDevices !FamilyId
+  | ReqSaveBabyName !FamilyId !Text
+
+  | ReqCreateInvitation !FamilyId
+  | ReqSendInvitation !Client.SendInvitation
+  | ReqClaimInvitation !Secret
+  | ReqAnswerInvitation !Secret !InvitationReply
+
+  | ReqSetSubscriptions !([ServerRequest])
+
+  | ReqGetFamilies !AccountId
+  | ReqGetDevices !AccountId
+
   | ReqCreateChannel !FromId !ToId
   | ReqSendMessage !FromId !ToId !Secret !Text
-  | ReqSaveBabyName !FamilyId !Text
   deriving (Generic, Ord, Eq)
 
 -- | Constructors starting with "Res" are responses to requests.
 --   Constructors starting with Event happen without any request.
-data ServerResponse = ResMadeDevice !Client.AuthData
+data ServerResponse
+  = ResMadeDevice !Client.AuthData
+  | ResGotDeviceInfo !DeviceId !Client.DeviceInfo
+  | ResSetDeviceType !DeviceId
+  | ResSwitchedFamily !DeviceId !FamilyId
+
   | ResAuthenticated
+
   | ResCreatedFamily !FamilyId
-  | ResCreatedInvitation !(InvitationId, Invitation)
-  | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
-  | ResCreatedChannel !FromId !ToId !Secret
+  | ResGotFamily !FamilyId !Family
+  | ResGotFamilyMembers !FamilyId !([AccountId])
+  | ResGotOnlineDevices !FamilyId !([DeviceId])
   | ResSavedBabyName
+
+  | ResCreatedInvitation !(InvitationId, Invitation)
+  | ResSentInvitation
+  | ResClaimedInvitation !Secret !InvitationInfo
+  | ResAnswerInvitation !Secret !InvitationReply !(Maybe FamilyId)
+
+  | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
+
+  | ResGotFamilies !AccountId !([FamilyId])
+  | ResGotDevices !AccountId !([DeviceId])
+
+  | ResCreatedChannel !FromId !ToId !Secret
+  | ResSentMessage -- Dummy
+
+
+  | ResError !ServerRequest !ServerError
+
   | EventSessionGotStolen
   | EventChannelRequested !FromId !Secret
   | EventMessageReceived !FromId !Secret !Text
-  | ResError !ServerRequest !ServerError
   deriving (Generic)
 
 instance FromJSON ServerRequest
