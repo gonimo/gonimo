@@ -73,7 +73,7 @@ serveWebSocket authRef conn = do
     sub <- configSubscriber <$> ask
     client <- atomically $ Subscriber.makeClient sub
     let
-      work = race_ (Subscriber.runMonitor client respondToRequest) handleIncoming
+      work = race_ (Subscriber.runMonitor client respondToRequest) (forever handleIncoming)
       cleanup = do
         Subscriber.cleanup client
         fmap (fromMaybe ()) . runMaybeT $ do
