@@ -68,6 +68,7 @@ fromDevice device = DeviceInfo
 instance ToJSON DeviceInfo where
   toEncoding = genericToEncoding defaultOptions
 
+instance FromJSON DeviceInfo
 
 type FromId = DeviceId
 type ToId = DeviceId
