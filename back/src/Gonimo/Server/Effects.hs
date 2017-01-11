@@ -12,6 +12,7 @@ module Gonimo.Server.Effects (
   , runServer
   , Config (..)
   , async
+  , async_
   , atomically
   , genRandomBytes
   , generateSecret
@@ -81,6 +82,12 @@ class (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m) => MonadServer m where
   async  :: Server a -> m (Async a)
   getFamilyNamePool :: m FamilyNames
   getPredicatePool  :: m Predicates
+
+-- | Ignore Async result - yeah forkIO would work as well.
+async_ :: MonadServer m => Server () -> m ()
+async_ action = do
+  _ :: Async () <- async action
+  pure ()
 
 type DbPool = Pool SqlBackend
 
