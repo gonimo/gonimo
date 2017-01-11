@@ -7,9 +7,7 @@
 module Gonimo.Server.Subscriber.Types where
 
 import           Control.Concurrent.STM
-import           Control.Monad.IO.Class
 import           Data.Map (Map)
-import qualified Data.Map as Map
 
 import           Gonimo.SocketAPI
 

@@ -6,42 +6,45 @@
 {-# LANGUAGE RecordWildCards #-}
 module Gonimo.SocketServer where
 
-import           Control.Concurrent.Async.Lifted (race_)
-import           Control.Exception.Lifted        (finally, throwIO, try, catch)
+import           Control.Concurrent.Async.Lifted  (race_)
+import           Control.Exception.Lifted         (catch, finally, throwIO, try)
+import           Control.Lens
 import           Control.Monad
-import           Control.Monad.IO.Class          (liftIO)
-import           Control.Monad.IO.Class          (MonadIO)
-import           Control.Monad.Logger            (LoggingT)
-import           Control.Monad.Logger            (logError)
-import           Control.Monad.Reader.Class      (MonadReader, ask)
-import           Control.Monad.Trans.Reader      (runReaderT)
-import           Data.Aeson                      (FromJSON)
-import qualified Data.Aeson                      as Aeson
-import qualified Data.ByteString.Lazy            as LB
+import           Control.Monad.IO.Class           (liftIO)
+import           Control.Monad.IO.Class           (MonadIO)
+import           Control.Monad.Logger             (LoggingT)
+import           Control.Monad.Logger             (logError)
+import           Control.Monad.Reader.Class       (MonadReader, ask)
+import           Control.Monad.Trans.Reader       (runReaderT)
+import           Data.Aeson                       (FromJSON)
+import qualified Data.Aeson                       as Aeson
+import qualified Data.ByteString.Lazy             as LB
 import           Data.IORef
-import           Data.Monoid                     ((<>))
-import qualified Data.Text                       as T
-import           Database.Persist                (Entity (..), (==.))
-import qualified Database.Persist.Class          as Db
-import           Gonimo.Database.Effects.Servant (serverErrOnNothing)
+import           Data.Monoid                      ((<>))
+import qualified Data.Set                         as Set
+import qualified Data.Text                        as T
+import           Database.Persist                 (Entity (..), (==.))
+import qualified Database.Persist.Class           as Db
+import           Gonimo.Database.Effects.Servant  (serverErrOnNothing)
 import           Gonimo.Db.Entities
-import           Gonimo.Server.Auth              (AuthData (..), AuthReader)
-import qualified Gonimo.Server.Auth              as Auth
-import           Gonimo.Server.Effects           as Server
-import           Gonimo.Server.Error             (ServerError (..),
-                                                  fromMaybeErr)
+import           Gonimo.Server.Auth               (AuthData (..), AuthReader,
+                                                   allowedFamilies)
+import qualified Gonimo.Server.Auth               as Auth
+import           Gonimo.Server.Effects            as Server
+import           Gonimo.Server.Error              (ServerError (..),
+                                                   fromMaybeErr)
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Handlers.Auth
 import           Gonimo.Server.Handlers.Messenger
-import           Gonimo.Server.Messenger         (Message (..))
-import qualified Gonimo.Server.Subscriber        as Subscriber
-import qualified Gonimo.Server.Subscriber.Types  as Subscriber
+import           Gonimo.Server.Messenger          (Message (..))
+import qualified Gonimo.Server.Subscriber         as Subscriber
+import qualified Gonimo.Server.Subscriber.Types   as Subscriber
 import           Gonimo.SocketAPI
-import           Gonimo.Types                    (AuthToken (..))
-import qualified Network.HTTP.Types.Status       as Http
-import qualified Network.Wai                     as Wai
-import qualified Network.Wai.Handler.WebSockets  as Wai
-import qualified Network.WebSockets              as WS
+import           Gonimo.Types                     (AuthToken (..))
+import qualified Network.HTTP.Types.Status        as Http
+import qualified Network.Wai                      as Wai
+import qualified Network.Wai.Handler.WebSockets   as Wai
+import qualified Network.WebSockets               as WS
 
 type AuthDataRef = IORef (Maybe AuthData)
 
@@ -77,10 +80,16 @@ serveWebSocket authRef conn = do
         respondToRequest =<< decodeLogError bs
 
       respondToRequest :: ServerRequest -> Server ()
-      respondToRequest req = fmap (const ()) . async $ do -- Let's fork off :-)
+      respondToRequest req = async_' $ do -- Let's fork off :-)
         r <- flip runReaderT authRef
              $ handleServerRequest receiver client req -- Does handle user interesting exceptions ...
+        case r of
+          ResGotFamilies _ fids -> liftIO $ modifyIORef' authRef (_Just.allowedFamilies .~ fids)
+          _ -> pure ()
         sendWSMessage r
+
+      async_' :: Server () -> Server ()
+      async_' = async_
 
       sendWSMessage r = do
         let encoded = Aeson.encode r
@@ -118,8 +127,8 @@ serveWebSocket authRef conn = do
 handleServerRequest :: forall m. (MonadReader AuthDataRef m, MonadServer m)
                        => (Message -> IO ()) -> Subscriber.Client -> ServerRequest -> m ServerResponse
 handleServerRequest receiver sub req = errorToResponse $ case req of
+    ReqAuthenticate token   -> authenticate receiver sub token
     ReqMakeDevice userAgent -> ResMadeDevice <$> createDevice userAgent
-    ReqAuthenticate token   -> authenticate receiver token
     _                       -> do
       authData' <- fromMaybeErr NotAuthenticated =<< liftIO . readIORef =<< ask
       flip runReaderT authData' $ handleAuthServerRequest sub req
@@ -129,20 +138,47 @@ handleServerRequest receiver sub req = errorToResponse $ case req of
 
 handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
 handleAuthServerRequest sub req = case req of
-  ReqMakeDevice _    -> error "ReqMakeDevice should have been handled already!"
-  ReqAuthenticate _  -> error "ReqAuthenticate should have been handled already!"
-  ReqCreateFamily    -> ResCreatedFamily <$> createFamily
-  ReqCreateInvitation familyId' -> ResCreatedInvitation <$> createInvitation familyId'
-  ReqSetSubscriptions subs -> do
-    Server.atomically $ Subscriber.processRequest sub subs
+  ReqAuthenticate _                    -> error "ReqAuthenticate should have been handled already!"
+  ReqMakeDevice _                      -> error "ReqMakeDevice should have been handled already!"
+  ReqGetDeviceInfo deviceId            -> ResGotDeviceInfo deviceId <$> getDeviceInfoR deviceId
+  ReqSetDeviceType deviceId deviceType -> do setDeviceTypeR deviceId deviceType
+                                             pure $ ResSetDeviceType deviceId
+  ReqSwitchFamily deviceId familyId    -> do switchFamilyR deviceId familyId
+                                             pure $ ResSwitchedFamily deviceId familyId
+
+  ReqCreateFamily                      -> ResCreatedFamily <$> createFamilyR
+  ReqGetFamily familyId                -> ResGotFamily familyId <$> getFamilyR familyId
+  ReqGetFamilyMembers familyId         -> ResGotFamilyMembers familyId <$> getFamilyMembersR familyId
+  ReqGetOnlineDevices familyId         -> ResGotOnlineDevices familyId <$> getOnlineDevicesR familyId
+  ReqSaveBabyName familyId name        -> saveBabyNameR familyId name
+                                          *> pure ResSavedBabyName
+
+  ReqCreateInvitation familyId'        -> ResCreatedInvitation <$> createInvitationR familyId'
+  ReqSendInvitation sendInv            -> sendInvitationR sendInv *> pure ResSentInvitation
+  ReqClaimInvitation secret            -> ResClaimedInvitation secret <$> claimInvitationR secret
+  ReqAnswerInvitation secret reply     -> ResAnsweredInvitation secret reply <$> answerInvitationR secret reply
+
+  ReqSetSubscriptions subs             -> do
+    accountId <- Auth.accountKey <$> ask
+    -- We need GetFamilies subscribed to keep our AuthData current.
+    let subsSet = Set.insert (ReqGetFamilies accountId) Set.fromList subs
+    Server.atomically $ Subscriber.processRequest sub subsSet
     pure ResSubscribed
 
+  ReqGetFamilies accountId             -> ResGotFamilies accountId <$> getFamiliesR accountId
+  ReqGetDevices accountId              -> ResGotDevices  accountId <$> getDevicesR accountId
+
+  ReqCreateChannel from to             -> ResCreatedChannel from to <$> createChannelR from to
+  ReqSendMessage from to secret msg    -> sendMessageR from to secret msg *> pure ResSentMessage
+
 authenticate :: forall m. (MonadReader AuthDataRef m, MonadServer m)
-  => (Message -> IO ()) -> AuthToken -> m ServerResponse
-authenticate receiver token = do
+  => (Message -> IO ()) -> Subscriber.Client -> AuthToken -> m ServerResponse
+authenticate receiver sub token = do
   authData' <- makeAuthData token
   authRef <- ask
   liftIO . writeIORef authRef $ Just authData'
+  -- Evil hack:
+  Subscriber.processRequest sub $ ReqGetFamilies (Auth.accountKey authData')
   flip runReaderT authData' $ registerReceiverR (Auth.deviceKey authData') receiver
   pure ResAuthenticated
 

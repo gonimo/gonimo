@@ -14,12 +14,13 @@ import Gonimo.Types (AuthToken, Secret, DeviceType)
 
 type MessageId = Int
 data ServerRequest
-  = ReqMakeDevice !(Maybe Text)
+  = ReqAuthenticate !AuthToken
+
+  | ReqMakeDevice !(Maybe Text)
   | ReqGetDeviceInfo !DeviceId
   | ReqSetDeviceType !DeviceId !DeviceType
   | ReqSwitchFamily  !DeviceId !FamilyId
 
-  | ReqAuthenticate !AuthToken
 
   | ReqCreateFamily
   | ReqGetFamily !FamilyId
@@ -44,12 +45,13 @@ data ServerRequest
 -- | Constructors starting with "Res" are responses to requests.
 --   Constructors starting with Event happen without any request.
 data ServerResponse
-  = ResMadeDevice !Client.AuthData
+  = ResAuthenticated
+
+  | ResMadeDevice !Client.AuthData
   | ResGotDeviceInfo !DeviceId !Client.DeviceInfo
   | ResSetDeviceType !DeviceId
   | ResSwitchedFamily !DeviceId !FamilyId
 
-  | ResAuthenticated
 
   | ResCreatedFamily !FamilyId
   | ResGotFamily !FamilyId !Family
@@ -60,7 +62,7 @@ data ServerResponse
   | ResCreatedInvitation !(InvitationId, Invitation)
   | ResSentInvitation
   | ResClaimedInvitation !Secret !InvitationInfo
-  | ResAnswerInvitation !Secret !InvitationReply !(Maybe FamilyId)
+  | ResAnsweredInvitation !Secret !InvitationReply !(Maybe FamilyId)
 
   | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
 

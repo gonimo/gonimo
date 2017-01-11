@@ -32,10 +32,9 @@ makeClient subscriber' = do
 processRequest :: Client -> Set ServerRequest -> STM ()
 processRequest c req = do
   oldMonitors <- readTVar (monitors c)
-  let reqSet = Set.fromList req
   let oldSet = Set.fromList . Map.keys $ oldMonitors
-  let removeSet = oldSet \\ reqSet
-  let addSet = reqSet \\ oldSet
+  let removeSet = oldSet \\ req
+  let addSet = req \\ oldSet
   traverse_ (removeRequest c) . Set.toList $ removeSet
   traverse_ (addRequest c) . Set.toList $ addSet
 
