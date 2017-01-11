@@ -16,6 +16,8 @@ import           Control.Monad.Logger             (LoggingT)
 import           Control.Monad.Logger             (logError)
 import           Control.Monad.Reader.Class       (MonadReader, ask)
 import           Control.Monad.Trans.Reader       (runReaderT)
+import           Control.Monad.Trans.Class        (lift)
+import           Control.Monad.Trans.Maybe        (runMaybeT, MaybeT(..))
 import           Data.Aeson                       (FromJSON)
 import qualified Data.Aeson                       as Aeson
 import qualified Data.ByteString.Lazy             as LB
@@ -46,6 +48,7 @@ import qualified Network.HTTP.Types.Status        as Http
 import qualified Network.Wai                      as Wai
 import qualified Network.Wai.Handler.WebSockets   as Wai
 import qualified Network.WebSockets               as WS
+import           Data.Maybe
 
 type AuthDataRef = IORef (Maybe AuthData)
 
@@ -71,7 +74,11 @@ serveWebSocket authRef conn = do
     client <- atomically $ Subscriber.makeClient sub
     let
       work = race_ (Subscriber.runMonitor client respondToRequest) handleIncoming
-      cleanup = Subscriber.cleanup client
+      cleanup = do
+        Subscriber.cleanup client
+        fmap (fromMaybe ()) . runMaybeT $ do
+          authData' <- MaybeT . liftIO $ readIORef authRef
+          lift . flip runReaderT authData' $ deleteReceiverR (Auth.deviceKey authData')
 
       handleIncoming = do
         raw <- liftIO $ WS.receiveDataMessage conn
@@ -81,16 +88,13 @@ serveWebSocket authRef conn = do
         respondToRequest =<< decodeLogError bs
 
       respondToRequest :: ServerRequest -> Server ()
-      respondToRequest req = async_' $ do -- Let's fork off :-)
+      respondToRequest req = async_ $ do -- Let's fork off :-)
         r <- flip runReaderT authRef
              $ handleServerRequest receiver client req -- Does handle user interesting exceptions ...
         case r of
           ResGotFamilies _ fids -> liftIO $ modifyIORef' authRef (_Just.allowedFamilies .~ fids)
           _ -> pure ()
         sendWSMessage r
-
-      async_' :: Server () -> Server ()
-      async_' = async_
 
       sendWSMessage r = do
         let encoded = Aeson.encode r
@@ -99,7 +103,9 @@ serveWebSocket authRef conn = do
       receiver :: Message -> IO ()
       receiver message = wsExceptionToServerError $ case message of
           MessageSessionGotStolen
-            -> sendWSMessage EventSessionGotStolen
+            -> do
+            writeIORef authRef Nothing
+            sendWSMessage EventSessionGotStolen
           MessageCreateChannel fromId secret
             -> sendWSMessage $ EventChannelRequested fromId secret
           MessageSendMessage fromId secret msg
