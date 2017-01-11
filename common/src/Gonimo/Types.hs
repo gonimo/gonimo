@@ -35,7 +35,7 @@ import           Data.Text      (Text)
 
 data DeviceType = NoBaby
                 | Baby Text
-                deriving (Show, Eq, Generic)
+                deriving (Show, Eq, Ord, Generic)
 
 toBabyName :: MonadPlus m => DeviceType -> m Text
 toBabyName NoBaby = mzero
@@ -126,7 +126,7 @@ type EmailAddress = Text
 --------------------------------------------------
 data InvitationDelivery = EmailInvitation EmailAddress
                         | OtherDelivery
-                        deriving (Read, Show, Generic)
+                        deriving (Read, Show, Eq, Ord, Generic)
 
 instance FromJSON InvitationDelivery
 

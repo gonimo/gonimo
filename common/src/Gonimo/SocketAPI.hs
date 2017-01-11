@@ -6,11 +6,11 @@ import           Data.Text                       (Text)
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToEncoding)
 import qualified Gonimo.SocketAPI.Types as Client
-import Gonimo.SocketAPI.Types (FromId, ToId)
+import Gonimo.SocketAPI.Types (FromId, ToId, InvitationReply, InvitationInfo)
 import GHC.Generics (Generic)
 import Gonimo.Server.Error (ServerError)
-import Gonimo.Db.Entities (FamilyId, InvitationId, Invitation, DeviceId, AccountId)
-import Gonimo.Types (AuthToken, Secret)
+import Gonimo.Db.Entities (FamilyId, InvitationId, Invitation, DeviceId, AccountId, Family)
+import Gonimo.Types (AuthToken, Secret, DeviceType)
 
 type MessageId = Int
 data ServerRequest
@@ -54,7 +54,7 @@ data ServerResponse
   | ResCreatedFamily !FamilyId
   | ResGotFamily !FamilyId !Family
   | ResGotFamilyMembers !FamilyId !([AccountId])
-  | ResGotOnlineDevices !FamilyId !([DeviceId, DeviceType])
+  | ResGotOnlineDevices !FamilyId ![(DeviceId, DeviceType)]
   | ResSavedBabyName
 
   | ResCreatedInvitation !(InvitationId, Invitation)
