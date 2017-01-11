@@ -54,7 +54,7 @@ data ServerResponse
   | ResCreatedFamily !FamilyId
   | ResGotFamily !FamilyId !Family
   | ResGotFamilyMembers !FamilyId !([AccountId])
-  | ResGotOnlineDevices !FamilyId !([DeviceId])
+  | ResGotOnlineDevices !FamilyId !([DeviceId, DeviceType])
   | ResSavedBabyName
 
   | ResCreatedInvitation !(InvitationId, Invitation)
