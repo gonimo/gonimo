@@ -12,7 +12,7 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import qualified Data.Map.Strict               as Map
 import           Data.Foldable                 (traverse_)
-import           Data.Set                      ((\\))
+import           Data.Set                      ((\\), Set)
 import qualified Data.Set                      as Set
 
 import           Gonimo.Server.Subscriber.Types
@@ -23,6 +23,22 @@ makeSubscriber = do
   state' <- newTVar Map.empty
   pure $ Subscriber { subState = state'
                     }
+
+makeClient :: Subscriber -> STM Client
+makeClient subscriber' = do
+  ms <- newTVar Map.empty
+  return $ Client subscriber' ms
+
+processRequest :: Client -> Set ServerRequest -> STM ()
+processRequest c req = do
+  oldMonitors <- readTVar (monitors c)
+  let reqSet = Set.fromList req
+  let oldSet = Set.fromList . Map.keys $ oldMonitors
+  let removeSet = oldSet \\ reqSet
+  let addSet = reqSet \\ oldSet
+  traverse_ (removeRequest c) . Set.toList $ removeSet
+  traverse_ (addRequest c) . Set.toList $ addSet
+
 
 notifyChange :: Subscriber -> ServerRequest -> STM ()
 notifyChange subscriber' req' = do
@@ -57,21 +73,6 @@ unsubscribe p tv sub = do
   if refCount v == 0
     then modifyTVar' (subState sub) (Map.delete p)
     else writeTVar tv v
-
-makeClient :: Subscriber -> STM Client
-makeClient subscriber' = do
-  ms <- newTVar Map.empty
-  return $ Client subscriber' ms
-
-processRequest :: Client -> [ServerRequest] -> STM ()
-processRequest c req = do
-  oldMonitors <- readTVar (monitors c)
-  let reqSet = Set.fromList req
-  let oldSet = Set.fromList . Map.keys $ oldMonitors
-  let removeSet = oldSet \\ reqSet
-  let addSet = reqSet \\ oldSet
-  traverse_ (removeRequest c) . Set.toList $ removeSet
-  traverse_ (addRequest c) . Set.toList $ addSet
 
 
 snapshotOld :: Snapshot -> Maybe ResourceStatus
