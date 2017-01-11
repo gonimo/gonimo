@@ -85,8 +85,8 @@ switchFamilyR deviceId familyId = do
 
 -- Update last used baby names and send out notifications on change.
 -- TODO: Does not really belong here!
-putBabyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
-putBabyNameR familyId babyName = do
+saveBabyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
+saveBabyNameR familyId babyName = do
   authorizeAuthData $ isFamilyMember familyId
 
   mNotifyFamily <- runDb . runMaybeT $ do
