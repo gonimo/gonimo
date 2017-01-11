@@ -36,6 +36,7 @@ import           Gonimo.Server.Error              (ServerError (..),
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Handlers.Auth
 import           Gonimo.Server.Handlers.Messenger
+import           Gonimo.Server.Handlers.Socket
 import           Gonimo.Server.Messenger          (Message (..))
 import qualified Gonimo.Server.Subscriber         as Subscriber
 import qualified Gonimo.Server.Subscriber.Types   as Subscriber
@@ -128,13 +129,14 @@ handleServerRequest :: forall m. (MonadReader AuthDataRef m, MonadServer m)
                        => (Message -> IO ()) -> Subscriber.Client -> ServerRequest -> m ServerResponse
 handleServerRequest receiver sub req = errorToResponse $ case req of
     ReqAuthenticate token   -> authenticate receiver sub token
-    ReqMakeDevice userAgent -> ResMadeDevice <$> createDevice userAgent
+    ReqMakeDevice userAgent -> ResMadeDevice <$> createDeviceR userAgent
     _                       -> do
       authData' <- fromMaybeErr NotAuthenticated =<< liftIO . readIORef =<< ask
       flip runReaderT authData' $ handleAuthServerRequest sub req
   where
     errorToResponse :: m ServerResponse -> m ServerResponse
     errorToResponse action = either (ResError req) id <$> try action
+
 
 handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
 handleAuthServerRequest sub req = case req of
@@ -161,15 +163,15 @@ handleAuthServerRequest sub req = case req of
   ReqSetSubscriptions subs             -> do
     accountId <- Auth.accountKey <$> ask
     -- We need GetFamilies subscribed to keep our AuthData current.
-    let subsSet = Set.insert (ReqGetFamilies accountId) Set.fromList subs
+    let subsSet = Set.insert (ReqGetFamilies accountId) (Set.fromList subs)
     Server.atomically $ Subscriber.processRequest sub subsSet
     pure ResSubscribed
 
   ReqGetFamilies accountId             -> ResGotFamilies accountId <$> getFamiliesR accountId
   ReqGetDevices accountId              -> ResGotDevices  accountId <$> getDevicesR accountId
 
-  ReqCreateChannel from to             -> ResCreatedChannel from to <$> createChannelR from to
-  ReqSendMessage from to secret msg    -> sendMessageR from to secret msg *> pure ResSentMessage
+  ReqCreateChannel from' to'             -> ResCreatedChannel from' to' <$> createChannelR from' to'
+  ReqSendMessage from' to' secret msg    -> sendMessageR from' to' secret msg *> pure ResSentMessage
 
 authenticate :: forall m. (MonadReader AuthDataRef m, MonadServer m)
   => (Message -> IO ()) -> Subscriber.Client -> AuthToken -> m ServerResponse
@@ -178,7 +180,7 @@ authenticate receiver sub token = do
   authRef <- ask
   liftIO . writeIORef authRef $ Just authData'
   -- Evil hack:
-  Subscriber.processRequest sub $ ReqGetFamilies (Auth.accountKey authData')
+  atomically . Subscriber.processRequest sub $ Set.singleton (ReqGetFamilies (Auth.accountKey authData'))
   flip runReaderT authData' $ registerReceiverR (Auth.deviceKey authData') receiver
   pure ResAuthenticated
 

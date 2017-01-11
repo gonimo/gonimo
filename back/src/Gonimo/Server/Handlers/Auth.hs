@@ -142,8 +142,8 @@ getFamilyMembersR familyId = do
     familyAccounts <- Db.selectList [FamilyAccountFamilyId ==. familyId] []
     pure $ map (familyAccountAccountId . entityVal) familyAccounts
 
-getAccountDevicesR :: (AuthReader m, MonadServer m) => AccountId -> m [DeviceId]
-getAccountDevicesR accountId = do
+getDevicesR :: (AuthReader m, MonadServer m) => AccountId -> m [DeviceId]
+getDevicesR accountId = do
   (result, inFamilies) <- runDb $ do
     inFamilies' <- map (familyAccountFamilyId . entityVal)
                    <$> Db.selectList [ FamilyAccountAccountId ==. accountId ] []
@@ -187,10 +187,10 @@ createFamilyR = do
   notify $ ReqGetFamilies aid
   return fid
 
-getAccountFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
-getAccountFamiliesR accountId = do
+getFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
+getFamiliesR accountId = do
   authorizeAuthData $ isAccount accountId
-  runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
+  runDb $ do
     map (familyAccountFamilyId . entityVal)
       <$> Db.selectList [FamilyAccountAccountId ==. accountId] []
 

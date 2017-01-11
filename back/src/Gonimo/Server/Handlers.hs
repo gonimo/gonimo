@@ -21,8 +21,8 @@ maxUserAgentLength = 300
 --   Each device is uniquely identified by a DeviceId, multiple
 --   Device's can share a single account in case a user login was provided,
 --   otherwise every device corresponds to a single Account.
-createDevice :: MonadServer m => Maybe Text -> m Client.AuthData
-createDevice mUserAgent = do
+createDeviceR :: MonadServer m => Maybe Text -> m Client.AuthData
+createDeviceR mUserAgent = do
   now <- getCurrentTime
   authToken <- GonimoSecret <$> generateSecret
   let userAgent = maybe noUserAgentDefault (take maxUserAgentLength) mUserAgent
