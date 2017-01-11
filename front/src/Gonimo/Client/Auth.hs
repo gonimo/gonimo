@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Client.Auth where
 
@@ -13,7 +14,9 @@ import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
 import qualified GHCJS.DOM.JSFFI.Generated.Navigator as Navigator
+import qualified GHCJS.DOM.JSFFI.Generated.Location as Location
 import GHCJS.DOM.JSFFI.Generated.Storage (Storage)
+import GHCJS.DOM.Types (FromJSVal, fromJSVal, toJSString)
 import Data.Text (Text)
 import Safe (headMay)
 
@@ -39,6 +42,8 @@ auth :: forall t m. (HasWebView m, MonadWidget t m) => AuthConfig t -> m (Auth t
 auth config = do
   (makeDeviceEvent, authDataDyn) <- makeAuthData config
   let authenticateEvent = authenticate config authDataDyn
+  performEvent_
+    $ handleStolenSession <$> config^.authConfigResponse
   pure $ Auth { _authRequest = mconcat
                                . map (fmap (:[]))
                                $ [ makeDeviceEvent
@@ -87,6 +92,13 @@ authenticate config authDataDyn=
 writeAuthData :: MonadIO m => Storage -> Maybe API.AuthData -> m ()
 writeAuthData _ Nothing = pure ()
 writeAuthData storage (Just auth') = GStorage.setItem storage GStorage.keyAuthData auth'
+
+handleStolenSession :: MonadIO m => API.ServerResponse -> m ()
+handleStolenSession API.EventSessionGotStolen = do
+  window  <- DOM.currentWindowUnchecked
+  location <- Window.getLocationUnsafe window
+  Location.setPathname location ("/stolenSession.html" :: Text)
+handleStolenSession _ = pure ()
 
 
 loadAuthData :: MonadIO m => Storage -> m (Maybe API.AuthData)
