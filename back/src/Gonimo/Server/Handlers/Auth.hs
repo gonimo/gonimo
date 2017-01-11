@@ -135,16 +135,31 @@ sendInvitation (Client.SendInvitation iid d@(EmailInvitation email)) = do
   sendEmail $ makeInvitationEmail inv email (Db.familyName family)
 sendInvitation (Client.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 
-getDeviceInfos :: (AuthReader m, MonadServer m) => FamilyId -> m [(DeviceId, Client.DeviceInfo)]
-getDeviceInfos familyId = do
+getFamilyMembersR :: (AuthReader m, MonadServer m) => FamilyId -> m [AccountId]
+getFamilyMembersR familyId = do
   authorizeAuthData $ isFamilyMember familyId
-  runDb $ do -- TODO: After we switched to transformers - use esqueleto for this!
+  runDb $ do
     familyAccounts <- Db.selectList [FamilyAccountFamilyId ==. familyId] []
-    let accountIds = familyAccountAccountId . entityVal <$> familyAccounts
-    let selectDevices accountId = Db.selectList [DeviceAccountId ==. accountId] []
-    deviceEntities <- concat <$> traverse selectDevices accountIds
-    let entityToPair (Entity key val) = (key, val)
-    return $ map (fmap Client.fromDevice . entityToPair) deviceEntities
+    pure $ map (familyAccountAccountId . entityVal) familyAccounts
+
+getAccountDevicesR :: (AuthReader m, MonadServer m) => AccountId -> m [DeviceId]
+getAccountDevicesR accountId = do
+  (result, inFamilies) <- runDb $ do
+    inFamilies' <- familyAccountFamilyId . entityVal <$> Db.selectList [ FamilyAccountAccountId ==. accountId ]
+    result' <- entityKey <$> Db.selectList [DeviceAccountId ==. accountId] []
+    pure (inFamilies', result')
+  authorizeAuthData $ or (map isFamilyMember inFamilies)
+  pure result
+
+getDeviceInfoR :: (AuthReader m, MonadServer m) => DeviceId -> m DeviceInfo
+getDeviceInfoR deviceId = do
+  (result, inFamilies) <- runDb $ do
+    device <- Db.get404 deviceId
+    inFamilies' <- familyAccountFamilyId . entityVal
+                   <$> Db.selectList [ FamilyAccountAccountId ==. deviceAccountId device ]
+    pure (Client.fromDevice device, inFamilies')
+  authorizeAuthData $ or (map isFamilyMember inFamilies)
+  pure result
 
 createFamily :: (AuthReader m, MonadServer m) =>  m FamilyId
 createFamily = do
