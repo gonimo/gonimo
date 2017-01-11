@@ -32,6 +32,9 @@ authView g = (^. g) <$> ask
 deviceKey :: AuthData -> Key Device
 deviceKey = entityKey . _deviceEntity
 
+accountKey :: AuthData -> Key Account
+accountKey = entityKey . _accountEntity
+
 isFamilyMember :: FamilyId -> AuthData -> Bool
 isFamilyMember fid = (fid `elem`) . _allowedFamilies
 
