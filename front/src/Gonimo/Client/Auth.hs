@@ -33,6 +33,7 @@ data AuthConfig t
 
 data Auth t
   = Auth { _authRequest :: Event t [ API.ServerRequest ]
+         , _authAuthData :: Dynamic t (Maybe API.AuthData)
          }
 
 makeLenses ''AuthConfig
@@ -49,6 +50,7 @@ auth config = do
                                $ [ makeDeviceEvent
                                  , authenticateEvent
                                  ]
+              , _authAuthData = authDataDyn
               }
 
 makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)

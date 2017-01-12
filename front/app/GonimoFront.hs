@@ -33,7 +33,7 @@ main = mainWidgetWithHead headTag $ mdo
                               }
   auth <- Auth.auth authConfig
   let serverRequests = auth^.authRequest
-  invite
+  -- invite
   pure ()
 
 headTag :: forall x. Widget x ()
