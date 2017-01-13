@@ -54,6 +54,7 @@ library
                     , Gonimo.Client.Server
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Family
+                    , Gonimo.Client.Subscriber
 
 
 executable gonimo-front
