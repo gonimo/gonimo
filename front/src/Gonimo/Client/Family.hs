@@ -19,23 +19,23 @@ import Control.Lens
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
-data FamilyConfig t
-  = FamilyConfig { _familyConfigResponse :: Event t API.ServerResponse
-                 , _familyConfigAuthData :: Dynamic t (Maybe API.AuthData)
-                 }
-
-data Family t
-  = Family { _familyFamilies  :: Dynamic t (Map FamilyId Db.Family)
-           , _familyCurrentId :: Dynamic t (Maybe FamilyId)
-           , _familyRequests :: Event t [ API.ServerRequest ]
-           , _familySubscriptions :: SubscriptionsDyn t
+data Config t
+  = Config { _configResponse :: Event t API.ServerResponse
+           , _configAuthData :: Dynamic t (Maybe API.AuthData)
            }
 
-makeLenses ''FamilyConfig
+data Family t
+  = Family { _families  :: Dynamic t (Map FamilyId Db.Family)
+           , _currentId :: Dynamic t (Maybe FamilyId)
+           , _requests :: Event t [ API.ServerRequest ]
+           , _subscriptions :: SubscriptionsDyn t
+           }
+
+makeLenses ''Config
 makeLenses ''Family
 
 makeFamilies :: forall m t. (HasWebView m, MonadWidget t m)
-  => FamilyConfig t -> m (SubscriptionsDyn t, Dynamic t (Map FamilyId Db.Family))
+  => Config t -> m (SubscriptionsDyn t, Dynamic t (Map FamilyId Db.Family))
 makeFamilies config = do
   (,) <$> makeSubscriptions <*> makeFamilyMap
  where
@@ -45,11 +45,11 @@ makeFamilies config = do
        fidsToSubscriptions resp = case resp of
          API.ResGotFamilies _ fids -> pure . Just . foldr Set.insert Set.empty . map API.ReqGetFamily $ fids
          _ -> pure Nothing
-       familiesSubsEvent = push fidsToSubscriptions (config^.familyConfigResponse)
+       familiesSubsEvent = push fidsToSubscriptions (config^.configResponse)
      familiesSubs <- holdDyn Set.empty familiesSubsEvent
 
      let familyIdsSubs = maybe Set.empty (Set.singleton . API.ReqGetFamilies . API.accountId)
-                          <$> config^.familyConfigAuthData
+                          <$> config^.configAuthData
 
      pure $ zipDynWith Set.union familyIdsSubs familiesSubs
 
@@ -63,6 +63,6 @@ makeFamilies config = do
            pure $ Just (Map.insert fid family oldMap)
          _                           -> pure Nothing
 
-       familyMapEv = push resToFamily $ config^.familyConfigResponse
+       familyMapEv = push resToFamily $ config^.configResponse
      familyMap <- holdDyn Map.empty familyMapEv
      pure familyMap

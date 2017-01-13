@@ -18,33 +18,33 @@ import Control.Lens
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
-data SubscriberConfig t
-  = SubscriberConfig { _subscriberConfigSubscriptions :: Dynamic t (Set API.ServerRequest)
-                     , _subscriberConfigResponse :: Event t API.ServerResponse -- push subscriptions on Authenticated
-                     }
+data Config t
+  = Config { _configSubscriptions :: Dynamic t (Set API.ServerRequest)
+           , _configResponse :: Event t API.ServerResponse -- push subscriptions on Authenticated
+           }
 
 data Subscriber t
-  = Subscriber { _subscriberRequest :: Event t [ API.ServerRequest ]
+  = Subscriber { _request :: Event t [ API.ServerRequest ]
                }
 
-makeLenses ''SubscriberConfig
+makeLenses ''Config
 makeLenses ''Subscriber
 
 subscriber :: forall m t. (HasWebView m, MonadWidget t m)
-              => SubscriberConfig t -> m (Subscriber t)
+              => Config t -> m (Subscriber t)
 subscriber config = do
   let
-    requests = API.ReqSetSubscriptions . Set.toList <$> config^.subscriberConfigSubscriptions
+    requests = API.ReqSetSubscriptions . Set.toList <$> config^.configSubscriptions
 
     authenticated :: Event t ()
     authenticated = do
       let handleAuthenticated resp = pure $ case resp of
             API.ResAuthenticated -> Just ()
             _                    -> Nothing
-      push handleAuthenticated $ config^.subscriberConfigResponse
+      push handleAuthenticated $ config^.configResponse
 
 
-  pure $ Subscriber { _subscriberRequest = mconcat
+  pure $ Subscriber { _request = mconcat
                       . map (fmap (:[]))
                       $ [ tag (current requests) $ authenticated
                         , updated requests

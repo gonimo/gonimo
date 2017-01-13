@@ -18,21 +18,35 @@ import Data.Default
 import qualified Gonimo.Client.Server as Server
 import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
 import qualified Gonimo.Client.Auth as Auth
-import Gonimo.Client.Auth (AuthConfig(..), Auth, authConfigResponse, authRequest)
-import Gonimo.Client.Invite (invite)
+import qualified Gonimo.Client.Invite as Invite
+import qualified Gonimo.Client.Family as Family
+import qualified Gonimo.Client.Subscriber as Subscriber
 import Control.Monad
 
 
 
 main :: IO ()
 main = mainWidgetWithHead headTag $ mdo
+  let serverRequests = auth^.Auth.request
+                    <> subscriber^.Subscriber.request
+
   let wsConfig = def & webSocketConfig_send .~ serverRequests
   server <- Server.server "ws://localhost:8081" wsConfig
-  let authConfig = AuthConfig { _authConfigResponse = server^.webSocket_recv
-                              , _authConfigServerOpen = server^.webSocket_open
-                              }
+
+  let authConfig = Auth.Config { Auth._configResponse = server^.webSocket_recv
+                               , Auth._configServerOpen = server^.webSocket_open
+                               }
   auth <- Auth.auth authConfig
-  let serverRequests = auth^.authRequest
+
+  let subscriberConfig = Subscriber.Config { Subscriber._configResponse = server^.webSocket_recv
+                                           , Subscriber._configSubscriptions = familySubscriptions
+                                           }
+  subscriber <- Subscriber.subscriber subscriberConfig
+
+  let familyConfig = Family.Config { Family._configResponse = server^.webSocket_recv
+                                   , Family._configAuthData = auth^.Auth.authData
+                                   }
+  (familySubscriptions, familyMap) <- Family.makeFamilies familyConfig
   -- invite
   pure ()
 

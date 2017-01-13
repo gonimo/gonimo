@@ -26,35 +26,35 @@ import Data.Maybe (isNothing, isJust, catMaybes)
 
 -- data AuthCommand = AuthCreateDevice
 
-data AuthConfig t
-  = AuthConfig { _authConfigResponse :: Event t API.ServerResponse
-               , _authConfigServerOpen :: Event t ()
-               }
+data Config t
+  = Config { _configResponse :: Event t API.ServerResponse
+           , _configServerOpen :: Event t ()
+           }
 
 data Auth t
-  = Auth { _authRequest :: Event t [ API.ServerRequest ]
-         , _authAuthData :: Dynamic t (Maybe API.AuthData)
+  = Auth { _request :: Event t [ API.ServerRequest ]
+         , _authData :: Dynamic t (Maybe API.AuthData)
          }
 
-makeLenses ''AuthConfig
+makeLenses ''Config
 makeLenses ''Auth
 
-auth :: forall t m. (HasWebView m, MonadWidget t m) => AuthConfig t -> m (Auth t)
+auth :: forall t m. (HasWebView m, MonadWidget t m) => Config t -> m (Auth t)
 auth config = do
   (makeDeviceEvent, authDataDyn) <- makeAuthData config
   let authenticateEvent = authenticate config authDataDyn
   performEvent_
-    $ handleStolenSession <$> config^.authConfigResponse
-  pure $ Auth { _authRequest = mconcat
+    $ handleStolenSession <$> config^.configResponse
+  pure $ Auth { _request = mconcat
                                . map (fmap (:[]))
                                $ [ makeDeviceEvent
                                  , authenticateEvent
                                  ]
-              , _authAuthData = authDataDyn
+              , _authData = authDataDyn
               }
 
 makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)
-  => AuthConfig t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
+  => Config t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
 makeAuthData config = do
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
 
@@ -62,7 +62,7 @@ makeAuthData config = do
     makeDevice <- if isNothing initial
                   then Just . API.ReqMakeDevice . Just <$> getUserAgentString
                   else pure Nothing
-    let makeDeviceEvent = push (pure . const makeDevice) $ config^.authConfigServerOpen
+    let makeDeviceEvent = push (pure . const makeDevice) $ config^.configServerOpen
     authDataDyn <- holdDyn initial (Just <$> serverAuth)
 
     performEvent_
@@ -71,7 +71,7 @@ makeAuthData config = do
     pure (makeDeviceEvent, authDataDyn)
   where
     serverAuth :: Event t API.AuthData
-    serverAuth = push (pure . fromServerResponse) $ config^.authConfigResponse
+    serverAuth = push (pure . fromServerResponse) $ config^.configResponse
 
     fromServerResponse :: API.ServerResponse -> Maybe API.AuthData
     fromServerResponse resp = case resp of
@@ -79,12 +79,12 @@ makeAuthData config = do
       _ -> Nothing
 
 
-authenticate :: forall t. Reflex t => AuthConfig t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
+authenticate :: forall t. Reflex t => Config t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
 authenticate config authDataDyn=
   let
     authDataList = catMaybes
                    <$> (mconcat . map (fmap (:[])))
-                   [ tag (current authDataDyn) $ config^.authConfigServerOpen
+                   [ tag (current authDataDyn) $ config^.configServerOpen
                    , updated authDataDyn
                    ]
     authData = push (pure . headMay) authDataList
