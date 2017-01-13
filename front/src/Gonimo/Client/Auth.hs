@@ -34,6 +34,7 @@ data Config t
 data Auth t
   = Auth { _request :: Event t [ API.ServerRequest ]
          , _authData :: Dynamic t (Maybe API.AuthData)
+         , _authenticated :: Event t ()
          }
 
 makeLenses ''Config
@@ -45,12 +46,21 @@ auth config = do
   let authenticateEvent = authenticate config authDataDyn
   performEvent_
     $ handleStolenSession <$> config^.configResponse
+  let
+    authenticated' :: Event t ()
+    authenticated' = do
+      let handleAuthenticated resp = pure $ case resp of
+            API.ResAuthenticated -> Just ()
+            _                    -> Nothing
+      push handleAuthenticated $ config^.configResponse
+
   pure $ Auth { _request = mconcat
                                . map (fmap (:[]))
                                $ [ makeDeviceEvent
                                  , authenticateEvent
                                  ]
               , _authData = authDataDyn
+              , _authenticated = authenticated'
               }
 
 makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)
@@ -111,3 +121,4 @@ getUserAgentString = do
   window  <- DOM.currentWindowUnchecked
   navigator <- Window.getNavigatorUnsafe window
   Navigator.getUserAgent navigator
+

@@ -16,17 +16,24 @@ import Data.Set (Set)
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import Control.Lens
+import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
+import qualified Gonimo.Client.Storage as GStorage
+import qualified Gonimo.Client.Storage.Keys as GStorage
+import qualified GHCJS.DOM as DOM
+import Data.Foldable (traverse_)
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
 data Config t
   = Config { _configResponse :: Event t API.ServerResponse
            , _configAuthData :: Dynamic t (Maybe API.AuthData)
+           , _configSelectFamily :: Event t FamilyId
+           , _configAuthenticated :: Event t ()
            }
 
 data Family t
   = Family { _families  :: Dynamic t (Map FamilyId Db.Family)
-           , _currentId :: Dynamic t (Maybe FamilyId)
+           , _selectedFamily :: Dynamic t (Maybe FamilyId)
            , _requests :: Event t [ API.ServerRequest ]
            , _subscriptions :: SubscriptionsDyn t
            }
@@ -34,8 +41,43 @@ data Family t
 makeLenses ''Config
 makeLenses ''Family
 
+family :: forall m t. (HasWebView m, MonadWidget t m) => Config t -> m (Family t)
+family config = mdo
+  (reqs, selected') <- handleFamilySelect config
+  (subs, familyMap) <- makeFamilies config
+  pure $ Family { _families = familyMap
+                , _selectedFamily = selected'
+                , _requests = reqs
+                , _subscriptions = subs
+                }
+
+handleFamilySelect :: forall m t. (HasWebView m, MonadWidget t m)
+                      => Config t -> m (Event t [ API.ServerRequest ], Dynamic t (Maybe FamilyId))
+handleFamilySelect config = mdo
+    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    loadedFamilyId <- GStorage.getItem storage GStorage.currentFamily
+    selected' <- holdDyn loadedFamilyId $ Just <$> config^.configSelectFamily
+    performEvent_
+      $ traverse_ (GStorage.setItem storage GStorage.currentFamily) <$> updated selected'
+    reqs <- makeRequests selected'
+    pure (reqs, selected')
+  where
+    makeRequests :: Dynamic t (Maybe FamilyId) -> m (Event t [ API.ServerRequest ])
+    makeRequests selected' = do
+      let
+        mayReq :: Maybe API.AuthData -> Maybe FamilyId -> Maybe API.ServerRequest
+        mayReq mAuth mFid = API.ReqSwitchFamily <$> fmap API.deviceId mAuth <*> mFid
+
+        reqDyn = zipDynWith mayReq (config^.configAuthData) selected'
+        reqsDyn :: Dynamic t [ API.ServerRequest ]
+        reqsDyn = maybe [] (:[]) <$> reqDyn
+      pure $ mconcat $ [ tag (current reqsDyn) $ config^.configAuthenticated
+                       , updated reqsDyn
+                       ]
+
+
 makeFamilies :: forall m t. (HasWebView m, MonadWidget t m)
-  => Config t -> m (SubscriptionsDyn t, Dynamic t (Map FamilyId Db.Family))
+                => Config t -> m (SubscriptionsDyn t, Dynamic t (Map FamilyId Db.Family))
 makeFamilies config = do
   (,) <$> makeSubscriptions <*> makeFamilyMap
  where

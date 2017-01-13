@@ -5,6 +5,7 @@ module Gonimo.Client.Storage.Keys where
 
 import Gonimo.SocketAPI.Types as API
 import Data.Aeson (FromJSON, ToJSON, toEncoding, genericToEncoding, defaultOptions)
+import Gonimo.Db.Entities (FamilyId)
 import GHC.Generics (Generic)
 
 data Key a = KeyAuthData
@@ -16,6 +17,9 @@ deriving instance Generic (Key a)
 -- | Needed because deriving clause did not work for GADT, although it should according to documentation
 keyAuthData :: Key API.AuthData
 keyAuthData = KeyAuthData
+
+currentFamily :: Key FamilyId
+currentFamily = CurrentFamily
 
 instance FromJSON (Key a)
 instance ToJSON (Key a) where

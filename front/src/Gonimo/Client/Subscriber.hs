@@ -21,6 +21,7 @@ type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 data Config t
   = Config { _configSubscriptions :: Dynamic t (Set API.ServerRequest)
            , _configResponse :: Event t API.ServerResponse -- push subscriptions on Authenticated
+           , _configAuthenticated :: Event t ()
            }
 
 data Subscriber t
@@ -35,18 +36,9 @@ subscriber :: forall m t. (HasWebView m, MonadWidget t m)
 subscriber config = do
   let
     requests = API.ReqSetSubscriptions . Set.toList <$> config^.configSubscriptions
-
-    authenticated :: Event t ()
-    authenticated = do
-      let handleAuthenticated resp = pure $ case resp of
-            API.ResAuthenticated -> Just ()
-            _                    -> Nothing
-      push handleAuthenticated $ config^.configResponse
-
-
   pure $ Subscriber { _request = mconcat
                       . map (fmap (:[]))
-                      $ [ tag (current requests) $ authenticated
+                      $ [ tag (current requests) $ config^.configAuthenticated
                         , updated requests
                         ]
                     }

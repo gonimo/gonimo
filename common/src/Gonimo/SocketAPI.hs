@@ -21,7 +21,6 @@ data ServerRequest
   | ReqSetDeviceType !DeviceId !DeviceType
   | ReqSwitchFamily  !DeviceId !FamilyId
 
-
   | ReqCreateFamily
   | ReqGetFamily !FamilyId
   | ReqGetFamilyMembers !FamilyId
