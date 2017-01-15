@@ -54,7 +54,10 @@ library
                     , Gonimo.Client.Server
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Family
+                    , Gonimo.Client.Family.Internal
+                    , Gonimo.Client.Family.UI
                     , Gonimo.Client.Subscriber
+                    , Gonimo.Client.Reflex
 
 
 executable gonimo-front
