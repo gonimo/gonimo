@@ -25,6 +25,7 @@ import Data.Maybe (isJust, isNothing)
 import Safe (headMay)
 import Data.List (sort)
 import Gonimo.Client.Reflex
+import Control.Monad.IO.Class (MonadIO, liftIO)
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
@@ -80,7 +81,10 @@ handleFamilySelect config families' = mdo
     performEvent_
       $ traverse_ (GStorage.setItem storage GStorage.currentFamily) <$> updated selectedChecked
 
-    selectedUnchecked <- holdDyn loadedFamilyId $ Just <$> config^.configSelectFamily
+    (initEv, makeInitEv) <- newTriggerEvent
+    liftIO $ makeInitEv loadedFamilyId
+    let selectEvent = leftmost [ Just <$> config^.configSelectFamily, initEv ]
+    selectedUnchecked <- holdDyn loadedFamilyId selectEvent
     let selectedChecked = fixSelected selectedUnchecked
 
     reqs <- makeRequest selectedChecked
@@ -151,9 +155,9 @@ makeFamilies config = do
      let
        resToFamily :: API.ServerResponse -> PushM t (Maybe (Map FamilyId Db.Family))
        resToFamily resp = case resp of
-         API.ResGotFamily fid family -> do
+         API.ResGotFamily fid family' -> do
            oldMap <- sample $ current familyMap
-           pure $ Just (Map.insert fid family oldMap)
+           pure $ Just (Map.insert fid family' oldMap)
          _                           -> pure Nothing
 
        completeOrNothing :: Map FamilyId Db.Family -> [FamilyId] -> Maybe (Map FamilyId Db.Family)
