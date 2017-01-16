@@ -26,7 +26,7 @@ import Control.Monad
 
 
 main :: IO ()
-main = mainWidgetWithHead headTag $ mdo
+main = mainWidgetInElementById "app" $ mdo
   let serverRequests = auth^.Auth.request
                     <> subscriber^.Subscriber.request
                     <> famRequest
@@ -61,15 +61,15 @@ main = mainWidgetWithHead headTag $ mdo
   -- invite
   pure ()
 
-headTag :: forall x. Widget x ()
-headTag = do
-  forM_ [ "//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" --TODO Make these links local
-        , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
-        , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
-        ] $ \x -> elAttr "link" ("rel" =: "stylesheet" <> "href" =: x) $ pure ()
-  forM_ [ "//ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"
-        , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
-        ] $ \x -> elAttr "script" ("src" =: x) $ pure ()
-  elAttr "meta" ("name" =: "viewport"
-                 <> "content" =: "width=device-width, initial-scale=1, user-scalable=no"
-                ) $ pure ()
+-- headTag :: forall x. Widget x ()
+-- headTag = do
+--   forM_ [ "//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" --TODO Make these links local
+--         , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+--         , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+--         ] $ \x -> elAttr "link" ("rel" =: "stylesheet" <> "href" =: x) $ pure ()
+--   forM_ [ "//ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"
+--         , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+--         ] $ \x -> elAttr "script" ("src" =: x) $ pure ()
+--   elAttr "meta" ("name" =: "viewport"
+--                  <> "content" =: "width=device-width, initial-scale=1, user-scalable=no"
+--                 ) $ pure ()

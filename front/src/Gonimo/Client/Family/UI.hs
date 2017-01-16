@@ -58,10 +58,9 @@ familyChooser config family' = do
 renderFamilySelectors :: forall m t. (HasWebView m, MonadWidget t m)
                     => Family t -> m (Event t FamilyId)
 renderFamilySelectors family' = do
-  let
-    readyEv :: Event t (Dynamic t FamilyId)
-    readyEv = waitForReady (family'^.selectedFamily)
+  readyEv <- waitForJust (family'^.selectedFamily)
 
+  let
     noFamilies :: m (Event t FamilyId)
     noFamilies = elAttr "li" ("data-toggle" =: "collapse") (text "No family") *> pure never
 

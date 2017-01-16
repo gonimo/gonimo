@@ -123,10 +123,10 @@ makeFamilies :: forall m t. (HasWebView m, MonadWidget t m)
                 => Config t -> m (SubscriptionsDyn t, Event t (Dynamic t (Map FamilyId Db.Family)))
 makeFamilies config = do
   (subs, fids) <- makeSubscriptions
-  mFamilies <- makeFamilyMap fids
-  pure (subs, waitForReady mFamilies)
+  familiesEv <- waitForReady =<< makeFamilyMap fids
+  pure (subs, familiesEv)
  where
-   makeSubscriptions :: m (SubscriptionsDyn t, Dynamic t [FamilyId])
+   makeSubscriptions :: m (SubscriptionsDyn t, Event t [FamilyId])
    makeSubscriptions = do
      let
        handleGotFamilies resp = case resp of
@@ -143,10 +143,10 @@ makeFamilies config = do
                           <$> config^.configAuthData
 
      pure $ (zipDynWith Set.union familyIdsSubs familiesSubs
-            , familyIds
+            , gotFamiliesEvent
             )
 
-   makeFamilyMap :: Dynamic t [FamilyId] -> m (Dynamic t (Maybe (Map FamilyId Db.Family)))
+   makeFamilyMap :: Event t [FamilyId] -> m (Event t (Map FamilyId Db.Family))
    makeFamilyMap allFids = mdo
      let
        resToFamily :: API.ServerResponse -> PushM t (Maybe (Map FamilyId Db.Family))
@@ -156,11 +156,13 @@ makeFamilies config = do
            pure $ Just (Map.insert fid family oldMap)
          _                           -> pure Nothing
 
-       completeOrNothing :: [FamilyId] -> Map FamilyId Db.Family -> Maybe (Map FamilyId Db.Family)
-       completeOrNothing fids families' = if sort (Map.keys families') == sort fids
+       completeOrNothing :: Map FamilyId Db.Family -> [FamilyId] -> Maybe (Map FamilyId Db.Family)
+       completeOrNothing families' fids = if sort (Map.keys families') == sort fids
                                           then Just families'
                                           else Nothing
 
        familyMapEv = push resToFamily $ config^.configResponse
      familyMap <- holdDyn Map.empty familyMapEv
-     pure $ zipDynWith completeOrNothing allFids familyMap
+     allFidsReady :: Event t (Dynamic t [FamilyId]) <- waitForReady allFids
+     switchPromptly never $
+       push (pure . id) . updated . zipDynWith completeOrNothing familyMap <$> allFidsReady
