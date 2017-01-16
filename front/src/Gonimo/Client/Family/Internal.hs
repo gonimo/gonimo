@@ -79,14 +79,18 @@ handleFamilySelect config families' = mdo
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
     loadedFamilyId <- GStorage.getItem storage GStorage.currentFamily
     performEvent_
-      $ traverse_ (GStorage.setItem storage GStorage.currentFamily) <$> updated selectedChecked
+      $ traverse_ (GStorage.setItem storage GStorage.currentFamily) <$> updated selected
 
-    selectedUnchecked <- holdDyn loadedFamilyId $ Just <$> config^.configSelectFamily
-    let selectedChecked = fixSelected selectedUnchecked
+    let gotNewFamily = push (\res -> case res of
+                                API.ResCreatedFamily fid           -> pure $ Just fid
+                                API.ResAnsweredInvitation _ _ mFid -> pure mFid
+                                _                                  -> pure Nothing) (config^.configResponse)
+    let selectEvent = leftmost [ config^.configSelectFamily, gotNewFamily, fixInvalid selected ]
+    selected <- holdDyn loadedFamilyId $ Just <$> selectEvent
 
-    reqs <- makeRequest selectedChecked
+    reqs <- makeRequest selected
 
-    pure (reqs, selectedChecked)
+    pure (reqs, selected)
   where
     makeRequest :: Dynamic t (Maybe FamilyId) -> m (Event t [ API.ServerRequest ])
     makeRequest selected' = do
@@ -103,21 +107,17 @@ handleFamilySelect config families' = mdo
       pure $ mconcat $ [ tag (current reqsDyn) $ leftmost [ config^.configAuthenticated, initEv ]
                        , updated reqsDyn
                        ]
-    fixSelected :: Dynamic t (Maybe FamilyId) -> Dynamic t (Maybe FamilyId)
-    fixSelected selected' =
-      let
-        hasSelection selected'' families''
-          = case selected'' of
-              Nothing -> False
-              Just s  -> isJust (families'' ^. at s)
-
-        fixSelection :: Maybe FamilyId -> Map FamilyId Db.Family -> Maybe FamilyId
-        fixSelection selected'' families''
-          = if hasSelection selected'' families''
-            then selected''
-            else headMay . Map.keys $ families''
-      in
-        zipDynWith fixSelection selected' families'
+    fixInvalid :: Dynamic t (Maybe FamilyId) -> Event t FamilyId
+    fixInvalid currId = push (\res -> do
+                          fixedId <- headMay . Map.keys <$> (sample $ current families')
+                          mCurrentId <- sample $ current currId
+                          case res of -- We just assume family id was invalid if we get any error.
+                            API.ResError (API.ReqSwitchFamily _ _) _ -> pure fixedId
+                            API.ResLeftFamily _ deletedId -> if mCurrentId == Just deletedId
+                                                             then pure fixedId
+                                                             else pure Nothing
+                            _ -> pure Nothing
+                      ) (config^.configResponse)
 
 handleCreateFamily :: forall t. Reflex t => Config t -> Event t [ API.ServerRequest ]
 handleCreateFamily config = const [API.ReqCreateFamily] <$> config^.configCreateFamily
