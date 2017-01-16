@@ -153,7 +153,6 @@ handleAuthServerRequest sub req = case req of
                                              pure $ ResSetDeviceType deviceId
   ReqSwitchFamily deviceId familyId    -> do switchFamilyR deviceId familyId
                                              pure $ ResSwitchedFamily deviceId familyId
-
   ReqCreateFamily                      -> ResCreatedFamily <$> createFamilyR
   ReqGetFamily familyId                -> ResGotFamily familyId <$> getFamilyR familyId
   ReqGetFamilyMembers familyId         -> ResGotFamilyMembers familyId <$> getFamilyMembersR familyId
@@ -175,6 +174,8 @@ handleAuthServerRequest sub req = case req of
 
   ReqGetFamilies accountId             -> ResGotFamilies accountId <$> getFamiliesR accountId
   ReqGetDevices accountId              -> ResGotDevices  accountId <$> getDevicesR accountId
+  ReqLeaveFamily accountId familyId    -> do leaveFamilyR accountId familyId
+                                             pure $ ResLeftFamily accountId familyId
 
   ReqCreateChannel from' to'             -> ResCreatedChannel from' to' <$> createChannelR from' to'
   ReqSendMessage from' to' secret msg    -> sendMessageR from' to' secret msg *> pure ResSentMessage

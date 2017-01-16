@@ -36,6 +36,7 @@ data ServerRequest
 
   | ReqGetFamilies !AccountId
   | ReqGetDevices !AccountId
+  | ReqLeaveFamily !AccountId !FamilyId
 
   | ReqCreateChannel !FromId !ToId
   | ReqSendMessage !FromId !ToId !Secret !Text
@@ -67,6 +68,7 @@ data ServerResponse
 
   | ResGotFamilies !AccountId !([FamilyId])
   | ResGotDevices !AccountId !([DeviceId])
+  | ResLeftFamily !AccountId !FamilyId
 
   | ResCreatedChannel !FromId !ToId !Secret
   | ResSentMessage -- Dummy

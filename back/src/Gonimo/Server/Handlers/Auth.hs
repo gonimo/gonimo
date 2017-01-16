@@ -187,6 +187,19 @@ createFamilyR = do
   notify $ ReqGetFamilies aid
   return fid
 
+leaveFamilyR :: (AuthReader m, MonadServer m) => AccountId -> FamilyId -> m ()
+leaveFamilyR accountId familyId = do
+  authorizeAuthData $ isAccount accountId
+  authorizeAuthData $ isFamilyMember familyId
+
+  runDb $ do
+    Db.deleteBy $ Db.FamilyMember accountId familyId
+    familyAccounts <- Db.selectList [ FamilyAccountFamilyId ==. familyId ] []
+    when (null familyAccounts) $ do
+      Db.deleteWhere [ InvitationFamilyId ==. familyId ]
+      Db.delete familyId
+  notify $ ReqGetFamilies accountId
+
 getFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
 getFamiliesR accountId = do
   authorizeAuthData $ isAccount accountId
