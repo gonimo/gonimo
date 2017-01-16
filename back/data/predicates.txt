@@ -6,7 +6,7 @@ black
 blue
 bright
 burping
-cherish
+cherished
 cherry
 cloudy
 cool
@@ -22,14 +22,14 @@ eating
 egg
 elected
 electric
-exa
+excited
 fabulous
 farting
 flying
 funky
 funny
 geometric
-giga
+ginormous
 glorious
 glossy
 great
@@ -42,7 +42,7 @@ kind
 linear
 little
 loud
-math
+mathy
 mega
 mini
 mumbling
