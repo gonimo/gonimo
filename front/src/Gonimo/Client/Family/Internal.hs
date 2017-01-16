@@ -81,10 +81,7 @@ handleFamilySelect config families' = mdo
     performEvent_
       $ traverse_ (GStorage.setItem storage GStorage.currentFamily) <$> updated selectedChecked
 
-    (initEv, makeInitEv) <- newTriggerEvent
-    liftIO $ makeInitEv loadedFamilyId
-    let selectEvent = leftmost [ Just <$> config^.configSelectFamily, initEv ]
-    selectedUnchecked <- holdDyn loadedFamilyId selectEvent
+    selectedUnchecked <- holdDyn loadedFamilyId $ Just <$> config^.configSelectFamily
     let selectedChecked = fixSelected selectedUnchecked
 
     reqs <- makeRequest selectedChecked
@@ -100,7 +97,10 @@ handleFamilySelect config families' = mdo
         reqDyn = zipDynWith mayReq (config^.configAuthData) selected'
         reqsDyn :: Dynamic t [ API.ServerRequest ]
         reqsDyn = maybe [] (:[]) <$> reqDyn
-      pure $ mconcat $ [ tag (current reqsDyn) $ config^.configAuthenticated
+
+      (initEv, makeInitEv) <- newTriggerEvent
+      liftIO $ makeInitEv ()
+      pure $ mconcat $ [ tag (current reqsDyn) $ leftmost [ config^.configAuthenticated, initEv ]
                        , updated reqsDyn
                        ]
     fixSelected :: Dynamic t (Maybe FamilyId) -> Dynamic t (Maybe FamilyId)
