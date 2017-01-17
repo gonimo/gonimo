@@ -76,7 +76,7 @@ renderFamilySelector :: forall m t. (HasWebView m, MonadWidget t m)
                     => FamilyId -> Dynamic t Db.Family -> Dynamic t Bool -> m (Event t ())
 renderFamilySelector _ family' selected' = do
     elAttr "li" ("data-toggle" =: "collapse") $ do
-      fmap (domEvent Click . fst) . el' "a"
+      fmap (domEvent Click . fst) . elAttr' "a" ("type" =: "button" <> "role" =: "button")
         $ dynText
           $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
