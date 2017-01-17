@@ -23,18 +23,33 @@ import Data.Foldable (traverse_)
 import Gonimo.Client.Reflex
 import Data.Maybe (fromMaybe)
 import qualified Gonimo.Types as Gonimo
+import qualified Gonimo.Client.Invite as Invite
 
 import Gonimo.Client.Family.Internal
 
 -- Overrides configCreateFamily && configLeaveFamily
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => Config t -> Family t -> m (Config t)
-ui config family' = do
-  config' <- familyChooser config family'
-  clickedAdd <- button "+"
-  clickedLeave <- button "Leave"
-  pure $ config' & configCreateFamily .~ clickedAdd
-                 & configLeaveFamily .~ clickedLeave
+            => Config t -> (Config t -> m (Family t)) -> m (Family t)
+ui config mkFamily = mdo
+    family' <- mkFamily $ config' & configCreateFamily .~ clickedAdd
+                                  & configLeaveFamily .~ clickedLeave
+
+    config' <- familyChooser config family'
+    clickedAdd <- button "+"
+    clickedLeave <- button "Leave"
+
+    readyEv <- waitForJust (family'^.selectedFamily)
+
+    invReqs <- fmap switchPromptlyDyn
+      . widgetHold (text "Loading Family ..." *> pure never)
+      . ffor readyEv $ \selected -> do
+      invite <- Invite.ui $ Invite.Config { Invite._configResponse = config^.configResponse
+                                          , Invite._configSelectedFamily = selected
+                                          , Invite._configCreateInvitation = never
+                                          }
+      pure $ invite^.Invite.request
+
+    pure $ family' & request %~ (<> invReqs)
 
 
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)

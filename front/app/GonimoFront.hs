@@ -56,8 +56,7 @@ main = mainWidgetInElementById "app" $ mdo
   famRequest <- fmap switchPromptlyDyn
                 . widgetHold (pure $ never)
                 . ffor (initFamily^.Family.initFamily) $ \mkFamily -> mdo
-    family <- mkFamily familyUiConfig
-    familyUiConfig <- Family.ui familyConfig family
+    family <- Family.ui familyConfig mkFamily
     pure $ family^.Family.request
   -- invite
   pure ()
