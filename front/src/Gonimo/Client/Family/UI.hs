@@ -26,13 +26,15 @@ import qualified Gonimo.Types as Gonimo
 
 import Gonimo.Client.Family.Internal
 
--- Overrides configCreateFamily
+-- Overrides configCreateFamily && configLeaveFamily
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => Config t -> Family t -> m (Config t)
 ui config family' = do
   config' <- familyChooser config family'
-  clicked <- button "+"
-  pure $ config' & configCreateFamily .~ clicked
+  clickedAdd <- button "+"
+  clickedLeave <- button "Leave"
+  pure $ config' & configCreateFamily .~ clickedAdd
+                 & configLeaveFamily .~ clickedLeave
 
 
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
@@ -72,7 +74,7 @@ renderFamilySelectors family' = do
 -- Internal helper for familyChooser ...
 renderFamilySelector :: forall m t. (HasWebView m, MonadWidget t m)
                     => FamilyId -> Dynamic t Db.Family -> Dynamic t Bool -> m (Event t ())
-renderFamilySelector famId family' selected' = do
+renderFamilySelector _ family' selected' = do
     elAttr "li" ("data-toggle" =: "collapse") $ do
       fmap (domEvent Click . fst) . el' "a"
         $ dynText

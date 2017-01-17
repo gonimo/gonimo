@@ -50,6 +50,7 @@ main = mainWidgetInElementById "app" $ mdo
                                    , Family._configSelectFamily = never
                                    , Family._configAuthenticated = auth^.Auth.authenticated
                                    , Family._configCreateFamily = never
+                                   , Family._configLeaveFamily = never
                                    }
   initFamily <- Family.init familyConfig
   famRequest <- fmap switchPromptlyDyn
