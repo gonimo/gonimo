@@ -66,7 +66,10 @@ getBaseLink :: MonadIO m => m Text
 getBaseLink = do
   window  <- DOM.currentWindowUnchecked
   location <- Window.getLocationUnsafe window
-  Location.getHref location
+  protocol <- Location.getProtocol location
+  host <- Location.getHost location
+  pathName <- Location.getPathname location
+  pure $ protocol <> "//" <> host <> pathName
 
 makeInvitationLink :: Text -> Db.Invitation -> Text
 makeInvitationLink baseURL inv =
