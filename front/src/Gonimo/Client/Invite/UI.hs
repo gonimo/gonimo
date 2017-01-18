@@ -15,7 +15,7 @@ import Data.Maybe (maybe)
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Types (urlEncode)
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, TriggerEvent t m)
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m)
       => Config t -> m (Invite t)
 ui config = mdo
     baseUrl <- getBaseLink
@@ -41,12 +41,13 @@ ui config = mdo
                         ) $ pure ()
           sendEmailBtn
       recreateClicked <- divClass "row" $ do
+        copyClipboardScript
         divClass "input-group" $ do
             clicked <- refreshLinkButton
             showLinkInput invitationLink
-            awesomeAddon "fa-copy"
-            pure clicked
-      pure $ recreateClicked : invButtons
+            copyClicked <- copyButton
+            pure [clicked, copyClicked]
+      pure $ recreateClicked <> invButtons
     pure invite'
   where
     sendEmailBtn =
@@ -73,6 +74,16 @@ awesomeAddon t =
   elAttr "span" ( "class" =: "input-group-addon") $
     elAttr "i" ("class" =: ("fa " <> t)) blank
 
+copyButton :: forall t m. DomBuilder t m => m (Event t ())
+copyButton
+  = elAttr "span" ("class" =: "input-group-btn") $
+    fmap (domEvent Click . fst)
+    $ elAttr' "button" ( "class" =: "btn btn-default"
+                         <> "type" =: "button"
+                         <> "title" =: "Copy link to clipboard"
+                         <> "onClick" =: "copyInvitationLink()"
+                       ) $ elAttr "i" ( "class" =: "fa fa-copy") blank
+
 refreshLinkButton :: forall t m. DomBuilder t m => m (Event t ())
 refreshLinkButton
   = elAttr "span" ("class" =: "input-group-btn") $
@@ -93,3 +104,22 @@ showLinkInput invitationLink =
                           )
   in
     elDynAttr "input" (makeLinkAttrs <$> invitationLink) blank
+
+
+copyClipboardScript :: forall t m. (DomBuilder t m) => m ()
+copyClipboardScript = el "script" $ text $
+       "copyTextFromId = function(id_) {\n"
+    <> "    try\n"
+    <> "    {\n"
+    <> "        var textBox = document.querySelector(\"#\" + id_);\n"
+    <> "        textBox.select();\n"
+    <> "        return document.execCommand('copy');\n"
+    <> "    }\n"
+    <> "    catch (e) {\n"
+    <> "        return false;\n"
+    <> "    }\n"
+    <> "};\n"
+    <> "copyInvitationLink = function () {\n"
+    <> "   copyTextFromId(\"invitationLinkUrlInput\");\n"
+    -- <> "   alert(\"invitationLinkUrlInput\");\n"
+    <> "};\n"
