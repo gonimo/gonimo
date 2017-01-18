@@ -37,3 +37,24 @@ waitForJust dynMay = do
       outDyn <- holdDyn c $ push (pure . id) (updated dynMay)
       liftIO $ makeEv outDyn
       pure ev
+
+fromMaybeDyn :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m)
+                => m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Event t b)
+fromMaybeDyn onNothing action mDyn = dyn =<< fromMaybeDyn' onNothing action mDyn
+
+fromMaybeDyn' :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m)
+                => m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Dynamic t (m b))
+fromMaybeDyn' onNothing action mDyn = do
+  mInit <- sample $ current mDyn
+  let onlyJusts = push (pure . id) (updated mDyn)
+  let widgetInit = case mInit of
+        Nothing -> onNothing
+        Just v  -> action =<< holdDyn v onlyJusts
+  let widgetEvent = push (\mVal -> do
+                             prevMVal <- sample $ current mDyn
+                             pure $ case (prevMVal, mVal) of
+                               (_, Nothing)        -> Just onNothing
+                               (Nothing, Just val) -> Just (action =<< holdDyn val onlyJusts)
+                               (Just _, Just _)    -> Nothing
+                         ) (updated mDyn)
+  holdDyn widgetInit widgetEvent
