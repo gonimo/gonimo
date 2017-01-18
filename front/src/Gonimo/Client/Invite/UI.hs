@@ -7,7 +7,8 @@ import Control.Monad
 import Control.Lens
 import Data.Monoid
 import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId)
+import Gonimo.Db.Entities (FamilyId, InvitationId)
+import qualified Gonimo.Db.Entities as Db
 import Gonimo.Client.Invite.Internal
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Fix (MonadFix)
@@ -32,7 +33,7 @@ ui config = mdo
           whatsAppClicked <- inviteButton "/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
           tgClicked <- inviteButton "/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
           pure [whatsAppClicked, tgClicked]
-      divClass "row" $ do
+      divClass "row" $ do -- emailWidget currentInvitation
         elAttr "div" ("class" =: "input-group" <> "style" =: "width:100%;") $ do
           awesomeAddon "fa-envelope"
           elAttr "input" ("type" =: "text"
@@ -123,3 +124,7 @@ copyClipboardScript = el "script" $ text $
     <> "   copyTextFromId(\"invitationLinkUrlInput\");\n"
     -- <> "   alert(\"invitationLinkUrlInput\");\n"
     <> "};\n"
+
+-- emailWidget :: forall t m. (DomBuilder t m) => Dynamic t (Maybe (InvitationId, Db.Invitation)) -> m (Event t API.ServerRequest)
+-- emailWidget Nothing = do
+  

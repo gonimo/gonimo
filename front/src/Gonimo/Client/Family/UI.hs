@@ -38,16 +38,8 @@ ui config mkFamily = mdo
     clickedAdd <- button "+"
     clickedLeave <- button "Leave"
 
-    readyEv <- waitForJust (family'^.selectedFamily)
-
-    invReqs <- fmap switchPromptlyDyn
-      . widgetHold (text "Loading Family ..." *> pure never)
-      . ffor readyEv $ \selected -> do
-      invite <- Invite.ui $ Invite.Config { Invite._configResponse = config^.configResponse
-                                          , Invite._configSelectedFamily = selected
-                                          , Invite._configCreateInvitation = never
-                                          }
-      pure $ invite^.Invite.request
+    invResult <- fromMaybeDyn invalidContents (validContents config') $ family'^.selectedFamily
+    invReqs <- switchPromptly never invResult
 
     pure $ family' & request %~ (<> invReqs)
 
@@ -95,3 +87,17 @@ renderFamilySelector _ family' selected' = do
         $ dynText
           $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
+invalidContents ::forall m t a. (HasWebView m, MonadWidget t m)
+            => m (Event t a)
+invalidContents = do
+  el "div" $ text "Loading Family ..."
+  pure never
+
+validContents ::forall m t. (HasWebView m, MonadWidget t m)
+            => Config t -> Dynamic t FamilyId -> m (Event t [API.ServerRequest])
+validContents config selected = do
+    invite <- Invite.ui $ Invite.Config { Invite._configResponse = config^.configResponse
+                                        , Invite._configSelectedFamily = selected
+                                        , Invite._configCreateInvitation = never
+                                        }
+    pure $ invite^.Invite.request

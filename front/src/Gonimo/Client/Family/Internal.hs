@@ -88,17 +88,17 @@ handleFamilySelect config families' = mdo
                                   oldFamilies <- sample $ current families'
                                   let oldKeys = Set.fromList $ Map.keys oldFamilies
                                   let newKeys = Set.fromList $ Map.keys newFamilies
-                                  let newKey = headMay . Set.toList $ newKeys \\ oldKeys
+                                  let createdKey = headMay . fmap Just . Set.toList $ newKeys \\ oldKeys
                                   let deletedKeys = oldKeys \\ newKeys
                                   fixedIfInvalid <- runMaybeT $ do
                                     currentSelection <- MaybeT . sample $ current selected
                                     if Set.member currentSelection deletedKeys
-                                      then MaybeT . pure . headMay $ Set.toList newKeys
-                                      else pure currentSelection
-                                  pure $ newKey <|> fixedIfInvalid
+                                      then MaybeT . pure . Just . headMay $ Set.toList newKeys
+                                      else pure $ Nothing -- No change neccessary
+                                  pure $ createdKey <|> fixedIfInvalid
                               ) (updated families')
-    let selectEvent = leftmost [ config^.configSelectFamily, switchOnChange ]
-    selected <- holdDyn loadedFamilyId $ Just <$> selectEvent
+    let selectEvent = leftmost [ Just <$> config^.configSelectFamily, switchOnChange ]
+    selected <- holdDyn loadedFamilyId selectEvent
 
     reqs <- makeRequest selected
 
