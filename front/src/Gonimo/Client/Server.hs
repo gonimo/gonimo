@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
 module Gonimo.Client.Server where
 
 import Gonimo.SocketAPI (ServerRequest, ServerResponse)
@@ -15,6 +16,9 @@ import qualified Data.ByteString.Lazy as BL
 import Reflex.Dom.WebSocket (WebSocketConfig(..), RawWebSocket(..), webSocket)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
+#ifdef DEVELOPMENT
+import qualified Data.Text.Encoding as T
+#endif
 import Data.Maybe (fromMaybe)
 
 type ServerConfig t = WebSocketConfig t ServerRequest
@@ -29,7 +33,11 @@ makeLenses ''RawWebSocket
 server :: forall t m. (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m) => Text -> ServerConfig t -> m (Server t)
 server url config = do
   ws <- webSocket url
+#ifdef DEVELOPMENT
+        $ config & webSocketConfig_send . mapped . mapped %~ T.decodeUtf8 . BL.toStrict . Aeson.encode
+#else
         $ config & webSocketConfig_send . mapped . mapped %~ BL.toStrict . Aeson.encode
+#endif
   pure $ ws & webSocket_recv . mapped %~ decodeResponse
 
 
