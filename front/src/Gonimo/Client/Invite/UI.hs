@@ -22,8 +22,8 @@ ui config = mdo
     baseUrl <- getBaseLink
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
     liftIO $ makeCreateInvEv () -- We want a new invitation every time this widget is rendered
-    let invite' = invite $ config & configCreateInvitation .~ leftmost (createInvEv : reCreateEvents)
-    currentInvitation <- holdDyn Nothing $ Just <$> invite'^.invitation
+    invite' <- invite $ config & configCreateInvitation .~ leftmost (createInvEv : reCreateEvents)
+    let currentInvitation = invite'^.invitation
     let invitationLink = maybe "" (makeInvitationLink baseUrl . snd) <$> currentInvitation
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
 

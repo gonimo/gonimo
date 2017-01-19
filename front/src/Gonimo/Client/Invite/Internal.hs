@@ -25,6 +25,7 @@ import qualified Data.Aeson as Aeson
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as BL
 import Network.HTTP.Types (urlEncode)
+import Control.Monad.Fix (MonadFix)
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -32,35 +33,43 @@ invitationQueryParam = "acceptInvitation"
 data Config t
   = Config { _configResponse :: Event t API.ServerResponse
            , _configSelectedFamily :: Dynamic t FamilyId
+           , _configAuthenticated :: Event t ()
            , _configCreateInvitation :: Event t ()
            }
 
 data Invite t
-  = Invite { _invitation :: Event t (InvitationId, Db.Invitation)
+  = Invite { _invitation :: Dynamic t (Maybe (InvitationId, Db.Invitation))
            , _request :: Event t [ API.ServerRequest ]
            }
 
 makeLenses ''Config
 makeLenses ''Invite
 
-invite :: forall t. Reflex t => Config t -> Invite t
-invite config =
+invite :: forall t m. (MonadHold t m, MonadFix m) => Reflex t => Config t -> m (Invite t)
+invite config = mdo
   let
-    createInvReq = push (\_ -> do
-                            cFamily <- sample $ current (config^.configSelectedFamily)
-                            pure $ Just . (:[]) . API.ReqCreateInvitation $ cFamily
-                        ) (leftmost [ config^.configCreateInvitation
-                                    , const () <$> updated (config^.configSelectedFamily)
-                                    ]
-                          )
+    currentSelected = current (config^.configSelectedFamily)
+    createOnAuth = push (\() -> do
+                            cInv <- sample $ current inv
+                            case cInv of
+                              Nothing -> pure $ Just ()
+                              Just _ -> pure Nothing
+                        ) (config^.configAuthenticated)
+
+    createInvReq
+      = (:[]) . API.ReqCreateInvitation
+        <$> leftmost [ updated (config^.configSelectedFamily)
+                     , tag currentSelected (config^.configCreateInvitation)
+                     , tag currentSelected createOnAuth
+                     ]
     invEv = push (\res -> case res of
                      API.ResCreatedInvitation invTuple -> pure $ Just invTuple
                      _ -> pure Nothing
                  ) (config^.configResponse)
-  in
-    Invite { _invitation = invEv
-           , _request = createInvReq
-           }
+  inv <- holdDyn Nothing $ Just <$> invEv
+  pure Invite { _invitation = inv
+              , _request = createInvReq
+              }
 
 getBaseLink :: MonadIO m => m Text
 getBaseLink = do

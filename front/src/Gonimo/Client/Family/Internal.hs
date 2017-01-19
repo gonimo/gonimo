@@ -48,13 +48,31 @@ data Family t
            , _request :: Event t [ API.ServerRequest ]
          }
 
+data DefiniteFamily t
+  = DefiniteFamily { _definiteFamilies :: Dynamic t FamilyMap
+                   , _definiteSelected :: Dynamic t FamilyId
+                   }
+
+
 makeLenses ''Config
 makeLenses ''Family
+makeLenses ''DefiniteFamily
+
+-- makeDefinite :: forall m t. Reflex t => Family t -> Dynamic t (Maybe DefiniteFamily t)
+-- makeDefinite family' =
+--   let
+--     onlyJusts = push (pure . id) . updated
+--     result = zipDynWith make' (family'^.families) (family'^.selectedFamily)
+--     make' mFam mSel = do
+--       famInit <- mFam
+--       selInit <- mSel
+--       pure $ DefiniteFamily { definiteFamilies = hold}
 
 family :: forall m t. (MonadWidget t m) => Config t -> m (Family t)
 family config = do
-    (subs, families') <- makeFamilies config
-    (selectReqs, selected') <- handleFamilySelect config families'
+    (subs, familyIds', families') <- makeFamilies config
+    -- We need to use ids here, because we need intermediate information not available in families'
+    (selectReqs, selected') <- handleFamilySelect config familyIds'
     let createReqs = handleCreateFamily config
     let leaveReqs = handleLeaveFamily config selected'
     pure $ Family { _subscriptions = subs
@@ -64,27 +82,27 @@ family config = do
                 }
 
 handleFamilySelect :: forall m t. (HasWebView m, MonadWidget t m)
-                      => Config t -> Dynamic t (Maybe FamilyMap)
+                      => Config t -> Dynamic t (Maybe [FamilyId])
                       -> m (Event t [ API.ServerRequest ], Dynamic t (Maybe FamilyId))
-handleFamilySelect config families' = mdo
+handleFamilySelect config familyIds' = mdo
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
     loadedFamilyId <- GStorage.getItem storage GStorage.currentFamily
     performEvent_
       $ traverse_ (GStorage.setItem storage GStorage.currentFamily) <$> updated selected
 
     let switchOnChange = push (\mNewFamilies -> do
-                                  mOldFamilies <- sample $ current families'
+                                  mOldFamilies <- sample $ current familyIds'
                                   mcSelected <- sample $ current selected
                                   case (mOldFamilies, mNewFamilies) of
                                     (_, Nothing) -> pure Nothing -- No data, nothing to fix
-                                    (Nothing, Just newFams) -> pure $ fixInvalidKey mcSelected (Map.keys newFams)
+                                    (Nothing, Just newFams) -> pure $ fixInvalidKey mcSelected newFams
                                     (Just oldFams, Just newFams) -> do
-                                      let oldKeys = Set.fromList $ Map.keys oldFams
-                                      let newKeys = Set.fromList $ Map.keys newFams
+                                      let oldKeys = Set.fromList oldFams
+                                      let newKeys = Set.fromList newFams
                                       let createdKey = headMay . fmap Just . Set.toList $ newKeys \\ oldKeys
-                                      let fixedIfInvalid = fixInvalidKey mcSelected (Map.keys newFams)
+                                      let fixedIfInvalid = fixInvalidKey mcSelected newFams
                                       pure $ createdKey <|> fixedIfInvalid
-                              ) (updated families')
+                              ) (updated familyIds')
     let
       fixInvalidKey :: Maybe FamilyId -> [FamilyId] -> Maybe (Maybe FamilyId)
       fixInvalidKey Nothing valid = Just <$> headMay valid
@@ -96,11 +114,8 @@ handleFamilySelect config families' = mdo
     selected <- holdDyn loadedFamilyId selectEvent
     reqs <- makeRequest selected
 
-    pure (reqs, zipDynWith makeSelectionConsistent families' selected)
+    pure (reqs, selected)
   where
-    makeSelectionConsistent :: Maybe FamilyMap -> Maybe FamilyId -> Maybe FamilyId
-    makeSelectionConsistent mFamily mFid = mFamily *> mFid
-
     makeRequest :: Dynamic t (Maybe FamilyId) -> m (Event t [ API.ServerRequest ])
     makeRequest selected' = do
       let
@@ -129,11 +144,11 @@ handleLeaveFamily config selected'
 
 
 makeFamilies :: forall m t. (HasWebView m, MonadWidget t m)
-                => Config t -> m (SubscriptionsDyn t, Dynamic t (Maybe FamilyMap))
+                => Config t -> m (SubscriptionsDyn t, Dynamic t (Maybe [FamilyId]), Dynamic t (Maybe FamilyMap))
 makeFamilies config = do
   (subs, fids) <- makeSubscriptions
   families' <- makeFamilyMap fids
-  pure (subs, families')
+  pure (subs, fids, families')
  where
    makeSubscriptions :: m (SubscriptionsDyn t, Dynamic t (Maybe [FamilyId]))
    makeSubscriptions = do
@@ -151,9 +166,9 @@ makeFamilies config = do
      let familyIdsSubs = maybe Set.empty (Set.singleton . API.ReqGetFamilies . API.accountId)
                           <$> config^.configAuthData
 
-     familyIds <- holdDyn Nothing (Just <$> gotFamiliesEvent)
+     mFamilyIds <- holdDyn Nothing (Just <$> gotFamiliesEvent)
      pure $ (zipDynWith Set.union familyIdsSubs familiesSubs
-            , familyIds
+            , mFamilyIds
             )
 
   -- Nothing until consistent.
