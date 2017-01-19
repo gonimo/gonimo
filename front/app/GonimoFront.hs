@@ -29,7 +29,7 @@ main :: IO ()
 main = mainWidgetInElementById "app" $ mdo
   let serverRequests = auth^.Auth.request
                     <> subscriber^.Subscriber.request
-                    <> famRequest
+                    <> family^.Family.request
 
   let wsConfig = def & webSocketConfig_send .~ serverRequests
   server <- Server.server "ws://localhost:8081" wsConfig
@@ -40,7 +40,7 @@ main = mainWidgetInElementById "app" $ mdo
   auth <- Auth.auth authConfig
 
   let subscriberConfig = Subscriber.Config { Subscriber._configResponse = server^.webSocket_recv
-                                           , Subscriber._configSubscriptions = initFamily^.Family.initSubscriptions
+                                           , Subscriber._configSubscriptions = family^.Family.subscriptions
                                            , Subscriber._configAuthenticated = auth^.Auth.authenticated
                                            }
   subscriber <- Subscriber.subscriber subscriberConfig
@@ -52,13 +52,7 @@ main = mainWidgetInElementById "app" $ mdo
                                    , Family._configCreateFamily = never
                                    , Family._configLeaveFamily = never
                                    }
-  initFamily <- Family.init familyConfig
-  famRequest <- fmap switchPromptlyDyn
-                . widgetHold (pure $ never)
-                . ffor (initFamily^.Family.initFamily) $ \mkFamily -> mdo
-    family <- Family.ui familyConfig mkFamily
-    pure $ family^.Family.request
-  -- invite
+  family <- Family.ui familyConfig
   pure ()
 
 -- headTag :: forall x. Widget x ()
