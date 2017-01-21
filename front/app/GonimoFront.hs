@@ -49,9 +49,13 @@ main = mainWidgetInElementById "app" $ mdo
   subscriber <- Subscriber.subscriber subscriberConfig
 
   let messageBoxConfig
-        = MessageBox.Config { MessageBox._configMessage = never
+        = MessageBox.Config { MessageBox._configMessage = (:[]) . MessageBox.ServerResponse <$> server^.webSocket_recv
                             }
   msgBox <- MessageBox.ui messageBoxConfig
+  let msgSwitchFamily = push (\actions -> case actions of
+                                 [MessageBox.SelectFamily fid] -> pure $ Just fid
+                                 _ -> pure Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
+                             ) (msgBox ^. MessageBox.action)
 
   let acceptConfig
         = AcceptInvitation.Config { AcceptInvitation._configResponse = server^.webSocket_recv
@@ -61,7 +65,7 @@ main = mainWidgetInElementById "app" $ mdo
 
   let familyConfig = Family.Config { Family._configResponse = server^.webSocket_recv
                                    , Family._configAuthData = auth^.Auth.authData
-                                   , Family._configSelectFamily = never
+                                   , Family._configSelectFamily = msgSwitchFamily
                                    , Family._configAuthenticated = auth^.Auth.authenticated
                                    , Family._configCreateFamily = never
                                    , Family._configLeaveFamily = never

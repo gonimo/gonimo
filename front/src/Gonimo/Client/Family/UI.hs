@@ -37,7 +37,7 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
 ui config = mdo
     family' <- family $ config & configCreateFamily .~ clickedAdd
                                & configLeaveFamily .~ clickedLeave
-                               & configSelectFamily .~ famSelectedEv
+                               & configSelectFamily .~ leftmost [famSelectedEv, config^.configSelectFamily]
 
     famSelectedEv <- familyChooser family'
     -- let famSelectedEv = never

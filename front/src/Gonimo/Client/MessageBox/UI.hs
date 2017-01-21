@@ -1,6 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TupleSections #-}
 module Gonimo.Client.MessageBox.UI where
 
 import Reflex.Dom
@@ -27,18 +28,60 @@ import Control.Monad.Trans.Class (lift)
 import Gonimo.SocketAPI.Types (InvitationReply(..))
 import Gonimo.Types (Secret)
 import Data.Time.Clock
+import Gonimo.Server.Error (ServerError(..))
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
       => Config t -> m (MessageBox t)
 ui config = do
-  box "Message" "panel-info" (pure ((never :: Event t ()), never))
-  pure $ MessageBox
+  actions <- fmap switchPromptlyDyn
+    . widgetHold (pure never)
+    . push (pure . id)
+    $ displayMessages <$> config^.configMessage
+  pure $ MessageBox actions
 
--- displayMessage :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
---       => Config t -> m (MessageBox t)
--- displayMessage  = case config^.configMessage
---   box "Message" "panel-info" blank
---   pure $ MessageBox
+displayMessages  :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+      => [Message] -> Maybe (m (Event t [Action]))
+displayMessages msgs = fmap mconcat <$> (sequence <$> traverse displayMessage msgs)
+
+
+displayMessage :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+      => Message -> Maybe (m (Event t [Action]))
+displayMessage msg = fmap (fmap (:[])) <$> case msg of
+  ServerResponse res -> displayResponse res
+  InvitationSent how -> Nothing
+
+displayResponse :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+      => API.ServerResponse -> Maybe (m (Event t Action))
+displayResponse msg = case msg of
+  API.ResError req err -> displayError req err
+  API.ResAnsweredInvitation _ InvitationReject _ -> Just $
+    box "Invitation rejected!" "panel-warning" $ do
+      text "The invitation got rejected and is now invalid."
+      (never,) <$> delayed 5
+  API.ResAnsweredInvitation _ InvitationAccept _ -> Just $
+    box "Invitation accepted!" "panel-success" $ do
+      text "This device is now a visible family member - make it a baby station!"
+      (never,) <$> delayed 5
+  _ -> Nothing
+
+displayError :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+      => API.ServerRequest -> ServerError -> Maybe (m (Event t Action))
+displayError req err = case (req, err) of
+  (_, AlreadyFamilyMember fid) -> Just $
+    box "Already a member of this family!" "panel-warning" $ do
+      text "You are already a member of this family - wanna switch?"
+      switch' <- buttonAttr ("class" =: "btn btn-block") $ text "Switch Family"
+      (const (SelectFamily fid) <$> switch',) <$> delayed 10
+  (_, NoSuchInvitation) -> Just $
+    box "Invitation not found!" "panel-danger" $ do
+      text "Invitations are only valid once!"
+      elClass "span" "hidden-xs" $ text " (security and stuff, you know ...)"
+      (never,) <$> delayed 6
+  (_, InvitationAlreadyClaimed) -> Just $
+    box "Invitation already claimed!" "panel-danger" $ do
+      text "Some other device opened this invitation already!"
+      (never,) <$> delayed 6
+  (_,_) -> Nothing
 
 box :: forall m t a. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
       => Text -> Text -> m (Event t a, Event t ()) -> m (Event t a)
@@ -56,7 +99,7 @@ box' title panelClass inner = do
       elAttr "div" ("style" =: "display: flex; justify-content: space-between;") $ do
         el "h1" $ text title
         closeButton
-    (ev, closeEvent) <- inner
+    (ev, closeEvent) <- elClass "div" "panel-body" inner
     pure (ev, leftmost [closeEvent, closeClicked])
 
 
@@ -65,6 +108,7 @@ delayed dt = do
   (ev, trigger) <- newTriggerEvent
   liftIO $ trigger ()
   delay dt ev
+
 
 closeButton :: DomBuilder t m => m (Event t ())
 closeButton = do

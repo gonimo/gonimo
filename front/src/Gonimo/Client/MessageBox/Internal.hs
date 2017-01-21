@@ -40,11 +40,16 @@ data Config t
            }
 
 data MessageBox t
-  = MessageBox
+  = MessageBox { _action :: Event t [Action]
+               }
 
 data Message
   = ServerResponse API.ServerResponse
   | InvitationSent Text
+
+data Action
+  = ServerRequest API.ServerRequest
+  | SelectFamily !FamilyId
 
 makeLenses ''Config
 makeLenses ''MessageBox
