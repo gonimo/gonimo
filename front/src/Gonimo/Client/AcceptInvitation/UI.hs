@@ -33,13 +33,21 @@ ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
     secret <- getInvitationSecret
     -- clearInvitationFromURL
     let claimReq = makeClaimInvitation config secret
-    answerReq <- lift . fmap switchPromptlyDyn
-                 . widgetHold (pure never)
-                 $ ui' config secret <$> gotInvitation
+    answerReq <- lift . fmap switchPromptlyDyn -- Only display until user accepted/declined.
+                 . widgetHold (onInvitationUI secret)
+                 $ const (pure never) <$> gotAnswerResponse
     pure $ AcceptInvitation (claimReq <> answerReq)
   where
+    onInvitationUI secret = fmap switchPromptlyDyn
+                     . widgetHold (pure never)
+                     $ ui' config secret <$> gotInvitation
     gotInvitation = push (\res -> case res of
                             API.ResClaimedInvitation _ invInfo -> pure $ Just invInfo
+                            _ -> pure Nothing
+                        ) (config^.configResponse)
+    gotAnswerResponse = push (\res -> case res of
+                            API.ResAnsweredInvitation _ _ _ -> pure $ Just ()
+                            API.ResError (API.ReqAnswerInvitation _ _) _ -> pure $ Just ()
                             _ -> pure Nothing
                         ) (config^.configResponse)
 
