@@ -29,7 +29,7 @@ import qualified Data.ByteString.Lazy as BL
 import Network.HTTP.Types (urlDecode)
 import Control.Monad.Fix (MonadFix)
 import qualified Data.Aeson as Aeson
-import Debug.Trace (trace)
+import Gonimo.SocketAPI.Types (InvitationReply)
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -53,12 +53,12 @@ getInvitationSecret = do
     queryString <- Location.getSearch location
     let secretString =
           let
-            (_, startSecret) = T.drop 1 <$> T.breakOn "=" (trace ("query string: " <> show queryString) $ queryString)
+            (_, startSecret) = T.drop 1 <$> T.breakOn "=" queryString
           in
-            T.takeWhile (/='&') (trace ("startSecret: " <> show startSecret) startSecret)
+            T.takeWhile (/='&') startSecret
     guard $ not (T.null secretString)
     let mDecoded = Aeson.decodeStrict . urlDecode True . T.encodeUtf8 $ secretString
-    maybe mzero pure $ (trace ("Decoded: " <> show mDecoded) mDecoded)
+    maybe mzero pure $ mDecoded
 
 clearInvitationFromURL :: forall m. (MonadIO m) => m ()
 clearInvitationFromURL = do
@@ -69,6 +69,10 @@ clearInvitationFromURL = do
 makeClaimInvitation :: forall t. (Reflex t) => Config t -> Secret -> Event t [API.ServerRequest]
 makeClaimInvitation config secret
   = const [ API.ReqClaimInvitation secret ] <$> config^.configAuthenticated
+
+makeAnswerInvitation :: forall t. (Reflex t) => Secret -> Event t InvitationReply -> Event t [API.ServerRequest]
+makeAnswerInvitation secret reply
+  = (:[]) . API.ReqAnswerInvitation secret  <$> reply
 
 emptyAcceptInvitation :: Reflex t => AcceptInvitation t
 emptyAcceptInvitation = AcceptInvitation never

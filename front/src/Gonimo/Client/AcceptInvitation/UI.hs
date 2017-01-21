@@ -24,6 +24,8 @@ import Gonimo.Client.Reflex.Dom
 import Gonimo.SocketAPI.Types (InvitationInfo(..))
 import Control.Monad.Trans.Maybe (runMaybeT)
 import Control.Monad.Trans.Class (lift)
+import Gonimo.SocketAPI.Types (InvitationReply(..))
+import Gonimo.Types (Secret)
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
       => Config t -> m (AcceptInvitation t)
@@ -33,7 +35,7 @@ ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
     let claimReq = makeClaimInvitation config secret
     answerReq <- lift . fmap switchPromptlyDyn
                  . widgetHold (pure never)
-                 $ ui' config <$> gotInvitation
+                 $ ui' config secret <$> gotInvitation
     pure $ AcceptInvitation (claimReq <> answerReq)
   where
     gotInvitation = push (\res -> case res of
@@ -42,8 +44,8 @@ ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
                         ) (config^.configResponse)
 
 ui' :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace)
-      => Config t -> InvitationInfo -> m (Event t [API.ServerRequest])
-ui' config invInfo = do
+      => Config t -> Secret -> InvitationInfo -> m (Event t [API.ServerRequest])
+ui' config secret invInfo = do
   elClass "div" "panel panel-info" $ do
     elClass "div" "panel-heading" $
       el "h1" $ text "Family Invitation"
@@ -59,5 +61,25 @@ ui' config invInfo = do
           el "tr" $ do
             el "td" $ text "Inviting User:"
             el "td" $ text invUser
-    elClass "div" "panel-body" $ text "Buttons here"
-  pure never
+    elClass "div" "panel-body" $ do
+      elAttr "div" ( "class" =: "btn-group btn-group-justified"
+                   <> "role" =: "group"
+                   ) $ do
+        declined <- groupedButton "btn-danger" $ do
+          text "Decline "
+          elClass "i" "fa fa-fw fa-times" blank
+        accepted <- groupedButton "btn-success" $ do
+          text "Accept "
+          elClass "span" "hidden-xs" $ text "this generous offer "
+          elClass "i" "fa fa-fw fa-check" blank
+        pure $ mconcat [ makeAnswerInvitation secret . fmap (const InvitationReject) $ declined
+                       , makeAnswerInvitation secret . fmap (const InvitationAccept) $ accepted
+                       ]
+
+groupedButton :: DomBuilder t m => Text -> m () -> m (Event t ())
+groupedButton className inner = do
+  (e, _) <- elAttr "div" ("class" =: "btn-group" <> "role" =: "group") $
+    elAttr' "button" ( "class" =: ("btn btn-block " <> className)
+                       <> "type" =: "button"
+                     ) inner
+  return $ domEvent Click e
