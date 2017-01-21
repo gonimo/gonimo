@@ -19,7 +19,7 @@ import           Data.Typeable (Typeable)
 data ServerError = InvalidAuthToken
                  | NotAuthenticated
                  | InvitationAlreadyClaimed -- ^ Invitation was already claimed by someone else.
-                 | AlreadyFamilyMember -- ^ If a client tries to become a member of a family he is already a member of.
+                 | AlreadyFamilyMember !FamilyId-- ^ If a client tries to become a member of a family he is already a member of.
                  | NoSuchDevice DeviceId -- ^ The device could not be found in the database.
                  | NoSuchFamily FamilyId
                  | FamilyNotOnline FamilyId

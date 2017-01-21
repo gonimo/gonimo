@@ -104,7 +104,7 @@ answerInvitationR invSecret reply = do
   predPool <- getPredicatePool
   runDb $ do -- Separate transaction - we want the invitation to be deleted now!
     when (reply == InvitationAccept ) $ do
-      guardWith AlreadyFamilyMember
+      guardWith (AlreadyFamilyMember (invitationFamilyId inv))
         $ not $ isFamilyMember (invitationFamilyId inv) authData
       Account.joinFamily predPool $ FamilyAccount {
           familyAccountAccountId = aid
