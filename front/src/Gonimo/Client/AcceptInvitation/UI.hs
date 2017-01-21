@@ -31,7 +31,7 @@ ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, M
       => Config t -> m (AcceptInvitation t)
 ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
     secret <- getInvitationSecret
-    -- clearInvitationFromURL
+    clearInvitationFromURL
     let claimReq = makeClaimInvitation config secret
     answerReq <- lift . fmap switchPromptlyDyn -- Only display until user accepted/declined.
                  . widgetHold (onInvitationUI secret)

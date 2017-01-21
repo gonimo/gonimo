@@ -17,6 +17,7 @@ import qualified Gonimo.Db.Entities as Db
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import qualified GHCJS.DOM.JSFFI.Generated.Location as Location
+import qualified GHCJS.DOM.JSFFI.Generated.History as History
 import GHCJS.DOM.Types (ToJSVal, toJSVal, FromJSVal, fromJSVal, JSVal)
 import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
 import qualified GHCJS.DOM as DOM
@@ -64,7 +65,10 @@ clearInvitationFromURL :: forall m. (MonadIO m) => m ()
 clearInvitationFromURL = do
     window  <- DOM.currentWindowUnchecked
     location <- Window.getLocationUnsafe window
-    Location.setSearch location ("" :: Text)
+    history <- Window.getHistoryUnsafe window
+    href <- Location.getHref location
+    emptyJSVal <- liftIO $ toJSVal T.empty
+    History.pushState history emptyJSVal ("gonimo" :: Text) (T.takeWhile (/='?') href)
 
 makeClaimInvitation :: forall t. (Reflex t) => Config t -> Secret -> Event t [API.ServerRequest]
 makeClaimInvitation config secret
