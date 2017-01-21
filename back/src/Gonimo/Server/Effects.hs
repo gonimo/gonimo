@@ -5,6 +5,7 @@
 {-# LANGUAGE UndecidableInstances   #-} -- For MonadBaseControl instance
 {-# LANGUAGE TypeFamilies   #-} -- For MonadBaseControl instance
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE CPP   #-}
 module Gonimo.Server.Effects (
     MonadServer
   , Server
@@ -117,7 +118,12 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
   => MonadServer (ServerT m) where
   atomically = liftIO . STM.atomically
   registerDelay = liftIO . STM.registerDelay
+
+#ifdef DEVELOPMENT
+  sendEmail = const $ pure ()
+#else
   sendEmail = liftIO . sendMail "localhost"
+#endif
   genRandomBytes l = fst . genBytes l <$> (liftIO newGenIO :: (ServerT m) SystemRandom)
   getCurrentTime = liftIO Clock.getCurrentTime
   runDb trans = do

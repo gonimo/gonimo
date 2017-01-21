@@ -87,6 +87,7 @@ makeInvitationLink baseURL inv =
   in
     baseURL <> "?" <> invitationQueryParam <> "=" <> encodedSecret
 
+-- Not used currently : 
 encodeURIComponent :: (ToJSVal i, FromJSVal o, MonadIO m) => i -> MaybeT m o
 encodeURIComponent val = do
   jsVal <- liftIO $ toJSVal val

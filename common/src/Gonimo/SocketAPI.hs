@@ -60,7 +60,7 @@ data ServerResponse
   | ResSavedBabyName
 
   | ResCreatedInvitation !(InvitationId, Invitation)
-  | ResSentInvitation
+  | ResSentInvitation !Client.SendInvitation
   | ResClaimedInvitation !Secret !InvitationInfo
   | ResAnsweredInvitation !Secret !InvitationReply !(Maybe FamilyId)
 

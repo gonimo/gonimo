@@ -2,7 +2,7 @@
 {-# LANGUAGE RecursiveDo #-}
 
 import Reflex
-import Reflex.Dom hiding (webSocketConfig_send, webSocket_recv)
+import Reflex.Dom hiding (webSocketConfig_send)
 import qualified Data.Text as T
 import Control.Lens
 import Safe

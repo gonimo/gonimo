@@ -9,7 +9,7 @@ module Gonimo.Client.Reflex where
 import Reflex.Dom
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-
+import Debug.Trace (trace)
 
 -- Build an event that only triggers on the very first occurrence of the input event.
 waitForReady :: forall t m a. (MonadHold t m, Reflex t, MonadFix m) => Event t a -> m (Event t (Dynamic t a))
@@ -38,23 +38,23 @@ waitForJust dynMay = do
       liftIO $ makeEv outDyn
       pure ev
 
-fromMaybeDyn :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m)
-                => m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Event t b)
-fromMaybeDyn onNothing action mDyn = dyn =<< fromMaybeDyn' onNothing action mDyn
+fromMaybeDyn :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m, Show a)
+                => (String -> String) ->  m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Event t b)
+fromMaybeDyn myTag onNothing action mDyn = dyn =<< fromMaybeDyn' myTag onNothing action mDyn
 
-fromMaybeDyn' :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m)
-                => m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Dynamic t (m b))
-fromMaybeDyn' onNothing action mDyn = do
+fromMaybeDyn' :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m, Show a)
+                => (String -> String) -> m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Dynamic t (m b))
+fromMaybeDyn' myTag onNothing action mDyn = do
   mInit <- sample $ current mDyn
-  let onlyJusts = push (pure . id) (updated mDyn)
+  let onlyJusts = traceEvent (myTag "got Just update") . push (pure . id) . traceEvent (myTag "got update") $ (updated mDyn)
   let widgetInit = case mInit of
-        Nothing -> onNothing
-        Just v  -> action =<< holdDyn v onlyJusts
+        Nothing -> trace (myTag "onNothing in mInit") onNothing
+        Just v  -> trace (myTag "action in mInit") $ action =<< holdDyn v onlyJusts
   let widgetEvent = push (\mVal -> do
-                             prevMVal <- sample $ current mDyn
+                             prevMVal <- trace (myTag "Got sample ...") . sample $ current mDyn
                              pure $ case (prevMVal, mVal) of
-                               (_, Nothing)        -> Just onNothing
-                               (Nothing, Just val) -> Just (action =<< holdDyn val onlyJusts)
-                               (Just _, Just _)    -> Nothing
+                               (_, Nothing)        -> trace (myTag "Returning onNothing") $ Just onNothing
+                               (Nothing, Just val) -> trace (myTag "Returning action on Just") $ Just (action =<< holdDyn val onlyJusts)
+                               (Just _, Just _)    -> trace (myTag "Returning Nothing") Nothing
                          ) (updated mDyn)
   holdDyn widgetInit widgetEvent

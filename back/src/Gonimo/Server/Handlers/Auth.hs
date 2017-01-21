@@ -133,6 +133,7 @@ sendInvitationR (Client.SendInvitation iid d@(EmailInvitation email)) = do
     family <- get404 (invitationFamilyId inv)
     return (newInv, family)
   sendEmail $ makeInvitationEmail inv email (Db.familyName family)
+
 sendInvitationR (Client.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 
 getFamilyMembersR :: (AuthReader m, MonadServer m) => FamilyId -> m [AccountId]

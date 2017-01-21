@@ -1,5 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-}
 module Gonimo.Client.Family.UI where
 
 import Reflex.Dom
@@ -25,6 +26,8 @@ import Data.Maybe (fromMaybe)
 import qualified Gonimo.Types as Gonimo
 import qualified Gonimo.Client.Invite as Invite
 import Control.Monad.IO.Class (liftIO)
+import Unsafe.Coerce
+import Debug.Trace (trace)
 
 import Gonimo.Client.Family.Internal
 
@@ -37,11 +40,13 @@ ui config = mdo
                                & configSelectFamily .~ famSelectedEv
 
     famSelectedEv <- familyChooser family'
+    -- let famSelectedEv = never
     clickedAdd <- button "+"
     clickedLeave <- button "Leave"
 
-    invResult <- fromMaybeDyn invalidContents (validContents config) $ family'^.selectedFamily
+    invResult <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
     invReqs <- switchPromptly never invResult
+    -- let invReqs = never
 
     pure $ family' & request %~ (<> invReqs)
 
@@ -49,24 +54,24 @@ ui config = mdo
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
                  => Family t -> m (Event t FamilyId)
 familyChooser family' = do
-  evEvEv <- fromMaybeDyn
-    (do
-        el "div" $ text "Loading families from server ..."
+  evFamilies <- waitForJust (family'^.families)
+
+  let onFamilies families' =
+        fromMaybeDyn ("select: " <>)
+          (do
+              el "div" $ text "Create a family to get started (+)"
+              pure never
+          )
+          (\selected ->
+              familyChooser' (DefiniteFamily families' selected)
+          )
+          (family'^.selectedFamily)
+  let noFamilies = do
+        el "div" $ text "Loading your families ..."
         pure never
-    )
-    (\families' -> fromMaybeDyn
-                    (do
-                        el "div" $ text "Create a family to get started (+)"
-                        pure never
-                    )
-                    (\selected ->
-                       familyChooser' (DefiniteFamily families' selected)
-                    )
-                    (family'^.selectedFamily)
-    )
-    (family'^.families)
-  evEv <- switchPromptly never evEvEv -- Flatten Event Event Event
-  switchPromptly never evEv
+  dynEvEv <- widgetHold noFamilies (onFamilies <$> evFamilies)
+  let evEv = switchPromptlyDyn dynEvEv -- Flatten Dynamic Event Event
+  traceEvent "Family Chooser In Action" <$> switchPromptly never evEv
 
 
 familyChooser' :: forall m t. (HasWebView m, MonadWidget t m)
@@ -95,7 +100,19 @@ familyChooser' family' = do
 renderFamilySelectors :: forall m t. (HasWebView m, MonadWidget t m)
                     => DefiniteFamily t -> m (Event t FamilyId)
 renderFamilySelectors family'
-  = fmap fst <$> selectViewListWithKey (family'^.definiteSelected) (family'^.definiteFamilies) renderFamilySelector
+  = do
+  -- (ev, makeEv) <- newTriggerEvent
+  -- liftIO $ makeEv (unsafeCoerce (10000 :: Int))
+  -- liftIO $ makeEv (unsafeCoerce (10001 :: Int))
+  -- liftIO $ makeEv (unsafeCoerce (10002 :: Int))
+  -- liftIO $ makeEv (unsafeCoerce (10003 :: Int))
+  -- liftIO $ makeEv (unsafeCoerce (10003 :: Int))
+  -- liftIO $ makeEv (unsafeCoerce (249 :: Int))
+  -- liftIO $ makeEv (unsafeCoerce (2490 :: Int))
+  -- liftIO $ makeEv (unsafeCoerce (249 :: Int))
+
+  -- myDyn <- holdDyn (unsafeCoerce (9000 :: Int )) ev
+  fmap fst <$> selectViewListWithKey (family'^.definiteSelected) (family'^.definiteFamilies) renderFamilySelector
 
 -- Internal helper for familyChooser ...
 renderFamilySelector :: forall m t. (HasWebView m, MonadWidget t m)

@@ -97,9 +97,9 @@ authenticate config authDataDyn=
                    [ tag (current authDataDyn) $ config^.configServerOpen
                    , updated authDataDyn
                    ]
-    authData = push (pure . headMay) authDataList
+    authData' = push (pure . headMay) authDataList
   in
-    API.ReqAuthenticate . API.authToken <$> authData
+    API.ReqAuthenticate . API.authToken <$> authData'
 
 writeAuthData :: MonadIO m => Storage -> Maybe API.AuthData -> m ()
 writeAuthData _ Nothing = pure ()

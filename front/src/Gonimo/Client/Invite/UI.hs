@@ -1,5 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-}
 module Gonimo.Client.Invite.UI where
 
 import Reflex.Dom
@@ -15,32 +16,31 @@ import Control.Monad.Fix (MonadFix)
 import Data.Maybe (maybe)
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Types (urlEncode)
+import Gonimo.Types (InvitationDelivery(..))
+import qualified Gonimo.SocketAPI as API
+import qualified Gonimo.SocketAPI.Types as API
+import Gonimo.Client.Reflex.Dom
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m)
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace)
       => Config t -> m (Invite t)
 ui config = mdo
     baseUrl <- getBaseLink
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
     liftIO $ makeCreateInvEv () -- We want a new invitation every time this widget is rendered
-    invite' <- invite $ config & configCreateInvitation .~ leftmost (createInvEv : reCreateEvents)
-    let currentInvitation = invite'^.invitation
+    invite' <- invite $ config & configCreateInvitation .~ leftmost (createInvEv : fmap (const ()) mailReqs' : reCreateEvents)
+    let invite'' = invite' & request %~ (mailReqs' <>)
+
+    let currentInvitation = invite''^.invitation
     let invitationLink = maybe "" (makeInvitationLink baseUrl . snd) <$> currentInvitation
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
 
-    reCreateEvents <- divClass "container" $ do
+    (reCreateEvents, mailReqs') <- divClass "container" $ do
       invButtons <- divClass "row" $ do
         elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
           whatsAppClicked <- inviteButton "/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
           tgClicked <- inviteButton "/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
           pure [whatsAppClicked, tgClicked]
-      divClass "row" $ do -- emailWidget currentInvitation
-        elAttr "div" ("class" =: "input-group" <> "style" =: "width:100%;") $ do
-          awesomeAddon "fa-envelope"
-          elAttr "input" ("type" =: "text"
-                          <> "class" =: "form-control"
-                          <> "placeholder" =: "mail@example.com"
-                        ) $ pure ()
-          sendEmailBtn
+      mailReqs <- divClass "row" $ emailWidget (config^.configResponse) currentInvitation
       recreateClicked <- divClass "row" $ do
         copyClipboardScript
         divClass "input-group" $ do
@@ -48,13 +48,9 @@ ui config = mdo
             showLinkInput invitationLink
             copyClicked <- copyButton
             pure [clicked, copyClicked]
-      pure $ recreateClicked <> invButtons
-    pure invite'
+      pure $ (recreateClicked <> invButtons, mailReqs)
+    pure invite''
   where
-    sendEmailBtn =
-      elAttr "span" ("class" =: "input-group-btn") $ do
-        elAttr "button" ("class" =: "btn btn-default" <> "type" =: "button") $ do
-          text "Send Email"
 
     inviteButton img name linkBase payload =
       elAttr "div" ("class" =: "btn-group col-xs6" <> "role" =: "group"
@@ -125,6 +121,52 @@ copyClipboardScript = el "script" $ text $
     -- <> "   alert(\"invitationLinkUrlInput\");\n"
     <> "};\n"
 
--- emailWidget :: forall t m. (DomBuilder t m) => Dynamic t (Maybe (InvitationId, Db.Invitation)) -> m (Event t API.ServerRequest)
--- emailWidget Nothing = do
-  
+emailWidget :: forall t m. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace, PostBuild t m
+                           , MonadHold t m)
+  => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Db.Invitation))
+  -> m (Event t [API.ServerRequest])
+emailWidget res invData = mdo
+    (infoBox', req) <- elAttr "div" ("class" =: "input-group" <> "style" =: "width:100%;") $ do
+      awesomeAddon "fa-envelope"
+      addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: "mail@example.com"
+                                                                       <> "class" =: "form-control"
+                                                                   )
+                                   }
+      let addr = addrInput^.textInput_value
+      sendClicked <- sendEmailBtn
+      let enterPressed' = enterPressed $ addrInput^.textInput_keypress
+      let sendRequested = leftmost [sendClicked, enterPressed']
+      let infoBox = widgetHold (pure ()) $ showSuccess <$> leftmost [ invSent, const Nothing <$> sendRequested ]
+      pure $ (infoBox, buildRequest sendRequested (current addr))
+    _ <- infoBox'
+    pure req
+  where
+    buildRequest :: Event t () -> Behavior t Text -> Event t [API.ServerRequest]
+    buildRequest clicked addr =
+      let
+        makeReqs mId email = maybe [] (:[])
+          $ API.ReqSendInvitation <$> (API.SendInvitation <$> mId <*> Just (EmailInvitation email))
+        mInvId = fmap fst <$> current invData
+        invAddr = (,) <$> mInvId <*> addr
+      in
+        uncurry makeReqs <$> tag invAddr clicked
+
+    sendEmailBtn =
+      fmap (domEvent Click . fst)
+        $ elAttr "span" ("class" =: "input-group-btn") $
+            elAttr' "button" ("class" =: "btn btn-default" <> "type" =: "button") $
+              text "Send Email"
+
+    invSent :: Event t (Maybe API.SendInvitation)
+    invSent = push (\r -> pure $ case r of
+                                   API.ResSentInvitation inv -> Just (Just inv)
+                                   _ -> Nothing
+                   ) res
+
+    showSuccess Nothing = pure ()
+    showSuccess (Just inv) = do
+        elAttr "div" ("class" =: "alert alert-success") $
+          text $ "e-mail successfully sent to: " <> getAddr inv
+      where
+        getAddr (API.SendInvitation _ (EmailInvitation addr)) = addr
+        getAddr _ = "nobody"
