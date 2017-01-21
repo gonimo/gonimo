@@ -99,20 +99,7 @@ familyChooser' family' = do
 
 renderFamilySelectors :: forall m t. (HasWebView m, MonadWidget t m)
                     => DefiniteFamily t -> m (Event t FamilyId)
-renderFamilySelectors family'
-  = do
-  -- (ev, makeEv) <- newTriggerEvent
-  -- liftIO $ makeEv (unsafeCoerce (10000 :: Int))
-  -- liftIO $ makeEv (unsafeCoerce (10001 :: Int))
-  -- liftIO $ makeEv (unsafeCoerce (10002 :: Int))
-  -- liftIO $ makeEv (unsafeCoerce (10003 :: Int))
-  -- liftIO $ makeEv (unsafeCoerce (10003 :: Int))
-  -- liftIO $ makeEv (unsafeCoerce (249 :: Int))
-  -- liftIO $ makeEv (unsafeCoerce (2490 :: Int))
-  -- liftIO $ makeEv (unsafeCoerce (249 :: Int))
-
-  -- myDyn <- holdDyn (unsafeCoerce (9000 :: Int )) ev
-  fmap fst <$> selectViewListWithKey (family'^.definiteSelected) (family'^.definiteFamilies) renderFamilySelector
+renderFamilySelectors family' = fmap fst <$> selectViewListWithKey (family'^.definiteSelected) (family'^.definiteFamilies) renderFamilySelector
 
 -- Internal helper for familyChooser ...
 renderFamilySelector :: forall m t. (HasWebView m, MonadWidget t m)

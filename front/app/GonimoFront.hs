@@ -19,6 +19,7 @@ import qualified Gonimo.Client.Server as Server
 import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
 import qualified Gonimo.Client.Auth as Auth
 import qualified Gonimo.Client.Invite as Invite
+import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import qualified Gonimo.Client.Family as Family
 import qualified Gonimo.Client.Subscriber as Subscriber
 import Control.Monad
@@ -30,6 +31,7 @@ main = mainWidgetInElementById "app" $ mdo
   let serverRequests = auth^.Auth.request
                     <> subscriber^.Subscriber.request
                     <> family^.Family.request
+                    <> accept^.AcceptInvitation.request
 
   let wsConfig = def & webSocketConfig_send .~ serverRequests
   server <- Server.server "ws://localhost:8081" wsConfig
@@ -44,6 +46,12 @@ main = mainWidgetInElementById "app" $ mdo
                                            , Subscriber._configAuthenticated = auth^.Auth.authenticated
                                            }
   subscriber <- Subscriber.subscriber subscriberConfig
+
+  let acceptConfig
+        = AcceptInvitation.Config { AcceptInvitation._configResponse = server^.webSocket_recv
+                                  , AcceptInvitation._configAuthenticated = auth^.Auth.authenticated
+                                  }
+  accept <- AcceptInvitation.ui acceptConfig
 
   let familyConfig = Family.Config { Family._configResponse = server^.webSocket_recv
                                    , Family._configAuthData = auth^.Auth.authData

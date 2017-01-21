@@ -57,6 +57,9 @@ library
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Invite.UI
                     , Gonimo.Client.Invite.Internal
+                    , Gonimo.Client.AcceptInvitation
+                    , Gonimo.Client.AcceptInvitation.UI
+                    , Gonimo.Client.AcceptInvitation.Internal
                     , Gonimo.Client.Family
                     , Gonimo.Client.Family.Internal
                     , Gonimo.Client.Family.UI
