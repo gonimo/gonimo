@@ -50,6 +50,7 @@ library
                     , containers
                     , transformers
                     , http-types
+                    , time
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Auth
@@ -60,6 +61,9 @@ library
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.UI
                     , Gonimo.Client.AcceptInvitation.Internal
+                    , Gonimo.Client.MessageBox
+                    , Gonimo.Client.MessageBox.UI
+                    , Gonimo.Client.MessageBox.Internal
                     , Gonimo.Client.Family
                     , Gonimo.Client.Family.Internal
                     , Gonimo.Client.Family.UI

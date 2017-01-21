@@ -19,6 +19,7 @@ import qualified Gonimo.Client.Server as Server
 import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
 import qualified Gonimo.Client.Auth as Auth
 import qualified Gonimo.Client.Invite as Invite
+import qualified Gonimo.Client.MessageBox as MessageBox
 import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import qualified Gonimo.Client.Family as Family
 import qualified Gonimo.Client.Subscriber as Subscriber
@@ -46,6 +47,11 @@ main = mainWidgetInElementById "app" $ mdo
                                            , Subscriber._configAuthenticated = auth^.Auth.authenticated
                                            }
   subscriber <- Subscriber.subscriber subscriberConfig
+
+  let messageBoxConfig
+        = MessageBox.Config { MessageBox._configMessage = never
+                            }
+  msgBox <- MessageBox.ui messageBoxConfig
 
   let acceptConfig
         = AcceptInvitation.Config { AcceptInvitation._configResponse = server^.webSocket_recv
