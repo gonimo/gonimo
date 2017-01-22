@@ -45,6 +45,13 @@ data Invite t
 makeLenses ''Config
 makeLenses ''Invite
 
+data InvitationSent
+  = SentWhatsApp
+  | SentTelegram
+  | SentCopy
+  | SentRefresh
+  | SentEmail
+
 invite :: forall t m. (MonadHold t m, MonadFix m) => Reflex t => Config t -> m (Invite t)
 invite config = mdo
   let

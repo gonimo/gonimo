@@ -21,25 +21,27 @@ import qualified Gonimo.SocketAPI as API
 import qualified Gonimo.SocketAPI.Types as API
 import Gonimo.Client.Reflex.Dom
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace)
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadIO (Performable m), PerformEvent t m)
       => Config t -> m (Invite t)
 ui config = mdo
     baseUrl <- getBaseLink
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
     liftIO $ makeCreateInvEv () -- We want a new invitation every time this widget is rendered
-    invite' <- invite $ config & configCreateInvitation .~ leftmost (createInvEv : fmap (const ()) mailReqs' : reCreateEvents)
+    invite' <- invite $ config & configCreateInvitation .~ leftmost (createInvEv : (fmap (const ()) <$> sentEvents))
     let invite'' = invite' & request %~ (mailReqs' <>)
 
     let currentInvitation = invite''^.invitation
     let invitationLink = maybe "" (makeInvitationLink baseUrl . snd) <$> currentInvitation
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
+    let sentEvents = (const SentEmail <$> mailReqs') : reCreateEvents
 
     (reCreateEvents, mailReqs') <- divClass "container" $ do
+      confirmationBox $ leftmost sentEvents
       invButtons <- divClass "row" $ do
         elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
           whatsAppClicked <- inviteButton "/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
           tgClicked <- inviteButton "/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
-          pure [whatsAppClicked, tgClicked]
+          pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
       mailReqs <- divClass "row" $ emailWidget (config^.configResponse) currentInvitation
       recreateClicked <- divClass "row" $ do
         copyClipboardScript
@@ -47,7 +49,7 @@ ui config = mdo
             clicked <- refreshLinkButton
             showLinkInput invitationLink
             copyClicked <- copyButton
-            pure [clicked, copyClicked]
+            pure [const SentRefresh <$> clicked, const SentCopy <$> copyClicked]
       pure $ (recreateClicked <> invButtons, mailReqs)
     pure invite''
   where
@@ -65,6 +67,33 @@ ui config = mdo
           elAttr "img" ("src" =: img <> "style" =: "height: 80%;") $ pure ()
           elAttr "div" ("style" =: "text-align: center") $
             text name
+
+confirmationBox :: forall m t. (DomBuilder t m, MonadIO (Performable m), MonadHold t m
+                               , TriggerEvent t m, PerformEvent t m)
+                   => Event t InvitationSent -> m ()
+confirmationBox sent = do
+  let mSent = Just <$> sent
+  closeEvent <- fmap (const Nothing) <$> delay 20 mSent
+  let lifeEvent = leftmost [mSent, closeEvent]
+  _ <- widgetHold (pure ()) $ confirmationBox' <$> lifeEvent
+  pure ()
+
+confirmationBox' :: forall m t. (DomBuilder t m) => Maybe InvitationSent -> m ()
+confirmationBox' Nothing = pure ()
+confirmationBox' (Just sendMethod) = do
+  elClass "div" "alert alert-success" $ do
+    case sendMethod of
+      SentWhatsApp -> el "strong" $ text "Sent with WhatsApp!"
+      SentTelegram -> el "strong" $ text "Sent with Telegram!"
+      SentCopy     -> el "strong" $ text "Copied invitation link to clipboard!"
+      SentRefresh  -> el "strong" $ text "New invitation generated!"
+      SentEmail    -> el "strong" $ text "Sent email!"
+    el "br" blank
+    el "h1" $ text "Next steps:"
+    elClass "ul" "list-group" $ do
+      elClass "li" "list-group-item" $ text "Open invitation link on another device and press <Accept>"
+      elClass "li" "list-group-item" $ text "Make one device a baby station"
+      elClass "li" "list-group-item" $ text "Make the other device a parent station"
 
 awesomeAddon :: forall m t. (DomBuilder t m) =>  Text -> m ()
 awesomeAddon t =
