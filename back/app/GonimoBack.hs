@@ -23,8 +23,11 @@ import qualified Data.Text as T
 import           Data.Typeable
 import           System.Environment (lookupEnv)
 import           Gonimo.Server.Error (fromMaybeErr)
+import           Safe (readMay)
 
-data StartupError = NO_GONIMO_FRONTEND_URL deriving (Generic, Eq, Show, Typeable)
+data StartupError
+  = NO_GONIMO_FRONTEND_URL
+  | NO_GONIMO_BACK_PORT deriving (Generic, Eq, Show, Typeable)
 instance Exception StartupError
 
 runGonimoLoggingT :: MonadIO m => LoggingT m a -> m a
@@ -51,6 +54,10 @@ devMain = do
 prodMain :: IO ()
 prodMain = do
   frontendURL <- fromMaybeErr NO_GONIMO_FRONTEND_URL =<< lookupEnv "GONIMO_FRONTEND_URL"
+  mPort <- lookupEnv "GONIMO_BACK_PORT"
+  port <- fromMaybeErr NO_GONIMO_BACK_PORT $ do
+      strPort <- mPort
+      readMay strPort
   subscriber' <- atomically $ makeSubscriber
   -- empty connection string means settings are fetched from env.
   pool        <- runGonimoLoggingT (createPostgresqlPool "" 10)
@@ -66,7 +73,7 @@ prodMain = do
   , configPredicates = predicates
   , configFrontendURL = T.pack frontendURL
   }
-  run 8081 $ serve runGonimoLoggingT config
+  run port $ serve runGonimoLoggingT config
 
 main :: IO ()
 #ifdef DEVELOPMENT
