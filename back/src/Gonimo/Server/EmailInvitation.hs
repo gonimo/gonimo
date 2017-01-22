@@ -22,25 +22,26 @@ import qualified Data.Aeson as Aeson
 
 
 #ifdef DEVELOPMENT
-invitationText :: Invitation -> FamilyName -> Text
-invitationText _inv (FamilyName _ _n) = "New invitation for family "
+invitationText :: Text -> Invitation -> FamilyName -> Text
+invitationText baseURL _inv (FamilyName _ _n) = "New invitation for family "
     <> _n
-    <> ":\nhttp://localhost:8081/index.html?acceptInvitation="
+    <> ":\n"
+    <> baseURL <> "?acceptInvitation="
     <> secret
     <> "\n"
   where
     secret = T.decodeUtf8 . urlEncode True . encodeStrict $ invitationSecret _inv
     encodeStrict = BL.toStrict . Aeson.encode
 #else
-invitationText :: Invitation -> FamilyName -> Text
-invitationText _inv (FamilyName _ _n) =
+invitationText :: Text -> Invitation -> FamilyName -> Text
+invitationText baseURL _inv (FamilyName _ _n) =
   [text|
     Dear User of gonimo.com!
 
     You got invited to join gonimo family "$_n"!
     Just click on the link below and you are all set for the best baby monitoring on the planet!
 
-    https://dev.gonimo.com/index.html?acceptInvitation=$secret
+    $baseURL?acceptInvitation=$secret
 
     Sincerely yours,
 
@@ -51,10 +52,10 @@ invitationText _inv (FamilyName _ _n) =
     encodeStrict = BL.toStrict . Aeson.encode
 #endif
 
-makeInvitationEmail :: Invitation -> EmailAddress -> FamilyName -> Mail
-makeInvitationEmail inv addr name = simpleMail' receiver sender "You got invited to a family on gonimo.com" (TL.fromStrict textContent)
+makeInvitationEmail :: Text -> Invitation -> EmailAddress -> FamilyName -> Mail
+makeInvitationEmail baseURL inv addr name = simpleMail' receiver sender "You got invited to a family on gonimo.com" (TL.fromStrict textContent)
   where
-    textContent = invitationText inv name
+    textContent = invitationText baseURL inv name
     receiver = Address Nothing addr
     sender = if T.isSuffixOf "gonimo.com" addr
       then Address Nothing "noreply@baby.gonimo.com" -- So we can send emails to ourself. (noreply@gonimo.com gets blocked by easyname)

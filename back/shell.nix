@@ -4,9 +4,7 @@ let
         {
             haskell.packages.${compiler} = super.haskell.packages.${compiler}.override {
               overrides = self: super: {
-                purescript-bridge = self.callPackage ../../purescript-bridge {};
-                servant-subscriber = self.callPackage ../../servant-subscriber {};
-                servant-purescript = self.callPackage ../../servant-purescript {};
+                gonimo-common = self.callPackage ../common {};
               };
             };
         };

@@ -26,6 +26,7 @@ module Gonimo.Server.Effects (
   , sendEmail
   , generateFamilyName
   , getPredicatePool
+  , getFrontendURL
   -- , timeout
   ) where
 
@@ -54,7 +55,9 @@ import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
 import           Database.Persist.Sql            (runSqlPool)
 import           Data.Pool                               (Pool)
 import qualified Control.Concurrent.STM          as STM
+#ifndef DEVELOPMENT
 import           Network.Mail.SMTP             (sendMail)
+#endif
 import           Crypto.Random                 (SystemRandom,
                                                 newGenIO)
 import           Crypto.Classes.Exceptions      (genBytes)
@@ -66,6 +69,7 @@ import qualified Control.Concurrent.Async            as Async
 import qualified Gonimo.Server.NameGenerator   as Gen
 import           Gonimo.SocketAPI (ServerRequest)
 import           Gonimo.Server.Messenger (MessengerVar)
+import           Data.Text (Text)
 
 secretLength :: Int
 secretLength = 16
@@ -83,6 +87,7 @@ class (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m) => MonadServer m where
   async  :: Server a -> m (Async a)
   getFamilyNamePool :: m FamilyNames
   getPredicatePool  :: m Predicates
+  getFrontendURL :: m Text
 
 -- | Ignore Async result - yeah forkIO would work as well.
 async_ :: MonadServer m => Server () -> m ()
@@ -98,6 +103,7 @@ data Config = Config {
 , configSubscriber :: !Subscriber
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
+, configFrontendURL :: !Text
 }
 
 newtype ServerT m a = ServerT (ReaderT Config m a)
@@ -141,6 +147,7 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
     liftIO $ Async.async ioTask
   getFamilyNamePool = asks configNames
   getPredicatePool  = asks configPredicates
+  getFrontendURL    = asks configFrontendURL
 
 
 instance MonadIO m => MonadBase IO (ServerT m) where
@@ -169,6 +176,7 @@ instance MonadServer m => MonadServer (ReaderT c m) where
   async = lift . async
   getFamilyNamePool = lift getFamilyNamePool
   getPredicatePool  = lift getPredicatePool
+  getFrontendURL  = lift getFrontendURL
 
 instance MonadServer m => MonadServer (StateT c m) where
   atomically = lift . atomically
@@ -183,6 +191,7 @@ instance MonadServer m => MonadServer (StateT c m) where
   async = lift . async
   getFamilyNamePool = lift getFamilyNamePool
   getPredicatePool  = lift getPredicatePool
+  getFrontendURL  = lift getFrontendURL
 
 instance MonadServer m => MonadServer (MaybeT m) where
   atomically = lift . atomically
@@ -197,6 +206,7 @@ instance MonadServer m => MonadServer (MaybeT m) where
   async = lift . async
   getFamilyNamePool = lift getFamilyNamePool
   getPredicatePool  = lift getPredicatePool
+  getFrontendURL  = lift getFrontendURL
 
 generateSecret :: MonadServer m => m Secret
 generateSecret = Secret <$> genRandomBytes secretLength

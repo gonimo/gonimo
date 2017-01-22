@@ -42,9 +42,9 @@ class ToServerError e where
 instance ToServerError ServerError where
   toServerError = return
 
-fromMaybeErr :: MonadBase IO m => ServerError -> Maybe a -> m a
+fromMaybeErr :: (MonadBase IO m, Exception e) => e -> Maybe a -> m a
 fromMaybeErr err ma = case ma of
-  Nothing -> throwServer err
+  Nothing -> throwIO err
   Just a  -> return a
 
 throwLeft :: MonadBase IO m => Either ServerError a -> m a

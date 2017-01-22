@@ -17,7 +17,15 @@ import           Database.Persist.Postgresql
 import           Control.Monad.IO.Class         (MonadIO)
 import           Gonimo.Db.Entities
 import qualified Gonimo.Server.Messenger as Messenger
+import           Control.Exception             (Exception)
+import           GHC.Generics
+import qualified Data.Text as T
+import           Data.Typeable
+import           System.Environment (lookupEnv)
+import           Gonimo.Server.Error (fromMaybeErr)
 
+data StartupError = NO_GONIMO_FRONTEND_URL deriving (Generic, Eq, Show, Typeable)
+instance Exception StartupError
 
 runGonimoLoggingT :: MonadIO m => LoggingT m a -> m a
 runGonimoLoggingT = runStdoutLoggingT
@@ -36,11 +44,13 @@ devMain = do
   , configSubscriber = subscriber'
   , configNames      = names
   , configPredicates = predicates
+  , configFrontendURL = "http://localhost:8081/index.html"
   }
   run 8081 $ addDevServer $ serve runGonimoLoggingT config
 
 prodMain :: IO ()
 prodMain = do
+  frontendURL <- fromMaybeErr NO_GONIMO_FRONTEND_URL =<< lookupEnv "GONIMO_FRONTEND_URL"
   subscriber' <- atomically $ makeSubscriber
   -- empty connection string means settings are fetched from env.
   pool        <- runGonimoLoggingT (createPostgresqlPool "" 10)
@@ -54,6 +64,7 @@ prodMain = do
   , configSubscriber = subscriber'
   , configNames      = names
   , configPredicates = predicates
+  , configFrontendURL = T.pack frontendURL
   }
   run 8081 $ serve runGonimoLoggingT config
 

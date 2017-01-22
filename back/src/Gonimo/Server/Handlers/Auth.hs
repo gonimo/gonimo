@@ -131,7 +131,8 @@ sendInvitationR (Client.SendInvitation iid d@(EmailInvitation email)) = do
     Db.replace iid newInv
     family <- get404 (invitationFamilyId inv)
     return (newInv, family)
-  sendEmail $ makeInvitationEmail inv email (Db.familyName family)
+  baseURL <- getFrontendURL
+  sendEmail $ makeInvitationEmail baseURL inv email (Db.familyName family)
 
 sendInvitationR (Client.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 
