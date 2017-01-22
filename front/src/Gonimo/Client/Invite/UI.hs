@@ -37,7 +37,7 @@ ui config = mdo
 
     (reCreateEvents, mailReqs') <- divClass "container" $ do
       confirmationBox $ leftmost sentEvents
-      invButtons <- divClass "row" $ do
+      invButtons <- elAttr "div" ("style" =: "display:flex; justify-content: space-around;") $ do
         elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
           whatsAppClicked <- inviteButton "/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
           tgClicked <- inviteButton "/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
@@ -55,8 +55,8 @@ ui config = mdo
   where
 
     inviteButton img name linkBase payload =
-      elAttr "div" ("class" =: "btn-group col-xs6" <> "role" =: "group"
-                    <> "style" =: "height: 40vh;") $ do
+      elAttr "div" ("class" =: "btn-group" <> "role" =: "group"
+                    <> "style" =: "height: 20vh;") $ do
         let mkBtnAttrs link' = ("class" =: "btn btn-default" <> "style" =: "height: 100%;"
                                 <> "role" =: "button"
                                 <> "type" =: "button"
@@ -160,6 +160,7 @@ emailWidget res invData = mdo
       addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: "mail@example.com"
                                                                        <> "class" =: "form-control"
                                                                    )
+                                   , _textInputConfig_inputType = "email"
                                    }
       let addr = addrInput^.textInput_value
       sendClicked <- sendEmailBtn
