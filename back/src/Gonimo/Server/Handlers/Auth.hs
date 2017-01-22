@@ -42,7 +42,6 @@ import qualified Gonimo.SocketAPI.Types                  as Client
 import           Gonimo.SocketAPI (ServerRequest(..))
 import           Servant.Server                       (ServantErr (..), err400,
                                                        err403)
-import           Servant.Subscriber                   (Event (ModifyEvent))
 import           Unsafe.Coerce
 import           Utils.Control.Monad.Trans.Maybe      (maybeT)
 import qualified Gonimo.Server.Db.Account             as Account

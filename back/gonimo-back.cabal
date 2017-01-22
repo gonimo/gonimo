@@ -95,14 +95,11 @@ library
                       , persistent-postgresql
                       , persistent-sqlite
                       , persistent-template
-                      , purescript-bridge
                       , random
                       , resource-pool
                       , servant
                       , servant-docs
-                      , servant-purescript
                       , servant-server
-                      , servant-subscriber >= 0.1
                       , smtp-mail
                       , stm
                       , template-haskell
@@ -158,13 +155,11 @@ executable gonimo-back
                     , persistent-postgresql
                     , persistent-sqlite
                     , persistent-template
-                    , purescript-bridge
                     , random
                     , resource-pool
                     , servant
                     , servant-docs
                     , servant-server
-                    , servant-subscriber
                     , smtp-mail
                     , stm
                     , template-haskell
