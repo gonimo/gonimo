@@ -60,7 +60,7 @@ displayResponse msg = case msg of
       (never,) <$> delayed 5
   API.ResAnsweredInvitation _ InvitationAccept _ -> Just $
     box "Invitation accepted!" "panel-success" $ do
-      text "This device is now a visible family member - make it a baby station!"
+      text "Your device is now a family member - make it a baby station!"
       (never,) <$> delayed 5
   _ -> Nothing
 
@@ -80,6 +80,7 @@ displayError req err = case (req, err) of
   (_, InvitationAlreadyClaimed) -> Just $
     box "Invitation already claimed!" "panel-danger" $ do
       text "Some other device opened this invitation already!"
+      elClass "span" "hidden-xs" $ text " (security and stuff, you know ...)"
       (never,) <$> delayed 6
   (_,_) -> Nothing
 
