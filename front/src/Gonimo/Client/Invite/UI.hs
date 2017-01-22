@@ -37,7 +37,7 @@ ui config = mdo
 
     (reCreateEvents, mailReqs') <- divClass "container" $ do
       confirmationBox $ leftmost sentEvents
-      invButtons <- elAttr "div" ("style" =: "display:flex; justify-content: space-around;") $ do
+      invButtons <- elAttr "div" ("style" =: "display:flex; justify-content: space-between;") $ do
         elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
           whatsAppClicked <- inviteButton "/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
           tgClicked <- inviteButton "/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
