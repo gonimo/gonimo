@@ -45,7 +45,6 @@ data MessageBox t
 
 data Message
   = ServerResponse API.ServerResponse
-  | InvitationSent Text
 
 data Action
   = ServerRequest API.ServerRequest

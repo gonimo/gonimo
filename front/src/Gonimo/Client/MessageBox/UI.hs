@@ -48,7 +48,6 @@ displayMessage :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, 
       => Message -> Maybe (m (Event t [Action]))
 displayMessage msg = fmap (fmap (:[])) <$> case msg of
   ServerResponse res -> displayResponse res
-  InvitationSent how -> Nothing
 
 displayResponse :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
       => API.ServerResponse -> Maybe (m (Event t Action))
