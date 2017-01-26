@@ -57,6 +57,7 @@ library
                     , http-types
                     , time
   exposed-modules:    Gonimo.Client.Storage
+                    , Gonimo.Client.Config
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Auth
                     , Gonimo.Client.Server

@@ -24,6 +24,7 @@ import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import qualified Gonimo.Client.Family as Family
 import qualified Gonimo.Client.Subscriber as Subscriber
 import Control.Monad
+import qualified Gonimo.Client.Config as Config
 
 
 
@@ -35,7 +36,7 @@ main = mainWidgetInElementById "app" $ mdo
                     <> accept^.AcceptInvitation.request
 
   let wsConfig = def & webSocketConfig_send .~ serverRequests
-  server <- Server.server "ws://localhost:8081" wsConfig
+  server <- Server.server Config.gonimoBackWSURL  wsConfig
 
   let authConfig = Auth.Config { Auth._configResponse = server^.webSocket_recv
                                , Auth._configServerOpen = server^.webSocket_open
