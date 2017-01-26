@@ -9,13 +9,17 @@ maintainer:          robert[dot]klotzner[at]gmx[dot]at
 
 category:            Web
 
-build-type:          Simple
+build-type:          Custom
 
 cabal-version:       >=1.10
 
 Flag dev
     Description:   Turn on development settings.
     Default:       False
+
+custom-setup
+    setup-depends: base >=4.8 && <4.10
+                 , Cabal >= 1.18 && < 1.25
 
 library
   hs-source-dirs:      src
@@ -37,6 +41,7 @@ library
                     , FlexibleContexts
   build-depends:      aeson
                     , base >=4.8 && <4.10
+                    , Cabal
                     , errors
                     , bytestring
                     , text
@@ -119,5 +124,3 @@ executable gonimo-front
                     , errors
                     , http-api-data
                     , data-default
-
-
