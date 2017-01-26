@@ -24,7 +24,7 @@ library
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall -fwarn-tabs -O0
   else
-      ghc-options:   -Wall -Werror -fwarn-tabs -O2
+      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -O2
 
   default-extensions: ConstraintKinds
                     , DataKinds

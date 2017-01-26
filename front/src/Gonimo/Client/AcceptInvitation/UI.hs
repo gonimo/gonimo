@@ -40,7 +40,7 @@ ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
   where
     onInvitationUI secret = fmap switchPromptlyDyn
                      . widgetHold (pure never)
-                     $ ui' config secret <$> gotInvitation
+                     $ ui' secret <$> gotInvitation
     gotInvitation = push (\res -> case res of
                             API.ResClaimedInvitation _ invInfo -> pure $ Just invInfo
                             _ -> pure Nothing
@@ -52,8 +52,8 @@ ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
                         ) (config^.configResponse)
 
 ui' :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace)
-      => Config t -> Secret -> InvitationInfo -> m (Event t [API.ServerRequest])
-ui' config secret invInfo = do
+      => Secret -> InvitationInfo -> m (Event t [API.ServerRequest])
+ui' secret invInfo = do
   elClass "div" "panel panel-info" $ do
     elClass "div" "panel-heading" $
       el "h1" $ text "Family Invitation"
