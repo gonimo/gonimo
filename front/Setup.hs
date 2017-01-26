@@ -2,11 +2,12 @@ import Distribution.Simple
 import Distribution.Simple.Setup (BuildFlags(..))
 import Distribution.PackageDescription (PackageDescription (..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
-import System.IO
+import System.Process (system)
 
 finishBuild ::  Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 finishBuild args buildFlags packageDescription localBuildInfo = do
-  putStrLn "After build - juhu!"
+  _ <- system "cp -a static/* dist/build/gonimo-front/gonimo-front.jsexe/"
+  pure ()
 
 
 main = do
