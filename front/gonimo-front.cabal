@@ -20,6 +20,15 @@ Flag dev
 custom-setup
     setup-depends: base >=4.8 && <4.10
                  , Cabal >= 1.18 && < 1.25
+                 -- , bytestring
+                 -- , conduit
+                 -- , conduit-extra
+                 -- , containers
+                 -- , directory
+                 -- , filepath
+                 -- , pureMD5
+                 -- , shake
+                 -- , stringsearch
 
 library
   hs-source-dirs:      src
@@ -83,6 +92,7 @@ executable gonimo-front
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall
   else
+      cpp-options:   -DGHCJS_BROWSER
       ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
   main-is:            GonimoFront.hs
   hs-source-dirs:      app

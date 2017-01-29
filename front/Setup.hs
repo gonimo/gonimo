@@ -2,12 +2,17 @@ import Distribution.Simple
 import Distribution.Simple.Setup (BuildFlags(..))
 import Distribution.PackageDescription (PackageDescription (..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
-import System.Process (system)
+import Distribution.Simple.Program.Run
+import Distribution.Verbosity (normal)
 
 finishBuild ::  Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 finishBuild args buildFlags packageDescription localBuildInfo = do
-  _ <- system "cp -a static/* dist/build/gonimo-front/gonimo-front.jsexe/"
-  pure ()
+  let prog = emptyProgramInvocation { progInvokePath = "./postBuild.sh"
+                                    -- , progInvokeArgs = [ "-a", "./static/*", "./dist/build/gonimo-front/gonimo-front.jsexe/" ]
+                                    -- , progInvokeCwd = Just "./"
+                                    }
+  runProgramInvocation normal prog
+  -- _ <- system "cp -a static/* dist/build/gonimo-front/gonimo-front.jsexe/"
 
 
 main = do
