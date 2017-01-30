@@ -2,7 +2,6 @@
 dev=$1
 distPath=dist/build/gonimo-front/gonimo-front.jsexe
 cp -a static/* ${distPath}/
-gonimo-deploy md5sum ${distPath}
 if [[ ${dev} == "dev" ]]
 then
     echo "Development build, skipping minification"
@@ -28,3 +27,9 @@ else
     rm rts.js lib.js out.js all.js manifest.webapp out.stats
     popd
 fi
+gonimo-deploy md5sum ${distPath}
+# Fix up index.html:
+pushd ${distPath}
+mv index-*.html index.html
+popd
+
