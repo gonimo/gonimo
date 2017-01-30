@@ -1,6 +1,6 @@
 import Distribution.Simple
 import Distribution.Simple.Setup (BuildFlags(..), ConfigFlags(..))
-import Distribution.PackageDescription (PackageDescription (..), FlagName(..))
+import Distribution.PackageDescription (PackageDescription (..), FlagName(..), HookedBuildInfo)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
 import Distribution.Simple.Program.Run
 import Distribution.Verbosity (normal)
@@ -18,7 +18,7 @@ finishBuild _ _ _ localBuildInfo = do
   runProgramInvocation normal prog
   -- _ <- system "cp -a static/* dist/build/gonimo-front/gonimo-front.jsexe/"
 
-cleanBuild ::  Args -> BuildFlags -> IO ()
+cleanBuild ::  Args -> BuildFlags -> IO HookedBuildInfo
 cleanBuild _ _ = do
   let prog = emptyProgramInvocation { progInvokePath = "./preBuild.sh"
                                     }
