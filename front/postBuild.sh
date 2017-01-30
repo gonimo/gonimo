@@ -19,7 +19,6 @@ else
     cat rts.js lib.js out.js > all.js
     # closure-compiler all.js --compilation_level=ADVANCED_OPTIMIZATIONS  > all.min.js
     closure-compiler all.js --compilation_level=SIMPLE_OPTIMIZATIONS  > all.min.js
-    gzip -f -9 all.min.js
     cat index.html | grep -v rts.js | grep -v lib.js | sed 's/out.js/all.min.js/1' > index-new.html
     rm index.html
     mv index-new.html index.html
@@ -28,8 +27,15 @@ else
     popd
 fi
 gonimo-deploy md5sum ${distPath}
+#../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
 # Fix up index.html:
 pushd ${distPath}
 mv index-*.html index.html
+if [[ ${dev} == "dev" ]]
+then
+    echo "Development build. no gzip"
+else
+    gzip -f -9 all-*.min.js
+fi
 popd
 
