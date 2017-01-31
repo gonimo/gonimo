@@ -5,13 +5,14 @@ module Gonimo.Client.Subscriber where
 
 import Reflex.Dom
 import Control.Monad
+import Control.Monad.Fix (MonadFix)
 import Data.Monoid
 import Data.Text (Text)
 import qualified Gonimo.Db.Entities as Db
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Set (Set)
+import Data.Set (Set, (\\))
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import Control.Lens
@@ -43,3 +44,29 @@ subscriber config = do
                         ]
                     }
 
+subscribeKeys :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key, Eq key)
+                 => Dynamic t [key] -> (key -> API.ServerRequest) -> Event t (key, Dynamic t val)
+              -> m (SubscriptionsDyn t, Dynamic t (Map key (Dynamic t val)))
+subscribeKeys keys mkKeyRequest gotNewVal = mdo
+  let
+    getValsSubs = Set.unions . map (Set.singleton . mkKeyRequest) <$> keys
+
+    insertVal :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
+    insertVal = uncurry Map.insert <$> gotNewVal
+
+    deleteKey :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
+    deleteKey = push (\keys' -> do
+                         oldKeys <- fmap Set.fromList . sample $ current keys
+                         let newKeys = Set.fromList keys'
+                         let deletedKeys = oldKeys \\ newKeys
+                         if Set.null deletedKeys
+                           then pure Nothing
+                           else pure $ Just $ \oldMap -> foldr Map.delete oldMap deletedKeys
+                     ) (updated keys)
+    updateMap :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val)) -> Event t (Map key (Dynamic t val))
+    updateMap = push (\updateF -> do
+                         oldMap <- sample $ current resultMap
+                         pure $ Just $ updateF oldMap
+                     )
+  resultMap <- holdDyn Map.empty . updateMap $ mergeWith (.) [ insertVal, deleteKey ]
+  pure (getValsSubs, resultMap)
