@@ -42,10 +42,11 @@ ui config = mdo
     famSelectedEv <- familyChooser family'
     -- let famSelectedEv = never
     clickedAdd <- button "+"
-    clickedLeave <- button "Leave"
+    clickedLeave <- button "-"
 
     invResult <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
     invReqs <- switchPromptly never invResult
+
     -- let invReqs = never
 
     pure $ family' & request %~ (<> invReqs)
@@ -117,11 +118,14 @@ invalidContents = do
   pure never
 
 validContents ::forall m t. (HasWebView m, MonadWidget t m)
-            => Config t -> Dynamic t FamilyId -> m (Event t [API.ServerRequest])
+            => Config t -> Dynamic t FamilyId -> m (Event t [API.ServerRequest], SubscriptionsDyn )
 validContents config selected = do
     invite <- Invite.ui $ Invite.Config { Invite._configResponse = config^.configResponse
                                         , Invite._configSelectedFamily = selected
                                         , Invite._configCreateInvitation = never
                                         , Invite._configAuthenticated = config^.configAuthenticated
                                         }
-    pure $ invite^.Invite.request
+    devList <- DeviceList.ui $ DeviceList.Config { DeviceList._configResponse = config^.configResponse
+                                                 , DeviceList._configFamilyId = selected
+                                                 }
+    pure $ (invite^.Invite.request, devList^.DeviceList.subscriptions)

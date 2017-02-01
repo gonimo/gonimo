@@ -82,6 +82,9 @@ library
                     , Gonimo.Client.Family
                     , Gonimo.Client.Family.Internal
                     , Gonimo.Client.Family.UI
+                    , Gonimo.Client.DeviceList
+                    , Gonimo.Client.DeviceList.Internal
+                    , Gonimo.Client.DeviceList.UI
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Reflex
                     , Gonimo.Client.Reflex.Dom

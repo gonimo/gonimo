@@ -10,19 +10,16 @@ import Reflex.Dom
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Debug.Trace (trace)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.Set (Set, (\\))
 
 -- Build an event that only triggers on the very first occurrence of the input event.
 waitForReady :: forall t m a. (MonadHold t m, Reflex t, MonadFix m) => Event t a -> m (Event t (Dynamic t a))
-waitForReady inEv = mdo
-  hasOccurred <- holdDyn False (const True <$> outEv)
-  let
-    outEv = push (\val -> do
-                  hasOccurred' <- sample $ current hasOccurred
-                  if hasOccurred'
-                  then pure Nothing
-                  else Just <$> holdDyn val inEv
-              ) inEv
-  pure outEv
+waitForReady inEv = do
+  onFirst <- headE inEv
+  pure $ push (\val -> Just <$> holdDyn val inEv) onFirst
 
 
 -- | Wait for first just, then only update on new Just values.
@@ -58,3 +55,45 @@ fromMaybeDyn' myTag onNothing action mDyn = do
                                (Just _, Just _)    -> trace (myTag "Returning Nothing") Nothing
                          ) (updated mDyn)
   holdDyn widgetInit widgetEvent
+
+
+buildMap :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
+                 => Dynamic t [key] -> Event t (key, val)
+              -> m (Dynamic t (Map key (Dynamic t val)))
+buildMap keys gotNewKeyVal = mdo
+  let
+    gotNewVal :: key -> Event t val
+    gotNewVal key' = push (\(k,v)
+                           -> pure $ if k == key'
+                                     then Just v
+                                     else Nothing
+                          ) gotNewKeyVal
+
+    insertKeys :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
+    insertKeys = push (\(key, val) -> do
+                          oldMap <- sample $ current resultMap
+                          if (Map.member key oldMap)
+                          then
+                            pure Nothing -- Nothing to do.
+                          else do
+                            dynVal <- holdDyn val (gotNewVal key)
+                            pure . Just $ Map.insert key dynVal
+                      ) gotNewKeyVal
+
+    deleteKeys :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
+    deleteKeys = push (\keys' -> do
+                         oldKeys <- fmap Set.fromList . sample $ current keys
+                         let newKeys = Set.fromList keys'
+                         let deletedKeys = oldKeys \\ newKeys
+                         if Set.null deletedKeys
+                           then pure Nothing
+                           else pure $ Just $ \oldMap -> foldr Map.delete oldMap deletedKeys
+                     ) (updated keys)
+
+    updateMap :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val)) -> Event t (Map key (Dynamic t val))
+    updateMap = push (\updateF -> do
+                         oldMap <- sample $ current resultMap
+                         pure $ Just $ updateF oldMap
+                     )
+  resultMap <- holdDyn Map.empty . updateMap $ mergeWith (.) [ insertKeys, deleteKeys ]
+  pure resultMap

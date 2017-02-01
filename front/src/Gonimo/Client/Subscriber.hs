@@ -15,7 +15,7 @@ import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import Control.Lens
 
-import Gonimo.Client.Reflex (waitForReady)
+import Gonimo.Client.Reflex (buildMap)
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
@@ -47,42 +47,7 @@ subscriber config = do
 subscribeKeys :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
                  => Dynamic t [key] -> (key -> API.ServerRequest) -> Event t (key, val)
               -> m (SubscriptionsDyn t, Dynamic t (Map key (Dynamic t val)))
-subscribeKeys keys mkKeyRequest gotNewKeyVal = mdo
-  let
-    gotNewVal :: key -> Event t val
-    gotNewVal key' = push (\(k,v)
-                           -> pure $ if k == key'
-                                     then Just v
-                                     else Nothing
-                          ) gotNewKeyVal
-
-    getValsSubs = Set.unions . map (Set.singleton . mkKeyRequest) <$> keys
-
-    insertKeys :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
-    insertKeys = push (\(key, val) -> do
-                          oldMap <- sample $ current resultMap
-                          if (Map.member key oldMap)
-                          then
-                            pure Nothing -- Nothing to do.
-                          else do
-                            dynVal <- holdDyn val (gotNewVal key)
-                            pure . Just $ Map.insert key dynVal
-                      ) gotNewKeyVal
-
-    deleteKeys :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
-    deleteKeys = push (\keys' -> do
-                         oldKeys <- fmap Set.fromList . sample $ current keys
-                         let newKeys = Set.fromList keys'
-                         let deletedKeys = oldKeys \\ newKeys
-                         if Set.null deletedKeys
-                           then pure Nothing
-                           else pure $ Just $ \oldMap -> foldr Map.delete oldMap deletedKeys
-                     ) (updated keys)
-
-    updateMap :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val)) -> Event t (Map key (Dynamic t val))
-    updateMap = push (\updateF -> do
-                         oldMap <- sample $ current resultMap
-                         pure $ Just $ updateF oldMap
-                     )
-  resultMap <- holdDyn Map.empty . updateMap $ mergeWith (.) [ insertKeys, deleteKeys ]
-  pure (getValsSubs, resultMap)
+subscribeKeys keys mkKeyRequest gotNewKeyVal = do
+    let getValsSubs = Set.unions . map (Set.singleton . mkKeyRequest) <$> keys
+    resultMap <- buildMap keys gotNewKeyVal
+    pure (getValsSubs, resultMap)
