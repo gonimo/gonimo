@@ -22,6 +22,17 @@ waitForReady inEv = do
   pure $ push (\val -> Just <$> holdDyn val inEv) onFirst
 
 
+-- "Inverse" of waitForReady, extract a dynamic from an event.
+makeReady :: forall t m a. (MonadHold t m, Reflex t, MonadFix m) => a -> Event t (Dynamic t a) -> m (Dynamic t a)
+makeReady startVal dynEv = do
+  let getCurrent = push (\dynVal -> fmap Just (sample $ current dynVal)
+                        ) dynEv
+  let getUpdated = push (\dynVal -> pure $ Just (updated dynVal)
+                        ) dynEv
+  updates <- switchPromptly getCurrent getUpdated
+  holdDyn startVal updates
+
+
 -- | Wait for first just, then only update on new Just values.
 waitForJust :: forall t m a. (MonadHold t m, Reflex t, MonadFix m, TriggerEvent t m, MonadIO m)
                => Dynamic t (Maybe a) -> m (Event t (Dynamic t a))
@@ -36,10 +47,10 @@ waitForJust dynMay = do
       pure ev
 
 fromMaybeDyn :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m, Show a)
-                => (String -> String) ->  m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Event t b)
+                => (String -> String) -> m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Event t b)
 fromMaybeDyn myTag onNothing action mDyn = dyn =<< fromMaybeDyn' myTag onNothing action mDyn
 
-fromMaybeDyn' :: (DomBuilder t m, PostBuild t m, MonadSample t m, MonadHold t m, Show a)
+fromMaybeDyn' :: (DomBuilder t m, MonadHold t m, Show a)
                 => (String -> String) -> m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Dynamic t (m b))
 fromMaybeDyn' myTag onNothing action mDyn = do
   mInit <- sample $ current mDyn

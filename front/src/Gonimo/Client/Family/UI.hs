@@ -25,6 +25,7 @@ import Gonimo.Client.Reflex
 import Data.Maybe (fromMaybe)
 import qualified Gonimo.Types as Gonimo
 import qualified Gonimo.Client.Invite as Invite
+import qualified Gonimo.Client.DeviceList as DeviceList
 import Control.Monad.IO.Class (liftIO)
 import Unsafe.Coerce
 import Debug.Trace (trace)
@@ -44,12 +45,14 @@ ui config = mdo
     clickedAdd <- button "+"
     clickedLeave <- button "-"
 
-    invResult <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
-    invReqs <- switchPromptly never invResult
+    result <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
+    innReqs <- switchPromptly never (fst <$> result)
+    innSubs <- makeReady Set.empty (snd <$> result)
 
     -- let invReqs = never
 
-    pure $ family' & request %~ (<> invReqs)
+    pure $ family' & request %~ (<> innReqs)
+                   & subscriptions %~ (<> innSubs)
 
 
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
@@ -112,13 +115,14 @@ renderFamilySelector _ family' selected' = do
           $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 invalidContents ::forall m t a. (HasWebView m, MonadWidget t m)
-            => m (Event t a)
+            => m (Event t a, SubscriptionsDyn t)
 invalidContents = do
   el "div" $ text "Please create a family to get started ..."
-  pure never
+  subs <- holdDyn Set.empty never
+  pure (never, subs)
 
 validContents ::forall m t. (HasWebView m, MonadWidget t m)
-            => Config t -> Dynamic t FamilyId -> m (Event t [API.ServerRequest], SubscriptionsDyn )
+            => Config t -> Dynamic t FamilyId -> m (Event t [API.ServerRequest], SubscriptionsDyn t)
 validContents config selected = do
     invite <- Invite.ui $ Invite.Config { Invite._configResponse = config^.configResponse
                                         , Invite._configSelectedFamily = selected
