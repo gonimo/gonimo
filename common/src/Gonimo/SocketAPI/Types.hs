@@ -27,7 +27,7 @@ instance ToJSON AuthData where
   toEncoding = genericToEncoding defaultOptions
 
 
-data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving (Eq, Ord, Generic)
+data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving (Eq, Ord, Generic, Show)
 instance FromJSON SendInvitation
 instance ToJSON SendInvitation where
   toEncoding = genericToEncoding defaultOptions
