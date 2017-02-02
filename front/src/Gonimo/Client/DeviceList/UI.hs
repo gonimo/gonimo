@@ -29,6 +29,9 @@ import qualified Gonimo.Client.Invite as Invite
 import Control.Monad.IO.Class (liftIO)
 import Unsafe.Coerce
 import Debug.Trace (trace)
+import Data.Time.Format (formatTime, defaultTimeLocale)
+import Data.Time.LocalTime (getCurrentTimeZone, utcToLocalTime, TimeZone)
+import Data.Time.Clock (UTCTime)
 
 import Gonimo.Client.DeviceList.Internal
 
@@ -60,13 +63,15 @@ renderList deviceList' = do
 renderRows :: forall m t. (HasWebView m, MonadWidget t m)
               => Map DeviceId (Dynamic t (API.DeviceInfo))
               -> m ()
-renderRows infos = traverse_ (uncurry renderRow) $ Map.toList infos
+renderRows infos = do
+  tz <- liftIO $ getCurrentTimeZone
+  traverse_ (uncurry (renderRow tz "")) $ Map.toList infos
 
 renderRow :: forall m t. (HasWebView m, MonadWidget t m)
-              => DeviceId -> Dynamic t API.DeviceInfo
+              => TimeZone -> Text -> DeviceId -> Dynamic t API.DeviceInfo
               -> m ()
-renderRow devId devInfo = do
-  el "tr" $ do
+renderRow tz rowClass devId devInfo = do
+  elClass "tr" rowClass $ do
     elClass "td" "centered" $ do
       elAttr "i" ( "class" =: "fa fa-circle-o"
                    <> "data-toggle" =: "tooltip"
@@ -75,7 +80,7 @@ renderRow devId devInfo = do
                  ) blank
     elClass "td" "centered" $ blank
     el "td" $ dynText (API.deviceInfoName <$> devInfo)
-    el "td" $ dynText (T.pack . show . API.deviceInfoLastAccessed <$> devInfo)
+    el "td" $ dynText (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
     el "td" $ do
       elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
                    <> "data-toggle" =: "tooltip"
@@ -88,3 +93,10 @@ renderRow devId devInfo = do
                    <> "data-placement" =: "right"
                    <> "title" =: "Remove from family"
                  ) blank
+  where
+    renderLocalTimeString :: UTCTime -> Text
+    renderLocalTimeString t =
+      let
+        locTime = utcToLocalTime tz t
+      in
+        T.pack $ formatTime defaultTimeLocale "%F %R" locTime

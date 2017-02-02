@@ -138,4 +138,3 @@ executable gonimo-front
                     , errors
                     , http-api-data
                     , data-default
-                    , formatting
