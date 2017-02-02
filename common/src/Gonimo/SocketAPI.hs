@@ -40,7 +40,7 @@ data ServerRequest
 
   | ReqCreateChannel !FromId !ToId
   | ReqSendMessage !FromId !ToId !Secret !Text
-  deriving (Generic, Ord, Eq)
+  deriving (Generic, Ord, Eq, Show)
 
 -- | Constructors starting with "Res" are responses to requests.
 --   Constructors starting with Event happen without any request.
@@ -79,7 +79,7 @@ data ServerResponse
   | EventSessionGotStolen
   | EventChannelRequested !FromId !Secret
   | EventMessageReceived !FromId !Secret !Text
-  deriving (Generic)
+  deriving (Generic, Show)
 
 instance FromJSON ServerRequest
 instance ToJSON ServerRequest where
