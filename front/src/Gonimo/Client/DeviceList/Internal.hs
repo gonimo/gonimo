@@ -18,6 +18,7 @@ import qualified Gonimo.SocketAPI as API
 import Control.Lens
 import Data.Set (Set)
 import Gonimo.Client.Subscriber (subscribeKeys)
+import Gonimo.Types (DeviceType)
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
@@ -32,6 +33,7 @@ data Config t
 data DeviceList t
   = DeviceList { _deviceIds :: Dynamic t (Map AccountId (Dynamic t [DeviceId]))
                , _deviceInfos :: Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo))
+               , _onlineDevices :: Dynamic t (Map DeviceId DeviceType)
                , _subscriptions :: SubscriptionsDyn t
                }
 
@@ -40,6 +42,12 @@ makeLenses ''DeviceList
 
 deviceList :: forall m t. (HasWebView m, MonadWidget t m) => Config t -> m (DeviceList t)
 deviceList config = do
+    let
+      onlineSub = Set.singleton . API.ReqGetOnlineDevices <$> config^.configFamilyId
+      gotOnlineDevices = push (\resp -> case resp of
+                                  API.ResGotOnlineDevices _ devList -> pure $ Just (Map.fromList devList)
+                                  _ -> pure Nothing ) (config^.configResponse)
+
     let
       (membersSubs, accoundIdsEv) = getMembersSubscription config
     accountIds' <- holdDyn [] accoundIdsEv
@@ -51,9 +59,14 @@ deviceList config = do
       allDeviceIds = join (mconcat . Map.elems <$> accountDeviceIds')
 
     (deviceInfoSubs, deviceInfos') <- getDeviceInfoSubscription config allDeviceIds
+    onlineDevices <- holdDyn Map.empty gotOnlineDevices
     pure $ DeviceList { _deviceIds = accountDeviceIds'
                       , _deviceInfos = deviceInfos'
-                      , _subscriptions = membersSubs <> accountDeviceIdsSubs <> deviceInfoSubs
+                      , _onlineDevices = onlineDevices
+                      , _subscriptions = onlineSub
+                                         <> membersSubs
+                                         <> accountDeviceIdsSubs
+                                         <> deviceInfoSubs
                       }
 
 getMembersSubscription :: Reflex t => Config t -> (SubscriptionsDyn t, Event t [AccountId])

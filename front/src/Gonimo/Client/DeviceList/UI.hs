@@ -33,6 +33,7 @@ import Debug.Trace (trace)
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Data.Time.LocalTime (getCurrentTimeZone, utcToLocalTime, TimeZone)
 import Data.Time.Clock (UTCTime)
+import Gonimo.Types (DeviceType(..))
 
 import Gonimo.Client.DeviceList.Internal
 
@@ -51,7 +52,7 @@ renderList config deviceList' = do
   elClass "table" "table table-striped" $ do
     el "thead" $ do
       elClass "th"  "centered" $ text "Online"
-      elClass "th"  "centered" $ text "Type"
+      -- elClass "th"  "centered" $ text "Type"
       el "th" $ text "Name"
       el "th" $ text "Last Seen"
       el "th" blank
@@ -59,6 +60,7 @@ renderList config deviceList' = do
       el "th" blank
     el "tbody" $ dyn $ renderRows <$> deviceList'^.deviceIds
                                   <*> deviceList'^.deviceInfos
+                                  <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
                                   <*> config^.configAuthData
   pure ()
 
@@ -66,28 +68,26 @@ renderList config deviceList' = do
 renderRows :: forall m t. (HasWebView m, MonadWidget t m)
               => Map AccountId (Dynamic t [DeviceId])
               -> Map DeviceId (Dynamic t (API.DeviceInfo))
+              -> Dynamic t (Map DeviceId DeviceType)
               -> Maybe API.AuthData
               -> m ()
-renderRows deviceIds' infos mAuthData = do
+renderRows deviceIds' infos onlineStatus mAuthData = do
   tz <- liftIO $ getCurrentTimeZone
   let
     isSelf (devId, info') = Just devId == (API.deviceId <$> mAuthData)
     (self, others) = List.partition isSelf . Map.toList $ infos
-  traverse_ (uncurry (renderRow tz "info")) self
-  traverse_ (uncurry (renderRow tz "")) others
+  traverse_ (uncurry (renderRow tz "info" onlineStatus)) self
+  traverse_ (uncurry (renderRow tz "" onlineStatus)) others
 
 renderRow :: forall m t. (HasWebView m, MonadWidget t m)
-              => TimeZone -> Text -> DeviceId -> Dynamic t API.DeviceInfo
+              => TimeZone -> Text -> Dynamic t (Map DeviceId DeviceType)
+              -> DeviceId -> Dynamic t API.DeviceInfo
               -> m ()
-renderRow tz rowClass devId devInfo = do
+renderRow tz rowClass types devId devInfo = do
+  let devType = Map.lookup devId <$> types
   elClass "tr" rowClass $ do
-    elClass "td" "centered" $ do
-      elAttr "i" ( "class" =: "fa fa-circle-o"
-                   <> "data-toggle" =: "tooltip"
-                   <> "data-placement" =: "right"
-                   <> "title" =: "offline"
-                 ) blank
-    elClass "td" "centered" $ blank
+    renderOnlineStatus devType
+    -- elClass "td" "centered" $ blank
     el "td" $ dynText (API.deviceInfoName <$> devInfo)
     el "td" $ dynText (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
     el "td" $ do
@@ -109,3 +109,35 @@ renderRow tz rowClass devId devInfo = do
         locTime = utcToLocalTime tz t
       in
         T.pack $ formatTime defaultTimeLocale "%F %R" locTime
+
+    renderOnlineStatus :: Dynamic t (Maybe DeviceType) -> m ()
+    renderOnlineStatus dynDevType = do
+      dyn $ renderOnlineStatus' <$> dynDevType
+      pure ()
+
+    renderOnlineStatus' :: Maybe DeviceType -> m ()
+    renderOnlineStatus' Nothing
+      = elClass "td" "centered" $ do
+          elAttr "i" ( "class" =: "fa fa-circle-o"
+                       <> "data-toggle" =: "tooltip"
+                       <> "data-placement" =: "right"
+                       <> "title" =: "offline"
+                     ) blank
+    renderOnlineStatus' (Just NoBaby)
+      = elClass "td" "centered" $ do
+          elAttr "i" ( "class" =: "fa fa-circle"
+                       <> "style" =: "color:green;"
+                       <> "data-toggle" =: "tooltip"
+                       <> "data-placement" =: "right"
+                       <> "title" =: "online"
+                     ) blank
+    renderOnlineStatus' (Just (Baby name))
+      = elClass "td" "centered" $ do
+          elAttr "i" ( "class" =: "fa fa-circle"
+                       <> "style" =: "color:green;"
+                       <> "data-toggle" =: "tooltip"
+                       <> "data-placement" =: "right"
+                       <> "title" =: "online as baby"
+                     ) blank
+          text name
+
