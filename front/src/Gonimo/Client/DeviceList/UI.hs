@@ -6,9 +6,10 @@ module Gonimo.Client.DeviceList.UI where
 import Reflex.Dom
 import Control.Monad
 import Data.Monoid
+import qualified Data.List as List
 import Data.Text (Text)
 import qualified Data.Text as T
-import Gonimo.Db.Entities (DeviceId)
+import Gonimo.Db.Entities (DeviceId, AccountId)
 import qualified Gonimo.Db.Entities as Db
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -40,13 +41,13 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
             => Config t -> m (DeviceList t)
 ui config = mdo
     deviceList' <- deviceList config
-    renderList deviceList'
+    renderList config deviceList'
     pure deviceList'
 
 renderList :: forall m t. (HasWebView m, MonadWidget t m)
-              => DeviceList t
+              => Config t -> DeviceList t
               -> m ()
-renderList deviceList' = do
+renderList config deviceList' = do
   elClass "table" "table table-striped" $ do
     el "thead" $ do
       elClass "th"  "centered" $ text "Online"
@@ -56,16 +57,24 @@ renderList deviceList' = do
       el "th" blank
       el "th" blank
       el "th" blank
-    el "tbody" $ dyn $ renderRows <$> deviceList'^.deviceInfos
+    el "tbody" $ dyn $ renderRows <$> deviceList'^.deviceIds
+                                  <*> deviceList'^.deviceInfos
+                                  <*> config^.configAuthData
   pure ()
 
 
 renderRows :: forall m t. (HasWebView m, MonadWidget t m)
-              => Map DeviceId (Dynamic t (API.DeviceInfo))
+              => Map AccountId (Dynamic t [DeviceId])
+              -> Map DeviceId (Dynamic t (API.DeviceInfo))
+              -> Maybe API.AuthData
               -> m ()
-renderRows infos = do
+renderRows deviceIds' infos mAuthData = do
   tz <- liftIO $ getCurrentTimeZone
-  traverse_ (uncurry (renderRow tz "")) $ Map.toList infos
+  let
+    isSelf (devId, info') = Just devId == (API.deviceId <$> mAuthData)
+    (self, others) = List.partition isSelf . Map.toList $ infos
+  traverse_ (uncurry (renderRow tz "info")) self
+  traverse_ (uncurry (renderRow tz "")) others
 
 renderRow :: forall m t. (HasWebView m, MonadWidget t m)
               => TimeZone -> Text -> DeviceId -> Dynamic t API.DeviceInfo

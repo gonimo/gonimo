@@ -132,5 +132,6 @@ validContents config selected = do
                                         }
     devList <- DeviceList.ui $ DeviceList.Config { DeviceList._configResponse = config^.configResponse
                                                  , DeviceList._configFamilyId = selected
+                                                 , DeviceList._configAuthData = config^.configAuthData
                                                  }
     pure $ (invite^.Invite.request, traceDyn "subs in validContents: " (devList^.DeviceList.subscriptions))

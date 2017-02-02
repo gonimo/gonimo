@@ -24,6 +24,7 @@ type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 data Config t
   = Config { _configResponse :: Event t API.ServerResponse
            , _configFamilyId :: Dynamic t FamilyId
+           , _configAuthData :: Dynamic t (Maybe API.AuthData)
            -- , _configRemoveAccount :: Event t AccountId
            -- , _configRenameDevice :: Event t (DeviceId, Text)
            }
