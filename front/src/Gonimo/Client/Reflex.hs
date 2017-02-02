@@ -7,6 +7,7 @@
 module Gonimo.Client.Reflex where
 
 import Reflex.Dom
+import Control.Monad
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Debug.Trace (trace)
@@ -21,16 +22,24 @@ waitForReady inEv = do
   onFirst <- headE inEv
   pure $ push (\val -> Just <$> holdDyn val inEv) onFirst
 
+-- Does not work as expected, see below for a working version.
+-- TODO: Understand why this does not work!
+-- -- "Inverse" of waitForReady, extract a dynamic from an event.
+-- makeReady :: forall t m a. (MonadHold t m, Reflex t, MonadFix m) => a -> Event t (Dynamic t a) -> m (Dynamic t a)
+-- makeReady startVal dynEv = do
+--   let getCurrent = push (\dynVal -> fmap Just (sample $ current dynVal)
+--                         ) dynEv
+--   let getUpdated = updated <$> dynEv
+--   updates <- switchPromptly getCurrent getUpdated
+--   holdDyn startVal updates
+
 
 -- "Inverse" of waitForReady, extract a dynamic from an event.
 makeReady :: forall t m a. (MonadHold t m, Reflex t, MonadFix m) => a -> Event t (Dynamic t a) -> m (Dynamic t a)
 makeReady startVal dynEv = do
-  let getCurrent = push (\dynVal -> fmap Just (sample $ current dynVal)
-                        ) dynEv
-  let getUpdated = push (\dynVal -> pure $ Just (updated dynVal)
-                        ) dynEv
-  updates <- switchPromptly getCurrent getUpdated
-  holdDyn startVal updates
+  startDyn <- holdDyn startVal never
+  nested <- holdDyn startDyn dynEv
+  pure $ join nested
 
 
 -- | Wait for first just, then only update on new Just values.

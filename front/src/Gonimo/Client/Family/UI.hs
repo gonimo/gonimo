@@ -45,14 +45,15 @@ ui config = mdo
     clickedAdd <- button "+"
     clickedLeave <- button "-"
 
-    result <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
+    result' <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
+    let result = traceEventWith (const "Got inv event!") result'
     innReqs <- switchPromptly never (fst <$> result)
     innSubs <- makeReady Set.empty (snd <$> result)
 
     -- let invReqs = never
 
     pure $ family' & request %~ (<> innReqs)
-                   & subscriptions %~ (<> innSubs)
+                   & subscriptions %~ (<> traceDyn "subs from dev list: " innSubs)
 
 
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
@@ -132,4 +133,4 @@ validContents config selected = do
     devList <- DeviceList.ui $ DeviceList.Config { DeviceList._configResponse = config^.configResponse
                                                  , DeviceList._configFamilyId = selected
                                                  }
-    pure $ (invite^.Invite.request, devList^.DeviceList.subscriptions)
+    pure $ (invite^.Invite.request, traceDyn "subs in validContents: " (devList^.DeviceList.subscriptions))
