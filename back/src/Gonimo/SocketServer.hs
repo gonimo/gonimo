@@ -151,6 +151,8 @@ handleAuthServerRequest sub req = case req of
   ReqGetDeviceInfo deviceId            -> ResGotDeviceInfo deviceId <$> getDeviceInfoR deviceId
   ReqSetDeviceType deviceId deviceType -> do setDeviceTypeR deviceId deviceType
                                              pure $ ResSetDeviceType deviceId
+  ReqSetDeviceName deviceId deviceName -> do setDeviceNameR deviceId deviceName
+                                             pure $ ResSetDeviceName deviceId
   ReqSwitchFamily deviceId familyId    -> do switchFamilyR deviceId familyId
                                              pure $ ResSwitchedFamily deviceId familyId
   ReqCreateFamily                      -> ResCreatedFamily <$> createFamilyR

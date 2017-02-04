@@ -45,6 +45,7 @@ import           Servant.Server                       (ServantErr (..), err400,
 import           Unsafe.Coerce
 import           Utils.Control.Monad.Trans.Maybe      (maybeT)
 import qualified Gonimo.Server.Db.Account             as Account
+import qualified Gonimo.Server.Db.Device              as Device
 
 createInvitationR :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
 createInvitationR fid = do
@@ -164,6 +165,19 @@ getDeviceInfoR deviceId = do
   authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
   pure result
 
+setDeviceNameR :: (AuthReader m, MonadServer m) => DeviceId -> Text -> m ()
+setDeviceNameR deviceId name = do
+  inFamilies <- runDb $ do
+    device <- Db.get404 deviceId
+    inFamilies' <- map (familyAccountFamilyId . entityVal)
+                   <$> Db.selectList [ FamilyAccountAccountId ==. deviceAccountId device ] []
+    pure inFamilies'
+  -- authorizeAuthData $ or (map isFamilyMember inFamilies)
+  authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
+
+  _ :: Maybe () <- runDb $ runMaybeT . Device.update deviceId $ Device.setName name
+  pure ()
+
 createFamilyR :: (AuthReader m, MonadServer m) =>  m FamilyId
 createFamilyR = do
   -- no authorization: - any valid user can create a family.
@@ -190,7 +204,7 @@ createFamilyR = do
 
 leaveFamilyR :: (AuthReader m, MonadServer m) => AccountId -> FamilyId -> m ()
 leaveFamilyR accountId familyId = do
-  authorizeAuthData $ isAccount accountId
+  -- authorizeAuthData $ isAccount accountId -- Not needed - any member can kick another member.
   authorizeAuthData $ isFamilyMember familyId
 
   runDb $ do
@@ -200,6 +214,7 @@ leaveFamilyR accountId familyId = do
       Db.deleteWhere [ InvitationFamilyId ==. familyId ]
       Db.delete familyId
   notify $ ReqGetFamilies accountId
+
 
 getFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
 getFamiliesR accountId = do
