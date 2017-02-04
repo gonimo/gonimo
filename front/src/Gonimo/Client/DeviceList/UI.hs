@@ -40,7 +40,7 @@ import Gonimo.Types (DeviceType(..))
 
 import Gonimo.Client.DeviceList.Internal
 import Gonimo.Client.ConfirmationButton (confirmationButton)
-
+-- TODO: At removal of one self - add note: "this is you"
 -- Overrides configCreateDeviceList && configLeaveDeviceList
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => Config t -> m (DeviceList t)
@@ -121,6 +121,7 @@ renderAccount tz infos onlineStatus mAuthData  accountId' devIds'= do
     devName = fmap (fromMaybe "") . runMaybeT $ do
       myDevId <- MaybeT $ headMay <$> devIds'
       MaybeT . sequence $ infos^?at myDevId._Just.to (fmap API.deviceInfoName)
+    isUs = Just accountId' == fmap API.accountId mAuthData
   let
     deleteButton = el "td" $ do
       confirmationButton ("class" =: "btn btn-default")
@@ -131,7 +132,10 @@ renderAccount tz infos onlineStatus mAuthData  accountId' devIds'= do
                         <> "title" =: "Remove from family"
                       ) blank
         )
-        (dynText $ pure "Do you really want to remove device '" <> devName <> pure "'?")
+        (dynText $ if isUs
+                   then pure "This is you!\nReally leave your current family?"
+                   else pure "Do you really want to remove device '" <> devName <> pure "' from the family?"
+        )
   rs <- dyn $ renderRows <$> pure tz <*> filteredInfos <*> pure onlineStatus <*> pure mAuthData <*> pure deleteButton
   (,) <$> switchPromptly never (fst <$> rs)
       <*> switchPromptly never (snd <$> rs)
