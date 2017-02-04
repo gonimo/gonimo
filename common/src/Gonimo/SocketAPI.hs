@@ -19,6 +19,7 @@ data ServerRequest
   | ReqMakeDevice !(Maybe Text)
   | ReqGetDeviceInfo !DeviceId
   | ReqSetDeviceType !DeviceId !DeviceType
+  | ReqSetDeviceName !DeviceId !Text
   | ReqSwitchFamily  !DeviceId !FamilyId
 
   | ReqCreateFamily
