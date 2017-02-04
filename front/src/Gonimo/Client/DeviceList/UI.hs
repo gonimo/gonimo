@@ -40,6 +40,8 @@ import Gonimo.Types (DeviceType(..))
 
 import Gonimo.Client.DeviceList.Internal
 import Gonimo.Client.ConfirmationButton (confirmationButton)
+import Gonimo.Client.EditStringButton (editStringButton)
+
 -- TODO: At removal of one self - add note: "this is you"
 -- Overrides configCreateDeviceList && configLeaveDeviceList
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -174,13 +176,17 @@ renderRow tz isSelf types deleteColumn devId devInfo = do
     -- elClass "td" "centered" $ blank
     el "td" $ dynText (API.deviceInfoName <$> devInfo)
     el "td" $ dynText (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
-    el "td" $ do
-      elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
-                   <> "data-toggle" =: "tooltip"
-                   <> "data-placement" =: "right"
-                   <> "title" =: "edit device name"
-                 ) blank
-    (never,) <$> deleteColumn
+    nameChanged <- el "td" $ do
+      editStringButton ("class" =: "btn btn-default")
+          ( elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
+                      <> "data-toggle" =: "tooltip"
+                      <> "data-placement" =: "right"
+                      <> "title" =: "edit device name"
+                      ) blank
+          )
+          (text "Change device name to ...")
+          (API.deviceInfoName <$> devInfo)
+    (nameChanged,) <$> deleteColumn
   where
     renderLocalTimeString :: UTCTime -> Text
     renderLocalTimeString t =
