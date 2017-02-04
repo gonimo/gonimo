@@ -7,6 +7,7 @@ import Reflex.Dom
 import Control.Monad
 import Data.Monoid
 import Data.Text (Text)
+import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Gonimo.Db.Entities (FamilyId)
 import qualified Gonimo.Db.Entities as Db
 import Data.Map (Map)
@@ -15,6 +16,7 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
+import qualified Gonimo.Types as Gonimo
 import Control.Lens
 import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
 import qualified Gonimo.Client.Storage as GStorage
@@ -31,6 +33,8 @@ import Unsafe.Coerce
 import Debug.Trace (trace)
 
 import Gonimo.Client.Family.Internal
+import Gonimo.Client.Reflex.Dom
+import Gonimo.Client.ConfirmationButton (confirmationButton)
 
 -- Overrides configCreateFamily && configLeaveFamily
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -41,9 +45,17 @@ ui config = mdo
                                & configSelectFamily .~ leftmost [famSelectedEv, config^.configSelectFamily]
 
     famSelectedEv <- familyChooser family'
+    let
+      cFamilyName = fmap (fromMaybe "") . runMaybeT $ do
+        cId <- MaybeT $ family'^.selectedFamily
+        families' <- MaybeT $ family'^.families
+        cFamily  <- MaybeT . pure $ families'^.at cId
+        pure $ Gonimo.familyName . Db.familyName $ cFamily
+
     -- let famSelectedEv = never
-    clickedAdd <- button "+"
-    clickedLeave <- button "-"
+    clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
+    clickedLeave <- confirmationButton ("class" =: "btn btn-danger") (text "-")
+                      (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
 
     result' <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
     let result = traceEventWith (const "Got inv event!") result'
