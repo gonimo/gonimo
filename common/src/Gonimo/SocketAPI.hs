@@ -51,6 +51,7 @@ data ServerResponse
   | ResMadeDevice !Client.AuthData
   | ResGotDeviceInfo !DeviceId !Client.DeviceInfo
   | ResSetDeviceType !DeviceId
+  | ResSetDeviceName !DeviceId
   | ResSwitchedFamily !DeviceId !FamilyId
 
 
