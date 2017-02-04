@@ -35,11 +35,18 @@ editStringBox editStringText val = do
         elClass "div" "panel-body" $ do
           valEdit <- el "div" $ do
             val' <- sample $ current val
+            let inputId = "editStringBox_TheOnlyOne"
             textInput $ def & textInputConfig_initialValue .~ val'
-                                       & textInputConfig_attributes .~ pure ("class" =: "form-control")
+                                       & textInputConfig_attributes .~ pure ( "class" =: "form-control"
+                                                                            <> "autofocus" =: "true"
+                                                                            <> "id" =: inputId)
+            -- el "script" $ text ("document.getElementById('" <> inputId <> "').focus();")
+            -- pure v
           el "div" $ do
             okClicked <- buttonAttr ("class" =: "btn btn-success" <> "role" =: "button" <> "type" =: "button") $ text "Ok"
             cancelClicked <- buttonAttr ("class" =: "btn btn-danger" <> "role" =: "button" <> "type" =: "button") $ text "Cancel"
+            let confirmed = leftmost [ okClicked, keypress Enter valEdit ]
+            let cancelled = leftmost [ cancelClicked, keypress Escape valEdit ]
             let editValue = current $ valEdit^.textInput_value
-            pure $ leftmost [ const Nothing <$> cancelClicked, Just <$> tag editValue okClicked ]
+            pure $ leftmost [ const Nothing <$> cancelled, Just <$> tag editValue confirmed ]
 
