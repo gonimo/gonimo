@@ -176,6 +176,7 @@ setDeviceNameR deviceId name = do
   authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
 
   _ :: Maybe () <- runDb $ runMaybeT . Device.update deviceId $ Device.setName name
+  notify $ ReqGetDeviceInfo deviceId
   pure ()
 
 createFamilyR :: (AuthReader m, MonadServer m) =>  m FamilyId
@@ -214,6 +215,7 @@ leaveFamilyR accountId familyId = do
       Db.deleteWhere [ InvitationFamilyId ==. familyId ]
       Db.delete familyId
   notify $ ReqGetFamilies accountId
+  notify $ ReqGetFamilyMembers familyId
 
 
 getFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
