@@ -17,3 +17,25 @@
     filter: alpha(opacity=40);
     cursor: pointer;
 }
+
+.transparent {
+    width: 100%;
+    opacity:0.5;
+}
+
+.hCenteredOverlay {
+    position: fixed;
+    z-index: 10;
+    bottom:0;
+    left:0;
+    height:100vh;
+    width:100vw;
+    display:flex;
+    justify-content:center;
+}
+
+.vCenteredBox {
+    display: flex;
+    flex-direction:column;
+    justify-content: center;
+}

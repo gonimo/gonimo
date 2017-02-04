@@ -85,6 +85,7 @@ library
                     , Gonimo.Client.DeviceList
                     , Gonimo.Client.DeviceList.Internal
                     , Gonimo.Client.DeviceList.UI
+                    , Gonimo.Client.ConfirmationButton
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Reflex
                     , Gonimo.Client.Reflex.Dom

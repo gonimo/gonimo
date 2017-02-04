@@ -134,4 +134,6 @@ validContents config selected = do
                                                  , DeviceList._configFamilyId = selected
                                                  , DeviceList._configAuthData = config^.configAuthData
                                                  }
-    pure $ (invite^.Invite.request, traceDyn "subs in validContents: " (devList^.DeviceList.subscriptions))
+    pure $ ( invite^.Invite.request <> devList^.DeviceList.request
+           , devList^.DeviceList.subscriptions
+           )

@@ -35,6 +35,7 @@ data DeviceList t
                , _deviceInfos :: Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo))
                , _onlineDevices :: Dynamic t (Map DeviceId DeviceType)
                , _subscriptions :: SubscriptionsDyn t
+               , _request :: Event t [ API.ServerRequest ]
                }
 
 makeLenses ''Config
@@ -59,14 +60,15 @@ deviceList config = do
       allDeviceIds = join (mconcat . Map.elems <$> accountDeviceIds')
 
     (deviceInfoSubs, deviceInfos') <- getDeviceInfoSubscription config allDeviceIds
-    onlineDevices <- holdDyn Map.empty gotOnlineDevices
+    onlineDevices' <- holdDyn Map.empty gotOnlineDevices
     pure $ DeviceList { _deviceIds = accountDeviceIds'
                       , _deviceInfos = deviceInfos'
-                      , _onlineDevices = onlineDevices
+                      , _onlineDevices = onlineDevices'
                       , _subscriptions = onlineSub
                                          <> membersSubs
                                          <> accountDeviceIdsSubs
                                          <> deviceInfoSubs
+                      , _request = never
                       }
 
 getMembersSubscription :: Reflex t => Config t -> (SubscriptionsDyn t, Event t [AccountId])
