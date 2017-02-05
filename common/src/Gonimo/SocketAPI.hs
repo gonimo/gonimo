@@ -23,6 +23,7 @@ data ServerRequest
   | ReqSwitchFamily  !DeviceId !FamilyId
 
   | ReqCreateFamily
+  | ReqSetFamilyName !FamilyId !Text
   | ReqGetFamily !FamilyId
   | ReqGetFamilyMembers !FamilyId
   | ReqGetOnlineDevices !FamilyId
@@ -56,6 +57,7 @@ data ServerResponse
 
 
   | ResCreatedFamily !FamilyId
+  | ResSetFamilyName !FamilyId
   | ResGotFamily !FamilyId !Family
   | ResGotFamilyMembers !FamilyId !([AccountId])
   | ResGotOnlineDevices !FamilyId ![(DeviceId, DeviceType)]
