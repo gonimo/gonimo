@@ -67,6 +67,7 @@ main = mainWidgetInElementById "app" $ mdo
   let familyConfig = Family.Config { Family._configResponse = server^.webSocket_recv
                                    , Family._configAuthData = auth^.Auth.authData
                                    , Family._configSelectFamily = msgSwitchFamily
+                                   , Family._configSetName = never
                                    , Family._configAuthenticated = auth^.Auth.authenticated
                                    , Family._configCreateFamily = never
                                    , Family._configLeaveFamily = never

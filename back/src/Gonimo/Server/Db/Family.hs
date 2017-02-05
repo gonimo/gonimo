@@ -19,6 +19,7 @@ import           Database.Persist.Class          (PersistEntity,
                                                   PersistEntityBackend,
                                                   PersistStore)
 import           Control.Monad.Trans.Reader      (ReaderT (..))
+import qualified Gonimo.Types as Gonimo
 
 type UpdateFamilyT m a = UpdateT Family m a
 
@@ -29,6 +30,15 @@ pushBabyName name = do
   guard $ not (name `elem` oldBabies)
   put $ oldFamily
     { familyLastUsedBabyNames = take 5 (name : familyLastUsedBabyNames oldFamily)
+    }
+
+setFamilyName :: (MonadState Family m, MonadPlus m) => Text -> m ()
+setFamilyName name = do
+  oldFamily <- get
+  let oldName = familyName oldFamily
+  guard $ name /= Gonimo.familyName oldName
+  put $ oldFamily
+    { familyName = oldName { Gonimo.familyName = name }
     }
 
 -- | Update db entity as specified by the given UpdateFamilyT - on Nothing, no update occurs.

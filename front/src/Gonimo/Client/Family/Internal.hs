@@ -39,6 +39,7 @@ data Config t
            , _configAuthenticated :: Event t ()
            , _configCreateFamily  :: Event t ()
            , _configLeaveFamily  :: Event t ()
+           , _configSetName :: Event t Text
            }
 
 data Family t
@@ -75,10 +76,11 @@ family config = do
     (selectReqs, selected') <- handleFamilySelect config familyIds'
     let createReqs = handleCreateFamily config
     let leaveReqs = handleLeaveFamily config selected'
+    let renameReqs = handleSetName config selected'
     pure $ Family { _subscriptions = subs
                   , _families = families'
                   , _selectedFamily = selected'
-                  , _request = selectReqs <> createReqs <> leaveReqs
+                  , _request = selectReqs <> createReqs <> leaveReqs <> renameReqs
                 }
 
 handleFamilySelect :: forall m t. (HasWebView m, MonadWidget t m)
@@ -142,6 +144,13 @@ handleLeaveFamily config selected'
              pure [req]
          ) (config^.configLeaveFamily)
 
+handleSetName :: forall t. Reflex t => Config t -> Dynamic t (Maybe FamilyId) -> Event t [ API.ServerRequest ]
+handleSetName config selectedFamily' = push (\name -> do
+                                                mFid <- sample $ current selectedFamily'
+                                                case mFid of
+                                                  Nothing -> pure Nothing
+                                                  Just fid -> pure $ Just [ API.ReqSetFamilyName fid name ]
+                                            ) (config^.configSetName)
 
 makeFamilies :: forall m t. (HasWebView m, MonadWidget t m)
                 => Config t -> m (SubscriptionsDyn t, Dynamic t (Maybe [FamilyId]), Dynamic t (Maybe FamilyMap))

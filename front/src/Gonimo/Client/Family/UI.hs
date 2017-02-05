@@ -35,6 +35,7 @@ import Debug.Trace (trace)
 import Gonimo.Client.Family.Internal
 import Gonimo.Client.Reflex.Dom
 import Gonimo.Client.ConfirmationButton (confirmationButton)
+import Gonimo.Client.EditStringButton (editStringButton)
 
 -- Overrides configCreateFamily && configLeaveFamily
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -42,6 +43,7 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
 ui config = mdo
     family' <- family $ config & configCreateFamily .~ clickedAdd
                                & configLeaveFamily .~ clickedLeave
+                               & configSetName  .~ nameChanged
                                & configSelectFamily .~ leftmost [famSelectedEv, config^.configSelectFamily]
 
     famSelectedEv <- familyChooser family'
@@ -56,6 +58,15 @@ ui config = mdo
     clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
     clickedLeave <- confirmationButton ("class" =: "btn btn-danger") (text "-")
                       (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
+    nameChanged <- editStringButton ("class" =: "btn btn-default")
+                      ( elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
+                                  <> "data-toggle" =: "tooltip"
+                                  <> "data-placement" =: "right"
+                                  <> "title" =: "edit family name"
+                                  ) blank
+                      )
+                      (text "Change your family name to ...")
+                      cFamilyName
 
     result' <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
     let result = traceEventWith (const "Got inv event!") result'

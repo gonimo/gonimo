@@ -46,6 +46,7 @@ import           Unsafe.Coerce
 import           Utils.Control.Monad.Trans.Maybe      (maybeT)
 import qualified Gonimo.Server.Db.Account             as Account
 import qualified Gonimo.Server.Db.Device              as Device
+import qualified Gonimo.Server.Db.Family              as Family
 
 createInvitationR :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
 createInvitationR fid = do
@@ -202,6 +203,13 @@ createFamilyR = do
     return fid
   notify $ ReqGetFamilies aid
   return fid
+
+setFamilyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
+setFamilyNameR familyId' name = do
+  authorizeAuthData $ isFamilyMember familyId'
+
+  _ :: Maybe () <- runDb . runMaybeT $ Family.update familyId' (Family.setFamilyName name)
+  notify $ ReqGetFamily familyId'
 
 leaveFamilyR :: (AuthReader m, MonadServer m) => AccountId -> FamilyId -> m ()
 leaveFamilyR accountId familyId = do
