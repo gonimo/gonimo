@@ -86,7 +86,7 @@ renderAccounts :: forall m t. (HasWebView m, MonadWidget t m)
               -> m (Event t (DeviceId, Text), Event t AccountId)
 renderAccounts tz deviceIds' infos onlineStatus mAuthData = do
     let
-      isSelf (aId, info') = Just aId == (API.accountId <$> mAuthData)
+      isSelf (aId, _) = Just aId == (API.accountId <$> mAuthData)
       (self, others) = List.partition isSelf . Map.toList $ deviceIds'
 
     allEvents <- traverse renderAccount' $ self <> others
@@ -151,7 +151,7 @@ renderRows :: forall m t. (HasWebView m, MonadWidget t m)
               -> m (Event t (DeviceId, Text), Event t ())
 renderRows tz infos onlineStatus mAuthData deleteColumn = do
     let
-      isSelf (devId, info') = Just devId == (API.deviceId <$> mAuthData)
+      isSelf (devId,_) = Just devId == (API.deviceId <$> mAuthData)
       (self, others) = List.partition isSelf . Map.toList $ infos
 
     selfEvents <- traverse (renderRow' True) self
@@ -197,7 +197,7 @@ renderRow tz isSelf types deleteColumn devId devInfo = do
 
     renderOnlineStatus :: Dynamic t (Maybe DeviceType) -> m ()
     renderOnlineStatus dynDevType = do
-      dyn $ renderOnlineStatus' <$> dynDevType
+      _ :: Event t () <- dyn $ renderOnlineStatus' <$> dynDevType
       pure ()
 
     renderOnlineStatus' :: Maybe DeviceType -> m ()
