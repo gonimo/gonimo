@@ -148,15 +148,15 @@ invalidContents = do
 validContents ::forall m t. (HasWebView m, MonadWidget t m)
             => Config t -> Dynamic t FamilyId -> m (Event t [API.ServerRequest], SubscriptionsDyn t)
 validContents config selected = do
+    devList <- DeviceList.ui $ DeviceList.Config { DeviceList._configResponse = config^.configResponse
+                                                 , DeviceList._configFamilyId = selected
+                                                 , DeviceList._configAuthData = config^.configAuthData
+                                                 }
     invite <- Invite.ui $ Invite.Config { Invite._configResponse = config^.configResponse
                                         , Invite._configSelectedFamily = selected
                                         , Invite._configCreateInvitation = never
                                         , Invite._configAuthenticated = config^.configAuthenticated
                                         }
-    devList <- DeviceList.ui $ DeviceList.Config { DeviceList._configResponse = config^.configResponse
-                                                 , DeviceList._configFamilyId = selected
-                                                 , DeviceList._configAuthData = config^.configAuthData
-                                                 }
     pure $ ( invite^.Invite.request <> devList^.DeviceList.request
            , devList^.DeviceList.subscriptions
            )

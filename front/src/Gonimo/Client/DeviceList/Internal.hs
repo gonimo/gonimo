@@ -5,6 +5,7 @@
 module Gonimo.Client.DeviceList.Internal where
 
 import Control.Monad (join)
+import Control.Monad.Trans (lift)
 import Reflex.Dom
 import Control.Monad.Fix (MonadFix)
 import Data.Monoid
@@ -18,9 +19,12 @@ import qualified Gonimo.SocketAPI as API
 import Control.Lens
 import Data.Set (Set)
 import Gonimo.Client.Subscriber (subscribeKeys)
+import Gonimo.Client.Reflex (buildMap)
 import Gonimo.Types (DeviceType)
+import Data.Maybe (fromMaybe)
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
+type NestedDeviceInfos t = Map AccountId (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
 
 data Config t
   = Config { _configResponse :: Event t API.ServerResponse
@@ -31,8 +35,7 @@ data Config t
            }
 
 data DeviceList t
-  = DeviceList { _deviceIds :: Dynamic t (Map AccountId (Dynamic t [DeviceId]))
-               , _deviceInfos :: Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo))
+  = DeviceList { _deviceInfos :: Dynamic t (NestedDeviceInfos t)
                , _onlineDevices :: Dynamic t (Map DeviceId DeviceType)
                , _subscriptions :: SubscriptionsDyn t
                , _request :: Event t [ API.ServerRequest ]
@@ -55,14 +58,11 @@ deviceList config = do
 
     (accountDeviceIdsSubs, accountDeviceIds') <- getDeviceIdsSubscription config accountIds'
 
-    let
-      allDeviceIds :: Dynamic t [DeviceId]
-      allDeviceIds = join (mconcat . Map.elems <$> accountDeviceIds')
+    let deviceInfoSubs = getDeviceInfosSubscription accountDeviceIds'
+    deviceInfos' <- getDeviceInfos config accountDeviceIds'
 
-    (deviceInfoSubs, deviceInfos') <- getDeviceInfoSubscription config allDeviceIds
     onlineDevices' <- holdDyn Map.empty gotOnlineDevices
-    pure $ DeviceList { _deviceIds = accountDeviceIds'
-                      , _deviceInfos = deviceInfos'
+    pure $ DeviceList { _deviceInfos = deviceInfos'
                       , _onlineDevices = onlineDevices'
                       , _subscriptions = onlineSub
                                          <> membersSubs
@@ -98,12 +98,37 @@ getDeviceIdsSubscription config accountIds' =
   in
     subscribeKeys accountIds' API.ReqGetDevices gotDeviceIds
 
-getDeviceInfoSubscription :: forall t m. (MonadHold t m, Reflex t, MonadFix m)
+getDeviceInfos :: forall t m. (MonadHold t m, Reflex t, MonadFix m)
+                             => Config t -> Dynamic t (Map AccountId (Dynamic t [DeviceId]))
+                             -> m (Dynamic t (NestedDeviceInfos t))
+getDeviceInfos config deviceIds' = mdo
+  let
+    -- buildMapIncremental :: Map AccountId (Dynamic t [DeviceId]) -> Map AccountId (Dynamic t [DeviceId]) -> m (Maybe (NestedDeviceInfos t -> NestedDeviceInfos t))
+    buildMapIncremental oldDevIds newDevIds = do
+        let created = Map.difference newDevIds oldDevIds
+        let deleted = Map.difference oldDevIds newDevIds
+        newDevInfos <- traverse (getAccountDeviceInfos config) created
+        if (not . Map.null) created || (not . Map.null) deleted
+          then pure . Just $ (`Map.difference` deleted) . (<> newDevInfos)
+          else pure Nothing
+
+  let
+    updates =  push (\newDevIds -> do
+                        oldDevIds <- sample $ current deviceIds'
+                        doUpdate <-  buildMapIncremental oldDevIds newDevIds
+                        oldResult <- sample $ current result
+                        pure $ doUpdate <*> pure oldResult
+                    ) (updated deviceIds')
+
+  initInput <- sample $ current deviceIds'
+  mkInitVal <- buildMapIncremental Map.empty initInput
+  result <- holdDyn (fromMaybe Map.empty (mkInitVal <*> pure Map.empty)) updates
+  pure result
+
+getAccountDeviceInfos :: forall t m. (MonadHold t m, Reflex t, MonadFix m)
                              => Config t -> Dynamic t [DeviceId]
-                             -> m (SubscriptionsDyn t
-                                  , Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo))
-                                  )
-getDeviceInfoSubscription config deviceIds' =
+                             -> m (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
+getAccountDeviceInfos config deviceIds' =
       let
         gotDeviceInfo = push (\resp -> case resp of
                                          API.ResGotDeviceInfo did info -> pure . Just $ (did, info)
@@ -111,4 +136,11 @@ getDeviceInfoSubscription config deviceIds' =
                              ) (config^.configResponse)
 
       in
-        subscribeKeys deviceIds' API.ReqGetDeviceInfo gotDeviceInfo
+        buildMap deviceIds' gotDeviceInfo
+
+getDeviceInfosSubscription :: Reflex t => Dynamic t (Map AccountId (Dynamic t [DeviceId])) -> SubscriptionsDyn t
+getDeviceInfosSubscription
+  = fmap (mconcat . map getAccountDeviceInfosSubscription . Map.elems) . joinDynThroughMap
+
+getAccountDeviceInfosSubscription :: [DeviceId] -> Set API.ServerRequest
+getAccountDeviceInfosSubscription = Set.unions . map (Set.singleton . API.ReqGetDeviceInfo)

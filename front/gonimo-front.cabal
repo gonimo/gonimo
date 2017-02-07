@@ -37,7 +37,8 @@ library
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall -fwarn-tabs -O0
   else
-      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -O2
+      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -O 
+      cpp-options:   -DGHCJS_BROWSER
 
   default-extensions: ConstraintKinds
                     , DataKinds
@@ -65,6 +66,7 @@ library
                     , transformers
                     , http-types
                     , time
+                    , mtl
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Config
                     , Gonimo.Client.Storage.Keys
@@ -98,7 +100,7 @@ executable gonimo-front
       ghc-options:   -Wall
   else
       cpp-options:   -DGHCJS_BROWSER
-      ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
+      ghc-options:        -O -rtsopts -with-rtsopts=-N -Wall
   main-is:            GonimoFront.hs
   hs-source-dirs:      app
   default-language:    Haskell2010

@@ -14,7 +14,7 @@ import Debug.Trace (trace)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Set (Set, (\\))
+import Data.Set ((\\))
 
 -- Build an event that only triggers on the very first occurrence of the input event.
 waitForReady :: forall t m a. (MonadHold t m, Reflex t, MonadFix m) => Event t a -> m (Event t (Dynamic t a))
@@ -79,9 +79,15 @@ fromMaybeDyn' myTag onNothing action mDyn = do
 
 buildMap :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
                  => Dynamic t [key] -> Event t (key, val)
-              -> m (Dynamic t (Map key (Dynamic t val)))
-buildMap keys gotNewKeyVal = mdo
+                 -> m (Dynamic t (Map key (Dynamic t val)))
+buildMap keys gotNewKeyVal' = mdo
   let
+    gotNewKeyVal = push (\p@(k,_) -> do
+                            cKeys <- sample $ current keys
+                            if k `elem` cKeys
+                              then pure $ Just p
+                              else pure Nothing
+                        ) gotNewKeyVal'
     gotNewVal :: key -> Event t val
     gotNewVal key' = push (\(k,v)
                            -> pure $ if k == key'

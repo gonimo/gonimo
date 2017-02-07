@@ -6,6 +6,7 @@ module Gonimo.Client.DeviceList.UI where
 
 import Reflex.Dom
 import Control.Monad
+import Control.Monad.Trans.Class (lift)
 import Data.Monoid
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Safe (headMay)
@@ -68,61 +69,54 @@ renderList config deviceList' = do
       el "th" blank
       el "th" blank
     tz <- liftIO $ getCurrentTimeZone
-    evEvents <- el "tbody" $ dyn $ renderAccounts tz
-                <$> deviceList'^.deviceIds
-                <*> deviceList'^.deviceInfos
+    evEvents <- el "tbody" $ do
+      evEv <- dyn $ renderAccounts tz
+                <$> deviceList'^.deviceInfos
                 <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
                 <*> config^.configAuthData
+      el "tr" $ do
+        elAttr "td" ("colspan" =: "5" <> "style" =: "text-align: right;") $ text "+"
+      pure evEv
+        
 
     (,) <$> switchPromptly never (fst <$> evEvents)
         <*> switchPromptly never (snd <$> evEvents)
 
 renderAccounts :: forall m t. (HasWebView m, MonadWidget t m)
               => TimeZone
-              -> Map AccountId (Dynamic t [DeviceId])
-              -> Map DeviceId (Dynamic t (API.DeviceInfo))
+              -> NestedDeviceInfos t
               -> Dynamic t (Map DeviceId DeviceType)
               -> Maybe API.AuthData
               -> m (Event t (DeviceId, Text), Event t AccountId)
-renderAccounts tz deviceIds' infos onlineStatus mAuthData = do
+renderAccounts tz allInfos onlineStatus mAuthData = do
     let
       isSelf (aId, _) = Just aId == (API.accountId <$> mAuthData)
-      (self, others) = List.partition isSelf . Map.toList $ deviceIds'
+      (self, others) = List.partition isSelf . Map.toList $ allInfos
 
     allEvents <- traverse renderAccount' $ self <> others
     pure ( leftmost . map fst $ allEvents
          , leftmost . map snd $ allEvents
          )
   where
-    renderAccount' (aId, devIds) = do
-        (renamed, deleted) <- renderAccount tz infos onlineStatus  mAuthData aId devIds
+    renderAccount' (aId, infos) = do
+        (renamed, deleted) <- renderAccount tz onlineStatus  mAuthData aId infos
         pure (renamed, const aId <$> deleted)
 
 -- Currently pretty dumb, once we have non anonymous accounts render those differently:
 -- Visible group non devices belonging to a single account. Also family removal is per account.
 renderAccount :: forall m t. (HasWebView m, MonadWidget t m)
               => TimeZone
-              -> Map DeviceId (Dynamic t (API.DeviceInfo))
               -> Dynamic t (Map DeviceId DeviceType)
               -> Maybe API.AuthData
               -> AccountId
-              -> Dynamic t [DeviceId]
+              -> Dynamic t (Map DeviceId (Dynamic t (API.DeviceInfo)))
               -> m (Event t (DeviceId, Text), Event t ())
-renderAccount tz infos onlineStatus mAuthData  accountId' devIds'= do
-  let
-    filterInfos infos' devIds =
-      let
-        mMapValues = flip Map.lookup infos' <$> devIds
-        mEntries = zipWith (\k mv -> (k,) <$> mv) devIds mMapValues
-      in
-        Map.fromList . catMaybes $ mEntries
-    filteredInfos = filterInfos infos <$> devIds'
-
-
+renderAccount tz onlineStatus mAuthData accountId' infos = do
   let
     devName = fmap (fromMaybe "") . runMaybeT $ do
-      myDevId <- MaybeT $ headMay <$> devIds'
-      MaybeT . sequence $ infos^?at myDevId._Just.to (fmap API.deviceInfoName)
+      inf <- MaybeT $ headMay . Map.elems <$> infos
+      lift $ API.deviceInfoName <$> inf
+
     isUs = Just accountId' == fmap API.accountId mAuthData
   let
     deleteButton = el "td" $ do
@@ -138,7 +132,7 @@ renderAccount tz infos onlineStatus mAuthData  accountId' devIds'= do
                    then pure "This is you!\nReally leave your current family?"
                    else pure "Do you really want to remove device '" <> devName <> pure "' from the family?"
         )
-  rs <- dyn $ renderRows <$> pure tz <*> filteredInfos <*> pure onlineStatus <*> pure mAuthData <*> pure deleteButton
+  rs <- dyn $ renderRows <$> pure tz <*> infos <*> pure onlineStatus <*> pure mAuthData <*> pure deleteButton
   (,) <$> switchPromptly never (fst <$> rs)
       <*> switchPromptly never (snd <$> rs)
 
