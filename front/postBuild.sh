@@ -16,14 +16,18 @@ else
     else
         sed -i 's/h$main/window.h$main/g' runmain.js
     fi
+    # cat resources/js/jquery-2.2.4.min.js rts.js lib.js out.js resources/js/bootstrap.min.js > all.js
     cat rts.js lib.js out.js > all.js
-    # closure-compiler all.js --compilation_level=ADVANCED_OPTIMIZATIONS  > all.min.js
+    # closure-compiler all.js --compilation_level=ADVANCED_OPTIMIZATIONS  --variable_renaming_report=varNames --assume_function_wrapper > all-inner.min.js
+    # echo "(function(global) {" > all.min.js
+    # cat all-inner.min.js >> all.min.js
+    # echo "})(typeof global !== 'undefined' ? global : this);" >> all.min.js
     closure-compiler all.js --compilation_level=SIMPLE_OPTIMIZATIONS  > all.min.js
     cat index.html | grep -v rts.js | grep -v lib.js | sed 's/out.js/all.min.js/1' > index-new.html
     rm index.html
     mv index-new.html index.html
     #cleanup:
-    rm rts.js lib.js out.js all.js manifest.webapp out.stats
+    rm rts.js lib.js out.js all.js manifest.webapp out.stats # closure-externs.js all-inner.min.js
     popd
 fi
 gonimo-deploy md5sum ${distPath}
