@@ -34,7 +34,7 @@ gonimo-deploy md5sum ${distPath}
 #../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
 # Fix up index.html:
 pushd ${distPath}
-mv index-*.html index.html
+ln index-*.html index.html
 if [[ ${dev} == "dev" ]]
 then
     echo "Development build. no gzip"
