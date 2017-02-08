@@ -47,12 +47,24 @@ ui config = mdo
                                & configSelectFamily .~ leftmost [famSelectedEv, config^.configSelectFamily]
 
     famSelectedEv <- familyChooser family'
+    -- (myMockEv, triggerEv) <- newTriggerEvent
+    -- liftIO . forkIO . forever $ do
+    --   threadDelay 1000000
+    --   triggerEv ()
     let
-      cFamilyName = fmap (fromMaybe "") . runMaybeT $ do
-        cId <- MaybeT $ family'^.selectedFamily
-        families' <- MaybeT $ family'^.families
-        cFamily  <- MaybeT . pure $ families'^.at cId
-        pure $ Gonimo.familyName . Db.familyName $ cFamily
+      getFamilyName :: Maybe FamilyId -> Maybe (Map FamilyId Db.Family) -> Text
+      getFamilyName Nothing _ = ""
+      getFamilyName _ Nothing = ""
+      getFamilyName (Just fid) (Just families') = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
+
+      cFamilyName = zipDynWith getFamilyName (family'^.selectedFamily) (family'^.families)
+    -- Monadic solution produces: 'causality loop found'
+    -- let
+    --   cFamilyName = fmap (fromMaybe "") . runMaybeT $ do
+    --     cId <- MaybeT $ family'^.selectedFamily
+    --     families' <- MaybeT $ family'^.families
+    --     cFamily  <- MaybeT . pure $ families'^.at cId
+    --     pure $ Gonimo.familyName . Db.familyName $ cFamily
 
     -- let famSelectedEv = never
     clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
@@ -68,15 +80,13 @@ ui config = mdo
                       (text "Change your family name to ...")
                       cFamilyName
 
-    result' <- fromMaybeDyn ("inv: " <>) invalidContents (validContents config) $ family'^.selectedFamily
-    let result = traceEventWith (const "Got inv event!") result'
-    innReqs <- switchPromptly never (fst <$> result)
-    innSubs <- makeReady Set.empty (snd <$> result)
+    result' <- fromMaybeDyn invalidContents (validContents config) $ family'^.selectedFamily
+    innReqs <- switchPromptly never (fst <$> result')
+    innSubs <- makeReady Set.empty (snd <$> result')
 
-    -- let invReqs = never
 
     pure $ family' & request %~ (<> innReqs)
-                   & subscriptions %~ (<> traceDyn "subs from dev list: " innSubs)
+                   & subscriptions %~ (<> innSubs)
 
 
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
@@ -85,7 +95,7 @@ familyChooser family' = do
   evFamilies <- waitForJust (family'^.families)
 
   let onFamilies families' =
-        fromMaybeDyn ("select: " <>)
+        fromMaybeDyn
           (do
               el "div" $ text "Create a family to get started (+)"
               pure never
@@ -157,6 +167,6 @@ validContents config selected = do
                                         , Invite._configCreateInvitation = never
                                         , Invite._configAuthenticated = config^.configAuthenticated
                                         }
-    pure $ ( invite^.Invite.request <> devList^.DeviceList.request
+    pure $ ( invite^.Invite.request
            , devList^.DeviceList.subscriptions
            )
