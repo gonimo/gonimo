@@ -189,6 +189,6 @@ validContents config selected = do
                                         , Invite._configCreateInvitation = never
                                         , Invite._configAuthenticated = config^.configAuthenticated
                                         }
-    pure $ ( invite^.Invite.request
+    pure $ ( invite^.Invite.request <> devList^.DeviceList.request
            , devList^.DeviceList.subscriptions
            )
