@@ -37,7 +37,7 @@ library
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall -fwarn-tabs -O0
   else
-      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -O 
+      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -O2
       cpp-options:   -DGHCJS_BROWSER
 
   default-extensions: ConstraintKinds
@@ -100,7 +100,7 @@ executable gonimo-front
       ghc-options:   -Wall
   else
       cpp-options:   -DGHCJS_BROWSER
-      ghc-options:        -O -rtsopts -with-rtsopts=-N -Wall
+      ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
   main-is:            GonimoFront.hs
   hs-source-dirs:      app
   default-language:    Haskell2010
