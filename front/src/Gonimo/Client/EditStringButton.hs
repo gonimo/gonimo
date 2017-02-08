@@ -17,11 +17,10 @@ type EditStringConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, Monad
 editStringButton :: forall t m. EditStringConstraint t m
                       => Map Text Text -> m () -> m () -> Dynamic t Text -> m (Event t Text)
 editStringButton attrs inner editStringText val = mdo
-  (e, _ ) <- elAttr' "button" attrs $ inner
-  let clicked = domEvent Click e
+  clicked <- buttonAttr attrs $ inner
   editStringDialog <- holdDyn (pure never) $ leftmost [ const (editStringBox editStringText val) <$> clicked
-                                                        , const (pure never) <$> gotAnswer
-                                                        ]
+                                                      , const (pure never) <$> gotAnswer
+                                                      ]
   gotAnswer <- switchPromptly never =<< dyn editStringDialog
   pure $ push (pure . id) gotAnswer
 
