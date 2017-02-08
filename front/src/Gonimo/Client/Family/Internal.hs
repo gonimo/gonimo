@@ -176,7 +176,7 @@ makeFamilies config = do
                           <$> config^.configAuthData
 
      mFamilyIds <- holdDyn Nothing (Just <$> gotFamiliesEvent)
-     pure $ (zipDynWith Set.union familyIdsSubs familiesSubs
+     pure $ ( zipDynWith Set.union familyIdsSubs familiesSubs
             , mFamilyIds
             )
 
