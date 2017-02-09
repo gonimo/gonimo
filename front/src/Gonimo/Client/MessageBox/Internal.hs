@@ -31,6 +31,8 @@ import Network.HTTP.Types (urlDecode)
 import Control.Monad.Fix (MonadFix)
 import qualified Data.Aeson as Aeson
 import Gonimo.SocketAPI.Types (InvitationReply)
+import qualified Gonimo.Client.App.Types as App
+import Gonimo.Client.Server (webSocket_recv)
 
 invitationQueryParam :: Text
 invitationQueryParam = "messageBox"
@@ -52,3 +54,7 @@ data Action
 
 makeLenses ''Config
 makeLenses ''MessageBox
+
+fromApp :: Reflex t => App.Config t -> Config t
+fromApp c = Config { _configMessage = (:[]) . ServerResponse <$> c^.App.server.webSocket_recv
+                   }

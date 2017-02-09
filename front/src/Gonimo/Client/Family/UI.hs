@@ -36,6 +36,7 @@ import Gonimo.Client.Family.Internal
 import Gonimo.Client.Reflex.Dom
 import Gonimo.Client.ConfirmationButton (confirmationButton)
 import Gonimo.Client.EditStringButton (editStringButton)
+import Gonimo.Client.Subscriber (SubscriptionsDyn)
 
 -- Overrides configCreateFamily && configLeaveFamily
 ui :: forall m t. (HasWebView m, MonadWidget t m)

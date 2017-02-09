@@ -23,6 +23,7 @@ import qualified Gonimo.Client.MessageBox as MessageBox
 import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import qualified Gonimo.Client.Family as Family
 import qualified Gonimo.Client.Subscriber as Subscriber
+import qualified Gonimo.Client.App as App
 import Control.Monad
 import qualified Gonimo.Client.Config as Config
 
@@ -32,8 +33,7 @@ main :: IO ()
 main = mainWidgetInElementById "app" $ mdo
   let serverRequests = auth^.Auth.request
                     <> subscriber^.Subscriber.request
-                    <> family^.Family.request
-                    <> accept^.AcceptInvitation.request
+                    <> app^.App.request
 
   let wsConfig = def & webSocketConfig_send .~ serverRequests
   server <- Server.server Config.gonimoBackWSURL  wsConfig
@@ -43,36 +43,18 @@ main = mainWidgetInElementById "app" $ mdo
                                }
   auth <- Auth.auth authConfig
 
-  let subscriberConfig = Subscriber.Config { Subscriber._configResponse = server^.webSocket_recv
-                                           , Subscriber._configSubscriptions = family^.Family.subscriptions
-                                           , Subscriber._configAuthenticated = auth^.Auth.authenticated
-                                           }
+  let subscriberConfig
+        = Subscriber.Config { Subscriber._configResponse = server^.webSocket_recv
+                            , Subscriber._configSubscriptions = app^.App.subscriptions
+                            , Subscriber._configAuthenticated = auth^.Auth.authenticated
+                            }
   subscriber <- Subscriber.subscriber subscriberConfig
 
-  let messageBoxConfig
-        = MessageBox.Config { MessageBox._configMessage = (:[]) . MessageBox.ServerResponse <$> server^.webSocket_recv
-                            }
-  msgBox <- MessageBox.ui messageBoxConfig
-  let msgSwitchFamily = push (\actions -> case actions of
-                                 [MessageBox.SelectFamily fid] -> pure $ Just fid
-                                 _ -> pure Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
-                             ) (msgBox ^. MessageBox.action)
-
-  let acceptConfig
-        = AcceptInvitation.Config { AcceptInvitation._configResponse = server^.webSocket_recv
-                                  , AcceptInvitation._configAuthenticated = auth^.Auth.authenticated
-                                  }
-  accept <- AcceptInvitation.ui acceptConfig
-
-  let familyConfig = Family.Config { Family._configResponse = server^.webSocket_recv
-                                   , Family._configAuthData = auth^.Auth.authData
-                                   , Family._configSelectFamily = msgSwitchFamily
-                                   , Family._configSetName = never
-                                   , Family._configAuthenticated = auth^.Auth.authenticated
-                                   , Family._configCreateFamily = never
-                                   , Family._configLeaveFamily = never
-                                   }
-  family <- Family.ui familyConfig
+  let appConfig = App.Config { App._server = server
+                             , App._subscriber = subscriber
+                             , App._auth = auth
+                             }
+  app <- App.ui appConfig
   pure ()
 
 -- headTag :: forall x. Widget x ()

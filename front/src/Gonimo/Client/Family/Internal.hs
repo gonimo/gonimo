@@ -28,8 +28,15 @@ import Gonimo.Client.Reflex
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Control.Applicative
+import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
 
-type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
+import Gonimo.Client.Subscriber (SubscriptionsDyn)
+import qualified Gonimo.Client.App.Types as App
+import qualified Gonimo.Client.Auth as Auth
+import qualified Gonimo.Client.Server as Server
+import qualified Gonimo.Client.Subscriber as Subscriber
+
+
 type FamilyMap = Map FamilyId Db.Family
 
 data Config t
@@ -58,6 +65,16 @@ data DefiniteFamily t
 makeLenses ''Config
 makeLenses ''Family
 makeLenses ''DefiniteFamily
+
+fromApp :: Reflex t => App.Config t -> Config t
+fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
+                   , _configAuthData = c^.App.auth^.Auth.authData
+                   , _configSelectFamily = never
+                   , _configSetName = never
+                   , _configAuthenticated = c^.App.auth.Auth.authenticated
+                   , _configCreateFamily = never
+                   , _configLeaveFamily = never
+                   }
 
 -- makeDefinite :: forall m t. Reflex t => Family t -> Dynamic t (Maybe DefiniteFamily t)
 -- makeDefinite family' =

@@ -32,6 +32,12 @@ import Control.Monad.Fix (MonadFix)
 import qualified Data.Aeson as Aeson
 import Gonimo.SocketAPI.Types (InvitationReply)
 
+import qualified Gonimo.Client.App.Types as App
+import qualified Gonimo.Client.Auth as Auth
+import qualified Gonimo.Client.Server as Server
+import qualified Gonimo.Client.Subscriber as Subscriber
+import Gonimo.Client.Server (webSocket_recv)
+
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
 
@@ -46,6 +52,12 @@ data AcceptInvitation t
 
 makeLenses ''Config
 makeLenses ''AcceptInvitation
+
+
+fromApp :: Reflex t => App.Config t -> Config t
+fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
+                   , _configAuthenticated = c^.App.auth^.Auth.authenticated
+                   }
 
 getInvitationSecret :: forall m. (MonadPlus m, MonadIO m) => m Secret
 getInvitationSecret = do

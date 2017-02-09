@@ -92,6 +92,10 @@ library
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Reflex
                     , Gonimo.Client.Reflex.Dom
+                    , Gonimo.Client.App
+                    , Gonimo.Client.App.Internal
+                    , Gonimo.Client.App.Types
+                    , Gonimo.Client.App.UI
 
 
 executable gonimo-front
