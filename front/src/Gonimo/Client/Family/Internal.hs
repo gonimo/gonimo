@@ -12,7 +12,7 @@ import qualified Gonimo.Db.Entities as Db
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Set (Set, (\\))
+import Data.Set ((\\))
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import Control.Lens
@@ -21,20 +21,15 @@ import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM as DOM
 import Data.Foldable (traverse_)
-import Data.Maybe (isJust, isNothing)
 import Safe (headMay)
-import Data.List (sort)
-import Gonimo.Client.Reflex
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Fix (MonadFix)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Control.Applicative
-import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
+import Gonimo.Client.Server (webSocket_recv)
 
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Client.App.Types as App
 import qualified Gonimo.Client.Auth as Auth
-import qualified Gonimo.Client.Server as Server
-import qualified Gonimo.Client.Subscriber as Subscriber
 
 
 type FamilyMap = Map FamilyId Db.Family
@@ -54,7 +49,15 @@ data Family t
            , _selectedFamily :: Dynamic t (Maybe FamilyId)
            , _subscriptions :: SubscriptionsDyn t
            , _request :: Event t [ API.ServerRequest ]
-         }
+           }
+
+data UI t
+  = UI { -- _uiSelectFamily :: Event t FamilyId
+        _uiCreateFamily  :: Event t ()
+       , _uiLeaveFamily  :: Event t ()
+       , _uiSetName :: Event t Text
+       , _uiRequest :: Event t [ API.ServerRequest ]
+       }
 
 data DefiniteFamily t
   = DefiniteFamily { _definiteFamilies :: Dynamic t FamilyMap
@@ -64,6 +67,7 @@ data DefiniteFamily t
 
 makeLenses ''Config
 makeLenses ''Family
+makeLenses ''UI
 makeLenses ''DefiniteFamily
 
 fromApp :: Reflex t => App.Config t -> Config t
@@ -75,6 +79,14 @@ fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
                    , _configCreateFamily = never
                    , _configLeaveFamily = never
                    }
+
+uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
+uiSwitchPromptly ev
+  = UI -- <$> switchPromptly never (_uiSelectFamily <$> ev)
+       <$> switchPromptly never (_uiCreateFamily <$> ev)
+       <*> switchPromptly never (_uiLeaveFamily <$> ev)
+       <*> switchPromptly never (_uiSetName <$> ev)
+       <*> switchPromptly never (_uiRequest <$> ev)
 
 -- makeDefinite :: forall m t. Reflex t => Family t -> Dynamic t (Maybe DefiniteFamily t)
 -- makeDefinite family' =

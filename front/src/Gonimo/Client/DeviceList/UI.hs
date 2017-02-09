@@ -4,61 +4,50 @@
 {-# LANGUAGE TupleSections #-}
 module Gonimo.Client.DeviceList.UI where
 
-import Reflex.Dom
-import Control.Monad
-import Control.Monad.Trans.Class (lift)
-import Data.Monoid
-import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
-import Safe (headMay)
-import qualified Data.List as List
-import Data.Text (Text)
-import qualified Data.Text as T
-import Gonimo.Db.Entities (DeviceId, AccountId)
-import qualified Gonimo.Db.Entities as Db
-import Data.Map (Map)
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Data.Set (Set)
-import qualified Gonimo.SocketAPI.Types as API
-import qualified Gonimo.SocketAPI as API
-import Control.Lens
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
-import qualified Gonimo.Client.Storage as GStorage
-import qualified Gonimo.Client.Storage.Keys as GStorage
-import qualified GHCJS.DOM as DOM
-import Data.Foldable (traverse_)
-import Gonimo.Client.Reflex
-import Data.Maybe (fromMaybe, catMaybes)
-import qualified Gonimo.Types as Gonimo
-import qualified Gonimo.Client.Invite as Invite
-import Control.Monad.IO.Class (liftIO)
-import Unsafe.Coerce
-import Debug.Trace (trace)
-import Data.Time.Format (formatTime, defaultTimeLocale)
-import Data.Time.LocalTime (getCurrentTimeZone, utcToLocalTime, TimeZone)
-import Data.Time.Clock (UTCTime)
-import Gonimo.Types (DeviceType(..))
+import           Control.Lens
+import           Control.Monad.IO.Class            (liftIO)
+import           Control.Monad.Trans.Class         (lift)
+import           Control.Monad.Trans.Maybe         (MaybeT (..), runMaybeT)
+import qualified Data.List                         as List
+import           Data.Map                          (Map)
+import qualified Data.Map                          as Map
+import           Data.Maybe                        (fromMaybe)
+import           Data.Monoid
+import           Data.Text                         (Text)
+import qualified Data.Text                         as T
+import           Data.Time.Clock                   (UTCTime)
+import           Data.Time.Format                  (defaultTimeLocale,
+                                                    formatTime)
+import           Data.Time.LocalTime               (TimeZone,
+                                                    getCurrentTimeZone,
+                                                    utcToLocalTime)
+import           Gonimo.Db.Entities                (AccountId, DeviceId)
+import qualified Gonimo.SocketAPI                  as API
+import qualified Gonimo.SocketAPI.Types            as API
+import           Gonimo.Types                      (DeviceType (..))
+import           Reflex.Dom
+import           Safe                              (headMay)
 
-import Gonimo.Client.DeviceList.Internal
-import Gonimo.Client.ConfirmationButton (confirmationButton)
-import Gonimo.Client.EditStringButton (editStringButton)
+import qualified Gonimo.Client.App.Types           as App
+import           Gonimo.Client.ConfirmationButton  (confirmationButton)
+import           Gonimo.Client.DeviceList.Internal
+import           Gonimo.Client.EditStringButton    (editStringButton)
 
 -- TODO: At removal of one self - add note: "this is you"
 -- Overrides configCreateDeviceList && configLeaveDeviceList
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => Config t -> m (DeviceList t)
-ui config = mdo
-    deviceList' <- deviceList config
-    (renameEv, removeEv) <- renderList config deviceList'
+            => App.Loaded t -> DeviceList t -> m (Event t [API.ServerRequest])
+ui loaded deviceList' = do
+    (renameEv, removeEv) <- renderList loaded deviceList'
     let renameReq = uncurry API.ReqSetDeviceName <$> renameEv
     let removeReq = uncurry (flip API.ReqLeaveFamily)
-                    <$> attach (current (config^.configFamilyId)) removeEv
-    pure $ deviceList' & request %~ ( mconcat (fmap (:[]) <$> [renameReq, removeReq]) <>)
+                    <$> attach (current (loaded^.App.selectedFamily)) removeEv
+    pure $  mconcat (fmap (:[]) <$> [renameReq, removeReq])
 
 renderList :: forall m t. (HasWebView m, MonadWidget t m)
-              => Config t -> DeviceList t
+              => App.Loaded t -> DeviceList t
               -> m (Event t (DeviceId, Text), Event t AccountId)
-renderList config deviceList' = do
+renderList loaded deviceList' = do
   elClass "table" "table table-striped" $ do
     el "thead" $ do
       elClass "th"  "centered" $ text "Online"
@@ -73,7 +62,7 @@ renderList config deviceList' = do
       evEv <- dyn $ renderAccounts tz
                 <$> deviceList'^.deviceInfos
                 <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
-                <*> config^.configAuthData
+                <*> loaded^.App.authData
       el "tr" $ do
         elAttr "td" ("colspan" =: "5" <> "style" =: "text-align: right;") $ text "+"
       pure evEv
@@ -86,11 +75,11 @@ renderAccounts :: forall m t. (HasWebView m, MonadWidget t m)
               => TimeZone
               -> NestedDeviceInfos t
               -> Dynamic t (Map DeviceId DeviceType)
-              -> Maybe API.AuthData
+              -> API.AuthData
               -> m (Event t (DeviceId, Text), Event t AccountId)
-renderAccounts tz allInfos onlineStatus mAuthData = do
+renderAccounts tz allInfos onlineStatus authData = do
     let
-      isSelf (aId, _) = Just aId == (API.accountId <$> mAuthData)
+      isSelf (aId, _) = aId == API.accountId authData
       (self, others) = List.partition isSelf . Map.toList $ allInfos
 
     allEvents <- traverse renderAccount' $ self <> others
@@ -99,7 +88,7 @@ renderAccounts tz allInfos onlineStatus mAuthData = do
          )
   where
     renderAccount' (aId, infos) = do
-        (renamed, deleted) <- renderAccount tz onlineStatus  mAuthData aId infos
+        (renamed, deleted) <- renderAccount tz onlineStatus  authData aId infos
         pure (renamed, const aId <$> deleted)
 
 -- Currently pretty dumb, once we have non anonymous accounts render those differently:
@@ -107,17 +96,17 @@ renderAccounts tz allInfos onlineStatus mAuthData = do
 renderAccount :: forall m t. (HasWebView m, MonadWidget t m)
               => TimeZone
               -> Dynamic t (Map DeviceId DeviceType)
-              -> Maybe API.AuthData
+              -> API.AuthData
               -> AccountId
               -> Dynamic t (Map DeviceId (Dynamic t (API.DeviceInfo)))
               -> m (Event t (DeviceId, Text), Event t ())
-renderAccount tz onlineStatus mAuthData accountId' infos = do
+renderAccount tz onlineStatus authData accountId' infos = do
   let
     devName = fmap (fromMaybe "") . runMaybeT $ do
       inf <- MaybeT $ headMay . Map.elems <$> infos
       lift $ API.deviceInfoName <$> inf
 
-    isUs = Just accountId' == fmap API.accountId mAuthData
+    isUs = accountId' == API.accountId authData
   let
     deleteButton = el "td" $ do
       confirmationButton ("class" =: "btn btn-default")
@@ -132,7 +121,7 @@ renderAccount tz onlineStatus mAuthData accountId' infos = do
                    then pure "This is you!\nReally leave your current family?"
                    else pure "Do you really want to remove device '" <> devName <> pure "' from the family?"
         )
-  rs <- dyn $ renderRows <$> pure tz <*> infos <*> pure onlineStatus <*> pure mAuthData <*> pure deleteButton
+  rs <- dyn $ renderRows <$> pure tz <*> infos <*> pure onlineStatus <*> pure authData <*> pure deleteButton
   (,) <$> switchPromptly never (fst <$> rs)
       <*> switchPromptly never (snd <$> rs)
 
@@ -140,12 +129,12 @@ renderRows :: forall m t. (HasWebView m, MonadWidget t m)
               => TimeZone
               -> Map DeviceId (Dynamic t (API.DeviceInfo))
               -> Dynamic t (Map DeviceId DeviceType)
-              -> Maybe API.AuthData
+              -> API.AuthData
               -> m (Event t ())
               -> m (Event t (DeviceId, Text), Event t ())
-renderRows tz infos onlineStatus mAuthData deleteColumn = do
+renderRows tz infos onlineStatus authData deleteColumn = do
     let
-      isSelf (devId,_) = Just devId == (API.deviceId <$> mAuthData)
+      isSelf (devId,_) = devId == API.deviceId authData
       (self, others) = List.partition isSelf . Map.toList $ infos
 
     selfEvents <- traverse (renderRow' True) self
