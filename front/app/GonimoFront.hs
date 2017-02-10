@@ -1,31 +1,16 @@
 {-# LANGUAGE OverloadedStrings, RecursiveDo, ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
 
-import Reflex
-import Reflex.Dom hiding (webSocketConfig_send)
-import qualified Data.Text as T
-import Control.Lens
-import Safe
-import Control.Applicative
-import Data.Maybe
-import Data.Monoid
-import Debug.Trace
-import qualified Data.Map.Strict as Map
-import qualified Gonimo.SocketAPI.Types as API
-import qualified GHCJS.DOM.JSFFI.Generated.Storage as Storage
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
-import Data.Default
-import qualified Gonimo.Client.Server as Server
-import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
-import qualified Gonimo.Client.Auth as Auth
-import qualified Gonimo.Client.Invite as Invite
-import qualified Gonimo.Client.MessageBox as MessageBox
-import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
-import qualified Gonimo.Client.Family as Family
+import           Control.Lens
+import           Data.Monoid
+import qualified Gonimo.Client.App        as App
+import qualified Gonimo.Client.Auth       as Auth
+import qualified Gonimo.Client.Config     as Config
+import           Gonimo.Client.Server     (webSocketConfig_send, webSocket_open,
+                                           webSocket_recv)
+import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
-import qualified Gonimo.Client.App as App
-import Control.Monad
-import qualified Gonimo.Client.Config as Config
+import           Reflex.Dom               hiding (webSocketConfig_send)
 
 
 
