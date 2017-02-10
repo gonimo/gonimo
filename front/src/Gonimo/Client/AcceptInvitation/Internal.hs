@@ -9,12 +9,9 @@ import Reflex.Dom
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens
-import Data.Monoid
 import Data.Text (Text)
 import Gonimo.Db.Entities (FamilyId, InvitationId)
 import Gonimo.Types (Secret)
-import qualified Gonimo.Db.Entities as Db
-import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import qualified GHCJS.DOM.JSFFI.Generated.Location as Location
 import qualified GHCJS.DOM.JSFFI.Generated.History as History

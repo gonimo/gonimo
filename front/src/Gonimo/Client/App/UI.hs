@@ -3,44 +3,21 @@
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.App.UI where
 
-import Reflex.Dom
-import Control.Monad
-import Data.Monoid
-import Data.Text (Text)
-import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
-import qualified Gonimo.Db.Entities as Db
-import Data.Map (Map)
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Data.Set (Set)
-import qualified Gonimo.SocketAPI.Types as API
-import qualified Gonimo.SocketAPI as API
-import qualified Gonimo.Types as Gonimo
-import Control.Lens
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
-import qualified Gonimo.Client.Storage as GStorage
-import qualified Gonimo.Client.Storage.Keys as GStorage
-import qualified GHCJS.DOM as DOM
-import Data.Foldable (traverse_)
-import Gonimo.Client.Reflex
-import Data.Maybe (fromMaybe)
-import qualified Gonimo.Types as Gonimo
-import qualified Gonimo.Client.Invite as Invite
-import qualified Gonimo.Client.DeviceList as DeviceList
-import Control.Monad.IO.Class (liftIO)
-import Unsafe.Coerce
-import Debug.Trace (trace)
+import           Control.Lens
+import           Data.Monoid
+import qualified Data.Set                       as Set
+import qualified Gonimo.Client.DeviceList       as DeviceList
+import           Gonimo.Client.Reflex
+import qualified Gonimo.Db.Entities             as Db
+import           Reflex.Dom
 
-import Gonimo.Client.App.Internal
-import Gonimo.Client.App.Types
-import qualified Gonimo.Client.Server as Server
-import Gonimo.Client.Server (webSocketConfig_send, webSocket_recv, webSocket_open)
-import qualified Gonimo.Client.Auth as Auth
-import qualified Gonimo.Client.Invite as Invite
-import qualified Gonimo.Client.MessageBox as MessageBox
 import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
-import qualified Gonimo.Client.Family as Family
-import qualified Gonimo.Client.Subscriber as Subscriber
+import           Gonimo.Client.App.Internal
+import           Gonimo.Client.App.Types
+import qualified Gonimo.Client.Auth             as Auth
+import qualified Gonimo.Client.Family           as Family
+import qualified Gonimo.Client.MessageBox       as MessageBox
+import           Gonimo.Client.Server           (webSocket_recv)
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
       => Config t -> m (App t)
@@ -75,7 +52,7 @@ runLoaded config family = do
   evReady <- waitForJust
              $ zipDynWith mkFuncPair (config^.auth.Auth.authData) (family^.Family.families)
 
-  let onReady (authData, families) =
+  let onReady dynAuthFamilies =
         fromMaybeDyn
           (do
               el "div" $ text "Create a family to get started (+)"
@@ -83,14 +60,14 @@ runLoaded config family = do
               pure (App subs never, Family.UI never never never never)
           )
           (\selected -> do
-              let loaded = Loaded authData families selected
+              let loaded = Loaded (fst <$> dynAuthFamilies) (snd <$> dynAuthFamilies) selected
               loadedUI config loaded
           )
-          (family^.selectedFamily)
+          (family^.Family.selectedFamily)
   let notReady = do
         el "div" $ text "Loading, stay tight..."
         pure never
-  dynEvEv <- widgetHold noFamilies (onLoaded <$> evReady)
+  dynEvEv <- widgetHold notReady (onReady <$> evReady)
 
   let evEv = switchPromptlyDyn dynEvEv -- Flatten Dynamic Event Event
   (,) <$> appSwitchPromptly (fst <$> evEv)
@@ -100,7 +77,10 @@ runLoaded config family = do
 loadedUI :: forall m t. (HasWebView m, MonadWidget t m)
       => Config t -> Loaded t -> m (App t, Family.UI t)
 loadedUI config loaded = mdo
-  deviceList <- DeviceList.deviceList $ (DeviceList.fromApp config)
+  deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.webSocket_recv
+                                                          , DeviceList._configAuthData = config^.auth.Auth.authData
+                                                          , DeviceList._configFamilyId = loaded^.selectedFamily
+                                                          }
 
   familyUI <- Family.ui config loaded deviceList
 
@@ -117,6 +97,7 @@ navBar family = do
   elClass "div" "navbar navbar-default" $ do
     elClass "div" "container" $ do
       elClass "div" "navbar-header" $ navLogo
+      pure never
       -- elClass "div" "navbar-header" $ Family.familyChooser family
   where
     navLogo

@@ -4,12 +4,9 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.DeviceList.Internal where
 
-import Control.Monad (join)
-import Control.Monad.Trans (lift)
 import Reflex.Dom
 import Control.Monad.Fix (MonadFix)
 import Data.Monoid
-import Data.Text (Text)
 import Gonimo.Db.Entities (DeviceId, AccountId, FamilyId)
 import Data.Map (Map)
 import qualified Data.Map as Map
