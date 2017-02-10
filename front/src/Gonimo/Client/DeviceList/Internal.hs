@@ -4,21 +4,22 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.DeviceList.Internal where
 
-import Reflex.Dom
-import Control.Monad.Fix (MonadFix)
-import Data.Monoid
-import Gonimo.Db.Entities (DeviceId, AccountId, FamilyId)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Gonimo.SocketAPI.Types as API
-import qualified Gonimo.SocketAPI as API
-import Control.Lens
-import Data.Set (Set)
-import Gonimo.Client.Subscriber (subscribeKeys)
-import Gonimo.Client.Reflex (buildMap)
-import Gonimo.Types (DeviceType)
-import Data.Maybe (fromMaybe)
+import           Control.Lens
+import           Control.Monad.Fix        (MonadFix)
+import           Data.List                (sort)
+import           Data.Map                 (Map)
+import qualified Data.Map                 as Map
+import           Data.Maybe               (fromMaybe)
+import           Data.Monoid
+import           Data.Set                 (Set)
+import qualified Data.Set                 as Set
+import           Gonimo.Client.Reflex     (buildMap)
+import           Gonimo.Client.Subscriber (subscribeKeys)
+import           Gonimo.Db.Entities       (AccountId, DeviceId, FamilyId)
+import qualified Gonimo.SocketAPI         as API
+import qualified Gonimo.SocketAPI.Types   as API
+import           Gonimo.Types             (DeviceType)
+import           Reflex.Dom
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 type NestedDeviceInfos t = Map AccountId (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
@@ -56,7 +57,7 @@ deviceList config = do
     (accountDeviceIdsSubs, accountDeviceIds') <- getDeviceIdsSubscription config accountIds'
 
     let deviceInfoSubs = getDeviceInfosSubscription accountDeviceIds'
-    deviceInfos' <- getDeviceInfos config accountDeviceIds'
+    deviceInfos' <- holdBackUntilReady accountDeviceIds' =<< getDeviceInfos config accountDeviceIds'
 
     onlineDevices' <- holdDyn Map.empty gotOnlineDevices
     pure $ DeviceList { _deviceInfos = deviceInfos'
@@ -67,6 +68,25 @@ deviceList config = do
                                          <> deviceInfoSubs
                       , _request = never
                       }
+  where
+    holdBackUntilReady :: Dynamic t (Map AccountId (Dynamic t [DeviceId]))
+                       -> Dynamic t (NestedDeviceInfos t) -> m (Dynamic t (NestedDeviceInfos t))
+    holdBackUntilReady devIds infos = do
+      let
+        devIds' = joinDynThroughMap devIds
+        infos' = joinDynThroughMap infos
+        flattenedIdsIn = sort . concat . Map.elems <$> devIds'
+        flattenedIdsOut = sort . concat . map Map.keys . Map.elems <$> infos'
+        ourGate = zipDynWith (==) flattenedIdsIn flattenedIdsOut
+        gated = (,) <$> ourGate <*> infos
+        nextVal = push (\(newGate, newInfos) -> do
+                           if newGate
+                             then pure $ Just newInfos
+                             else pure Nothing
+                       ) (updated gated)
+      initVal <- sample $ current infos
+      holdDyn initVal nextVal
+
 
 getMembersSubscription :: Reflex t => Config t -> (SubscriptionsDyn t, Event t [AccountId])
 getMembersSubscription config =
