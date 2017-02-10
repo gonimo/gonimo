@@ -57,7 +57,7 @@ runLoaded config family = do
   let onReady dynAuthFamilies =
         fromMaybeDyn
           (do
-              el "div" $ text "Create a family to get started (+)"
+              elClass "div" "container" $ text "Create a family to get started (+)"
               subs <- holdDyn Set.empty never
               pure (App subs never, Family.UI never never never never)
           )
@@ -67,7 +67,7 @@ runLoaded config family = do
           )
           (family^.Family.selectedFamily)
   let notReady = do
-        el "div" $ text "Loading, stay tight..."
+        elClass "div" "container" $ text "Loading, stay tight..."
         pure never
   dynEvEv <- widgetHold notReady (onReady <$> evReady)
 
