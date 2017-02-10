@@ -35,18 +35,19 @@ ui appConfig loaded deviceList = mdo
 
       cFamilyName = zipDynWith getFamilyName (loaded^.App.selectedFamily) (loaded^.App.families)
 
-    clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
-    clickedLeave <- confirmationButton ("class" =: "btn btn-danger") (text "-")
-                      (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
-    nameChanged <- editStringButton ("class" =: "btn btn-default")
-                      ( elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
-                                  <> "data-toggle" =: "tooltip"
-                                  <> "data-placement" =: "right"
-                                  <> "title" =: "edit family name"
-                                  ) blank
-                      )
-                      (text "Change your family name to ...")
-                      cFamilyName
+    elClass "div" "container" $ do
+      clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
+      clickedLeave <- confirmationButton ("class" =: "btn btn-danger") (text "-")
+                        (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
+      nameChanged <- editStringButton ("class" =: "btn btn-default")
+                        ( elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
+                                    <> "data-toggle" =: "tooltip"
+                                    <> "data-placement" =: "right"
+                                    <> "title" =: "edit family name"
+                                    ) blank
+                        )
+                        (text "Change your family name to ...")
+                        cFamilyName
     -- let mkLabel inner selectClass = do
     --       let staticAttrs = "role" =: "button"
     --       let dynAttrs = fmap ("class" =:) selectClass
@@ -70,51 +71,53 @@ ui appConfig loaded deviceList = mdo
     --            ]
     -- let testMap = Map.fromList $ zip [1..] tabs
     -- customTabDisplay "pagination pagination-lg" "active" testMap
-    devicesReqs <-  devices appConfig loaded deviceList
+      devicesReqs <-  devices appConfig loaded deviceList
 
 
-    pure $ UI { _uiCreateFamily = clickedAdd
-              , _uiLeaveFamily = clickedLeave
-              , _uiSetName  = nameChanged
-              , _uiRequest = devicesReqs
-              }
+      pure $ UI { _uiCreateFamily = clickedAdd
+                , _uiLeaveFamily = clickedLeave
+                , _uiSetName  = nameChanged
+                , _uiRequest = devicesReqs
+                }
 
 
+-- Either create family button or family chooser depending on whether families exist or not.
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
-                 => Family t -> m (Event t FamilyId)
+                 => Family t -> m (Event t (Either () FamilyId))
 familyChooser family' = do
   evFamilies <- waitForJust (family'^.families)
 
   let onFamilies families' =
         fromMaybeDyn
           (do
-              el "div" $ text "Create a family to get started (+)"
-              pure never
+              clickedAdd <- buttonAttr ("class" =: "btn btn-default navbar-btn") $ text "+"
+              pure $ Left <$> clickedAdd
           )
-          (\selected ->
-              familyChooser' (DefiniteFamily families' selected)
+          (\selected -> do
+              selEv <- familyChooser' (DefiniteFamily families' selected)
+              pure $ Right <$> selEv
           )
           (family'^.selectedFamily)
   let noFamilies = do
-        el "div" $ text "Loading your families ..."
         pure never
   dynEvEv <- widgetHold noFamilies (onFamilies <$> evFamilies)
   let evEv = switchPromptlyDyn dynEvEv -- Flatten Dynamic Event Event
-  traceEvent "Family Chooser In Action" <$> switchPromptly never evEv
+  switchPromptly never evEv
 
 
 familyChooser' :: forall m t. (HasWebView m, MonadWidget t m)
                  => DefiniteFamily t -> m (Event t FamilyId)
 familyChooser' family' = do
-  elAttr "div" ( "class" =: "dropdown" <> "data-toggle" =: "collapse" ) $ do
-    elAttr "button" ( "class" =: "dropdown-toggle btn btn-primary" <> "href" =: "#"
+  elAttr "li" ( "class" =: "dropdown" <> "data-toggle" =: "collapse" ) $ do
+    elAttr "a" ( "class" =: "dropdown-toggle" <> "href" =: "#"
                 <> "role" =: "button" <> "data-toggle" =: "dropdown"
                 <> "type" =: "button") $ do
-      elClass "i" "fa fa-fw fa-users" blank
-      text " "
-      dynText $ zipDynWith getFamilyName (family'^.definiteSelected) (family'^.definiteFamilies)
-      text " "
-      elClass "span" "caret" blank
+      elClass "span" ".h1" $ do
+        elClass "i" "fa fa-fw fa-users" blank
+        text " "
+        dynText $ zipDynWith getFamilyName (family'^.definiteSelected) (family'^.definiteFamilies)
+        text " "
+        elClass "span" "caret" blank
     selectedId <- elClass "ul" "dropdown-menu" $ do
       elAttr "li" ("data-toggle" =: "collapse") $
         elAttr "div" ("class" =: "dropdown-header") $

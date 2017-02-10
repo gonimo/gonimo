@@ -24,11 +24,13 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
 ui config = mdo
   family <- Family.family
             $ (Family.fromApp config) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily, navSelectFamily ]
-                                      & Family.configCreateFamily .~ familyUI^.Family.uiCreateFamily
+                                      & Family.configCreateFamily .~ leftmost [ familyUI^.Family.uiCreateFamily,  navCreateFamily ]
                                       & Family.configLeaveFamily .~ familyUI^.Family.uiLeaveFamily
                                       & Family.configSetName .~ familyUI^.Family.uiSetName
 
-  navSelectFamily <- navBar family
+  navEv <- navBar family
+  let navCreateFamily = push (pure . (^?_Left)) navEv
+  let navSelectFamily = push (pure . (^?_Right)) navEv
   msgBox <- MessageBox.ui $ MessageBox.fromApp config
 
   let msgSwitchFamily = push (\actions -> case actions of
@@ -92,13 +94,13 @@ loadedUI config loaded = mdo
 
 
 navBar :: forall m t. (HasWebView m, MonadWidget t m)
-      => Family.Family t -> m (Event t Db.FamilyId)
+      => Family.Family t -> m (Event t (Either () Db.FamilyId))
 navBar family = do
   elClass "div" "navbar navbar-default" $ do
     elClass "div" "container" $ do
-      elClass "div" "navbar-header" $ navLogo
-      pure never
-      -- elClass "div" "navbar-header" $ Family.familyChooser family
+      elClass "div" "navbar-header" $
+        navLogo
+      elClass "ul" "nav navbar-nav" $ Family.familyChooser family
   where
     navLogo
       = elAttr "img" ( "alt" =: "gonimo"

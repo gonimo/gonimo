@@ -4,11 +4,10 @@
 module Gonimo.Client.Invite.UI where
 
 import Reflex.Dom
-import Control.Monad
 import Control.Lens
 import Data.Monoid
 import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId, InvitationId)
+import Gonimo.Db.Entities (InvitationId)
 import qualified Gonimo.Db.Entities as Db
 import Gonimo.Client.Invite.Internal
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -28,29 +27,28 @@ ui config = mdo
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
     liftIO $ makeCreateInvEv () -- We want a new invitation every time this widget is rendered
     invite' <- invite $ config & configCreateInvitation .~ leftmost (createInvEv : (fmap (const ()) <$> sentEvents))
-    let invite'' = invite' & request %~ (mailReqs' <>)
+    let invite'' = invite' & request %~ (mailReqs <>)
 
     let currentInvitation = invite''^.invitation
     let invitationLink = maybe "" (makeInvitationLink baseUrl . snd) <$> currentInvitation
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
-    let sentEvents = (const SentEmail <$> mailReqs') : reCreateEvents
+    let sentEvents = (const SentEmail <$> mailReqs) : reCreateEvents
 
-    (reCreateEvents, mailReqs') <- divClass "container" $ do
-      confirmationBox $ leftmost sentEvents
-      invButtons <- elAttr "div" ("style" =: "display:flex; justify-content: space-between;") $ do
-        elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
-          whatsAppClicked <- inviteButton "/resources/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
-          tgClicked <- inviteButton "/resources/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
-          pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
-      mailReqs <- divClass "row" $ emailWidget (config^.configResponse) currentInvitation
-      recreateClicked <- divClass "row" $ do
-        copyClipboardScript
-        divClass "input-group" $ do
-            clicked <- refreshLinkButton
-            showLinkInput invitationLink
-            copyClicked <- copyButton
-            pure [const SentRefresh <$> clicked, const SentCopy <$> copyClicked]
-      pure $ (recreateClicked <> invButtons, mailReqs)
+    confirmationBox $ leftmost sentEvents
+    invButtons <- elAttr "div" ("style" =: "display:flex; justify-content: space-between;") $ do
+      elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
+        whatsAppClicked <- inviteButton "/resources/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
+        tgClicked <- inviteButton "/resources/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
+        pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
+    mailReqs <- divClass "row" $ emailWidget (config^.configResponse) currentInvitation
+    recreateClicked <- divClass "row" $ do
+      copyClipboardScript
+      divClass "input-group" $ do
+          clicked <- refreshLinkButton
+          showLinkInput invitationLink
+          copyClicked <- copyButton
+          pure [const SentRefresh <$> clicked, const SentCopy <$> copyClicked]
+    let reCreateEvents = recreateClicked <> invButtons
     pure invite''
   where
 
@@ -155,7 +153,7 @@ emailWidget :: forall t m. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace, P
   => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Db.Invitation))
   -> m (Event t [API.ServerRequest])
 emailWidget res invData = mdo
-    (infoBox', req) <- elAttr "div" ("class" =: "input-group" <> "style" =: "width:100%;") $ do
+    (infoBox', req) <- elAttr "div" ("class" =: "input-group" ) $ do
       awesomeAddon "fa-envelope"
       addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: "mail@example.com"
                                                                        <> "class" =: "form-control"

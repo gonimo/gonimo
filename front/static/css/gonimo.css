@@ -38,4 +38,28 @@
     display: flex;
     flex-direction:column;
     justify-content: center;
+    height: 100%;
+}
+
+.navbar-nav {
+    margin: 0;
+}
+.navbar-nav>li {
+    float: none;
+    display: inline-block;
+}
+
+.navbar-nav>li>a {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    font-size: 20px;
+}
+
+.navbar-header {
+    float: left;
+}
+
+.container>.navbar-header {
+    margin-right: 0px;
+    margin-left: 0px;
 }
