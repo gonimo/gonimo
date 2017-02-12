@@ -67,6 +67,8 @@ library
                     , http-types
                     , time
                     , mtl
+                    , jsaddle
+                    , ghcjs-base
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Config
                     , Gonimo.Client.Storage.Keys
@@ -96,6 +98,11 @@ library
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
+                    , Gonimo.Client.Baby.Internal
+                    , Gonimo.DOM.Navigator.MediaDevices.Types
+                    , Gonimo.DOM.Navigator.MediaDevices.Internal
+                    , Gonimo.DOM.Navigator.MediaDevices
+
 
 
 executable gonimo-front

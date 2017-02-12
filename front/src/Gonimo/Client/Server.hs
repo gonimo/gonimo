@@ -4,12 +4,8 @@ module Gonimo.Client.Server where
 
 import Gonimo.SocketAPI (ServerRequest, ServerResponse)
 import Reflex
-import Reflex.Class
 import Reflex.Dom.Class
 import Control.Lens
-import Reflex.PerformEvent.Class
-import Reflex.PostBuild.Class
-import Reflex.TriggerEvent.Class
 import qualified Data.Aeson as Aeson
 import GHCJS.DOM.Types (MonadJSM)
 import qualified Data.ByteString.Lazy as BL

@@ -48,29 +48,6 @@ ui appConfig loaded deviceList = mdo
                         )
                         (text "Change your family name to ...")
                         cFamilyName
-    -- let mkLabel inner selectClass = do
-    --       let staticAttrs = "role" =: "button"
-    --       let dynAttrs = fmap ("class" =:) selectClass
-    --       (e, _) <- elDynAttr' "li" (pure staticAttrs <> dynAttrs) inner
-    --       pure $ domEvent Click e
-    -- let tabs = [ (mkLabel $ el "span" $ do
-    --                  text "Family"
-    --                  elClass "span" "hidden-xs" $ text " Managment"
-    --              , text "Family Management"
-    --              )
-    --            , (mkLabel $ el "span" $ do
-    --                  text "Baby"
-    --                  elClass "span" "hidden-xs" $ text " Station"
-    --              , text "Baby"
-    --              )
-    --            , (mkLabel $ el "span" $ do
-    --                  text "Parent"
-    --                  elClass "span" "hidden-xs" $ text " Station"
-    --              , text "Parent"
-    --              )
-    --            ]
-    -- let testMap = Map.fromList $ zip [1..] tabs
-    -- customTabDisplay "pagination pagination-lg" "active" testMap
       devicesReqs <-  devices appConfig loaded deviceList
 
 

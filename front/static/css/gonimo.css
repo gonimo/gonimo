@@ -34,6 +34,13 @@
     justify-content:center;
 }
 
+.hCenteredBox {
+    display: flex;
+    flex-direction:row;
+    justify-content: center;
+    width: 100%;
+}
+
 .vCenteredBox {
     display: flex;
     flex-direction:column;
