@@ -40,7 +40,7 @@ cameraSelect baby = do
         traverse_ renderCamera (baby^. videoDevices)
   where
     renderCamera :: (Text, Text) -> m ()
-    renderCamera (devId, devLabel) = do
+    renderCamera (_, devLabel) = do
       elAttr "ul" ("role" =: "presentation") $ do
         elAttr "a" ("role" =: "menuitem" <> "tabindex" =: "-1" <> "href" =: "#") $
           text $ if devLabel == "" then "The One and Only" else devLabel

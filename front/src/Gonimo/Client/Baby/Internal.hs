@@ -44,7 +44,7 @@ data Baby t
 makeLenses ''Baby
 
 baby :: forall m t. (MonadWidget t m) => Config t -> m (Baby t)
-baby c = do
+baby _ = do
   devices <- enumerateDevices
   let videoDevices' = filter ((== VideoInput) . mediaDeviceKind) devices
   let videoList = zip (mediaDeviceDeviceId <$> videoDevices') (mediaDeviceLabel <$> videoDevices')
