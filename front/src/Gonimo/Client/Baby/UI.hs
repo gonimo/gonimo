@@ -47,7 +47,8 @@ cameraSelect baby' = do
 
 -- Overrides configCreateBaby && configLeaveBaby
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => Baby t -> m ()
-ui baby' = do
+            => Config t -> m ()
+ui config = do
+  baby' <- baby config
   elClass "div" "container" $ 
     cameraSelect baby'

@@ -116,7 +116,6 @@ loadedUI config loaded currentTab = mdo
                                                           , DeviceList._configAuthData = config^.auth.Auth.authData
                                                           , DeviceList._configFamilyId = loaded^.selectedFamily
                                                           }
-  baby <- Baby.baby ()
   let isFamilyTab = demuxed currentTab $ Just TabFamily
   let familyAttrs = ffor isFamilyTab $ \s -> if s then Map.empty else Map.singleton "style" "display:none;"
 
@@ -126,8 +125,7 @@ loadedUI config loaded currentTab = mdo
   let isBabyTab = demuxed currentTab $ Just TabBaby
   let babyAttrs = ffor isBabyTab $ \s -> if s then Map.empty else Map.singleton "style" "display:none;"
 
-  babyUI <- elDynAttr "div" babyAttrs $
-                Baby.ui baby
+  _ <- elDynAttr "div" babyAttrs $ Baby.ui ()
   
   let app = App { _request = familyUI^.Family.uiRequest
                           <> deviceList^.DeviceList.request
