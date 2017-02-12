@@ -27,7 +27,7 @@ import           Gonimo.Client.Server             (webSocket_recv)
 
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m ()
-cameraSelect baby = do
+cameraSelect baby' = do
     elClass "div" "dropdown" $ do
       elAttr "button" ( "class" =: "btn btn-default dropdown-toggle"
                         <> "type" =: "button"
@@ -37,7 +37,7 @@ cameraSelect baby = do
         text "bliblablueh"
         elClass "span" "caret" blank
       elClass "ul" "dropdown-menu" $ do
-        traverse_ renderCamera (baby^. videoDevices)
+        traverse_ renderCamera (baby'^. videoDevices)
   where
     renderCamera :: (Text, Text) -> m ()
     renderCamera (_, devLabel) = do
@@ -48,6 +48,6 @@ cameraSelect baby = do
 -- Overrides configCreateBaby && configLeaveBaby
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => Baby t -> m ()
-ui baby = do
+ui baby' = do
   elClass "div" "container" $ 
-    cameraSelect baby
+    cameraSelect baby'
