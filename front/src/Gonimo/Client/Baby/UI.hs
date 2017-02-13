@@ -60,7 +60,7 @@ ui config = do
   window  <- DOM.currentWindowUnchecked
   navigator <- Window.getNavigatorUnsafe window
   constr <- makeDefaultUserMediaDictionary
-  stream <- Navigator.getUserMedia navigator $ Just constr
+  _ <- Navigator.getUserMedia navigator $ Just constr
   baby' <- baby config
   elClass "div" "container" $ 
     cameraSelect baby'
