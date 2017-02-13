@@ -1,6 +1,5 @@
 -- Common imports and definitions for gonimo ...
 module Gonimo.Prelude ( MaybeT(..)
-                      , runMaybeT
                       , MonadIO
                       , liftIO
                       , lift
