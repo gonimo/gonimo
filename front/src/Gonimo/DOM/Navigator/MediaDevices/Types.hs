@@ -4,14 +4,11 @@ import           Control.Monad
 import           Control.Monad.Trans.Maybe   (MaybeT (..), runMaybeT)
 import           Data.Text                   (Text)
 
-import           Control.Concurrent.MVar     (newEmptyMVar, putMVar, takeMVar)
-import           GHCJS.Marshal               (FromJSVal, ToJSVal, fromJSVal,
-                                              fromJSValUnchecked, toJSVal)
-import           Language.Javascript.JSaddle (JSM, JSVal, MonadJSM, eval, fun,
-                                              js, js1, jsg, jss, liftJSM,
-                                              syncPoint, valToNumber, (!),
-                                              ( # ))
+import           GHCJS.DOM.Types               (FromJSVal, ToJSVal, fromJSVal, toJSVal)
+import           Language.Javascript.JSaddle (JSM, JSVal, MonadJSM)
 
+
+  
 data MediaDeviceKind = AudioInput | VideoInput | AudioOutput deriving (Show, Eq)
 
 

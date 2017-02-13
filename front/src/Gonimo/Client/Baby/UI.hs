@@ -59,7 +59,8 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
 ui config = do
   window  <- DOM.currentWindowUnchecked
   navigator <- Window.getNavigatorUnsafe window
-  stream <- Navigator.getUserMedia navigator Nothing
+  constr <- makeDefaultUserMediaDictionary
+  stream <- Navigator.getUserMedia navigator $ Just constr
   baby' <- baby config
   elClass "div" "container" $ 
     cameraSelect baby'
