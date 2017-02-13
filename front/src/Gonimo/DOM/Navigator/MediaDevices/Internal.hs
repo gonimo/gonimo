@@ -89,7 +89,7 @@ makeDefaultUserMediaDictionary = liftJSM $ do
   rawDic <# "audio" $ True
   case rawDic of
     JS.Object val -> do
-      eval "console" ^. jsf "log" [val^.js "video"^. js0 "toString" ]
+      -- eval "console" ^. jsf "log" [val^.js "video"^. js0 "toString" ]
       pure $ Dictionary val
 
 
