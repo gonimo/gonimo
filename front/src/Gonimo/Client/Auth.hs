@@ -12,17 +12,16 @@ import qualified Gonimo.SocketAPI as API
 import qualified GHCJS.DOM as DOM
 import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
-import qualified GHCJS.DOM.JSFFI.Generated.Navigator as Navigator
-import qualified GHCJS.DOM.JSFFI.Generated.Location as Location
-import GHCJS.DOM.JSFFI.Generated.Storage (Storage)
-import GHCJS.DOM.Types (FromJSVal, fromJSVal, toJSString)
+import qualified GHCJS.DOM.Window as Window
+import qualified GHCJS.DOM.Navigator as Navigator
+import qualified GHCJS.DOM.Location as Location
+import GHCJS.DOM.Storage (Storage)
 import Data.Text (Text)
 import Safe (headMay)
+import           GHCJS.DOM.Types (MonadJSM)
 
 import Control.Monad.IO.Class
-import Control.Monad (when)
-import Data.Maybe (isNothing, isJust, catMaybes)
+import Data.Maybe (isNothing, catMaybes)
 
 -- data AuthCommand = AuthCreateDevice
 
@@ -101,11 +100,11 @@ authenticate config authDataDyn=
   in
     API.ReqAuthenticate . API.authToken <$> authData'
 
-writeAuthData :: MonadIO m => Storage -> Maybe API.AuthData -> m ()
+writeAuthData :: MonadJSM m => Storage -> Maybe API.AuthData -> m ()
 writeAuthData _ Nothing = pure ()
 writeAuthData storage (Just auth') = GStorage.setItem storage GStorage.keyAuthData auth'
 
-handleStolenSession :: MonadIO m => API.ServerResponse -> m ()
+handleStolenSession :: MonadJSM m => API.ServerResponse -> m ()
 handleStolenSession API.EventSessionGotStolen = do
   window  <- DOM.currentWindowUnchecked
   location <- Window.getLocationUnsafe window
@@ -113,10 +112,10 @@ handleStolenSession API.EventSessionGotStolen = do
 handleStolenSession _ = pure ()
 
 
-loadAuthData :: MonadIO m => Storage -> m (Maybe API.AuthData)
+loadAuthData :: MonadJSM m => Storage -> m (Maybe API.AuthData)
 loadAuthData storage = GStorage.getItem storage GStorage.keyAuthData
 
-getUserAgentString :: MonadIO m => m Text
+getUserAgentString :: MonadJSM m => m Text
 getUserAgentString = do
   window  <- DOM.currentWindowUnchecked
   navigator <- Window.getNavigatorUnsafe window

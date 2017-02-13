@@ -19,8 +19,9 @@ import Gonimo.Types (InvitationDelivery(..))
 import qualified Gonimo.SocketAPI as API
 import qualified Gonimo.SocketAPI.Types as API
 import Gonimo.Client.Reflex.Dom
+import           GHCJS.DOM.Types (MonadJSM)
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadIO (Performable m), PerformEvent t m)
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadIO (Performable m), PerformEvent t m)
       => Config t -> m (Invite t)
 ui config = mdo
     baseUrl <- getBaseLink

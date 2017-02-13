@@ -16,7 +16,7 @@ import Data.Set ((\\))
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import Control.Lens
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
+import qualified GHCJS.DOM.Window as Window
 import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM as DOM

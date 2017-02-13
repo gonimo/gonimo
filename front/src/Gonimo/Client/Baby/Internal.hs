@@ -18,7 +18,7 @@ import Data.Set ((\\))
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
 import Control.Lens 
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
+import qualified GHCJS.DOM.Window as Window
 import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM as DOM
@@ -37,7 +37,7 @@ import Gonimo.DOM.Navigator.MediaDevices
 type Config t = ()
 
 data Baby t
-  = Baby { _videoDevices :: [(Text, Text)]
+  = Baby { _videoDevices :: [MediaDeviceInfo]
          }
 
 
@@ -47,6 +47,5 @@ baby :: forall m t. (MonadWidget t m) => Config t -> m (Baby t)
 baby _ = do
   devices <- enumerateDevices
   let videoDevices' = filter ((== VideoInput) . mediaDeviceKind) devices
-  let videoList = zip (mediaDeviceDeviceId <$> videoDevices') (mediaDeviceLabel <$> videoDevices')
-  pure $ Baby videoList
+  pure $ Baby videoDevices'
 

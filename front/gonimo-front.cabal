@@ -55,7 +55,7 @@ library
                     , errors
                     , bytestring
                     , text
-                    , ghcjs-dom-jsffi
+                    , ghcjs-dom
                     , gonimo-common
                     , reflex
                     , reflex-dom
@@ -68,7 +68,7 @@ library
                     , time
                     , mtl
                     , jsaddle
-                    , ghcjs-base
+                    -- , ghcjs-base
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Config
                     , Gonimo.Client.Storage.Keys
@@ -99,9 +99,12 @@ library
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
                     , Gonimo.Client.Baby.Internal
+                    , Gonimo.Client.Baby.UI
+                    , Gonimo.Client.Baby
                     , Gonimo.DOM.Navigator.MediaDevices.Types
                     , Gonimo.DOM.Navigator.MediaDevices.Internal
                     , Gonimo.DOM.Navigator.MediaDevices
+                    , Gonimo.Client.Prelude
 
 
 
@@ -137,7 +140,6 @@ executable gonimo-front
                     , text
                     , lens
                     , gonimo-common
-                    , ghcjs-dom-jsffi
                     , gonimo-front
                     -- for gonimo-common:
                     , aeson

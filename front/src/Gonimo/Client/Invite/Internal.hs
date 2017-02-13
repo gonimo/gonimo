@@ -15,9 +15,9 @@ import Gonimo.Db.Entities (FamilyId, InvitationId)
 import qualified Gonimo.Db.Entities as Db
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
-import qualified GHCJS.DOM.JSFFI.Generated.Location as Location
-import GHCJS.DOM.Types (ToJSVal, toJSVal, FromJSVal, fromJSVal, JSVal)
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
+import qualified GHCJS.DOM.Location as Location
+import GHCJS.DOM.Types (ToJSVal, toJSVal, FromJSVal, fromJSVal, JSVal, MonadJSM)
+import qualified GHCJS.DOM.Window as Window
 import qualified GHCJS.DOM as DOM
 import Control.Monad.Trans.Maybe
 import Data.Maybe (fromMaybe)
@@ -78,7 +78,7 @@ invite config = mdo
               , _request = createInvReq
               }
 
-getBaseLink :: MonadIO m => m Text
+getBaseLink :: (MonadJSM m) => m Text
 getBaseLink = do
   window  <- DOM.currentWindowUnchecked
   location <- Window.getLocationUnsafe window
@@ -95,12 +95,12 @@ makeInvitationLink baseURL inv =
     baseURL <> "?" <> invitationQueryParam <> "=" <> encodedSecret
 
 -- Not used currently : 
-encodeURIComponent :: (ToJSVal i, FromJSVal o, MonadIO m) => i -> MaybeT m o
-encodeURIComponent val = do
-  jsVal <- liftIO $ toJSVal val
-  let jsOut = jsEncodeURIComponent jsVal
-  MaybeT . liftIO $ fromJSVal jsOut
+-- encodeURIComponent :: (ToJSVal i, FromJSVal o, MonadIO m) => i -> MaybeT m o
+-- encodeURIComponent val = do
+--   jsVal <- liftIO $ toJSVal val
+--   let jsOut = jsEncodeURIComponent jsVal
+--   MaybeT . liftIO $ fromJSVal jsOut
 
-foreign import javascript unsafe
-  "encodeURIComponent $1"
-  jsEncodeURIComponent :: JSVal -> JSVal
+-- foreign import javascript unsafe
+--   "encodeURIComponent $1"
+--   jsEncodeURIComponent :: JSVal -> JSVal

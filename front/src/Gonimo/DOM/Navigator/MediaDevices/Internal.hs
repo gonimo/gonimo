@@ -7,12 +7,14 @@ import           Control.Concurrent.MVar     (newEmptyMVar, putMVar, takeMVar)
 import           GHCJS.Marshal               (fromJSValUnchecked)
 import           Language.Javascript.JSaddle (JSVal, MonadJSM, eval, fun, js,
                                               js1, jsg, jss, liftJSM, syncPoint,
-                                              valToNumber, ( # ))
+                                              valToNumber, ( # ), jsf)
+import Control.Monad (void)
 
 import Gonimo.DOM.Navigator.MediaDevices.Types
 
 import Control.Monad.IO.Class
 import Control.Lens ((^.))
+import GHCJS.DOM.Types hiding (MonadJSM, liftJSM)
 
 enumerateDevices :: (MonadJSM m, MonadIO m) => m [MediaDeviceInfo]
 enumerateDevices = do
@@ -40,3 +42,18 @@ enumerateDevices = do
           <*> fromJSValUnchecked kind
           <*> fromJSValUnchecked label
           <*> fromJSValUnchecked groupId
+
+-- getUserMedia :: (MonadDOM m, IsDictionary options) =>
+--                 Navigator ->
+--                 Maybe options ->
+--                 Maybe NavigatorUserMediaSuccessCallback ->
+--                 Maybe NavigatorUserMediaErrorCallback -> m ()
+-- getUserMedia self options successCallback errorCallback
+--   = liftDOM
+--       (void
+--          (toJSVal self ^. js "mediaDevices"
+--           ^. jsf "getUserMedia" [toJSVal options]
+--           ^. jsf "then" [toJSVal successCallback]
+--           ^. jsf "catch" [toJSVal errorCallback]
+--          )
+--       )

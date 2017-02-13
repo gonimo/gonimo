@@ -3,31 +3,25 @@
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.AcceptInvitation.UI where
 
-import Reflex.Dom
-import Control.Monad
-import Control.Lens
-import Data.Monoid
-import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId, InvitationId)
-import qualified Gonimo.Db.Entities as Db
-import Gonimo.Client.AcceptInvitation.Internal
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Fix (MonadFix)
-import Data.Maybe (maybe, fromMaybe)
-import qualified Data.Text.Encoding as T
-import Network.HTTP.Types (urlEncode)
-import Gonimo.Types (InvitationDelivery(..))
-import qualified Gonimo.Types as Client
-import qualified Gonimo.SocketAPI as API
-import qualified Gonimo.SocketAPI.Types as API
-import Gonimo.Client.Reflex.Dom
-import Gonimo.SocketAPI.Types (InvitationInfo(..))
-import Control.Monad.Trans.Maybe (runMaybeT)
-import Control.Monad.Trans.Class (lift)
-import Gonimo.SocketAPI.Types (InvitationReply(..))
-import Gonimo.Types (Secret)
+import           Gonimo.Client.Prelude
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
+import           Control.Lens
+import           Control.Monad.Fix                       (MonadFix)
+import           Control.Monad.Trans.Class               (lift)
+import           Control.Monad.Trans.Maybe               (runMaybeT)
+import           Data.Maybe                              (fromMaybe, maybe)
+import           Data.Monoid
+import           Data.Text                               (Text)
+import           Gonimo.Client.AcceptInvitation.Internal
+import qualified Gonimo.SocketAPI                        as API
+import           Gonimo.SocketAPI.Types                  (InvitationInfo (..))
+import           Gonimo.SocketAPI.Types                  (InvitationReply (..))
+import           Gonimo.Types                            (Secret)
+import qualified Gonimo.Types                            as Gonimo
+import           Reflex.Dom
+import           GHCJS.DOM.Types (MonadJSM)
+
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
       => Config t -> m (AcceptInvitation t)
 ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
     secret <- getInvitationSecret
@@ -51,7 +45,7 @@ ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
                             _ -> pure Nothing
                         ) (config^.configResponse)
 
-ui' :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace)
+ui' :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace)
       => Secret -> InvitationInfo -> m (Event t [API.ServerRequest])
 ui' secret invInfo = do
   elClass "div" "panel panel-info" $ do
@@ -61,7 +55,7 @@ ui' secret invInfo = do
       el "tbody" $ do
         el "tr" $ do
           el "td" $ text "Family Name:"
-          el "td" $ text (Client.familyName . invitationInfoFamily $ invInfo)
+          el "td" $ text (Gonimo.familyName . invitationInfoFamily $ invInfo)
         el "tr" $ do
           el "td" $ text "Inviting Device:"
           el "td" $ text (invitationInfoSendingDevice invInfo)

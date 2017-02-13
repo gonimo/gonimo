@@ -16,10 +16,10 @@ import Gonimo.Types (Secret)
 import qualified Gonimo.Db.Entities as Db
 import qualified Gonimo.SocketAPI.Types as API
 import qualified Gonimo.SocketAPI as API
-import qualified GHCJS.DOM.JSFFI.Generated.Location as Location
-import qualified GHCJS.DOM.JSFFI.Generated.History as History
+import qualified GHCJS.DOM.Location as Location
+import qualified GHCJS.DOM.History as History
 import GHCJS.DOM.Types (ToJSVal, toJSVal, FromJSVal, fromJSVal, JSVal)
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
+import qualified GHCJS.DOM.Window as Window
 import qualified GHCJS.DOM as DOM
 import Control.Monad.Trans.Maybe
 import Data.Maybe (maybe)

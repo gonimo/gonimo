@@ -10,30 +10,24 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens
 import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId, InvitationId)
 import Gonimo.Types (Secret)
 import qualified Gonimo.SocketAPI as API
-import qualified GHCJS.DOM.JSFFI.Generated.Location as Location
-import qualified GHCJS.DOM.JSFFI.Generated.History as History
-import GHCJS.DOM.Types (ToJSVal, toJSVal, FromJSVal, fromJSVal, JSVal)
-import qualified GHCJS.DOM.JSFFI.Generated.Window as Window
+import qualified GHCJS.DOM.Location as Location
+import qualified GHCJS.DOM.History as History
+import GHCJS.DOM.Types (toJSVal) 
+import qualified GHCJS.DOM.Window as Window
 import qualified GHCJS.DOM as DOM
-import Control.Monad.Trans.Maybe
 import Data.Maybe (maybe)
 import qualified Data.Aeson as Aeson
 import qualified Data.Text.Encoding as T
 import qualified Data.Text as T
-import qualified Data.ByteString.Lazy as BL
 import Network.HTTP.Types (urlDecode)
-import Control.Monad.Fix (MonadFix)
-import qualified Data.Aeson as Aeson
 import Gonimo.SocketAPI.Types (InvitationReply)
 
 import qualified Gonimo.Client.App.Types as App
 import qualified Gonimo.Client.Auth as Auth
-import qualified Gonimo.Client.Server as Server
-import qualified Gonimo.Client.Subscriber as Subscriber
 import Gonimo.Client.Server (webSocket_recv)
+import           GHCJS.DOM.Types (MonadJSM, liftJSM)
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -56,7 +50,7 @@ fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
                    , _configAuthenticated = c^.App.auth^.Auth.authenticated
                    }
 
-getInvitationSecret :: forall m. (MonadPlus m, MonadIO m) => m Secret
+getInvitationSecret :: forall m. (MonadPlus m, MonadJSM m) => m Secret
 getInvitationSecret = do
     window  <- DOM.currentWindowUnchecked
     location <- Window.getLocationUnsafe window
@@ -70,13 +64,13 @@ getInvitationSecret = do
     let mDecoded = Aeson.decodeStrict . urlDecode True . T.encodeUtf8 $ secretString
     maybe mzero pure $ mDecoded
 
-clearInvitationFromURL :: forall m. (MonadIO m) => m ()
+clearInvitationFromURL :: forall m. (MonadJSM m) => m ()
 clearInvitationFromURL = do
     window  <- DOM.currentWindowUnchecked
     location <- Window.getLocationUnsafe window
     history <- Window.getHistoryUnsafe window
     href <- Location.getHref location
-    emptyJSVal <- liftIO $ toJSVal T.empty
+    emptyJSVal <- liftJSM $ toJSVal T.empty
     History.pushState history emptyJSVal ("gonimo" :: Text) (T.takeWhile (/='?') href)
 
 makeClaimInvitation :: forall t. (Reflex t) => Config t -> Secret -> Event t [API.ServerRequest]
