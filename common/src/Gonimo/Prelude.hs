@@ -8,6 +8,7 @@ module Gonimo.Prelude ( MaybeT(..)
                       , module Safe
                       , module Monoid
                       , module Applicative
+                      , module Monad
                       , Text
                       ) where
 
@@ -20,3 +21,4 @@ import Safe as Safe (headMay)
 import Data.Text (Text)
 import Data.Monoid as Monoid
 import Control.Applicative as Applicative
+import Control.Monad as Monad
