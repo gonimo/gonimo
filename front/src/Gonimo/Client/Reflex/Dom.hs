@@ -3,16 +3,20 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs #-}
 -- | Reflex helper functions
 module Gonimo.Client.Reflex.Dom where
 
 import Reflex.Dom
 import Control.Monad.Fix (MonadFix)
+import Data.Monoid
 import Data.Map (Map)
 import Data.Text (Text)
 import qualified Data.Map as Map
 import Data.Maybe (listToMaybe)
 import Control.Lens
+import GHCJS.DOM.Types (MediaStream, liftJSM, MonadJSM)
+import qualified Language.Javascript.JSaddle                       as JS
 
 enterPressed :: Reflex t => Event t Int -> Event t ()
 enterPressed = push (\key -> pure $ if key == 13
@@ -65,3 +69,10 @@ customTabDisplay ulClass activeClass tabItems = do
     headerBarLink x k isSelected = do
       clicked <- x $ fmap (\b -> if b then activeClass else "") isSelected
       return $ fmap (const k) clicked
+
+mediaVideo :: (DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace)
+              => MediaStream -> Map Text Text -> m ()
+mediaVideo stream attrs = do
+  (videoTag, _) <- elAttr' "video" attrs blank
+  let rawElement =  _element_raw videoTag
+  liftJSM $ JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream

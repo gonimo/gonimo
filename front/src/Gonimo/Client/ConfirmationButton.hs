@@ -31,7 +31,7 @@ confirmationButton attrs inner confirmationText = mdo
 
 confirmationBox :: forall t m. ConfirmationConstraint t m => m () -> m (Event t Confirmed)
 confirmationBox confirmationText = do
-  elClass "div" "hCenteredOverlay" $ do
+  elClass "div" "hCenteredOverlay fullScreen" $ do
     elClass "div" "vCenteredBox" $ do
       elClass "div" "panel panel-default" $ do
         elClass "div" "panel-heading" $ elClass "h3" "panel-title" $ text "Are you sure?"

@@ -27,7 +27,7 @@ editStringButton attrs inner editStringText val = mdo
 
 editStringBox :: forall t m. EditStringConstraint t m => m () -> Dynamic t Text -> m (Event t (Maybe Text))
 editStringBox editStringText val = do
-  elClass "div" "hCenteredOverlay" $ do
+  elClass "div" "hCenteredOverlay fullScreen" $ do
     elClass "div" "vCenteredBox" $ do
       elClass "div" "panel panel-default" $ do
         elClass "div" "panel-heading" $ elClass "h3" "panel-title" $ editStringText
