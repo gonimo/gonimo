@@ -71,19 +71,17 @@ cameraSelect baby' = do
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => m ()
 ui = mdo
-  navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
-  constr <- makeDefaultUserMediaDictionary
-  stream <- Navigator.getUserMedia navigator $ Just constr
-  -- Needs to be after get user media: !!!!!
-  baby' <- baby $ Config { _configSelectCamera = cameraSelected }
-  cameraSelected <- elClass "div" "container absoluteReference" $ do
-    mediaVideo stream ( "style" =: "height:100%; width:100%"
-                       <> "autoplay" =: "true"
-                       <> "muted" =: "true"
-                      )
-    elClass "div" "videoOverlay fullContainer" $ do
-      elClass "div" "vCenteredBox" $ do
-        elClass "div" "opaque" $ do
+    baby' <- baby $ Config { _configSelectCamera = cameraSelected }
+    cameraSelected <- elClass "div" "container absoluteReference" $ do
+      _ <- dyn $ renderVideo <$> baby'^.mediaStream
+      elClass "div" "videoOverlay fullContainer" $ do
+        elClass "div" "vCenteredBox" $ do
           cameraSelect baby'
-  pure ()
+    pure ()
+  where
+    renderVideo stream
+      = mediaVideo stream ( "style" =: "height:100%; width:100%"
+                            <> "autoplay" =: "true"
+                            <> "muted" =: "true"
+                          )
 
