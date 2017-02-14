@@ -58,7 +58,7 @@ cameraSelect baby' = do
 
 
     renderCameraSelector :: Text -> Dynamic t MediaDeviceInfo -> Dynamic t Bool ->  m (Event t ())
-    renderCameraSelector label mediaInfo selected' = do
+    renderCameraSelector label _ selected' = do
       elAttr "li" ("role" =: "presentation" <> "data-toggle" =: "collapse") $ do
         fmap (domEvent Click . fst )
         . elAttr' "a" ( "role" =: "menuitem"
