@@ -125,7 +125,7 @@ loadedUI config loaded currentTab = mdo
   let isBabyTab = demuxed currentTab $ Just TabBaby
   let babyAttrs = ffor isBabyTab $ \s -> if s then Map.empty else Map.singleton "style" "display:none;"
 
-  _ <- elDynAttr "div" babyAttrs $ Baby.ui ()
+  _ <- elDynAttr "div" babyAttrs $ Baby.ui
   
   let app = App { _request = familyUI^.Family.uiRequest
                           <> deviceList^.DeviceList.request

@@ -1,5 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.Baby.UI where
 
@@ -30,9 +31,11 @@ import           Gonimo.Client.EditStringButton    (editStringButton)
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
+import qualified Data.Map as Map
+import Gonimo.DOM.Navigator.MediaDevices
 
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
-                => Baby t -> m ()
+                => Baby t -> m (Event t Text)
 cameraSelect baby' = do
     elClass "div" "dropdown" $ do
       elAttr "button" ( "class" =: "btn btn-default dropdown-toggle"
@@ -40,27 +43,39 @@ cameraSelect baby' = do
                         <> "id" =: "cameraSelectBaby"
                         <> "data-toggle" =: "dropdown"
                       ) $ do
-        text "bliblablueh"
+        text " "
+        dynText $ baby'^.selectedCamera
+        text " "
         elClass "span" "caret" blank
-      elClass "ul" "dropdown-menu" $ do
-        sequence_ $ zipWith renderCamera [1..] (baby'^. videoDevices)
+      elClass "ul" "dropdown-menu" $ renderCameraSelectors
   where
-    renderCamera :: Int -> MediaDeviceInfo -> m ()
-    renderCamera num mediaInfo = do
-      elAttr "ul" ("role" =: "presentation") $ do
-        elAttr "a" ("role" =: "menuitem" <> "tabindex" =: "-1" <> "href" =: "#") $
-          text $ if mediaDeviceLabel mediaInfo == ""
-                 then "Camera " <> (T.pack . show) num
-                 else mediaDeviceLabel mediaInfo
+    videoMap = pure . Map.fromList $ zip
+                (baby'^.videoDevices.to (map mediaDeviceLabel))
+                (baby'^.videoDevices)
+
+    renderCameraSelectors
+      = fmap fst <$> selectViewListWithKey (baby'^.selectedCamera) videoMap renderCameraSelector
+
+
+    renderCameraSelector :: Text -> Dynamic t MediaDeviceInfo -> Dynamic t Bool ->  m (Event t ())
+    renderCameraSelector label mediaInfo selected' = do
+      elAttr "li" ("role" =: "presentation" <> "data-toggle" =: "collapse") $ do
+        fmap (domEvent Click . fst )
+        . elAttr' "a" ( "role" =: "menuitem"
+                        <> "tabindex" =: "-1" <> "href" =: "#"
+                      ) $ do
+          text label
+          dynText $ ffor selected' (\selected -> if selected then " ✔" else "")
 
 -- Overrides configCreateBaby && configLeaveBaby
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => Config t -> m ()
-ui config = do
-  window  <- DOM.currentWindowUnchecked
-  navigator <- Window.getNavigatorUnsafe window
+            => m ()
+ui = mdo
+  navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
   constr <- makeDefaultUserMediaDictionary
   _ <- Navigator.getUserMedia navigator $ Just constr
-  baby' <- baby config
-  elClass "div" "container" $ 
-    cameraSelect baby'
+  -- Needs to be after get user media: !!!!!
+  baby' <- baby $ Config { _configSelectCamera = cameraSelected }
+  cameraSelected <- elClass "div" "container" $ cameraSelect baby'
+  pure ()
+
