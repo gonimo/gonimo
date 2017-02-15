@@ -66,10 +66,10 @@ library
                     , ScopedTypeVariables
                     , FlexibleContexts
 
-  build-depends:        base >=4.8 && <4.10
-                      , aeson
+  build-depends:         aeson
                       , async
                       , attoparsec
+                      , base >=4.8 && <4.10
                       , base64-bytestring
                       , bytestring >= 0.10.6.0
                       , containers
@@ -117,7 +117,7 @@ library
 executable gonimo-back
   if flag(dev) 
       cpp-options:   -DDEVELOPMENT
-  ghc-options:        -threaded -O2 -rtsopts -with-rtsopts="-N -T" -Wall
+  ghc-options:        -threaded -O2 -rtsopts -with-rtsopts=-N -Wall
   main-is:            GonimoBack.hs
   hs-source-dirs:      app
   default-language:    Haskell2010
@@ -133,15 +133,14 @@ executable gonimo-back
                     , ScopedTypeVariables
                     , FlexibleContexts
 
-  build-depends:      base >=4.8 && <4.10
-                    , aeson
+  build-depends:       aeson
                     , attoparsec
+                    , base >=4.8 && <4.10
                     , base64-bytestring
                     , bytestring >= 0.10.6.0
                     , containers
                     , crypto-api
                     , either >= 4.4.1
-                    , ekg
                     , errors
                     , fast-logger
                     , gonimo-back

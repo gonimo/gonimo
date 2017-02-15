@@ -24,7 +24,6 @@ import           Data.Typeable
 import           System.Environment (lookupEnv)
 import           Gonimo.Server.Error (fromMaybeErr)
 import           Safe (readMay)
-import           System.Remote.Monitoring
 
 data StartupError
   = NO_GONIMO_FRONTEND_URL
@@ -50,7 +49,6 @@ devMain = do
   , configPredicates = predicates
   , configFrontendURL = "http://localhost:8081/index.html"
   }
-  forkServer "localhost" 9081
   run 8081 $ addDevServer $ serve runGonimoLoggingT config
 
 prodMain :: IO ()
@@ -75,7 +73,6 @@ prodMain = do
   , configPredicates = predicates
   , configFrontendURL = T.pack frontendURL
   }
-  forkServer "localhost" (port+1000)
   run port $ serve runGonimoLoggingT config
 
 main :: IO ()
