@@ -32,11 +32,15 @@ import           Gonimo.DOM.Navigator.MediaDevices
 
 data Config t
   = Config  { _configSelectCamera :: Event t Text
+            , _configEnableCamera :: Event t Bool
             }
 
 data Baby t
   = Baby { _videoDevices :: [MediaDeviceInfo]
          , _selectedCamera :: Dynamic t Text
+         , _cameraEnabled :: Dynamic t Bool
+         -- Necessary to break cycle (RecursiveDo):
+         , _cameraEnabledInitial :: Bool
          , _mediaStream :: Dynamic t MediaStream
          }
 
@@ -51,18 +55,34 @@ baby config = do
   devices <- enumerateDevices
   let videoDevices' = filter ((== VideoInput) . mediaDeviceKind) devices
   selected <- handleCameraSelect config devices
+  (initEnabled, enabled)  <- handleCameraEnable config
+  let mSelected = (\enabled' selected' -> if enabled' then Just selected' else Nothing)
+                  <$> enabled <*> selected
 
-
-  gotNewStream <- performEvent $ getConstrainedMediaStream videoDevices' <$> updated selected
-  -- WARNING: Don't do that- -inifinte MonadFix loop will down over you! Or under!
+  gotNewStream <- performEvent $ getConstrainedMediaStream videoDevices' <$> updated mSelected
+  -- WARNING: Don't do that- -inifinte MonadFix loop will down on you!
   -- cSelected <- sample $ current selected
   mediaStream' <- holdDyn badInit gotNewStream
 
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
+              , _cameraEnabled = enabled
+              , _cameraEnabledInitial = initEnabled
               , _mediaStream = mediaStream'
               }
 
+handleCameraEnable :: forall m t. (HasWebView m, MonadWidget t m)
+                      => Config t -> m (Bool, (Dynamic t Bool))
+handleCameraEnable config = do
+    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    mLastEnabled <- GStorage.getItem storage GStorage.cameraEnabled
+
+    let initVal = fromMaybe True $ mLastEnabled
+
+    enabled <- holdDyn initVal (config^.configEnableCamera)
+    performEvent_
+      $ GStorage.setItem storage GStorage.CameraEnabled <$> updated enabled
+    pure (initVal, enabled)
 
 handleCameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                       => Config t -> [MediaDeviceInfo] -> m (Dynamic t Text)
@@ -93,15 +113,16 @@ getInitialMediaStream :: forall m t. (HasWebView m, MonadWidget t m)
                          => m MediaStream
 getInitialMediaStream = do
   navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
-  constr <- makeDefaultUserMediaDictionary
+  constr <- makeSimpleUserMediaDictionary True False
   Navigator.getUserMedia navigator $ Just constr
 
 getConstrainedMediaStream :: forall m. MonadJSM m
-                         => [MediaDeviceInfo] -> Text -> m MediaStream
-getConstrainedMediaStream infos label = do
-  let mInfo = getMediaDeviceByLabel label infos
+                         => [MediaDeviceInfo] -> Maybe Text -> m MediaStream
+getConstrainedMediaStream infos mLabel = do
+  let mInfo = flip getMediaDeviceByLabel infos =<< mLabel
   navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
-  constr <- case mInfo of
-    Nothing -> makeDefaultUserMediaDictionary
-    Just info -> makeDictionaryFromVideoInfo info
+  constr <- case (mInfo, mLabel) of
+    (_, Nothing)        -> makeSimpleUserMediaDictionary True False
+    (Nothing, Just _)   -> makeSimpleUserMediaDictionary True True
+    (Just info, Just _) -> makeDictionaryFromVideoInfo info
   Navigator.getUserMedia navigator $ Just constr

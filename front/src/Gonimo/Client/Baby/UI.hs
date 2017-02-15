@@ -37,7 +37,7 @@ import Gonimo.DOM.Navigator.MediaDevices
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Text)
 cameraSelect baby' = do
-    elClass "div" "dropdown" $ do
+    enabledElClass "div" "dropdown" (baby'^.cameraEnabled)$ do
       elAttr "button" ( "class" =: "btn btn-default dropdown-toggle"
                         <> "type" =: "button"
                         <> "id" =: "cameraSelectBaby"
@@ -49,6 +49,14 @@ cameraSelect baby' = do
         elClass "span" "caret" blank
       elClass "ul" "dropdown-menu" $ renderCameraSelectors
   where
+    enabledElClass name className enabled =
+      let
+        attrDyn = (\on -> if on
+                          then "class" =: className
+                          else "class" =: (className <> " disabled")) <$> enabled
+      in
+        elDynAttr name $ attrDyn
+
     videoMap = pure . Map.fromList $ zip
                 (baby'^.videoDevices.to (map mediaDeviceLabel))
                 (baby'^.videoDevices)
@@ -67,16 +75,29 @@ cameraSelect baby' = do
           text label
           dynText $ ffor selected' (\selected -> if selected then " ✔" else "")
 
+enableCameraCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
+                => Baby t -> m (Event t Bool)
+enableCameraCheckbox baby' = do
+  elClass "div" "form-group" $ do
+    elClass "div" "checkbox" $ do
+      el "label" $ do
+        changed <- _checkbox_change <$> checkbox (baby'^.cameraEnabledInitial) def
+        text "Enable camera"
+        return $ changed
+
 -- Overrides configCreateBaby && configLeaveBaby
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => m ()
 ui = mdo
-    baby' <- baby $ Config { _configSelectCamera = cameraSelected }
-    cameraSelected <- elClass "div" "container absoluteReference" $ do
+    baby' <- baby $ Config { _configSelectCamera = cameraSelected
+                           , _configEnableCamera = enabledCamera
+                           }
+    (enabledCamera, cameraSelected) <- elClass "div" "container absoluteReference" $ do
       _ <- dyn $ renderVideo <$> baby'^.mediaStream
       elClass "div" "videoOverlay fullContainer" $ do
         elClass "div" "vCenteredBox" $ do
-          cameraSelect baby'
+          (,) <$> enableCameraCheckbox baby'
+              <*> cameraSelect baby'
     pure ()
   where
     renderVideo stream

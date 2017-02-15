@@ -76,3 +76,11 @@ mediaVideo stream attrs = do
   (videoTag, _) <- elAttr' "video" attrs blank
   let rawElement =  _element_raw videoTag
   liftJSM $ JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
+
+-- Make a dynamic attribute list with the given attribute toggled on dyn changes.
+toggleAttr :: Reflex t => Text -> Dynamic t Bool -> Map Text Text -> Dynamic t (Map Text Text)
+toggleAttr attr onOff staticAttrs =
+  let
+    attrDyn = (\on -> if on then Map.empty else attr =: "true") <$> onOff
+  in
+    pure staticAttrs <> attrDyn

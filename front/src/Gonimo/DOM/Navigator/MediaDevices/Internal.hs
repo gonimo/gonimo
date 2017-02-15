@@ -82,11 +82,11 @@ makeDictionaryFromVideoInfo info = liftJSM $ do
   pure $ case rawDic of
            JS.Object val -> Dictionary val
 
-makeDefaultUserMediaDictionary :: (MonadJSM m) => m Dictionary
-makeDefaultUserMediaDictionary = liftJSM $ do
+makeSimpleUserMediaDictionary :: (MonadJSM m) => Bool -> Bool -> m Dictionary
+makeSimpleUserMediaDictionary audio video= liftJSM $ do
   rawDic <- JS.obj
-  rawDic <# "video" $ True
-  rawDic <# "audio" $ True
+  rawDic <# "audio" $ audio
+  rawDic <# "video" $ video
   case rawDic of
     JS.Object val -> do
       -- eval "console" ^. jsf "log" [val^.js "video"^. js0 "toString" ]

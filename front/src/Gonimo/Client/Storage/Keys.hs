@@ -11,7 +11,7 @@ import GHC.Generics (Generic)
 
 data Key a = KeyAuthData
            | CurrentFamily
-           | VideoEnabled
+           | CameraEnabled
            | SelectedCamera
 
 deriving instance Generic (Key a)
@@ -25,6 +25,9 @@ currentFamily = CurrentFamily
 
 selectedCamera :: Key Text
 selectedCamera = SelectedCamera
+
+cameraEnabled :: Key Bool
+cameraEnabled = CameraEnabled
 
 instance FromJSON (Key a)
 instance ToJSON (Key a) where
