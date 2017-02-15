@@ -9,6 +9,7 @@ module Gonimo.Client.Baby.Internal where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
+import           Data.Maybe (catMaybes)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Set                          ((\\))
@@ -16,6 +17,8 @@ import qualified Data.Set                          as Set
 import qualified GHCJS.DOM                         as DOM
 import qualified GHCJS.DOM.Navigator               as Navigator
 import qualified GHCJS.DOM.Window                  as Window
+import qualified GHCJS.DOM.MediaStream             as MediaStream
+import qualified GHCJS.DOM.MediaStreamTrack        as MediaStreamTrack
 import           Gonimo.Client.Server              (webSocket_recv)
 import qualified Gonimo.Client.Storage             as GStorage
 import qualified Gonimo.Client.Storage.Keys        as GStorage
@@ -50,7 +53,7 @@ makeLenses ''Baby
 
 baby :: forall m t. (MonadWidget t m)
         => Config t -> m (Baby t)
-baby config = do
+baby config = mdo
   badInit <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!
   devices <- enumerateDevices
   let videoDevices' = filter ((== VideoInput) . mediaDeviceKind) devices
@@ -59,7 +62,7 @@ baby config = do
   let mSelected = (\enabled' selected' -> if enabled' then Just selected' else Nothing)
                   <$> enabled <*> selected
 
-  gotNewStream <- performEvent $ getConstrainedMediaStream videoDevices' <$> updated mSelected
+  gotNewStream <- performEvent $ getConstrainedMediaStream mediaStream' videoDevices' <$> updated mSelected
   -- WARNING: Don't do that- -inifinte MonadFix loop will down on you!
   -- cSelected <- sample $ current selected
   mediaStream' <- holdDyn badInit gotNewStream
@@ -116,9 +119,11 @@ getInitialMediaStream = do
   constr <- makeSimpleUserMediaDictionary True False
   Navigator.getUserMedia navigator $ Just constr
 
-getConstrainedMediaStream :: forall m. MonadJSM m
-                         => [MediaDeviceInfo] -> Maybe Text -> m MediaStream
-getConstrainedMediaStream infos mLabel = do
+getConstrainedMediaStream :: forall m t. (MonadJSM m, Reflex t, MonadSample t m)
+                         => Dynamic t MediaStream -> [MediaDeviceInfo] -> Maybe Text -> m MediaStream
+getConstrainedMediaStream mediaStreams infos mLabel = do
+  oldStream <- sample $ current mediaStreams
+  stopMediaStream oldStream
   let mInfo = flip getMediaDeviceByLabel infos =<< mLabel
   navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
   constr <- case (mInfo, mLabel) of
@@ -126,3 +131,9 @@ getConstrainedMediaStream infos mLabel = do
     (Nothing, Just _)   -> makeSimpleUserMediaDictionary True True
     (Just info, Just _) -> makeDictionaryFromVideoInfo info
   Navigator.getUserMedia navigator $ Just constr
+
+
+stopMediaStream :: forall m. MonadJSM m => MediaStream -> m ()
+stopMediaStream stream = do
+  tracks <- catMaybes <$> MediaStream.getTracks stream
+  traverse_ MediaStreamTrack.stop tracks
