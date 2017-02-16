@@ -26,6 +26,7 @@ import Control.Monad.Fix (MonadFix)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Control.Applicative
 import Gonimo.Client.Server (webSocket_recv)
+import Data.Default (Default(..))
 
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Client.App.Types as App
@@ -33,6 +34,8 @@ import qualified Gonimo.Client.Auth as Auth
 
 
 type FamilyMap = Map FamilyId Db.Family
+
+data GonimoRole = RoleBaby | RoleParent deriving (Eq, Ord)
 
 data Config t
   = Config { _configResponse :: Event t API.ServerResponse
@@ -56,7 +59,7 @@ data UI t
         _uiCreateFamily  :: Event t ()
        , _uiLeaveFamily  :: Event t ()
        , _uiSetName :: Event t Text
-       , _uiRequest :: Event t [ API.ServerRequest ]
+       , _uiRoleSelected :: Event t GonimoRole
        }
 
 data DefiniteFamily t
@@ -69,6 +72,9 @@ makeLenses ''Config
 makeLenses ''Family
 makeLenses ''UI
 makeLenses ''DefiniteFamily
+
+instance Reflex t => Default (UI t) where
+  def = UI never never never never
 
 fromApp :: Reflex t => App.Config t -> Config t
 fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
@@ -86,7 +92,15 @@ uiSwitchPromptly ev
        <$> switchPromptly never (_uiCreateFamily <$> ev)
        <*> switchPromptly never (_uiLeaveFamily <$> ev)
        <*> switchPromptly never (_uiSetName <$> ev)
-       <*> switchPromptly never (_uiRequest <$> ev)
+       <*> switchPromptly never (_uiRoleSelected <$> ev)
+
+uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
+uiSwitchPromptlyDyn ev
+  = UI -- <$> switchPromptly never (_uiSelectFamily <$> ev)
+       (switchPromptlyDyn  (_uiCreateFamily <$> ev))
+       (switchPromptlyDyn  (_uiLeaveFamily <$> ev))
+       (switchPromptlyDyn  (_uiSetName <$> ev))
+       (switchPromptlyDyn  (_uiRoleSelected <$> ev))
 
 -- makeDefinite :: forall m t. Reflex t => Family t -> Dynamic t (Maybe DefiniteFamily t)
 -- makeDefinite family' =

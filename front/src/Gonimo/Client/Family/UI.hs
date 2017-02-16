@@ -22,18 +22,21 @@ import qualified Gonimo.Client.Auth               as Auth
 import           Gonimo.Client.ConfirmationButton (confirmationButton)
 import           Gonimo.Client.EditStringButton   (editStringButton)
 import           Gonimo.Client.Family.Internal
+import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server             (webSocket_recv)
 
 -- Overrides configCreateFamily && configLeaveFamily
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (UI t)
-ui appConfig loaded deviceList = mdo
+            => App.Config t -> App.Loaded t -> m (UI t)
+ui _ loaded = mdo
     let
       getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
       getFamilyName fid families' = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
 
       cFamilyName = zipDynWith getFamilyName (loaded^.App.selectedFamily) (loaded^.App.families)
+
+    roleSelected <- roleSelector
 
     elClass "div" "container" $ do
       clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
@@ -48,13 +51,13 @@ ui appConfig loaded deviceList = mdo
                         )
                         (text "Change your family name to ...")
                         cFamilyName
-      devicesReqs <-  devices appConfig loaded deviceList
+      -- devicesReqs <-  devices appConfig loaded deviceList
 
 
       pure $ UI { _uiCreateFamily = clickedAdd
                 , _uiLeaveFamily = clickedLeave
                 , _uiSetName  = nameChanged
-                , _uiRequest = devicesReqs
+                , _uiRoleSelected = roleSelected
                 }
 
 

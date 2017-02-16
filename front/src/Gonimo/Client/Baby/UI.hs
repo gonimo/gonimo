@@ -34,6 +34,34 @@ import           Gonimo.DOM.Navigator.MediaDevices
 import qualified Data.Map as Map
 import Gonimo.DOM.Navigator.MediaDevices
 
+
+-- Overrides configCreateBaby && configLeaveBaby
+ui :: forall m t. (HasWebView m, MonadWidget t m)
+            => m (Event t ())
+ui = mdo
+    baby' <- baby $ Config { _configSelectCamera = cameraSelected
+                           , _configEnableCamera = enabledCamera
+                           }
+    (enabledCamera, cameraSelected, startPressed) <- elClass "div" "container absoluteReference" $ do
+      _ <- dyn $ renderVideo <$> baby'^.mediaStream
+      elClass "div" "videoOverlay fullContainer" $ do
+        elClass "div" "vCenteredBox" $ do
+          (,,) <$> enableCameraCheckbox baby'
+              <*> cameraSelect baby'
+              <*> ( buttonAttr ("class" =: "btn btn-lg btn-success") $ do
+                      text "Start "
+                      elClass "span" "glyphicon glyphicon-ok" blank
+                      
+                  )
+    pure never
+  where
+    renderVideo stream
+      = mediaVideo stream ( "style" =: "height:100%; width:100%"
+                            <> "autoplay" =: "true"
+                            <> "muted" =: "true"
+                          )
+
+
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Text)
 cameraSelect baby' = do
@@ -84,25 +112,3 @@ enableCameraCheckbox baby' = do
         changed <- _checkbox_change <$> checkbox (baby'^.cameraEnabledInitial) def
         text "Enable camera"
         return $ changed
-
--- Overrides configCreateBaby && configLeaveBaby
-ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => m ()
-ui = mdo
-    baby' <- baby $ Config { _configSelectCamera = cameraSelected
-                           , _configEnableCamera = enabledCamera
-                           }
-    (enabledCamera, cameraSelected) <- elClass "div" "container absoluteReference" $ do
-      _ <- dyn $ renderVideo <$> baby'^.mediaStream
-      elClass "div" "videoOverlay fullContainer" $ do
-        elClass "div" "vCenteredBox" $ do
-          (,) <$> enableCameraCheckbox baby'
-              <*> cameraSelect baby'
-    pure ()
-  where
-    renderVideo stream
-      = mediaVideo stream ( "style" =: "height:100%; width:100%"
-                            <> "autoplay" =: "true"
-                            <> "muted" =: "true"
-                          )
-

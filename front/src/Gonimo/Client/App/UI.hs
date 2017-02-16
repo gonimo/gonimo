@@ -1,6 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TupleSections #-}
 module Gonimo.Client.App.UI where
 
 import           Control.Lens
@@ -22,36 +23,11 @@ import qualified Gonimo.Client.MessageBox       as MessageBox
 import           Gonimo.Client.Server           (webSocket_recv)
 import           Gonimo.Client.Reflex.Dom       (tabBar)
 import qualified Gonimo.Client.Baby             as Baby
-import           Control.Monad.IO.Class 
 
-
-data GonimoTab = TabFamily | TabBaby | TabParent deriving (Eq, Ord)
-
-gonimoTabs :: forall t m. (MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m)
-          => m (Demux t (Maybe GonimoTab))
-gonimoTabs = do
-  let mkLabel inner selectClass = do
-        let staticAttrs = "role" =: "button"
-        let dynAttrs = fmap ("class" =:) selectClass
-        (e, _) <- elDynAttr' "li" (pure staticAttrs <> dynAttrs) inner
-        pure $ domEvent Click e
-  let tabs = [ mkLabel $ el "span" $ do
-                    text "Family"
-                    elClass "span" "hidden-xs" $ text " Managment"
-              , mkLabel $ el "span" $ do
-                    text "Baby"
-                    elClass "span" "hidden-xs" $ text " Station"
-              , mkLabel $ el "span" $ do
-                    text "Parent"
-                    elClass "span" "hidden-xs" $ text " Station"
-              ]
-  let testMap = Map.fromList $ zip [TabFamily, TabBaby, TabParent] tabs
-  elClass "div" "container hCenteredBox" $
-    tabBar "pagination pagination-lg" "active" testMap
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
       => Config t -> m (App t)
-ui config = mdo
+ui config = elClass "div" "app" $ mdo
   family <- Family.family
             $ (Family.fromApp config) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily, navSelectFamily ]
                                       & Family.configCreateFamily .~ leftmost [ familyUI^.Family.uiCreateFamily,  navCreateFamily ]
@@ -62,8 +38,6 @@ ui config = mdo
   let navCreateFamily = push (pure . (^?_Left)) navEv
   let navSelectFamily = push (pure . (^?_Right)) navEv
 
-  currentTab <- gonimoTabs
-
   msgBox <- MessageBox.ui $ MessageBox.fromApp config
 
   let msgSwitchFamily = push (\actions -> case actions of
@@ -72,7 +46,8 @@ ui config = mdo
                             ) (msgBox ^. MessageBox.action)
 
   accept <- AcceptInvitation.ui $ AcceptInvitation.fromApp config
-  (app, familyUI) <- runLoaded config family currentTab
+  (app, familyUI) <- runLoaded config family
+
   pure $ app & request %~ (<> (  family^.Family.request
                               <> accept^.AcceptInvitation.request
                               )
@@ -81,8 +56,8 @@ ui config = mdo
 
 
 runLoaded :: forall m t. (HasWebView m, MonadWidget t m)
-      => Config t -> Family.Family t -> Demux t (Maybe GonimoTab) -> m (App t, Family.UI t)
-runLoaded config family currentTab = do
+      => Config t -> Family.Family t -> m (App t, Family.UI t)
+runLoaded config family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
   evReady <- waitForJust
              $ zipDynWith mkFuncPair (config^.auth.Auth.authData) (family^.Family.families)
@@ -96,7 +71,7 @@ runLoaded config family currentTab = do
           )
           (\selected -> do
               let loaded = Loaded (fst <$> dynAuthFamilies) (snd <$> dynAuthFamilies) selected
-              loadedUI config loaded currentTab
+              loadedUI config loaded
           )
           (family^.Family.selectedFamily)
   let notReady = do
@@ -110,29 +85,35 @@ runLoaded config family currentTab = do
 
 
 loadedUI :: forall m t. (HasWebView m, MonadWidget t m)
-      => Config t -> Loaded t -> Demux t (Maybe GonimoTab) -> m (App t, Family.UI t)
-loadedUI config loaded currentTab = mdo
+      => Config t -> Loaded t -> m (App t, Family.UI t)
+loadedUI config loaded = mdo
   deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.webSocket_recv
                                                           , DeviceList._configAuthData = config^.auth.Auth.authData
                                                           , DeviceList._configFamilyId = loaded^.selectedFamily
                                                           }
-  let isFamilyTab = demuxed currentTab $ Just TabFamily
-  let familyAttrs = ffor isFamilyTab $ \s -> if s then Map.empty else Map.singleton "style" "display:none;"
+  dynPair <- widgetHold
+             ((never,) <$> Family.ui config loaded)
+             (renderCenter config loaded <$> roleSelected)
 
-  familyUI <- elDynAttr "div" familyAttrs $
-                Family.ui config loaded deviceList
+  let cancelled = switchPromptlyDyn . fmap fst $ dynPair
+  let familyUI = Family.uiSwitchPromptlyDyn . fmap snd $ dynPair
 
-  let isBabyTab = demuxed currentTab $ Just TabBaby
-  let babyAttrs = ffor isBabyTab $ \s -> if s then Map.empty else Map.singleton "style" "display:none;"
+  let roleSelected = Just <$> familyUI^.Family.uiRoleSelected
 
-  _ <- elDynAttr "div" babyAttrs $ Baby.ui
-  
-  let app = App { _request = familyUI^.Family.uiRequest
-                          <> deviceList^.DeviceList.request
+  let app = App { _request = deviceList^.DeviceList.request
                 , _subscriptions = deviceList^.DeviceList.subscriptions
                 }
   pure (app, familyUI)
 
+
+-- Returned pair: Cancel event (go back to family screen and Family.UI)
+renderCenter :: forall m t. (HasWebView m, MonadWidget t m)
+      => Config t -> Loaded t -> Maybe Family.GonimoRole -> m (Event t (), Family.UI t)
+renderCenter config loaded mRole
+  = case mRole of
+      Nothing -> (never,) <$> Family.ui config loaded
+      Just Family.RoleBaby -> (, def) <$> Baby.ui
+      Just Family.RoleParent -> pure (never, def) -- Not yet implemented!
 
 navBar :: forall m t. (HasWebView m, MonadWidget t m)
       => Family.Family t -> m (Event t (Either () Db.FamilyId))

@@ -68,6 +68,7 @@ library
                     , time
                     , mtl
                     , jsaddle
+                    , data-default
                     -- , ghcjs-base
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Config
@@ -86,6 +87,7 @@ library
                     , Gonimo.Client.Family
                     , Gonimo.Client.Family.Internal
                     , Gonimo.Client.Family.UI
+                    , Gonimo.Client.Family.RoleSelector
                     , Gonimo.Client.DeviceList
                     , Gonimo.Client.DeviceList.Internal
                     , Gonimo.Client.DeviceList.UI

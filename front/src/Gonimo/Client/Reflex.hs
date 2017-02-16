@@ -15,6 +15,9 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set ((\\))
 
+-- class FlattenAble a where
+--   flattenEvent ::  forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t a -> m a
+
 -- Build an event that only triggers on the very first occurrence of the input event.
 waitForReady :: forall t m a. (MonadHold t m, Reflex t, MonadFix m) => Event t a -> m (Event t (Dynamic t a))
 waitForReady inEv = do
