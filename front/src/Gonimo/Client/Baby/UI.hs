@@ -22,26 +22,31 @@ import qualified Data.Text                         as T
 import qualified GHCJS.DOM                         as DOM
 import qualified GHCJS.DOM.Navigator               as Navigator
 -- import qualified JSDOM.Custom.Navigator               as Navigator
+import qualified Data.Map                          as Map
 import qualified GHCJS.DOM.Window                  as Window
 import qualified Gonimo.Client.App.Types           as App
+import qualified Gonimo.Client.DeviceList          as DeviceList
 import qualified Gonimo.Client.Auth                as Auth
 import           Gonimo.Client.Baby.Internal
 import           Gonimo.Client.ConfirmationButton  (confirmationButton)
 import           Gonimo.Client.EditStringButton    (editStringButton)
+import qualified Gonimo.Client.App.Types     as App
+import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
-import qualified Data.Map as Map
-import Gonimo.DOM.Navigator.MediaDevices
+import           Gonimo.DOM.Navigator.MediaDevices
 
 
 -- Overrides configCreateBaby && configLeaveBaby
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => m (Event t ())
-ui = mdo
+            => App.Loaded t -> DeviceList.DeviceList t -> m (Event t ())
+ui loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = cameraSelected
                            , _configEnableCamera = enabledCamera
                            }
+    let deviceName = DeviceList.ownDeviceName (loaded^.App.authData) deviceList
+    navbar <- NavBar.navBar (NavBar.Config loaded deviceName)
     (enabledCamera, cameraSelected, startPressed) <- elClass "div" "container absoluteReference" $ do
       _ <- dyn $ renderVideo <$> baby'^.mediaStream
       elClass "div" "videoOverlay fullContainer" $ do
@@ -51,9 +56,13 @@ ui = mdo
               <*> ( buttonAttr ("class" =: "btn btn-lg btn-success") $ do
                       text "Start "
                       elClass "span" "glyphicon glyphicon-ok" blank
-                      
                   )
-    pure never
+    let cancelled = leftmost [navbar^.NavBar.backClicked, navbar^.NavBar.homeClicked]
+    performEvent_ $ const (do
+                              cStream <- sample $ current (baby'^.mediaStream)
+                              stopMediaStream cStream
+                          ) <$> cancelled
+    pure cancelled
   where
     renderVideo stream
       = mediaVideo stream ( "style" =: "height:100%; width:100%"

@@ -9,10 +9,7 @@ import           Data.Monoid
 import qualified Data.Set                       as Set
 import qualified Gonimo.Client.DeviceList       as DeviceList
 import           Gonimo.Client.Reflex
-import qualified Gonimo.Db.Entities             as Db
 import           Reflex.Dom
-import qualified Data.Map                       as Map
-import           Control.Monad.Fix              (MonadFix)
 
 import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import           Gonimo.Client.App.Internal
@@ -21,22 +18,24 @@ import qualified Gonimo.Client.Auth             as Auth
 import qualified Gonimo.Client.Family           as Family
 import qualified Gonimo.Client.MessageBox       as MessageBox
 import           Gonimo.Client.Server           (webSocket_recv)
-import           Gonimo.Client.Reflex.Dom       (tabBar)
 import qualified Gonimo.Client.Baby             as Baby
+import           Gonimo.Client.Reflex.Dom
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
       => Config t -> m (App t)
 ui config = elClass "div" "app" $ mdo
   family <- Family.family
-            $ (Family.fromApp config) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily, navSelectFamily ]
-                                      & Family.configCreateFamily .~ leftmost [ familyUI^.Family.uiCreateFamily,  navCreateFamily ]
+            $ (Family.fromApp config) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
+                                                                              , familyUI^.Family.uiSelectFamily
+                                                                              ]
+                                      & Family.configCreateFamily .~ familyUI^.Family.uiCreateFamily
                                       & Family.configLeaveFamily .~ familyUI^.Family.uiLeaveFamily
                                       & Family.configSetName .~ familyUI^.Family.uiSetName
 
-  navEv <- navBar family
-  let navCreateFamily = push (pure . (^?_Left)) navEv
-  let navSelectFamily = push (pure . (^?_Right)) navEv
+  -- navEv <- navBar family
+  -- let navCreateFamily = push (pure . (^?_Left)) navEv
+  -- let navSelectFamily = push (pure . (^?_Right)) navEv
 
   msgBox <- MessageBox.ui $ MessageBox.fromApp config
 
@@ -65,9 +64,10 @@ runLoaded config family = do
   let onReady dynAuthFamilies =
         fromMaybeDyn
           (do
+              clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
               elClass "div" "container" $ text "Create a family to get started (+)"
               subs <- holdDyn Set.empty never
-              pure (App subs never, Family.UI never never never never)
+              pure (App subs never, Family.UI never clickedAdd never never never)
           )
           (\selected -> do
               let loaded = Loaded (fst <$> dynAuthFamilies) (snd <$> dynAuthFamilies) selected
@@ -93,12 +93,12 @@ loadedUI config loaded = mdo
                                                           }
   dynPair <- widgetHold
              ((never,) <$> Family.ui config loaded)
-             (renderCenter config loaded <$> roleSelected)
+             (renderCenter config loaded deviceList <$> roleSelected)
 
   let cancelled = switchPromptlyDyn . fmap fst $ dynPair
   let familyUI = Family.uiSwitchPromptlyDyn . fmap snd $ dynPair
 
-  let roleSelected = Just <$> familyUI^.Family.uiRoleSelected
+  let roleSelected = leftmost [Just <$> familyUI^.Family.uiRoleSelected, const Nothing <$> cancelled]
 
   let app = App { _request = deviceList^.DeviceList.request
                 , _subscriptions = deviceList^.DeviceList.subscriptions
@@ -108,25 +108,9 @@ loadedUI config loaded = mdo
 
 -- Returned pair: Cancel event (go back to family screen and Family.UI)
 renderCenter :: forall m t. (HasWebView m, MonadWidget t m)
-      => Config t -> Loaded t -> Maybe Family.GonimoRole -> m (Event t (), Family.UI t)
-renderCenter config loaded mRole
+      => Config t -> Loaded t -> DeviceList.DeviceList t -> Maybe Family.GonimoRole -> m (Event t (), Family.UI t)
+renderCenter config loaded deviceList mRole
   = case mRole of
       Nothing -> (never,) <$> Family.ui config loaded
-      Just Family.RoleBaby -> (, def) <$> Baby.ui
+      Just Family.RoleBaby -> (, def) <$> Baby.ui loaded deviceList
       Just Family.RoleParent -> pure (never, def) -- Not yet implemented!
-
-navBar :: forall m t. (HasWebView m, MonadWidget t m)
-      => Family.Family t -> m (Event t (Either () Db.FamilyId))
-navBar family = do
-  elClass "div" "navbar navbar-default" $ do
-    elClass "div" "container" $ do
-      elClass "div" "navbar-header" $
-        navLogo
-      elClass "ul" "nav navbar-nav" $ Family.familyChooser family
-  where
-    navLogo
-      = elAttr "img" ( "alt" =: "gonimo"
-                     <> "src" =: "pix/gonimo-brand-01.svg"
-                     <> "height" =: "50px"
-                     <> "style" =: "padding: 2px 3.5px 0px 3.5px;"
-                     ) blank

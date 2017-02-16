@@ -8,6 +8,7 @@ import           Control.Lens
 import           Control.Monad.Fix        (MonadFix)
 import           Data.List                (sort)
 import           Data.Map                 (Map)
+import           Data.Text                 (Text)
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromMaybe)
 import           Data.Monoid
@@ -20,6 +21,7 @@ import qualified Gonimo.SocketAPI         as API
 import qualified Gonimo.SocketAPI.Types   as API
 import           Gonimo.Types             (DeviceType)
 import           Reflex.Dom
+import           Gonimo.Client.Prelude
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 type NestedDeviceInfos t = Map AccountId (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
@@ -41,6 +43,15 @@ data DeviceList t
 
 makeLenses ''Config
 makeLenses ''DeviceList
+
+ownDeviceName :: forall t. Reflex t => Dynamic t API.AuthData -> DeviceList t -> Dynamic t Text
+ownDeviceName auth deviceList' = fmap (fromMaybe "") . runMaybeT $ do
+  aid <- lift $ API.accountId <$> auth
+  did <- lift $ API.deviceId <$> auth
+  deviceIds <- MaybeT $ Map.lookup aid <$> (deviceList'^.deviceInfos)
+  deviceInfo <- MaybeT $ Map.lookup did <$> deviceIds
+  lift $ API.deviceInfoName <$> deviceInfo
+
 
 deviceList :: forall m t. (HasWebView m, MonadWidget t m) => Config t -> m (DeviceList t)
 deviceList config = do

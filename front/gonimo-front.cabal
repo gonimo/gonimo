@@ -100,6 +100,9 @@ library
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
+                    , Gonimo.Client.NavBar.Internal
+                    , Gonimo.Client.NavBar.UI
+                    , Gonimo.Client.NavBar
                     , Gonimo.Client.Baby.Internal
                     , Gonimo.Client.Baby.UI
                     , Gonimo.Client.Baby

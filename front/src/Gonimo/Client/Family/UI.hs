@@ -30,15 +30,13 @@ import           Gonimo.Client.Server             (webSocket_recv)
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> m (UI t)
 ui _ loaded = mdo
-    let
-      getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
-      getFamilyName fid families' = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
+    let cFamilyName = currentFamilyName
+                      $ DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)
 
-      cFamilyName = zipDynWith getFamilyName (loaded^.App.selectedFamily) (loaded^.App.families)
-
-    roleSelected <- roleSelector
 
     elClass "div" "container" $ do
+      familySelected <- elClass "ul" "nav navbar-nav" $
+                        familyChooser' $ DefiniteFamily  (loaded^.App.families) (loaded^.App.selectedFamily)
       clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
       clickedLeave <- confirmationButton ("class" =: "btn btn-danger") (text "-")
                         (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
@@ -51,10 +49,13 @@ ui _ loaded = mdo
                         )
                         (text "Change your family name to ...")
                         cFamilyName
+
+      roleSelected <- roleSelector
       -- devicesReqs <-  devices appConfig loaded deviceList
 
 
-      pure $ UI { _uiCreateFamily = clickedAdd
+      pure $ UI { _uiSelectFamily = familySelected
+                , _uiCreateFamily = clickedAdd
                 , _uiLeaveFamily = clickedLeave
                 , _uiSetName  = nameChanged
                 , _uiRoleSelected = roleSelected

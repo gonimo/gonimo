@@ -27,6 +27,7 @@ import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Control.Applicative
 import Gonimo.Client.Server (webSocket_recv)
 import Data.Default (Default(..))
+import qualified Gonimo.Types                     as Gonimo
 
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Client.App.Types as App
@@ -55,8 +56,8 @@ data Family t
            }
 
 data UI t
-  = UI { -- _uiSelectFamily :: Event t FamilyId
-        _uiCreateFamily  :: Event t ()
+  = UI { _uiSelectFamily :: Event t FamilyId
+       , _uiCreateFamily  :: Event t ()
        , _uiLeaveFamily  :: Event t ()
        , _uiSetName :: Event t Text
        , _uiRoleSelected :: Event t GonimoRole
@@ -74,7 +75,7 @@ makeLenses ''UI
 makeLenses ''DefiniteFamily
 
 instance Reflex t => Default (UI t) where
-  def = UI never never never never
+  def = UI never never never never never
 
 fromApp :: Reflex t => App.Config t -> Config t
 fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
@@ -88,19 +89,19 @@ fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
 
 uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
 uiSwitchPromptly ev
-  = UI -- <$> switchPromptly never (_uiSelectFamily <$> ev)
-       <$> switchPromptly never (_uiCreateFamily <$> ev)
+  = UI <$> switchPromptly never (_uiSelectFamily <$> ev)
+       <*> switchPromptly never (_uiCreateFamily <$> ev)
        <*> switchPromptly never (_uiLeaveFamily <$> ev)
        <*> switchPromptly never (_uiSetName <$> ev)
        <*> switchPromptly never (_uiRoleSelected <$> ev)
 
 uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
 uiSwitchPromptlyDyn ev
-  = UI -- <$> switchPromptly never (_uiSelectFamily <$> ev)
-       (switchPromptlyDyn  (_uiCreateFamily <$> ev))
-       (switchPromptlyDyn  (_uiLeaveFamily <$> ev))
-       (switchPromptlyDyn  (_uiSetName <$> ev))
-       (switchPromptlyDyn  (_uiRoleSelected <$> ev))
+  = UI (switchPromptlyDyn (_uiSelectFamily <$> ev))
+       (switchPromptlyDyn (_uiCreateFamily <$> ev))
+       (switchPromptlyDyn (_uiLeaveFamily <$> ev))
+       (switchPromptlyDyn (_uiSetName <$> ev))
+       (switchPromptlyDyn (_uiRoleSelected <$> ev))
 
 -- makeDefinite :: forall m t. Reflex t => Family t -> Dynamic t (Maybe DefiniteFamily t)
 -- makeDefinite family' =
@@ -111,6 +112,14 @@ uiSwitchPromptlyDyn ev
 --       famInit <- mFam
 --       selInit <- mSel
 --       pure $ DefiniteFamily { definiteFamilies = hold}
+
+currentFamilyName :: forall t. Reflex t => DefiniteFamily t -> Dynamic t Text
+currentFamilyName df =
+    let
+      getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
+      getFamilyName fid families' = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
+    in
+      zipDynWith getFamilyName (df^.definiteSelected) (df^.definiteFamilies)
 
 family :: forall m t. (MonadWidget t m) => Config t -> m (Family t)
 family config = do
