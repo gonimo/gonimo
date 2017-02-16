@@ -47,7 +47,7 @@ ui loaded deviceList = mdo
                            }
     let deviceName = DeviceList.ownDeviceName (loaded^.App.authData) deviceList
     navbar <- NavBar.navBar (NavBar.Config loaded deviceName)
-    (enabledCamera, cameraSelected, startPressed) <- elClass "div" "container absoluteReference" $ do
+    (enabledCamera, cameraSelected, _) <- elClass "div" "container absoluteReference" $ do
       _ <- dyn $ renderVideo <$> baby'^.mediaStream
       elClass "div" "videoOverlay fullContainer" $ do
         elClass "div" "vCenteredBox" $ do
