@@ -9,11 +9,12 @@ import Reflex.Dom
 import Control.Lens
 import Data.Text (Text)
 import qualified Gonimo.Client.App.Types as App
+import qualified Gonimo.Client.DeviceList.Internal as DeviceList
 
 
 data Config t
   = Config { _configLoaded :: App.Loaded t
-           , _configDeviceName :: Dynamic t Text
+           , _configDeviceList :: DeviceList.DeviceList t
            }
 
 data NavBar t
