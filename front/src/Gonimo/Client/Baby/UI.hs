@@ -17,15 +17,16 @@ import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.DOM.Navigator.MediaDevices
+import           Gonimo.Client.ConfirmationButton  (confirmationButton)
 
 data BabyScreen = ScreenStart | ScreenRunning
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> m (Event t ())
 ui loaded deviceList = mdo
-    baby' <- baby $ Config { _configSelectCamera = ui^.uiSelectCamera
-                          , _configEnableCamera = ui^.uiEnableCamera
-                          }
+    baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
+                           , _configEnableCamera = ui'^.uiEnableCamera
+                           }
 
     uiDyn <- widgetHold (uiStart loaded deviceList baby') (renderCenter baby' <$> screenSelected)
 
@@ -38,7 +39,7 @@ ui loaded deviceList = mdo
     performEvent_ $ const (do
                               cStream <- sample $ current (baby'^.mediaStream)
                               stopMediaStream cStream
-                          ) <$> ui^.uiGoHome
+                          ) <$> ui'^.uiGoHome
     pure $ ui'^.uiGoHome
   where
     renderCenter baby' ScreenStart = uiStart loaded deviceList baby'
@@ -48,7 +49,7 @@ uiStart :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t
             -> m (UI t)
 uiStart loaded deviceList  baby' = do
-    navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+    navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation NavBar.NoConfirmation)
     elClass "div" "container absoluteReference" $ do
       _ <- dyn $ renderVideo <$> baby'^.mediaStream
       elClass "div" "videoOverlay fullContainer" $ do
@@ -73,15 +74,32 @@ uiStart loaded deviceList  baby' = do
 
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
-uiRunning loaded deviceList baby' = do
-    navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+uiRunning loaded deviceList _ = do
+    let
+      leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
+      leaveConfirmation = do
+          el "h3" $ text "Really stop baby monitor?"
+          el "p" $ text "All connected devices will be disconnected!"
+
+    let navConfirmation = NavBar.WithConfirmation leaveConfirmation
+    navBar <- NavBar.navBar (NavBar.Config loaded deviceList navConfirmation navConfirmation)
     cuteBunny
-    stopClicked <- buttonAttr ("class" =: "btn btn-lg btn-danger") $ do
-      text "Stop "
-      elClass "span" "glyphicon glyphicon-off" blank
+    -- TODO: As confirmation button this triggers: Maybe.fromJust: Nothing! WTF!
+    -- stopClicked <- confirmationButton ("class" =: "btn btn-lg btn-danger")
+    --                 ( do
+    --                     text "Stop "
+    --                     elClass "span" "glyphicon glyphicon-off" blank
+    --                 )
+    --                 leaveConfirmation
+
+    stopClicked <- buttonAttr ("class" =: "btn btn-lg btn-danger")
+                    ( do
+                        text "Stop "
+                        elClass "span" "glyphicon glyphicon-off" blank
+                    )
     pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
               , _uiStartMonitor = never
-              , _uiStopMonitor = leftmost [ navBar^.NavBar.backClicked, stopClicked ]
+              , _uiStopMonitor = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
               , _uiEnableCamera = never
               , _uiSelectCamera = never
               }
@@ -144,9 +162,9 @@ enableCameraCheckbox baby' =
   case baby'^.videoDevices of
     [] -> pure never -- No need to enable the camera when there is none!
     _  -> do
-            elClass "div" "form-group" $ do
-              elClass "div" "checkbox" $ do
-                el "label" $ do
-                  changed <- _checkbox_change <$> checkbox (baby'^.cameraEnabledInitial) def
-                  text "Enable camera"
-                  return $ changed
+      myCheckBox ("class" =: "btn btn-default") (baby'^.cameraEnabled) $
+        dynText $ makeEnableText <$> baby'^.cameraEnabled
+  where
+    makeEnableText :: Bool -> Text
+    makeEnableText False = "Enable Camera"
+    makeEnableText True = "Disable Camera"

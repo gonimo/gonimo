@@ -42,8 +42,6 @@ data Baby t
   = Baby { _videoDevices :: [MediaDeviceInfo]
          , _selectedCamera :: Dynamic t (Maybe Text)
          , _cameraEnabled :: Dynamic t Bool
-         -- Necessary to break cycle (RecursiveDo):
-         , _cameraEnabledInitial :: Bool
          , _mediaStream :: Dynamic t MediaStream
          }
 
@@ -82,7 +80,7 @@ baby config = mdo
   devices <- enumerateDevices
   let videoDevices' = filter ((== VideoInput) . mediaDeviceKind) devices
   selected <- handleCameraSelect config devices
-  (initEnabled, enabled)  <- handleCameraEnable config
+  enabled  <- handleCameraEnable config
   let mSelected = (\enabled' selected' -> if enabled' then selected' else Nothing)
                   <$> enabled <*> selected
 
@@ -94,12 +92,11 @@ baby config = mdo
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
               , _cameraEnabled = enabled
-              , _cameraEnabledInitial = initEnabled
               , _mediaStream = mediaStream'
               }
 
 handleCameraEnable :: forall m t. (HasWebView m, MonadWidget t m)
-                      => Config t -> m (Bool, (Dynamic t Bool))
+                      => Config t -> m (Dynamic t Bool)
 handleCameraEnable config = do
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
     mLastEnabled <- GStorage.getItem storage GStorage.cameraEnabled
@@ -109,7 +106,7 @@ handleCameraEnable config = do
     enabled <- holdDyn initVal (config^.configEnableCamera)
     performEvent_
       $ GStorage.setItem storage GStorage.CameraEnabled <$> updated enabled
-    pure (initVal, enabled)
+    pure enabled
 
 handleCameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                       => Config t -> [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
