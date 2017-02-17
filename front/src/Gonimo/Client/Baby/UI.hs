@@ -72,18 +72,21 @@ ui loaded deviceList = mdo
 
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Text)
-cameraSelect baby' = do
-    enabledElClass "div" "dropdown" (baby'^.cameraEnabled)$ do
-      elAttr "button" ( "class" =: "btn btn-default dropdown-toggle"
-                        <> "type" =: "button"
-                        <> "id" =: "cameraSelectBaby"
-                        <> "data-toggle" =: "dropdown"
-                      ) $ do
-        text " "
-        dynText $ baby'^.selectedCamera
-        text " "
-        elClass "span" "caret" blank
-      elClass "ul" "dropdown-menu" $ renderCameraSelectors
+cameraSelect baby' =
+  case baby'^.videoDevices of
+    [_] -> pure never
+    _   -> do
+            enabledElClass "div" "dropdown" (baby'^.cameraEnabled)$ do
+              elAttr "button" ( "class" =: "btn btn-default dropdown-toggle"
+                                <> "type" =: "button"
+                                <> "id" =: "cameraSelectBaby"
+                                <> "data-toggle" =: "dropdown"
+                              ) $ do
+                text " "
+                dynText $ baby'^.selectedCamera
+                text " "
+                elClass "span" "caret" blank
+              elClass "ul" "dropdown-menu" $ renderCameraSelectors
   where
     enabledElClass name className enabled =
       let
