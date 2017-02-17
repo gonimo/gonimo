@@ -7,6 +7,7 @@ import Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.Family.Internal as Family
 import qualified Gonimo.Client.DeviceList.Internal as DeviceList
 import qualified Gonimo.Client.App.Types as App
+import           Gonimo.Client.ConfirmationButton  (confirmationButton)
 
 
 navBar :: forall m t. (HasWebView m, MonadWidget t m)

@@ -40,7 +40,7 @@ data Config t
 
 data Baby t
   = Baby { _videoDevices :: [MediaDeviceInfo]
-         , _selectedCamera :: Dynamic t Text
+         , _selectedCamera :: Dynamic t (Maybe Text)
          , _cameraEnabled :: Dynamic t Bool
          -- Necessary to break cycle (RecursiveDo):
          , _cameraEnabledInitial :: Bool
@@ -59,7 +59,7 @@ baby config = mdo
   let videoDevices' = filter ((== VideoInput) . mediaDeviceKind) devices
   selected <- handleCameraSelect config devices
   (initEnabled, enabled)  <- handleCameraEnable config
-  let mSelected = (\enabled' selected' -> if enabled' then Just selected' else Nothing)
+  let mSelected = (\enabled' selected' -> if enabled' then selected' else Nothing)
                   <$> enabled <*> selected
 
   gotNewStream <- performEvent $ getConstrainedMediaStream mediaStream' videoDevices' <$> updated mSelected
@@ -88,20 +88,23 @@ handleCameraEnable config = do
     pure (initVal, enabled)
 
 handleCameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
-                      => Config t -> [MediaDeviceInfo] -> m (Dynamic t Text)
+                      => Config t -> [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
 handleCameraSelect config devices = do
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
     mLastCameraLabel <- GStorage.getItem storage GStorage.selectedCamera
 
-    let initVal = fromMaybe ""
-                  $ mLastCameraLabel
-                  <|> (mediaDeviceLabel <$> headMay devices)
+    let mLastUsedInfo = do
+          lastCameraLabel <- mLastCameraLabel
+          headMay . filter ((== lastCameraLabel) . mediaDeviceLabel) $ devices -- Only if still valid!
+
+    let initVal = mediaDeviceLabel <$> (mLastUsedInfo <|> headMay devices)
+
     (initEv, trigger) <- newTriggerEvent
     liftIO $ trigger initVal -- We need to trigger a change for selecting the right MediaStream, we cannot sample current because this would result in a MonadFix loop.
-    let selectEvent = leftmost [config^.configSelectCamera, initEv]
+    let selectEvent = leftmost [Just <$> config^.configSelectCamera, initEv]
     selected <- holdDyn initVal selectEvent
     performEvent_
-      $ GStorage.setItem storage GStorage.selectedCamera <$> updated selected
+      $ traverse_ (GStorage.setItem storage GStorage.selectedCamera) <$> updated selected
 
     pure selected
 

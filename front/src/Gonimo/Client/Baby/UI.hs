@@ -5,36 +5,17 @@
 module Gonimo.Client.Baby.UI where
 
 import           Control.Lens
-import           Data.Map                          (Map)
 import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid
 import           Data.Text                         (Text)
 import qualified Gonimo.Client.DeviceList          as DeviceList
-import qualified Gonimo.Client.Invite              as Invite
-import           Gonimo.Client.Reflex
-import qualified Gonimo.Db.Entities                as Db
-import qualified Gonimo.SocketAPI                  as API
-import qualified Gonimo.Types                      as Gonimo
 import           Reflex.Dom
 
-import           Data.Foldable
-import qualified Data.Text                         as T
-import qualified GHCJS.DOM                         as DOM
-import qualified GHCJS.DOM.Navigator               as Navigator
--- import qualified JSDOM.Custom.Navigator               as Navigator
 import qualified Data.Map                          as Map
-import qualified GHCJS.DOM.Window                  as Window
 import qualified Gonimo.Client.App.Types           as App
-import qualified Gonimo.Client.DeviceList          as DeviceList
-import qualified Gonimo.Client.Auth                as Auth
 import           Gonimo.Client.Baby.Internal
-import           Gonimo.Client.ConfirmationButton  (confirmationButton)
-import           Gonimo.Client.EditStringButton    (editStringButton)
-import qualified Gonimo.Client.App.Types     as App
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server              (webSocket_recv)
-import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.DOM.Navigator.MediaDevices
 
 
@@ -74,6 +55,7 @@ cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Text)
 cameraSelect baby' =
   case baby'^.videoDevices of
+    [] -> pure never
     [_] -> pure never
     _   -> do
             enabledElClass "div" "dropdown" (baby'^.cameraEnabled)$ do
@@ -83,11 +65,12 @@ cameraSelect baby' =
                                 <> "data-toggle" =: "dropdown"
                               ) $ do
                 text " "
-                dynText $ baby'^.selectedCamera
+                dynText selectedCameraText
                 text " "
                 elClass "span" "caret" blank
               elClass "ul" "dropdown-menu" $ renderCameraSelectors
   where
+    selectedCameraText = fromMaybe "" <$> baby'^.selectedCamera
     enabledElClass name className enabled =
       let
         attrDyn = (\on -> if on
@@ -101,7 +84,7 @@ cameraSelect baby' =
                 (baby'^.videoDevices)
 
     renderCameraSelectors
-      = fmap fst <$> selectViewListWithKey (baby'^.selectedCamera) videoMap renderCameraSelector
+      = fmap fst <$> selectViewListWithKey selectedCameraText videoMap renderCameraSelector
 
 
     renderCameraSelector :: Text -> Dynamic t MediaDeviceInfo -> Dynamic t Bool ->  m (Event t ())
@@ -116,10 +99,13 @@ cameraSelect baby' =
 
 enableCameraCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Bool)
-enableCameraCheckbox baby' = do
-  elClass "div" "form-group" $ do
-    elClass "div" "checkbox" $ do
-      el "label" $ do
-        changed <- _checkbox_change <$> checkbox (baby'^.cameraEnabledInitial) def
-        text "Enable camera"
-        return $ changed
+enableCameraCheckbox baby' =
+  case baby'^.videoDevices of
+    [] -> pure never -- No need to enable the camera when there is none!
+    _  -> do
+            elClass "div" "form-group" $ do
+              elClass "div" "checkbox" $ do
+                el "label" $ do
+                  changed <- _checkbox_change <$> checkbox (baby'^.cameraEnabledInitial) def
+                  text "Enable camera"
+                  return $ changed
