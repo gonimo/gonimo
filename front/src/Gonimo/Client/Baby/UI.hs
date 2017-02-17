@@ -18,37 +18,78 @@ import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.DOM.Navigator.MediaDevices
 
+data BabyScreen = ScreenStart | ScreenRunning
 
--- Overrides configCreateBaby && configLeaveBaby
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> m (Event t ())
 ui loaded deviceList = mdo
-    baby' <- baby $ Config { _configSelectCamera = cameraSelected
-                           , _configEnableCamera = enabledCamera
-                           }
-    navbar <- NavBar.navBar (NavBar.Config loaded deviceList)
-    (enabledCamera, cameraSelected, _) <- elClass "div" "container absoluteReference" $ do
-      _ <- dyn $ renderVideo <$> baby'^.mediaStream
-      elClass "div" "videoOverlay fullContainer" $ do
-        elClass "div" "vCenteredBox" $ do
-          (,,) <$> enableCameraCheckbox baby'
-              <*> cameraSelect baby'
-              <*> ( buttonAttr ("class" =: "btn btn-lg btn-success") $ do
-                      text "Start "
-                      elClass "span" "glyphicon glyphicon-ok" blank
-                  )
-    let cancelled = leftmost [navbar^.NavBar.backClicked, navbar^.NavBar.homeClicked]
+    baby' <- baby $ Config { _configSelectCamera = ui^.uiSelectCamera
+                          , _configEnableCamera = ui^.uiEnableCamera
+                          }
+
+    uiDyn <- widgetHold (uiStart loaded deviceList baby') (renderCenter baby' <$> screenSelected)
+
+    let ui' = uiSwitchPromptlyDyn uiDyn
+
+    let screenSelected = leftmost [ const ScreenStart <$> ui'^.uiStopMonitor
+                                  , const ScreenRunning <$> ui'^.uiStartMonitor
+                                  ]
+
     performEvent_ $ const (do
                               cStream <- sample $ current (baby'^.mediaStream)
                               stopMediaStream cStream
-                          ) <$> cancelled
-    pure cancelled
+                          ) <$> ui^.uiGoHome
+    pure $ ui'^.uiGoHome
+  where
+    renderCenter baby' ScreenStart = uiStart loaded deviceList baby'
+    renderCenter baby' ScreenRunning = uiRunning loaded deviceList baby'
+
+uiStart :: forall m t. (HasWebView m, MonadWidget t m)
+            => App.Loaded t -> DeviceList.DeviceList t -> Baby t
+            -> m (UI t)
+uiStart loaded deviceList  baby' = do
+    navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+    elClass "div" "container absoluteReference" $ do
+      _ <- dyn $ renderVideo <$> baby'^.mediaStream
+      elClass "div" "videoOverlay fullContainer" $ do
+        elClass "div" "vCenteredBox" $ do
+          enableCamera <- enableCameraCheckbox baby'
+          selectCamera <- cameraSelect baby'
+          startClicked <- buttonAttr ("class" =: "btn btn-lg btn-success") $ do
+            text "Start "
+            elClass "span" "glyphicon glyphicon-ok" blank
+          pure $ UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
+                    , _uiStartMonitor = startClicked
+                    , _uiStopMonitor = never -- already there
+                    , _uiEnableCamera = enableCamera
+                    , _uiSelectCamera = selectCamera
+                    }
   where
     renderVideo stream
       = mediaVideo stream ( "style" =: "height:100%; width:100%"
                             <> "autoplay" =: "true"
                             <> "muted" =: "true"
                           )
+
+uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
+            => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
+uiRunning loaded deviceList baby' = do
+    navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+    cuteBunny
+    stopClicked <- buttonAttr ("class" =: "btn btn-lg btn-danger") $ do
+      text "Stop "
+      elClass "span" "glyphicon glyphicon-off" blank
+    pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
+              , _uiStartMonitor = never
+              , _uiStopMonitor = leftmost [ navBar^.NavBar.backClicked, stopClicked ]
+              , _uiEnableCamera = never
+              , _uiSelectCamera = never
+              }
+  where
+    cuteBunny = elAttr "img" ( "alt" =: "gonimo"
+                    <> "src" =: "pix/gonimo-brand-01.svg"
+                    <> "height" =: "100%"
+                    ) blank
 
 
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)

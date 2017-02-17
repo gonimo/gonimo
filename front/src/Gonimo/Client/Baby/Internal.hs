@@ -47,9 +47,33 @@ data Baby t
          , _mediaStream :: Dynamic t MediaStream
          }
 
+data UI t
+  = UI { _uiGoHome :: Event t ()
+       , _uiStartMonitor  :: Event t ()
+       , _uiStopMonitor  :: Event t ()
+       , _uiEnableCamera :: Event t Bool
+       , _uiSelectCamera  :: Event t Text
+       }
 
 makeLenses ''Config
 makeLenses ''Baby
+makeLenses ''UI
+
+uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
+uiSwitchPromptly ev
+  = UI <$> switchPromptly never (_uiGoHome <$> ev)
+       <*> switchPromptly never (_uiStartMonitor <$> ev)
+       <*> switchPromptly never (_uiStopMonitor <$> ev)
+       <*> switchPromptly never (_uiEnableCamera <$> ev)
+       <*> switchPromptly never (_uiSelectCamera <$> ev)
+
+uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
+uiSwitchPromptlyDyn ev
+  = UI ( switchPromptlyDyn (_uiGoHome <$> ev) )
+       ( switchPromptlyDyn (_uiStartMonitor <$> ev) )
+       ( switchPromptlyDyn (_uiStopMonitor <$> ev) )
+       ( switchPromptlyDyn (_uiEnableCamera <$> ev) )
+       ( switchPromptlyDyn (_uiSelectCamera <$> ev) )
 
 baby :: forall m t. (MonadWidget t m)
         => Config t -> m (Baby t)
