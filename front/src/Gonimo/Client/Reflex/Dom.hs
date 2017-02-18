@@ -84,7 +84,10 @@ mediaVideo :: (DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace)
 mediaVideo stream attrs = do
   (videoTag, _) <- elAttr' "video" attrs blank
   let rawElement =  _element_raw videoTag
-  liftJSM $ JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
+  liftJSM $ do
+    JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
+    _ <- JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])
+    pure ()
 
 -- Make a dynamic attribute list with the given attribute toggled on dyn changes.
 toggleAttr :: Reflex t => Text -> Dynamic t Bool -> Map Text Text -> Dynamic t (Map Text Text)
