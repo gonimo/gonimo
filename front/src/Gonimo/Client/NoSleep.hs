@@ -7,10 +7,10 @@ module Gonimo.Client.NoSleep where
 import           Reflex.Dom
 import           Data.Monoid
 
-
+-- Don't use! Does not work and uses a whole lot of CPU!
 noSleep :: (Monad m, DomBuilder t m) => m ()
 noSleep = do
-  elAttr "video" ( "style" =: "height:0px;width:0px;"
+  elAttr "video" ( "style" =: "display:none;"
                    <> "autoplay" =: "true"
                    <> "loop" =: "true"
                  ) $ do

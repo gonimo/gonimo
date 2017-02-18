@@ -18,7 +18,6 @@ import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.DOM.Navigator.MediaDevices
 -- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
-import           Gonimo.Client.NoSleep
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -75,8 +74,8 @@ uiStart loaded deviceList  baby' = do
 
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
-uiRunning loaded deviceList _ = do
-    noSleep
+uiRunning loaded deviceList baby' = do
+    _ <- dyn $ noSleep <$> baby'^.mediaStream
     let
       leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
       leaveConfirmation = do
@@ -110,6 +109,11 @@ uiRunning loaded deviceList _ = do
               , _uiSelectCamera = never
               }
   where
+    noSleep stream
+      = mediaVideo stream ( "style" =: "display:none"
+                            <> "autoplay" =: "true"
+                            <> "muted" =: "true"
+                          )
     cuteBunny = elAttr "img" ( "alt" =: "gonimo"
                     <> "src" =: "pix/gonimo-brand-01.svg"
                     <> "height" =: "100%"
