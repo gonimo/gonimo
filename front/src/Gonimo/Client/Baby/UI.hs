@@ -17,7 +17,8 @@ import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.DOM.Navigator.MediaDevices
-import           Gonimo.Client.ConfirmationButton  (confirmationButton)
+-- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
+import           Gonimo.Client.NoSleep
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -75,6 +76,7 @@ uiStart loaded deviceList  baby' = do
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList _ = do
+    noSleep
     let
       leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
       leaveConfirmation = do
@@ -97,9 +99,13 @@ uiRunning loaded deviceList _ = do
                         text "Stop "
                         elClass "span" "glyphicon glyphicon-off" blank
                     )
+    let goBack = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
+    -- let leave = leftmost [ navBar^.NavBar.homeClicked, goBack ]
+
+
     pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
               , _uiStartMonitor = never
-              , _uiStopMonitor = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
+              , _uiStopMonitor = goBack
               , _uiEnableCamera = never
               , _uiSelectCamera = never
               }

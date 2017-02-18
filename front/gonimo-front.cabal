@@ -110,6 +110,7 @@ library
                     , Gonimo.DOM.Navigator.MediaDevices.Internal
                     , Gonimo.DOM.Navigator.MediaDevices
                     , Gonimo.Client.Prelude
+                    , Gonimo.Client.NoSleep
 
 
 
