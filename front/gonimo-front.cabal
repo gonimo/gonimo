@@ -109,8 +109,10 @@ library
                     , Gonimo.DOM.Navigator.MediaDevices.Types
                     , Gonimo.DOM.Navigator.MediaDevices.Internal
                     , Gonimo.DOM.Navigator.MediaDevices
+                    , Gonimo.DOM.Window.Internal
                     , Gonimo.Client.Prelude
-                    , Gonimo.Client.NoSleep
+                    , Gonimo.Client.Channel
+                    , Gonimo.Client.Util
 
 
 
