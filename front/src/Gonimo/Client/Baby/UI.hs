@@ -13,7 +13,7 @@ import           Reflex.Dom
 
 import qualified Data.Map                          as Map
 import qualified Gonimo.Client.App.Types           as App
-import qualified Gonimo.Client.Channel             as Channel
+import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom

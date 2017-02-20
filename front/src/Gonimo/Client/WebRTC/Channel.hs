@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 
-module Gonimo.Client.Channel where
+module Gonimo.Client.WebRTC.Channel where
 
 import Gonimo.Client.Prelude
 
@@ -26,6 +26,7 @@ import qualified Gonimo.Client.Storage             as GStorage
 import qualified Gonimo.Client.Storage.Keys        as GStorage
 import qualified Gonimo.Db.Entities                as Db
 import           Reflex.Dom
+import qualified Gonimo.SocketAPI.Types            as API
 
 import           GHCJS.DOM.Types                   ( MediaStream, MonadJSM, Dictionary(..)
                                                    , EventListener(..))
@@ -51,7 +52,7 @@ import           Language.Javascript.JSaddle                       (JSVal,
 import qualified Language.Javascript.JSaddle                       as JS
 
 data CloseEvent = CloseRequested | CloseConnectionLoss
-type Message = Text
+type Message = API.Message
 
 data Config t
   = Config  { _configGotMessage :: Event t Message
@@ -75,7 +76,7 @@ channel :: forall m t. (MonadWidget t m)
         => Config t -> m (Channel t)
 channel config = mdo
   conn <- makeGonimoRTCConnection
-  ourStream <- runMaybeT $ do
+  ourStream' <- runMaybeT $ do
     origStream <- MaybeT . pure $ config^.configSourceStream
     tracks <- catMaybes <$> MediaStream.getTracks origStream
     let
@@ -87,11 +88,16 @@ channel config = mdo
     traverse_ (uncurry addListener) $ (,) <$> ["ended", "mute", "inactive"] <*> tracks -- all permutations!
     boostMediaStreamVolume origStream
 
-  let isBabyStation = isJust ourStream
-  alarm' <- if isBabyStation
-            then  Just <$> loadSound "/sounds/pup_alert.mp3"
-            else pure Nothing
-  pure undefined
+  -- let isBabyStation = isJust ourStream'
+  -- alarm' <- if isBabyStation
+  --           then  Just <$> loadSound "/sounds/pup_alert.mp3"
+  --           else pure Nothing
+  pure $ Channel { _sendMessage = undefined
+                 , _rtcConnection = conn
+                 , _ourStream = ourStream'
+                 , _remoteStream = undefined
+                 , _closed = undefined
+                 }
 
 
 makeGonimoRTCConnection :: MonadJSM m => m RTCPeerConnection

@@ -111,8 +111,9 @@ library
                     , Gonimo.DOM.Navigator.MediaDevices
                     , Gonimo.DOM.Window.Internal
                     , Gonimo.Client.Prelude
-                    , Gonimo.Client.Channel
                     , Gonimo.Client.Util
+                    , Gonimo.Client.WebRTC.Message
+                    , Gonimo.Client.WebRTC.Channel
 
 
 
