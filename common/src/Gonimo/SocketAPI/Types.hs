@@ -72,3 +72,33 @@ instance FromJSON DeviceInfo
 
 type FromId = DeviceId
 type ToId = DeviceId
+
+data SessionDescription
+  = SessionDescription { _sdp :: Text
+                       , _type_ :: Text
+                       } deriving (Generic, Eq, Ord, Show)
+
+data IceCandidate
+  = IceCandidate { _sdpMLineIndex :: Maybe Int
+                 , _sdpMid :: Maybe Text
+                 , _candidate :: Text
+                 } deriving (Generic, Eq, Ord, Show)
+
+data Message
+  = MsgStartStreaming
+  | MsgSessionDescriptionOffer SessionDescription
+  | MsgSessionDescriptionAnswer SessionDescription
+  | MsgIceCandidate IceCandidate
+  | MsgCloseConnection deriving (Generic, Eq, Ord, Show)
+
+instance FromJSON SessionDescription
+instance ToJSON SessionDescription where
+  toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON IceCandidate
+instance ToJSON IceCandidate where
+  toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON Message
+instance ToJSON Message where
+  toEncoding = genericToEncoding defaultOptions

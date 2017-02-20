@@ -6,7 +6,7 @@ import           Data.Text                       (Text)
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToEncoding)
 import qualified Gonimo.SocketAPI.Types as Client
-import Gonimo.SocketAPI.Types (FromId, ToId, InvitationReply, InvitationInfo)
+import Gonimo.SocketAPI.Types (FromId, ToId, InvitationReply, InvitationInfo, Message)
 import GHC.Generics (Generic)
 import Gonimo.Server.Error (ServerError)
 import Gonimo.Db.Entities (FamilyId, InvitationId, Invitation, DeviceId, AccountId, Family)
@@ -41,7 +41,7 @@ data ServerRequest
   | ReqLeaveFamily !AccountId !FamilyId
 
   | ReqCreateChannel !FromId !ToId
-  | ReqSendMessage !FromId !ToId !Secret !Text
+  | ReqSendMessage !FromId !ToId !Secret Message
   deriving (Generic, Ord, Eq, Show)
 
 -- | Constructors starting with "Res" are responses to requests.
@@ -82,7 +82,7 @@ data ServerResponse
 
   | EventSessionGotStolen
   | EventChannelRequested !FromId !Secret
-  | EventMessageReceived !FromId !Secret !Text
+  | EventMessageReceived !FromId !Secret Message
   deriving (Generic, Show)
 
 instance FromJSON ServerRequest
