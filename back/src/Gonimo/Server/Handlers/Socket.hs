@@ -1,13 +1,13 @@
 module Gonimo.Server.Handlers.Socket where
 
-import           Data.Text                            (Text)
-import           Gonimo.Server.Auth                   as Auth
+import           Control.Monad.IO.Class  (liftIO)
+import           Gonimo.Db.Entities      (DeviceId)
+import           Gonimo.Server.Auth      as Auth
 import           Gonimo.Server.Effects
 import           Gonimo.Server.Error
 import           Gonimo.Server.Messenger
+import qualified Gonimo.SocketAPI.Types  as API
 import           Gonimo.Types
-import           Gonimo.Db.Entities            (DeviceId)
-import           Control.Monad.IO.Class (liftIO)
 
 -- | Create a channel for communication with  a baby station
 createChannelR :: (AuthReader m, MonadServer m)
@@ -19,9 +19,9 @@ createChannelR fromId toId = do
 
 
 sendMessageR :: forall m. (AuthReader m, MonadServer m)
-           => DeviceId -> DeviceId -> Secret -> Text -> m ()
-sendMessageR fromId toId secret txt
-  = sendMessage fromId toId $ MessageSendMessage fromId secret txt
+           => DeviceId -> DeviceId -> Secret -> API.Message -> m ()
+sendMessageR fromId toId secret msg
+  = sendMessage fromId toId $ MessageSendMessage fromId secret msg
 
 
 -- Internal helper function:

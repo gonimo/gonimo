@@ -8,8 +8,8 @@ module Gonimo.Server.Messenger.Internal where
 
 import           Control.Concurrent.STM    (TVar, readTVar, writeTVar)
 import           Control.Lens
-import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.State.Class (MonadState, gets)
+import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.State (State, runState)
 import           Data.Map.Strict           (Map)
@@ -18,10 +18,10 @@ import           Data.Maybe
 import           Data.Set                  (Set)
 import qualified Data.Set                  as Set
 
-import           Data.Text                 (Text)
+import           Control.Concurrent.STM    (STM)
 import           Gonimo.Db.Entities        (DeviceId, FamilyId)
-import           Gonimo.Types              (DeviceType(..), Secret)
-import           Control.Concurrent.STM (STM)
+import qualified Gonimo.SocketAPI.Types    as API
+import           Gonimo.Types              (DeviceType (..), Secret)
 
 type FromId = DeviceId
 type ToId   = DeviceId
@@ -29,7 +29,7 @@ type ToId   = DeviceId
 data Message
   = MessageSessionGotStolen
   | MessageCreateChannel !FromId !Secret
-  | MessageSendMessage !FromId !Secret !Text
+  | MessageSendMessage !FromId !Secret API.Message
 
 data Receiver
   = Receiver { _receiverSend :: !(Message -> IO ())
