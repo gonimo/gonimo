@@ -3,15 +3,10 @@ module Gonimo.Client.Util where
 import           Control.Concurrent.MVar
 import           Language.Javascript.JSaddle                       (JSVal,
                                                                     MonadJSM,
-                                                                    eval, fun,
-                                                                    js, js1,
-                                                                    jsf, jsg,
-                                                                    jss, js0,
-                                                                    liftJSM,
-                                                                    syncPoint,
-                                                                    valToNumber,
-                                                                    new,
-                                                                    ( # ), (<#))
+                                                                    eval,
+                                                                    jsg,
+                                                                    liftJSM)
+
 import qualified Language.Javascript.JSaddle                       as JS
 import GHCJS.DOM.MediaStream             as MediaStream
 import GHCJS.DOM.AudioNode (AudioNode(..))
@@ -20,7 +15,6 @@ import GHCJS.DOM.AudioNode (AudioNode(..))
 -- import GHCJS.DOM.AudioParam             as AudioParam
 import GHCJS.DOM.Types                   (AudioContext(..), Nullable(..), nullableToMaybe)
 import Gonimo.Client.Prelude
-import GHCJS.DOM.MediaStreamAudioDestinationNode
 
 getGonimoAudioContext :: MonadJSM m => m AudioContext
 getGonimoAudioContext = liftJSM $ do
