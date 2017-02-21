@@ -113,7 +113,3 @@ loadSound url = do
                                                                         -> liftIO (putMVar sndVar snd')
                                            ]
   liftIO $ AudioNode <$> takeMVar sndVar
-
-fromJustErr :: String -> Maybe a -> a
-fromJustErr msg Nothing = error $ "fromJust(Nothing): " <> msg
-fromJustErr _ (Just v)  = v
