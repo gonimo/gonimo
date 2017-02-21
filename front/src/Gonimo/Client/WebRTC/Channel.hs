@@ -9,47 +9,25 @@ module Gonimo.Client.WebRTC.Channel where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
-import           Data.Maybe (catMaybes)
-import           Data.Map                          (Map)
-import qualified Data.Map                          as Map
-import           Data.Set                          ((\\))
-import qualified Data.Set                          as Set
-import qualified GHCJS.DOM                         as DOM
-import qualified GHCJS.DOM.Navigator               as Navigator
-import qualified GHCJS.DOM.Window                  as Window
-import qualified GHCJS.DOM.MediaStream             as MediaStream
-import           GHCJS.DOM.MediaStreamTrack        as MediaStreamTrack
-import           GHCJS.DOM.RTCPeerConnection       hiding (newRTCPeerConnection)
+import           Data.Maybe                   (catMaybes)
 import           GHCJS.DOM.EventTarget
-import qualified GHCJS.DOM.RTCPeerConnection       as RTCPeerConnection
-import qualified Gonimo.Client.Storage             as GStorage
-import qualified Gonimo.Client.Storage.Keys        as GStorage
-import qualified Gonimo.Db.Entities                as Db
+import qualified GHCJS.DOM.MediaStream        as MediaStream
+import           GHCJS.DOM.RTCPeerConnection  hiding (newRTCPeerConnection)
+import qualified GHCJS.DOM.RTCPeerConnection  as RTCPeerConnection
+import qualified Gonimo.SocketAPI.Types       as API
 import           Reflex.Dom
-import qualified Gonimo.SocketAPI.Types            as API
 
-import           GHCJS.DOM.Types                   ( MediaStream, MonadJSM, Dictionary(..)
-                                                   , EventListener(..))
-import qualified Gonimo.Client.App.Types           as App
-import qualified Gonimo.Client.Auth                as Auth
-import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
-import           Gonimo.DOM.Navigator.MediaDevices
-import           Gonimo.DOM.Window                 (newRTCPeerConnection)
+import           GHCJS.DOM.Types              (Dictionary (..),
+                                               EventListener (..), MediaStream,
+                                               MonadJSM)
 import           Gonimo.Client.Config
-import           Gonimo.Client.Prelude
 import           Gonimo.Client.Util
+import           Gonimo.DOM.Window            (newRTCPeerConnection)
 
-import           Language.Javascript.JSaddle                       (JSVal,
-                                                                    eval, fun,
-                                                                    function,
-                                                                    js, js1,
-                                                                    jsf, jsg,
-                                                                    jss, js0,
-                                                                    liftJSM,
-                                                                    syncPoint,
-                                                                    valToNumber,
-                                                                    (<#))
-import qualified Language.Javascript.JSaddle                       as JS
+import           Gonimo.Client.WebRTC.Message
+import           Language.Javascript.JSaddle  (function, liftJSM, (<#))
+import qualified Language.Javascript.JSaddle  as JS
+import           Safe                         (fromJustNote)
 
 data CloseEvent = CloseRequested | CloseConnectionLoss
 type Message = API.Message
@@ -88,17 +66,69 @@ channel config = mdo
     traverse_ (uncurry addListener) $ (,) <$> ["ended", "mute", "inactive"] <*> tracks -- all permutations!
     boostMediaStreamVolume origStream
 
+  (messages, remoteClosed) <- handleMessages config conn ourStream'
+
+  gotRemoteStream <- handleReceivedStream conn
+  remoteStream' <- holdDyn Nothing $ Just <$> gotRemoteStream
   -- let isBabyStation = isJust ourStream'
   -- alarm' <- if isBabyStation
   --           then  Just <$> loadSound "/sounds/pup_alert.mp3"
   --           else pure Nothing
-  pure $ Channel { _sendMessage = undefined
+  pure $ Channel { _sendMessage = messages
                  , _rtcConnection = conn
                  , _ourStream = ourStream'
-                 , _remoteStream = undefined
-                 , _closed = undefined
+                 , _remoteStream = remoteStream'
+                 , _closed = const CloseRequested <$> remoteClosed
                  }
 
+handleReceivedStream :: forall m t. (MonadWidget t m) => RTCPeerConnection -> m (Event t MediaStream)
+handleReceivedStream conn = do
+  (rtcEvent', triggerRTCEvent) <- newTriggerEvent
+  let
+    addListener :: forall m1 self. (MonadJSM m1, IsEventTarget self) => Text -> self -> m1 ()
+    addListener event self = do
+      jsFun <- liftJSM . function $ \_ _ [mediaEvent] -> do
+        rawStream <- (JS.toJSVal mediaEvent) JS.! ("stream" :: Text)
+        mStream <- JS.fromJSVal rawStream
+        triggerRTCEvent $ fromJustNote "event had no valid MediaStream!" mStream
+
+      listener <- liftJSM $ EventListener <$> JS.toJSVal jsFun
+      addEventListener self event (Just listener) False
+  addListener "addstream" conn
+  pure rtcEvent'
+
+handleMessages :: forall m t. (MonadWidget t m) => Config t -> RTCPeerConnection -> Maybe MediaStream -> m (Event t API.Message, Event t ())
+handleMessages config connection ourStream' = do
+  let actions = fmap (\msg ->
+                        case msg of
+                         API.MsgStartStreaming -> do
+                           traverse_ (addStream connection . Just) ourStream'
+                           pure Nothing
+                         API.MsgSessionDescriptionOffer description -> do
+                           setRemoteDescription connection =<< toJSSessionDescription description
+                           rawAnswer <- createAnswer connection Nothing
+                           setLocalDescription connection rawAnswer
+                           answer <- fromJSSessionDescription rawAnswer
+                           pure . Just $ API.MsgSessionDescriptionAnswer answer
+                         API.MsgSessionDescriptionAnswer description -> do
+                           setRemoteDescription connection =<< toJSSessionDescription description
+                           pure Nothing
+                         API.MsgIceCandidate candidate -> do
+                           addIceCandidate connection =<< toJSIceCandidate candidate
+                           pure Nothing
+                         API.MsgCloseConnection  -> do
+                           close connection
+                           pure Nothing
+                     ) (config^.configGotMessage)
+
+  let remoteClosed = push (\msg ->
+                             case msg of
+                               API.MsgCloseConnection -> pure . Just $ ()
+                               _                      -> pure Nothing
+                          ) (config^.configGotMessage)
+
+  answers <- push (pure . id) <$> performEvent actions
+  pure (answers, remoteClosed)
 
 makeGonimoRTCConnection :: MonadJSM m => m RTCPeerConnection
 makeGonimoRTCConnection = liftJSM $ do
