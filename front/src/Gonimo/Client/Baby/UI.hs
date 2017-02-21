@@ -87,12 +87,13 @@ uiRunning loaded deviceList baby' = do
     navBar <- NavBar.navBar (NavBar.Config loaded deviceList navConfirmation navConfirmation)
     cuteBunny
     -- TODO: As confirmation button this triggers: Maybe.fromJust: Nothing! WTF!
-    -- stopClicked <- confirmationButton ("class" =: "btn btn-lg btn-danger")
+    -- stopClicked' <- confirmationButton ("class" =: "btn btn-lg btn-danger")
     --                 ( do
     --                     text "Stop "
     --                     elClass "span" "glyphicon glyphicon-off" blank
     --                 )
     --                 leaveConfirmation
+    -- let stopClicked = traceEvent "_bad_click_" stopClicked'
 
     stopClicked <- buttonAttr ("class" =: "btn btn-lg btn-danger")
                     ( do
