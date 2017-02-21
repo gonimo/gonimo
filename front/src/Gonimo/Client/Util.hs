@@ -108,5 +108,12 @@ loadSound url = do
     "  }\n" <>
     "}\n"
   sndVar <- liftIO $ newEmptyMVar
-  liftJSM $ JS.call jsGetSound JS.obj [JS.toJSVal url, JS.toJSVal . JS.function $ \_ _ [snd] -> liftIO (putMVar sndVar snd)]
+  _ <- liftJSM $ JS.call jsGetSound JS.obj [ JS.toJSVal url
+                                           , JS.toJSVal . JS.function $ \_ _ [snd']
+                                                                        -> liftIO (putMVar sndVar snd')
+                                           ]
   liftIO $ AudioNode <$> takeMVar sndVar
+
+fromJustErr :: String -> Maybe a -> a
+fromJustErr msg Nothing = error $ "fromJust(Nothing): " <> msg
+fromJustErr _ (Just v)  = v
