@@ -30,23 +30,26 @@ getCachedAlertSound = liftJSM $ do
 
 boostMediaStreamVolume :: MonadJSM m => MediaStream -> m MediaStream
 boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (PureScript)
-  rawStream <- eval $
+  boostJS <- eval $
     ("" :: Text) <>
-    "if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
-    "var ctx = gonimoAudioContext;\n" <>
-    "var source = ctx.createMediaStreamSource(stream);\n" <>
-    "var gainNode = ctx.createGain();\n" <>
-    "gainNode.gain.value = 10;\n" <>
-    "source.connect(gainNode);\n" <>
-    "// gainNode.connect(ctx.destination);\n" <>
-    "var destNode = ctx.createMediaStreamDestination();\n" <>
-    "gainNode.connect(destNode);\n" <>
-    "var outStream = destNode.stream;\n" <>
-    "var videoTracks = stream.getVideoTracks();\n" <>
-    "for(var i=0; i < videoTracks.length; i++) {\n" <>
-    "    outStream.addTrack(videoTracks[i]);\n" <>
-    "}\n" <>
-    "return outStream;\n"
+    "function(stream) {\n" <>
+    "    if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
+    "    var ctx = gonimoAudioContext;\n" <>
+    "    var source = ctx.createMediaStreamSource(stream);\n" <>
+    "    var gainNode = ctx.createGain();\n" <>
+    "    gainNode.gain.value = 10;\n" <>
+    "    source.connect(gainNode);\n" <>
+    "    // gainNode.connect(ctx.destination);\n" <>
+    "    var destNode = ctx.createMediaStreamDestination();\n" <>
+    "    gainNode.connect(destNode);\n" <>
+    "    var outStream = destNode.stream;\n" <>
+    "    var videoTracks = stream.getVideoTracks();\n" <>
+    "    for(var i=0; i < videoTracks.length; i++) {\n" <>
+    "        outStream.addTrack(videoTracks[i]);\n" <>
+    "    }\n" <>
+    "    return outStream;\n" <>
+    "}\n"
+  rawStream <- JS.call boostJS JS.obj [JS.toJSVal stream]
   pure $ MediaStream rawStream
 -- Started Haskell version (not finished yet and won't compile: )
   -- ctx <- getGonimoAudioContext
