@@ -104,6 +104,7 @@ library
                     , Gonimo.Client.NavBar.UI
                     , Gonimo.Client.NavBar
                     , Gonimo.Client.Baby.Internal
+                    , Gonimo.Client.Baby.Socket
                     , Gonimo.Client.Baby.UI
                     , Gonimo.Client.Baby
                     , Gonimo.DOM.Navigator.MediaDevices.Types

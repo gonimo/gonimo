@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TupleSections #-}
 
 module Gonimo.Client.Baby.Socket where
 
@@ -32,107 +33,79 @@ import qualified Gonimo.Client.App.Types           as App
 import qualified Gonimo.Client.Auth                as Auth
 import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
 import           Gonimo.DOM.Navigator.MediaDevices
+import qualified Gonimo.Client.WebRTC.Channel      as Channel
+import           Gonimo.Client.WebRTC.Channel      (Channel)
+import           Gonimo.Db.Entities                (DeviceId)
+import           Gonimo.Types                      (Secret)
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
+            , _configAuthData :: Event t API.AuthData
+            , _configClose :: Event t ()
+            , _configMediaStream :: Dynamic t MediaStream
             }
 
 data Socket t
-  = Socket { _videoDevices :: [MediaDeviceInfo]
-            , _selectedCamera :: Dynamic t (Maybe Text)
-            , _cameraEnabled :: Dynamic t Bool
-            , _mediaStream :: Dynamic t MediaStream
-            }
+  = Socket { _request :: Event t [ API.ServerRequest ]
+           , _channels :: Dynamic t (Map (API.FromId, Secret) (Channel t))
+           }
 
 
 makeLenses ''Config
 makeLenses ''Socket
 
-socket :: forall m t. (MonadWidget t m)
+type ChannelsTransformation t = Map (API.FromId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
+
+socket :: forall m t. (MonadFix m, MonadHold t m, MonadHold t (Performable m),
+                        PerformEvent t m, PerformEvent t (Performable m), MonadJSM (Performable m),
+                        MonadJSM (Performable (Performable m)), TriggerEvent t (Performable m))
         => Config t -> m (Socket t)
 socket config = mdo
   let
-    addChannel = push (\res -> do
-                          cChannels <- sample $ current channels
+    makeChannel = push (\res -> do
+                          cStream <- sample $ current (config^.configMediaStream)
                           case res of
                             API.EventChannelRequested fromId secret
-                              -> pure . Just $ Map.insert (fromId, secret) Channel.emptyChannel
+                              -> pure . Just $ ((fromId, secret),) <$> mkChannel config fromId secret cStream
                             _ -> pure Nothing
-                      )
-                 (config^.configResponse)
-    handleMessage = push (\res -> do
-                          cChannels <- sample $ current channels
-                          case res of
-                            API.EventMessageReceived fromId secret msg
-                              -> pure . Just $ Map.update Channel.handleMessage fromId secret msg
-                             )
-                 (config^.configResponse)
-  
-  channels <- holdDyn Map.empty 
-
-handleCameraEnable :: forall m t. (HasWebView m, MonadWidget t m)
-                      => Config t -> m (Dynamic t Bool)
-handleCameraEnable config = do
-    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
-    mLastEnabled <- GStorage.getItem storage GStorage.cameraEnabled
-
-    let initVal = fromMaybe True $ mLastEnabled
-
-    enabled <- holdDyn initVal (config^.configEnableCamera)
-    performEvent_
-      $ GStorage.setItem storage GStorage.CameraEnabled <$> updated enabled
-    pure enabled
-
-handleCameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
-                      => Config t -> [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
-handleCameraSelect config devices = do
-    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
-    mLastCameraLabel <- GStorage.getItem storage GStorage.selectedCamera
-
-    let mLastUsedInfo = do
-          lastCameraLabel <- mLastCameraLabel
-          headMay . filter ((== lastCameraLabel) . mediaDeviceLabel) $ devices -- Only if still valid!
-
-    let initVal = mediaDeviceLabel <$> (mLastUsedInfo <|> headMay devices)
-
-    (initEv, trigger) <- newTriggerEvent
-    liftIO $ trigger initVal -- We need to trigger a change for selecting the right MediaStream, we cannot sample current because this would result in a MonadFix loop.
-    let selectEvent = leftmost [Just <$> config^.configSelectCamera, initEv]
-    selected <- holdDyn initVal selectEvent
-    performEvent_
-      $ traverse_ (GStorage.setItem storage GStorage.selectedCamera) <$> updated selected
-
-    pure selected
-
-getMediaDeviceByLabel :: Text -> [MediaDeviceInfo] -> Maybe MediaDeviceInfo
-getMediaDeviceByLabel label infos =
+                       )
+                  (config^.configResponse)
+  newChannel <- performEvent makeChannel
   let
-    withLabel = filter ((== label) . mediaDeviceLabel) infos
-  in
-    headMay withLabel
+    addChannel :: Event t [ChannelsTransformation t]
+    addChannel = (:[]) . uncurry Map.insert <$> newChannel
 
-getInitialMediaStream :: forall m t. (HasWebView m, MonadWidget t m)
-                         => m MediaStream
-getInitialMediaStream = do
-  navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
-  constr <- makeSimpleUserMediaDictionary True False
-  Navigator.getUserMedia navigator $ Just constr
+  let
+    getRemoveEvent :: ((API.FromId, Secret), Channel t) -> Event t [(API.FromId, Secret)]
+    getRemoveEvent (key, chan) = const [key] <$> (chan^.Channel.closed)
+  let
+    dynRemoveEvents :: Dynamic t (Event t [(API.FromId, Secret)])
+    dynRemoveEvents = mconcat . map getRemoveEvent . Map.toList <$> channels'
+  let
+    removeChannels :: Event t [ChannelsTransformation t]
+    removeChannels = map Map.delete <$> switchPromptlyDyn dynRemoveEvents
 
-getConstrainedMediaStream :: forall m t. (MonadJSM m, Reflex t, MonadSample t m)
-                         => Dynamic t MediaStream -> [MediaDeviceInfo] -> Maybe Text -> m MediaStream
-getConstrainedMediaStream mediaStreams infos mLabel = do
-  oldStream <- sample $ current mediaStreams
-  stopMediaStream oldStream
-  let mInfo = flip getMediaDeviceByLabel infos =<< mLabel
-  navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
-  constr <- case (mInfo, mLabel) of
-    (_, Nothing)        -> makeSimpleUserMediaDictionary True False
-    (Nothing, Just _)   -> makeSimpleUserMediaDictionary True True
-    (Just info, Just _) -> makeDictionaryFromVideoInfo info
-  Navigator.getUserMedia navigator $ Just constr
+  let applyActions = push (\actions -> do
+                             cChannels <- sample $ current channels'
+                             pure . Just $ foldr ($) cChannels actions
+                         )
+
+  channels' <- holdDyn Map.empty . applyActions $ mconcat [removeChannels, addChannel]
+
+  let dynChannelRequests = mconcat . map Channel._request . Map.elems <$> channels'
+  let channelRequests = switchPromptlyDyn dynChannelRequests
+  pure $ Socket { _request = channelRequests
+                , _channels = channels'
+                }
 
 
-stopMediaStream :: forall m. MonadJSM m => MediaStream -> m ()
-stopMediaStream stream = do
-  tracks <- catMaybes <$> MediaStream.getTracks stream
-  traverse_ MediaStreamTrack.stop tracks
+mkChannel :: forall m t. (MonadHold t m, TriggerEvent t m, MonadJSM (Performable m), MonadJSM m, PerformEvent t m) => Config t -> DeviceId -> Secret -> MediaStream -> m (Channel t)
+mkChannel config remoteId secret stream
+  = Channel.channel
+    $ Channel.Config { Channel._configResponse = config^.configResponse
+                     , Channel._configSourceStream = Just stream
+                     , Channel._configOurId = API.deviceId $ config^.configAuthData
+                     , Channel._configTheirId = remoteId
+                     , Channel._configSecret = secret
+                     , Channel._configClose = config^.configClose
+                     }
