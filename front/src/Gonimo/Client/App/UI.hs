@@ -112,5 +112,5 @@ renderCenter :: forall m t. (HasWebView m, MonadWidget t m)
 renderCenter config loaded deviceList mRole
   = case mRole of
       Nothing -> (never,) <$> Family.ui config loaded
-      Just Family.RoleBaby -> (, def) <$> Baby.ui loaded deviceList
+      Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
       Just Family.RoleParent -> pure (never, def) -- Not yet implemented!

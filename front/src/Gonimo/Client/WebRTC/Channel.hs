@@ -72,7 +72,12 @@ channel config = mdo
     boostMediaStreamVolume origStream
 
   (messages, remoteClosed) <- handleMessages config conn ourStream'
-  weClosed <- handleClose config conn
+  closeMessage <- handleLocalClose config conn
+
+  closeGotRequested <- hold CloseConnectionLoss
+                       $ const CloseRequested <$> leftmost [config^.configClose, remoteClosed]
+
+  streamClosed <- getRTCClosedEvent conn
 
   gotRemoteStream <- handleReceivedStream conn
   remoteStream' <- holdDyn Nothing $ Just <$> gotRemoteStream
@@ -80,18 +85,32 @@ channel config = mdo
   -- alarm' <- if isBabyStation
   --           then  Just <$> loadSound "/sounds/pup_alert.mp3"
   --           else pure Nothing
-  pure $ Channel { _request = mconcat [messages, wrapInServerRequest config <$> weClosed]
+  pure $ Channel { _request = mconcat [messages, wrapInServerRequest config <$> closeMessage]
                  , _rtcConnection = conn
                  , _ourStream = ourStream'
                  , _remoteStream = remoteStream'
-                 , _closed = const CloseRequested <$> remoteClosed
+                 , _closed = tag closeGotRequested streamClosed
                  }
 
-handleClose :: forall m t. (Applicative m, Reflex t) => Config t -> RTCPeerConnection -> m (Event t Message)
-handleClose config _ = do
-  -- TODO: Probably not a good idea, as it would trigger an alarm. But simply rely on the remote end to close the stream?
-  -- performEvent (const (close conn) <$> config^.configClose)
+handleLocalClose :: forall m t. (MonadJSM (Performable m), TriggerEvent t m, PerformEvent t m)
+                    => Config t -> RTCPeerConnection -> m (Event t Message)
+handleLocalClose config conn = do
+  -- Delay for 3 seconds so remote end won't trigger an alarm (gets the close message first!)
+  delayClose <- delay 3 $ config^.configClose
+  performEvent_ (const (close conn) <$> delayClose)
   pure $ const API.MsgCloseConnection <$> config^.configClose
+
+getRTCClosedEvent :: forall m t. (MonadJSM m, TriggerEvent t m) => RTCPeerConnection -> m (Event t ())
+getRTCClosedEvent conn = do
+  (closeEv, triggerCloseEv) <- newTriggerEvent
+  let
+    addListener :: forall m1 evTarget. (MonadJSM m1, IsEventTarget evTarget) => Text -> evTarget -> m1 ()
+    addListener event evTarget = do
+      jsFun <- liftJSM . function $ \_ _ [] -> triggerCloseEv ()
+      listener <- liftJSM $ EventListener <$> JS.toJSVal jsFun
+      addEventListener evTarget event (Just listener) False
+  addListener "close" conn
+  pure closeEv
 
 handleReceivedStream :: forall m t. (MonadIO m, TriggerEvent t m) => RTCPeerConnection -> m (Event t MediaStream)
 handleReceivedStream conn = do

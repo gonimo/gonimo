@@ -13,20 +13,24 @@ import           Reflex.Dom
 
 import qualified Data.Map                          as Map
 import qualified Gonimo.Client.App.Types           as App
-import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.DOM.Navigator.MediaDevices
+import Gonimo.Client.Server (webSocket_recv)
 -- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
 
 data BabyScreen = ScreenStart | ScreenRunning
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Loaded t -> DeviceList.DeviceList t -> m (Event t ())
-ui loaded deviceList = mdo
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (Event t ())
+ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
+                           , _configResponse = appConfig^.App.server.webSocket_recv
+                           , _configAuthData = loaded^.App.authData
+                           , _configStartMonitor = ui'^.uiStartMonitor
+                           , _configStopMonitor  = ui'^.uiStopMonitor
                            }
 
     uiDyn <- widgetHold (uiStart loaded deviceList baby') (renderCenter baby' <$> screenSelected)

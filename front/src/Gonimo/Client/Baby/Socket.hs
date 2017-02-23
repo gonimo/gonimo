@@ -10,29 +10,13 @@ module Gonimo.Client.Baby.Socket where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
-import           Data.Maybe (catMaybes)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
-import           Data.Set                          ((\\))
-import qualified Data.Set                          as Set
-import qualified GHCJS.DOM                         as DOM
-import qualified GHCJS.DOM.Navigator               as Navigator
-import qualified GHCJS.DOM.Window                  as Window
-import qualified GHCJS.DOM.MediaStream             as MediaStream
-import qualified GHCJS.DOM.MediaStreamTrack        as MediaStreamTrack
-import           Gonimo.Client.Server              (webSocket_recv)
-import qualified Gonimo.Client.Storage             as GStorage
-import qualified Gonimo.Client.Storage.Keys        as GStorage
-import qualified Gonimo.Db.Entities                as Db
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom
 
 import           GHCJS.DOM.Types                   (MediaStream, MonadJSM)
-import qualified Gonimo.Client.App.Types           as App
-import qualified Gonimo.Client.Auth                as Auth
-import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
-import           Gonimo.DOM.Navigator.MediaDevices
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Db.Entities                (DeviceId)
@@ -40,8 +24,8 @@ import           Gonimo.Types                      (Secret)
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
-            , _configAuthData :: Event t API.AuthData
-            , _configClose :: Event t ()
+            , _configAuthData :: Dynamic t API.AuthData
+            , _configEnabled :: Dynamic t Bool
             , _configMediaStream :: Dynamic t MediaStream
             }
 
@@ -56,11 +40,13 @@ makeLenses ''Socket
 
 type ChannelsTransformation t = Map (API.FromId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
-socket :: forall m t. (MonadFix m, MonadHold t m, MonadHold t (Performable m),
-                        PerformEvent t m, PerformEvent t (Performable m), MonadJSM (Performable m),
-                        MonadJSM (Performable (Performable m)), TriggerEvent t (Performable m))
+socket :: forall m t. (MonadFix m, MonadHold t m
+                      , PerformEvent t m, MonadWidget t (Performable m)
+                      )
         => Config t -> m (Socket t)
 socket config = mdo
+  let
+    gatedResponse = gate (current $ config^.configEnabled) (config^.configResponse)
   let
     makeChannel = push (\res -> do
                           cStream <- sample $ current (config^.configMediaStream)
@@ -69,7 +55,7 @@ socket config = mdo
                               -> pure . Just $ ((fromId, secret),) <$> mkChannel config fromId secret cStream
                             _ -> pure Nothing
                        )
-                  (config^.configResponse)
+                  gatedResponse
   newChannel <- performEvent makeChannel
   let
     addChannel :: Event t [ChannelsTransformation t]
@@ -99,13 +85,21 @@ socket config = mdo
                 }
 
 
-mkChannel :: forall m t. (MonadHold t m, TriggerEvent t m, MonadJSM (Performable m), MonadJSM m, PerformEvent t m) => Config t -> DeviceId -> Secret -> MediaStream -> m (Channel t)
-mkChannel config remoteId secret stream
-  = Channel.channel
-    $ Channel.Config { Channel._configResponse = config^.configResponse
+mkChannel :: forall m t. => Config t -> DeviceId -> Secret -> MediaStream -> m (Channel t)
+mkChannel config remoteId secret stream = do
+  let
+    gatedResponse = gate (current $ config^.configEnabled) (config^.configResponse)
+    closeEvent = push (\enabled ->
+                         if enabled
+                         then pure $ Nothing
+                         else pure $ Just ()
+                      ) (updated $ config^.configEnabled)
+  authData <- sample $ current (config^.configAuthData)
+  Channel.channel
+    $ Channel.Config { Channel._configResponse = gatedResponse
                      , Channel._configSourceStream = Just stream
-                     , Channel._configOurId = API.deviceId $ config^.configAuthData
+                     , Channel._configOurId = API.deviceId authData
                      , Channel._configTheirId = remoteId
                      , Channel._configSecret = secret
-                     , Channel._configClose = config^.configClose
+                     , Channel._configClose = closeEvent
                      }
