@@ -70,7 +70,7 @@ uiSwitchPromptlyDyn ev
        ( switchPromptlyDyn (_uiEnableCamera <$> ev) )
        ( switchPromptlyDyn (_uiSelectCamera <$> ev) )
 
-baby :: forall m t. (MonadWidget t m)
+baby :: forall m t. (MonadWidget t m, HasWebView m)
         => Config t -> m (Baby t)
 baby config = mdo
   badInit <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!
@@ -87,8 +87,8 @@ baby config = mdo
   mediaStream' <- holdDyn badInit gotNewStream
 
   sockEnabled <- holdDyn False $ leftmost [ const True <$> config^.configStartMonitor
-                                      , const False <$> config^.configStopMonitor
-                                      ]
+                                          , const False <$> config^.configStopMonitor
+                                          ]
 
   socket' <- Socket.socket $ Socket.Config { Socket._configResponse = config^.configResponse
                                            , Socket._configAuthData = config^.configAuthData
