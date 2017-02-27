@@ -97,9 +97,6 @@ library
                       , persistent-template
                       , random
                       , resource-pool
-                      , servant
-                      , servant-docs
-                      , servant-server
                       , smtp-mail
                       , stm
                       , template-haskell
@@ -157,9 +154,6 @@ executable gonimo-back
                     , persistent-template
                     , random
                     , resource-pool
-                    , servant
-                    , servant-docs
-                    , servant-server
                     , smtp-mail
                     , stm
                     , template-haskell
@@ -199,7 +193,6 @@ executable gonimo-back
 --                       , lens >= 4.13
 --                       , persistent-sqlite
 --                       , persistent-template
---                       , servant-server
 --                       , smallcheck
 --                       , time
 --                       , gonimo-common
