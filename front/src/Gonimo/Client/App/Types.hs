@@ -11,6 +11,7 @@ import qualified Gonimo.Client.Subscriber as Subscriber
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Db.Entities as Db
 import Data.Map (Map)
+import Control.Monad
 
 data Config t
   = Config { _server :: Server.Server t
@@ -29,7 +30,35 @@ data App t
         , _request :: Event t [ API.ServerRequest ]
         }
 
+data Screen t
+  = Screen { _screenApp :: App t
+           , _screenGoHome :: Event t ()
+           }
 
 makeLenses ''Config
 makeLenses ''Loaded
 makeLenses ''App
+makeLenses ''Screen
+
+
+mkEmptyApp :: (Reflex t, MonadHold t m) => m (App t)
+mkEmptyApp = do
+  subs <- holdDyn mempty never
+  pure $ App subs never
+
+mkEmptyScreen :: (Reflex t, MonadHold t m) => m (Screen t)
+mkEmptyScreen = do
+  app <- mkEmptyApp
+  pure $ Screen app never
+
+appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
+appSwitchPromptlyDyn ev
+  = App { _subscriptions = join $ _subscriptions <$> ev
+        , _request = switchPromptlyDyn $ _request <$> ev
+        }
+
+screenSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (Screen t) -> Screen t
+screenSwitchPromptlyDyn ev
+  = Screen { _screenApp = appSwitchPromptlyDyn (_screenApp <$> ev)
+           , _screenGoHome = switchPromptlyDyn $ _screenGoHome <$> ev
+           }

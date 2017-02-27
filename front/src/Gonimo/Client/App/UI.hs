@@ -91,26 +91,30 @@ loadedUI config loaded = mdo
                                                           , DeviceList._configAuthData = config^.auth.Auth.authData
                                                           , DeviceList._configFamilyId = loaded^.selectedFamily
                                                           }
+  emptyScreen <- mkEmptyScreen
   dynPair <- widgetHold
-             ((never,) <$> Family.ui config loaded)
+             ((emptyScreen,) <$> Family.ui config loaded)
              (renderCenter config loaded deviceList <$> roleSelected)
 
-  let cancelled = switchPromptlyDyn . fmap fst $ dynPair
+  let screen = screenSwitchPromptlyDyn . fmap fst $ dynPair
   let familyUI = Family.uiSwitchPromptlyDyn . fmap snd $ dynPair
 
-  let roleSelected = leftmost [Just <$> familyUI^.Family.uiRoleSelected, const Nothing <$> cancelled]
+  let roleSelected = leftmost [ Just <$> familyUI^.Family.uiRoleSelected
+                              , const Nothing <$> screen^.screenGoHome
+                              ]
 
-  let app = App { _request = deviceList^.DeviceList.request
-                , _subscriptions = deviceList^.DeviceList.subscriptions
+  let app = App { _request = deviceList^.DeviceList.request <> screen^.screenApp.request
+                , _subscriptions = deviceList^.DeviceList.subscriptions <> screen^.screenApp.subscriptions
                 }
   pure (app, familyUI)
 
 
 -- Returned pair: Cancel event (go back to family screen and Family.UI)
 renderCenter :: forall m t. (HasWebView m, MonadWidget t m)
-      => Config t -> Loaded t -> DeviceList.DeviceList t -> Maybe Family.GonimoRole -> m (Event t (), Family.UI t)
-renderCenter config loaded deviceList mRole
-  = case mRole of
-      Nothing -> (never,) <$> Family.ui config loaded
+      => Config t -> Loaded t -> DeviceList.DeviceList t -> Maybe Family.GonimoRole -> m (Screen t, Family.UI t)
+renderCenter config loaded deviceList mRole = do
+  emptyScreen <- mkEmptyScreen
+  case mRole of
+      Nothing -> (emptyScreen,) <$> Family.ui config loaded
       Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
-      Just Family.RoleParent -> pure (never, def) -- Not yet implemented!
+      Just Family.RoleParent -> pure (emptyScreen, def) -- Not yet implemented!

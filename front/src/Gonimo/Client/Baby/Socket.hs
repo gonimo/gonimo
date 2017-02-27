@@ -12,6 +12,7 @@ import Gonimo.Client.Prelude
 import           Control.Lens
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
+import qualified Data.Set                          as Set
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom
@@ -19,7 +20,8 @@ import           Reflex.Dom
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import           Gonimo.Client.WebRTC.Channel      (Channel)
-import           Gonimo.Types                      (Secret)
+import           Gonimo.Types                      (Secret, DeviceType(..))
+import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -31,6 +33,7 @@ data Config t
 data Socket t
   = Socket { _request :: Event t [ API.ServerRequest ]
            , _channels :: Dynamic t (Map (API.FromId, Secret) (Channel t))
+           , _subscriptions :: SubscriptionsDyn t
            }
 
 
@@ -88,6 +91,11 @@ socket config = mdo
   let closeRequests = Channel.sendCloseMessages (current $ config^.configAuthData) (current channels') closeEvent
 
   channelRequests <- Channel.handleMessages (current $ config^.configAuthData) (current channels') gatedResponse
+
+  let deviceTypeDyn = (\on -> if on then Baby "baby" else NoBaby) <$> config^.configEnabled
+  let setDeviceType = zipDynWith API.ReqSetDeviceType (API.deviceId <$> config^.configAuthData) deviceTypeDyn
+  let subs = Set.singleton <$> setDeviceType -- Dummy subscription, never changes but it will be re-executed when the connection breaks.
   pure $ Socket { _request = channelRequests <> closeRequests
                 , _channels = channels'
+                , _subscriptions = subs
                 }

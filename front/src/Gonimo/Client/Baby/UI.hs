@@ -14,16 +14,17 @@ import           Reflex.Dom
 import qualified Data.Map                          as Map
 import qualified Gonimo.Client.App.Types           as App
 import           Gonimo.Client.Baby.Internal
+import qualified Gonimo.Client.Baby.Socket         as Socket
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
-import Gonimo.Client.Server (webSocket_recv)
 -- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
 
 data BabyScreen = ScreenStart | ScreenRunning
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (Event t ())
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
@@ -45,7 +46,12 @@ ui appConfig loaded deviceList = mdo
                               cStream <- sample $ current (baby'^.mediaStream)
                               stopMediaStream cStream
                           ) <$> ui'^.uiGoHome
-    pure $ ui'^.uiGoHome
+    let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
+                          , App._request = baby'^.socket.Socket.request
+                          }
+    pure $ App.Screen { App._screenApp = babyApp
+                      , App._screenGoHome = ui'^.uiGoHome
+                      }
   where
     renderCenter baby' ScreenStart = uiStart loaded deviceList baby'
     renderCenter baby' ScreenRunning = uiRunning loaded deviceList baby'
