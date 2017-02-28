@@ -24,6 +24,9 @@ import           Data.Typeable
 import           System.Environment (lookupEnv)
 import           Gonimo.Server.Error (fromMaybeErr)
 import           Safe (readMay)
+import qualified Data.Text.Encoding as T
+import           Data.Text (Text)
+import           Network.HTTP.Types.Status
 
 data StartupError
   = NO_GONIMO_FRONTEND_URL
@@ -49,7 +52,7 @@ devMain = do
   , configPredicates = predicates
   , configFrontendURL = "http://localhost:8081/index.html"
   }
-  run 8081 $ addDevServer $ serve runGonimoLoggingT config
+  run 8081 . addDevServer $ serve runGonimoLoggingT config
 
 prodMain :: IO ()
 prodMain = do
@@ -73,7 +76,7 @@ prodMain = do
   , configPredicates = predicates
   , configFrontendURL = T.pack frontendURL
   }
-  run port $ serve runGonimoLoggingT config
+  run port . checkOrigin (T.pack frontendURL) $ serve runGonimoLoggingT config
 
 main :: IO ()
 #ifdef DEVELOPMENT
@@ -84,3 +87,15 @@ main = prodMain
 
 addDevServer :: Application -> Application
 addDevServer = staticPolicy $ addBase "../front/dist/build/gonimo-front/gonimo-front.jsexe" <|> addSlash
+
+checkOrigin :: Text -> Application -> Application
+checkOrigin frontendURL app req sendResponse = do
+  let
+    headers = requestHeaders req
+    mOrigin = lookup "Origin" headers
+    deny reason = sendResponse $ responseLBS (Status 403 reason) [] mempty
+  case mOrigin of
+    Nothing -> deny "No Origin Header"
+    Just origin -> if T.isPrefixOf (T.decodeUtf8 origin) frontendURL
+                      then app req sendResponse
+                      else deny "Wrong origin - you nasty boy!"

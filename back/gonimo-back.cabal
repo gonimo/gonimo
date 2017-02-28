@@ -163,9 +163,10 @@ executable gonimo-back
                     , wai
                     , gonimo-common
                     , safe
+                    , warp
+                    , http-types
 -- Only needed for development:
                     , wai-middleware-static 
-                    , warp
 
 
 
