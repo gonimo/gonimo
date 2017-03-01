@@ -32,7 +32,7 @@ boostMediaStreamVolume :: MonadJSM m => MediaStream -> m MediaStream
 boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (PureScript)
   boostJS <- eval $
     ("" :: Text) <>
-    "function(stream) {\n" <>
+    "(function(stream) {\n" <>
     "    if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
     "    var ctx = gonimoAudioContext;\n" <>
     "    var source = ctx.createMediaStreamSource(stream);\n" <>
@@ -48,7 +48,8 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     "        outStream.addTrack(videoTracks[i]);\n" <>
     "    }\n" <>
     "    return outStream;\n" <>
-    "}\n"
+    "    return stream;\n" <>
+    "})"
   rawStream <- JS.call boostJS JS.obj [JS.toJSVal stream]
   pure $ MediaStream rawStream
 -- Started Haskell version (not finished yet and won't compile: )
@@ -66,8 +67,8 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
 loadSound :: MonadJSM m => Text -> m AudioNode
 loadSound url = do
   jsGetSound <- liftJSM . eval $
-    ("" :: Text) <> 
-    "function (url, success) {\n" <> -- Stolen from gonimo-front (PureScript)
+    ("" :: Text) <>
+    "(function (url, success) {\n" <> -- Stolen from gonimo-front (PureScript)
     "  function makeMyAudio() {\n" <>
     "      if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
     "      var ctx = gonimoAudioContext;\n" <>
@@ -98,15 +99,15 @@ loadSound url = do
     "        var ctx = gonimoAudioContext;\n" <>
     "        ctx.decodeAudioData(request.response, function(buffer) {\n" <>
     "            gonimoDecodedAlert = buffer;\n" <>
-    "            success(makeMyAudio())();\n" <>
+    "            success(makeMyAudio());\n" <>
     "        }, function(e) { console.log ('Error:' +  e.message); error(e);});\n" <>
     "    };\n" <>
     "    request.send();\n" <>
     "  }\n" <>
     "  else {\n" <>
-    "      success(makeMyAudio())();\n" <>
+    "      success(makeMyAudio());\n" <>
     "  }\n" <>
-    "}\n"
+    "})\n"
   sndVar <- liftIO $ newEmptyMVar
   _ <- liftJSM $ JS.call jsGetSound JS.obj [ JS.toJSVal url
                                            , JS.toJSVal . JS.function $ \_ _ [snd']
