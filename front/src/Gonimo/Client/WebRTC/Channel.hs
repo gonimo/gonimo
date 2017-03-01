@@ -9,6 +9,7 @@ module Gonimo.Client.WebRTC.Channel where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
+import           Control.Exception.Lifted
 import           Data.Map                     (Map)
 import qualified Data.Map                     as Map
 import           Data.Maybe                   (catMaybes)
@@ -73,7 +74,12 @@ channel config = mdo
     let
       addListener :: forall m1 track. (MonadJSM m1, IsEventTarget track) => Text -> track -> m1 ()
       addListener event track = do
-        jsFun <- liftJSM . function $ \_ _ [] -> RTCPeerConnection.close conn
+        jsFun <- liftJSM . function $ \_ _ _ -> do
+          safeClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Catched: \" + e.toString());}})" :: Text)
+          _ <- JS.call safeClose JS.obj [conn]
+          -- Don't use, it throws uncatchable exceptions when connection is already closed:
+          -- RTCPeerConnection.close conn
+          pure ()
         listener <- liftJSM $ EventListener <$> JS.toJSVal jsFun
         addEventListener track event (Just listener) False
     traverse_ (uncurry addListener) $ (,) <$> ["ended", "mute", "inactive"] <*> tracks -- all permutations!
