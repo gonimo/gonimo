@@ -63,7 +63,7 @@ ui config = mdo
                                )
         let clickAttr n attrs children' = domEvent Click . fst <$> elDynAttr' n attrs children'
         clickAttr "a" (mkBtnAttrs <$> payload) $ do
-          elAttr "img" ("src" =: img <> "style" =: "height: 80%;") $ pure ()
+          elAttr "img" ("src" =: img <> "style" =: "height: 80px;") $ pure ()
           elAttr "div" ("style" =: "text-align: center") $
             text name
 

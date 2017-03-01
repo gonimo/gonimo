@@ -19,6 +19,7 @@ import qualified Gonimo.Client.Family           as Family
 import qualified Gonimo.Client.MessageBox       as MessageBox
 import           Gonimo.Client.Server           (webSocket_recv)
 import qualified Gonimo.Client.Baby             as Baby
+import qualified Gonimo.Client.Parent           as Parent
 import           Gonimo.Client.Reflex.Dom
 
 
@@ -117,4 +118,4 @@ renderCenter config loaded deviceList mRole = do
   case mRole of
       Nothing -> (emptyScreen,) <$> Family.ui config loaded
       Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
-      Just Family.RoleParent -> pure (emptyScreen, def) -- Not yet implemented!
+      Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList

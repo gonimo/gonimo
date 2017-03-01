@@ -69,6 +69,7 @@ library
                     , mtl
                     , jsaddle
                     , data-default
+                    , lifted-base
                     -- , ghcjs-base
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Config
@@ -116,6 +117,8 @@ library
                     , Gonimo.Client.WebRTC.Message
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.Parent.Connections
+                    , Gonimo.Client.Parent.UI
+                    , Gonimo.Client.Parent
 
 
 
