@@ -74,7 +74,7 @@ socket config = mdo
     closeEvent = push (\enabled ->
                          if enabled
                          then pure $ Nothing
-                         else pure $ Just ()
+                         else pure $ Just Channel.AllChannels
                       ) (updated $ config^.configEnabled)
   let
     removeChannels :: Event t [ChannelsTransformation t]

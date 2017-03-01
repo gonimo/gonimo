@@ -45,6 +45,8 @@ data RTCEvent
   = RTCGotRemoteStream !MediaStream
   | RTCConnectionClosed
 
+data ChannelSelector = AllChannels | OnlyChannel (API.FromId, Secret)
+
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
             , _configTriggerChannelEvent :: ChannelEvent -> IO ()
@@ -103,7 +105,7 @@ getRemoteStreams ev = mdo
   pure streams
 
 -- Get channels that should be closed because the RTCConnection closed or remote send close request or user pressed closed.
-getClosedChannels :: Reflex t => ChannelsBehavior t -> Event t API.ServerResponse -> Event t ChannelEvent -> Event t () -> Event t [(API.FromId, Secret)]
+getClosedChannels :: Reflex t => ChannelsBehavior t -> Event t API.ServerResponse -> Event t ChannelEvent -> Event t ChannelSelector -> Event t [(API.FromId, Secret)]
 getClosedChannels chans response chanEv closeRequested =
   let
     remoteClosed = push (\res ->
@@ -118,14 +120,17 @@ getClosedChannels chans response chanEv closeRequested =
                               -> pure . Just $ [mapKey]
                             _ -> pure Nothing
                       ) chanEv
-    localClosed = push (\_ -> Just . Map.keys <$> sample chans) closeRequested
+    localClosed = push (\ev -> case ev of
+                         AllChannels -> Just . Map.keys <$> sample chans
+                         OnlyChannel key -> pure . Just $ [key]
+                       ) closeRequested
   in
     remoteClosed <> connClosed <> localClosed
 
 
 -- Get notified when a channel gets closed.
 getCloseEvent :: Reflex t => ChannelsBehavior t -> Event t ChannelEvent -> Event t ((API.FromId,Secret), CloseEvent)
-getCloseEvent chans 
+getCloseEvent chans
   = push (\ev' -> do
              cChans <- sample chans
              case ev' of
@@ -137,14 +142,17 @@ getCloseEvent chans
          )
 
 -- Send close messages to all channels
-sendCloseMessages :: forall t. Reflex t => Behavior t API.AuthData -> ChannelsBehavior t -> Event t () -> Event t [API.ServerRequest]
+sendCloseMessages :: forall t. Reflex t => Behavior t API.AuthData -> ChannelsBehavior t -> Event t ChannelSelector -> Event t [API.ServerRequest]
 sendCloseMessages authData chans
-  = push (\_ -> do
-             cChans <- Map.keys <$> sample chans
+  = push (\ev -> do
              cAuthData <- sample authData
              let mkRequest (theirId, secret')
                            = API.ReqSendMessage (API.deviceId cAuthData) theirId secret' API.MsgCloseConnection
-             pure . Just $ map mkRequest cChans
+             case ev of
+               AllChannels -> do
+                 cChans <- Map.keys <$> sample chans
+                 pure . Just $ map mkRequest cChans
+               OnlyChannel key -> pure . Just $  [mkRequest key]
          )
 
 handleMessages :: forall m t. ( PerformEvent t m, Reflex t, MonadSample t (Performable m)
