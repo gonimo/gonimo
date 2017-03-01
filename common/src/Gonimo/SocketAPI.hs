@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 -- {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Gonimo.SocketAPI where
 
+import           Control.Lens
 import           Data.Text                       (Text)
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToEncoding)
@@ -92,3 +94,6 @@ instance ToJSON ServerRequest where
 instance FromJSON ServerResponse
 instance ToJSON ServerResponse where
   toEncoding = genericToEncoding defaultOptions
+
+makeClassyPrisms ''ServerRequest
+makeClassyPrisms ''ServerResponse
