@@ -18,7 +18,7 @@ else
     fi
     # cat resources/js/jquery-2.2.4.min.js rts.js lib.js out.js resources/js/bootstrap.min.js > all.js
     cat rts.js lib.js out.js > all.js
-    # closure-compiler all.js --compilation_level=ADVANCED_OPTIMIZATIONS  --variable_renaming_report=varNames --assume_function_wrapper > all-inner.min.js
+    # closure-compiler all.js --compilation_level=ADVANCED_OPTIMIZATIONS  --variable_renaming_report=varNames --assume_function_wrapper --language_in=ECMASCRIPT5 > all-inner.min.js
     # echo "(function(global) {" > all.min.js
     # cat all-inner.min.js >> all.min.js
     # echo "})(typeof global !== 'undefined' ? global : this);" >> all.min.js
