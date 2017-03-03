@@ -78,7 +78,5 @@ renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => [MediaStream] -> 
 renderVideos streams = do
   let
     renderVideo stream
-      = mediaVideo stream ("autoplay" =: "true"
-                            <> "muted" =: "true"
-                          )
+      = mediaVideo stream ("autoplay" =: "true")
   traverse_ renderVideo streams
