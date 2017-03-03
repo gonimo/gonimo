@@ -92,10 +92,12 @@ socket config = mdo
 
   channelRequests <- Channel.handleMessages (current $ config^.configAuthData) (current channels') gatedResponse
 
+  rtcRequests <- Channel.handleRTCEvents (current $ config^.configAuthData) (current channels') channelEvent
+
   let deviceTypeDyn = (\on -> if on then Baby "baby" else NoBaby) <$> config^.configEnabled
   let setDeviceType = zipDynWith API.ReqSetDeviceType (API.deviceId <$> config^.configAuthData) deviceTypeDyn
   let subs = Set.singleton <$> setDeviceType -- Dummy subscription, never changes but it will be re-executed when the connection breaks.
-  pure $ Socket { _request = channelRequests <> closeRequests
+  pure $ Socket { _request = channelRequests <> closeRequests <> rtcRequests
                 , _channels = channels'
                 , _subscriptions = subs
                 }
