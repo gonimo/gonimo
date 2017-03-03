@@ -34,10 +34,11 @@ library
   hs-source-dirs:      src
   default-language:    Haskell2010
   if flag(dev) 
-      cpp-options:   -DDEVELOPMENT
-      ghc-options:   -Wall -fwarn-tabs -O0
+      cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
+      ghc-options:   -Wall -fwarn-tabs -O0 -debug
   else
       ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -O2
+      ghcjs-options: -dedupe
       cpp-options:   -DGHCJS_BROWSER
 
   default-extensions: ConstraintKinds
@@ -124,11 +125,12 @@ library
 
 executable gonimo-front
   if flag(dev) 
-      cpp-options:   -DDEVELOPMENT
-      ghc-options:   -Wall
+      cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
+      ghc-options:   -Wall -debug
   else
       cpp-options:   -DGHCJS_BROWSER
       ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
+      ghcjs-options:       -dedupe
   main-is:            GonimoFront.hs
   hs-source-dirs:      app
   default-language:    Haskell2010
