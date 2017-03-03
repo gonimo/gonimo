@@ -96,11 +96,12 @@ connections config = mdo
   let closeRequests = Channel.sendCloseMessages (current $ config^.configAuthData) (current channels') closeEvent
 
   channelRequests <- Channel.handleMessages (current $ config^.configAuthData) (current channels') (config^.configResponse)
+  rtcRequests <- Channel.handleRTCEvents (current $ config^.configAuthData) (current channels') channelEvent
 
   channelStreams <- Channel.getRemoteStreams channelEvent
   let streams' = Map.fromList . (over (mapped._1) (^._1)) . Map.toList <$> channelStreams
 
-  pure $ Connections { _request = openChannelReq <> channelRequests <> closeRequests <> startStreamingReq config
+  pure $ Connections { _request = openChannelReq <> channelRequests <> closeRequests <> startStreamingReq config <> rtcRequests
                      , _streams = streams'
                      }
 
