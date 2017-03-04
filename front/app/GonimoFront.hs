@@ -50,13 +50,13 @@ app = mdo
 
 main :: IO ()
 main = do
-  putStrLn "Run it baby!"
-  run 3709 $ do
-    liftIO $ putStrLn "Before console.log"
-    _ <- JS.eval("console.log('ehehehehe we are here!');" :: Text);
-    liftIO $ putStrLn "After console.log"
-    pure ()
-  -- run 3709 $ mainWidgetInElementById "app" app
+  -- putStrLn "Run it baby!"
+  -- run 3709 $ do
+  --   liftIO $ putStrLn "Before console.log"
+  --   _ <- JS.eval("console.log('ehehehehe we are here!');" :: Text);
+  --   liftIO $ putStrLn "After console.log"
+  --   pure ()
+  run 3709 $ mainWidgetInElementById "app" app
 
 -- headTag :: forall x. Widget x ()
 -- headTag = do
