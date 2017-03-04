@@ -9,7 +9,7 @@ import           Data.Monoid
 import qualified Data.Set                       as Set
 import qualified Gonimo.Client.DeviceList       as DeviceList
 import           Gonimo.Client.Reflex
-import           Reflex.Dom
+import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import           Gonimo.Client.App.Internal

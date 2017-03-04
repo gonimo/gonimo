@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.MessageBox.Internal where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Lens
 import Data.Text (Text)
 import qualified Gonimo.Client.App.Types as App

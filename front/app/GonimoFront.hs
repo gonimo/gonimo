@@ -3,6 +3,7 @@
 
 import           Control.Lens
 import           Data.Monoid
+import           Control.Monad.IO.Class
 import qualified Gonimo.Client.App        as App
 import qualified Gonimo.Client.Auth       as Auth
 import qualified Gonimo.Client.Config     as Config
@@ -10,12 +11,17 @@ import           Gonimo.Client.Server     (webSocketConfig_send, webSocket_open,
                                            webSocket_recv)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
-import           Reflex.Dom               hiding (webSocketConfig_send)
+import           Reflex.Dom.Core               hiding (webSocketConfig_send)
+
+import Language.Javascript.JSaddle.Warp (run)
+import qualified Language.Javascript.JSaddle              as JS
+import            Data.Text (Text)
 
 
 
-main :: IO ()
-main = mainWidgetInElementById "app" $ mdo
+app :: forall x. Widget x ()
+app = mdo
+  liftIO $ putStrLn "Loaded - yeah!"
   let serverRequests = auth^.Auth.request
                     <> subscriber^.Subscriber.request
                     <> app^.App.request
@@ -41,6 +47,16 @@ main = mainWidgetInElementById "app" $ mdo
                              }
   app <- App.ui appConfig
   pure ()
+
+main :: IO ()
+main = do
+  putStrLn "Run it baby!"
+  run 3709 $ do
+    liftIO $ putStrLn "Before console.log"
+    _ <- JS.eval("console.log('ehehehehe we are here!');" :: Text);
+    liftIO $ putStrLn "After console.log"
+    pure ()
+  -- run 3709 $ mainWidgetInElementById "app" app
 
 -- headTag :: forall x. Widget x ()
 -- headTag = do

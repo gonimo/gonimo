@@ -17,9 +17,13 @@ Flag dev
     Description:   Turn on development settings.
     Default:       False
 
+Flag warp
+  description: Build with jsaddle-warp!
+  default: True   
+
 custom-setup
     setup-depends: base >=4.8 && <4.10
-                 , Cabal >= 1.18 && < 1.25
+                , Cabal >= 1.18 && < 1.25
                  -- , bytestring
                  -- , conduit
                  -- , conduit-extra
@@ -59,7 +63,6 @@ library
                     , ghcjs-dom
                     , gonimo-common
                     , reflex
-                    , reflex-dom
                     , lens
                     , dependent-map
                     , safe
@@ -68,10 +71,15 @@ library
                     , http-types
                     , time
                     , mtl
-                    , jsaddle
                     , data-default
                     , lifted-base
+                    , jsaddle
+                    , reflex-dom-core
                     -- , ghcjs-base
+  if !impl(ghcjs)
+     build-depends: jsaddle-warp
+                  , jsaddle-dom
+
   exposed-modules:    Gonimo.Client.Storage
                     , Gonimo.Client.Config
                     , Gonimo.Client.Storage.Keys
@@ -126,7 +134,8 @@ library
 executable gonimo-front
   if flag(dev) 
       cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
-      ghc-options:   -Wall -debug
+      ghc-options:   -Wall -threaded
+      ghcjs-options: -debug
   else
       cpp-options:   -DGHCJS_BROWSER
       ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
@@ -150,7 +159,6 @@ executable gonimo-front
   build-depends:      base >=4.8 && <4.10
                     , aeson
                     , reflex
-                    , reflex-dom
                     , containers
                     , safe
                     , text
@@ -171,3 +179,8 @@ executable gonimo-front
                     , errors
                     , http-api-data
                     , data-default
+                    , reflex-dom-core
+  if !impl(ghcjs)
+     build-depends:  jsaddle-warp
+                   , jsaddle
+                    

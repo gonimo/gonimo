@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.App.Internal where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Data.Monoid
 import Data.Text (Text)
 import qualified Gonimo.Db.Entities as Db

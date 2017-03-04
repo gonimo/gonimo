@@ -15,7 +15,7 @@ import           Gonimo.Db.Entities               (FamilyId)
 import qualified Gonimo.Db.Entities               as Db
 import qualified Gonimo.SocketAPI                 as API
 import qualified Gonimo.Types                     as Gonimo
-import           Reflex.Dom
+import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types          as App
 import qualified Gonimo.Client.Auth               as Auth

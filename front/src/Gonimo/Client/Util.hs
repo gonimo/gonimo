@@ -13,7 +13,7 @@ import GHCJS.DOM.AudioNode (AudioNode(..))
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam
-import GHCJS.DOM.Types                   (AudioContext(..), Nullable(..), nullableToMaybe)
+import GHCJS.DOM.Types                   (AudioContext(..), nullableToMaybe)
 import Gonimo.Client.Prelude
 
 getGonimoAudioContext :: MonadJSM m => m AudioContext
@@ -24,7 +24,7 @@ getGonimoAudioContext = liftJSM $ do
 getCachedAlertSound :: MonadJSM m => m (Maybe JSVal)
 getCachedAlertSound = liftJSM $ do
   rawVal <- eval ("if (typeof gonimoDecodedAlert == 'undefined') { return null;} else { return gonimoDecodedAlert}" :: Text)
-  pure $ nullableToMaybe (Nullable rawVal)
+  nullableToMaybe rawVal
 
 
 

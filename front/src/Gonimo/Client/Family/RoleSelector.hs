@@ -3,7 +3,7 @@
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.Family.RoleSelector where
 
-import           Reflex.Dom
+import           Reflex.Dom.Core
 
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Reflex.Dom

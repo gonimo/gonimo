@@ -19,7 +19,7 @@ import qualified Gonimo.Client.Storage             as GStorage
 import qualified Gonimo.Client.Storage.Keys        as GStorage
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
-import           Reflex.Dom
+import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types                   (MediaStream, MonadJSM)
 import           Gonimo.DOM.Navigator.MediaDevices

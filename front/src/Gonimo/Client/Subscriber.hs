@@ -4,7 +4,7 @@
 {-# LANGUAGE TupleSections #-}
 module Gonimo.Client.Subscriber where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Monad.Fix (MonadFix)
 import qualified Gonimo.Db.Entities as Db
 import Data.Map (Map)

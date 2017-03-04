@@ -5,7 +5,7 @@
 module Gonimo.Client.Server.State where
 
 import Reflex
-import Reflex.Dom
+import Reflex.Dom.Core
 import Reflex.PerformEvent.Class (performEvent_)
 import Control.Lens
 import qualified Gonimo.SocketAPI.Types as API

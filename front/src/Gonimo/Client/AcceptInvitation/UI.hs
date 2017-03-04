@@ -18,7 +18,7 @@ import           Gonimo.SocketAPI.Types                  (InvitationInfo (..))
 import           Gonimo.SocketAPI.Types                  (InvitationReply (..))
 import           Gonimo.Types                            (Secret)
 import qualified Gonimo.Types                            as Gonimo
-import           Reflex.Dom
+import           Reflex.Dom.Core
 import           GHCJS.DOM.Types (MonadJSM)
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)

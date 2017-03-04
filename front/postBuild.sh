@@ -2,11 +2,15 @@
 dev=$1
 distPath=dist/build/gonimo-front/gonimo-front.jsexe
 cp -a static/* ${distPath}/
+[[ -e devRoot ]] && rm devRoot
+ln -s ${distPath} devRoot
 if [[ ${dev} == "dev" ]]
 then
     echo "Development build, skipping minification"
 else
     pushd ${distPath}
+    rm index.html
+    mv index-ghcjs.html index.html
     echo 'window["h$mainZCZCMainzimain"] = h$mainZCZCMainzimain;' >> out.js
     echo 'window["h$main"] = h$main;' >> out.js
     grep -q window runmain.js

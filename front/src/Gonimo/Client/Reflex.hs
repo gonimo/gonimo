@@ -6,7 +6,7 @@
 -- | Reflex helper functions
 module Gonimo.Client.Reflex where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Monad
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)

@@ -9,7 +9,7 @@ import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid
 import           Data.Text                         (Text)
 import qualified Gonimo.Client.DeviceList          as DeviceList
-import           Reflex.Dom
+import           Reflex.Dom.Core
 
 import qualified Data.Map                          as Map
 import qualified Gonimo.Client.App.Types           as App

@@ -20,7 +20,7 @@ import           Gonimo.Db.Entities       (AccountId, DeviceId, FamilyId)
 import qualified Gonimo.SocketAPI         as API
 import qualified Gonimo.SocketAPI.Types   as API
 import           Gonimo.Types             (DeviceType)
-import           Reflex.Dom
+import           Reflex.Dom.Core
 import           Gonimo.Client.Prelude
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)

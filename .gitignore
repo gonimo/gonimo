@@ -25,3 +25,4 @@ default.nix
 testdb
 testdb-shm
 testdb-wal
+/front/devRoot

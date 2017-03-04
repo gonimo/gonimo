@@ -4,7 +4,7 @@
 module Gonimo.Client.NoSleep where
 
 
-import           Reflex.Dom
+import           Reflex.Dom.Core
 import           Data.Monoid
 
 -- Don't use! Does not work and uses a whole lot of CPU!

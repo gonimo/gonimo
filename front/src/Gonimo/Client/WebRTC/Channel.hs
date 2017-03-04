@@ -21,17 +21,21 @@ import           GHCJS.DOM.RTCIceCandidateEvent as IceEvent
 import           GHCJS.DOM.EventM
 import qualified GHCJS.DOM.MediaStream        as MediaStream
 import           GHCJS.DOM.MediaStreamTrack
-import           GHCJS.DOM.RTCPeerConnection  hiding (newRTCPeerConnection)
-import qualified GHCJS.DOM.RTCPeerConnection  as RTCPeerConnection
+-- #ifdef __GHCJS__
+import           GHCJS.DOM.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
+-- #else
+-- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
+-- -- import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection (addStream)
+-- #endif
 import           Gonimo.Db.Entities           (DeviceId)
 import qualified Gonimo.SocketAPI             as API
 import qualified Gonimo.SocketAPI.Types       as API
 import           Gonimo.Types                 (Secret)
-import           Reflex.Dom
+import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types              (Dictionary (..),
                                                EventListener (..), MediaStream,
-                                               MonadJSM)
+                                               MonadJSM, RTCPeerConnection)
 import qualified GHCJS.DOM.Types  as ET (Event)
 import           Gonimo.Client.Config
 import           Gonimo.Client.Util
@@ -277,10 +281,10 @@ getRTCClosedEvent config conn = liftJSM $ do
   let
     triggerCloseEv = config^.configTriggerChannelEvent
                      $ ChannelEvent (config^.configTheirId, config^.configSecret) RTCEventConnectionClosed
-  listener <- newListener . liftJSM $ do
-    state :: Text <- getIceConnectionState conn
+  listener <- newListener $ do
+    state :: Text <- liftJSM $ getIceConnectionState conn
     if state == "closed"
-      then triggerCloseEv
+      then liftIO $ triggerCloseEv
       else pure ()
   addListener conn iceConnectionStateChange listener False
 
@@ -295,7 +299,7 @@ handleReceivedStream config conn = liftJSM $ do
     e <- ask
     rawStream <- liftJSM $ (JS.toJSVal e) JS.! ("stream" :: Text)
     mStream <- liftJSM $ JS.fromJSVal rawStream
-    liftJSM . triggerRTCEvent $ fromJustNote "event had no valid MediaStream!" mStream
+    liftIO . triggerRTCEvent $ fromJustNote "event had no valid MediaStream!" mStream
 
   addListener conn addStreamEvent listener False
 

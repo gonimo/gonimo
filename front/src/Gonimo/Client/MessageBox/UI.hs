@@ -4,7 +4,7 @@
 {-# LANGUAGE TupleSections #-}
 module Gonimo.Client.MessageBox.UI where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Monad
 import Control.Lens
 import Data.Monoid

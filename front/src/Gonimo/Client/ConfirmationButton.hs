@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Client.ConfirmationButton where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Data.Map (Map)
 import Data.Text (Text)
 import Control.Monad.Fix (MonadFix)

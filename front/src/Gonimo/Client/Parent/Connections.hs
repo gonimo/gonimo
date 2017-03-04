@@ -15,7 +15,7 @@ import qualified Data.Map                          as Map
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Db.Entities (DeviceId)
-import           Reflex.Dom
+import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel

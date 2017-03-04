@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.NavBar.Internal where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Lens
 import qualified Gonimo.Client.App.Types as App
 import qualified Gonimo.Client.DeviceList.Internal as DeviceList

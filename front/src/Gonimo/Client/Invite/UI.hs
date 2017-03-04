@@ -3,7 +3,7 @@
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.Invite.UI where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Lens
 import Data.Monoid
 import Data.Text (Text)

@@ -4,7 +4,7 @@
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.EditStringButton (editStringButton) where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Lens
 import Data.Map (Map)
 import Data.Text (Text)

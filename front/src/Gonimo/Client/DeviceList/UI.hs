@@ -25,7 +25,7 @@ import           Gonimo.Db.Entities                (AccountId, DeviceId)
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (DeviceType (..))
-import           Reflex.Dom
+import           Reflex.Dom.Core
 import           Safe                              (headMay)
 
 import qualified Gonimo.Client.App.Types           as App

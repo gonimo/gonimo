@@ -5,14 +5,12 @@
 module Gonimo.Client.Parent.UI where
 
 import           Control.Lens
-import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid
-import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.DeviceList          as DeviceList
 import           Gonimo.Db.Entities                (DeviceId)
-import           Reflex.Dom
+import           Reflex.Dom.Core
 import           Data.Foldable
 
 import qualified Data.Map                          as Map

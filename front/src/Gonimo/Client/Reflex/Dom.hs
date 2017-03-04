@@ -7,7 +7,7 @@
 -- | Reflex helper functions
 module Gonimo.Client.Reflex.Dom where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Monad.Fix (MonadFix)
 import Data.Monoid
 import Data.Map (Map)

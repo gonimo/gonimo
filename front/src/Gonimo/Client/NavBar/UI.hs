@@ -1,7 +1,7 @@
 module Gonimo.Client.NavBar.UI where
 
 import Control.Lens
-import Reflex.Dom
+import Reflex.Dom.Core
 import Gonimo.Client.NavBar.Internal
 import Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.Family.Internal as Family
