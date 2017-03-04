@@ -82,7 +82,7 @@ connections config = mdo
                           ]
   let
     removeChannels :: Event t [ChannelsTransformation t]
-    removeChannels = map Map.delete
+    removeChannels = map (uncurry $ flip Map.update)
                      <$> Channel.getClosedChannels (current channels') (config^.configResponse) channelEvent closeEvent
 
   let applyActions = push (\actions -> do
@@ -94,6 +94,7 @@ connections config = mdo
   let secrets' = Map.fromList . Map.keys <$> channels'
 
   let closeRequests = Channel.sendCloseMessages (current $ config^.configAuthData) (current channels') closeEvent
+  Channel.closeRTCConnections (current channels') closeEvent
 
   channelRequests <- Channel.handleMessages (current $ config^.configAuthData) (current channels') (config^.configResponse)
   rtcRequests <- Channel.handleRTCEvents (current $ config^.configAuthData) (current channels') channelEvent

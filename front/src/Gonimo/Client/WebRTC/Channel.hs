@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GADTs #-}
 
 module Gonimo.Client.WebRTC.Channel where
@@ -31,6 +32,7 @@ import           Reflex.Dom
 import           GHCJS.DOM.Types              (Dictionary (..),
                                                EventListener (..), MediaStream,
                                                MonadJSM)
+import qualified GHCJS.DOM.Types  as ET (Event)
 import           Gonimo.Client.Config
 import           Gonimo.Client.Util
 import           Gonimo.DOM.Window            (newRTCPeerConnection)
@@ -40,7 +42,9 @@ import           Language.Javascript.JSaddle  (function, liftJSM, (<#))
 import qualified Language.Javascript.JSaddle  as JS
 import           Safe                         (fromJustNote)
 import           Debug.Trace (trace)
-import           GHCJS.DOM.EventM
+import           GHCJS.DOM.EventM as EventM
+import           Data.Maybe
+import           Unsafe.Coerce (unsafeCoerce)
 
 import           Control.Concurrent (threadDelay)
 
@@ -70,6 +74,7 @@ data Config t
 data Channel t
   = Channel { _rtcConnection :: RTCPeerConnection
             , _ourStream :: Maybe MediaStream
+            , _closeRequested :: Bool -- Signal that a close is requested (don't trigger alarm when connection gets closed)
             }
 
 
@@ -82,12 +87,7 @@ channel config = mdo
   ourStream' <- runMaybeT $ do
     origStream <- MaybeT . pure $ config^.configSourceStream
     tracks <- catMaybes <$> MediaStream.getTracks origStream
-    closeListener <- liftJSM . newListener . liftJSM $ do
-      safeClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Catched: \" + e.toString());}})" :: Text)
-      _ <- JS.call safeClose JS.obj [conn]
-      -- Don't use, it throws uncatchable exceptions when connection is already closed:
-      -- RTCPeerConnection.close conn
-      pure ()
+    closeListener <- liftJSM . newListener $ safeClose conn
     let addCloseListener (event', track) = liftJSM $ addListener track event' closeListener False
     traverse_ addCloseListener $ (,) <$> [mute, ended] <*> tracks
     boostMediaStreamVolume origStream
@@ -102,6 +102,7 @@ channel config = mdo
   --           else pure Nothing
   pure $ Channel { _rtcConnection = conn
                  , _ourStream = ourStream'
+                 , _closeRequested = False
                  }
 
 getRemoteStreams :: (MonadHold t m, MonadFix m, Reflex t)
@@ -121,25 +122,25 @@ getRemoteStreams ev = mdo
   pure streams
 
 -- Get channels that should be closed because the RTCConnection closed or remote send close request or user pressed closed.
-getClosedChannels :: Reflex t => ChannelsBehavior t -> Event t API.ServerResponse -> Event t ChannelEvent -> Event t ChannelSelector -> Event t [(API.FromId, Secret)]
-getClosedChannels chans response chanEv closeRequested =
+getClosedChannels :: Reflex t => ChannelsBehavior t -> Event t API.ServerResponse -> Event t ChannelEvent -> Event t ChannelSelector -> Event t [((API.FromId, Secret), Channel t -> Maybe (Channel t))]
+getClosedChannels chans response chanEv userClose =
   let
     remoteClosed = push (\res ->
                               case res of
                                 API.EventMessageReceived fromId secret' API.MsgCloseConnection
-                                  -> pure . Just $ [(fromId, secret')]
+                                  -> pure . Just $ [((fromId, secret'), Just . (closeRequested .~ True))]
                                 _ -> pure Nothing
                         ) response
     connClosed = push (\ev -> do
                           case ev of
                             ChannelEvent mapKey RTCEventConnectionClosed
-                              -> pure . Just $ [mapKey]
+                              -> pure . Just . trace "Channel got deleted" $ [(mapKey, const Nothing)]
                             _ -> pure Nothing
                       ) chanEv
     localClosed = push (\ev -> case ev of
-                         AllChannels -> Just . Map.keys <$> sample chans
-                         OnlyChannel key -> pure . Just $ [key]
-                       ) closeRequested
+                         AllChannels -> Just . map ((, Just . (closeRequested .~ True))) . Map.keys <$> sample chans
+                         OnlyChannel key -> pure . Just $ [(key, Just . (closeRequested .~ True))]
+                       ) userClose
   in
     remoteClosed <> connClosed <> localClosed
 
@@ -151,7 +152,7 @@ getCloseEvent chans
              cChans <- sample chans
              case ev' of
                ChannelEvent mapKey RTCEventConnectionClosed
-                            -> if Map.member mapKey cChans
+                            -> if cChans^? at mapKey . _Just.closeRequested /= Just True
                                   then pure . Just $ (mapKey, CloseConnectionLoss)
                                   else pure . Just $ (mapKey, CloseRequested)
                _            -> pure Nothing
@@ -240,7 +241,7 @@ handleMessages authData chans response' = do
                             addIceCandidate connection =<< toJSIceCandidate candidate
                             mzero
                           API.MsgCloseConnection  -> do
-                            close connection
+                            safeClose connection
                             mzero
                         cAuthData <- lift $ sample authData
                         pure $ [API.ReqSendMessage (API.deviceId cAuthData) fromId secret' resMesg]
@@ -255,30 +256,33 @@ closeRTCConnections :: forall m t. ( MonadJSM m, MonadIO m, PerformEvent t m
                                    , TriggerEvent t m, MonadJSM (Performable m)
                                    , MonadIO (Performable m)
                                    )
-                       => ChannelsBehavior t -> Event t () -> m ()
-closeRTCConnections chans closeRequested = do
-  delayClose <- delay 3 closeRequested
-  let doClose = push (\_ -> do
-                         cChans <- Map.toList <$> sample chans
-                         let connections = over mapped (^._2.rtcConnection) cChans
-                         pure . Just $ traverse_ close connections
+                       => ChannelsBehavior t -> Event t ChannelSelector -> m ()
+closeRTCConnections chans userClose = do
+  -- delayClose <- delay 1 userClose
+  let delayClose = userClose -- Let's try without delay for now.
+  let doClose = push (\ev -> do
+                         cChansMap <- sample chans
+                         let cChans = Map.toList cChansMap
+                         let connections = case ev of
+                                             AllChannels -> over mapped (^._2.rtcConnection) cChans
+                                             OnlyChannel key -> maybeToList $ cChansMap^?at key._Just.rtcConnection
+                         pure . Just $ traverse_ safeClose connections
                      ) delayClose
   performEvent_ doClose
 
 
 -- Handle RTCPeerConnection close.
 getRTCClosedEvent :: forall m t. (MonadJSM m) => Config t -> RTCPeerConnection -> m ()
-getRTCClosedEvent config conn = do
+getRTCClosedEvent config conn = liftJSM $ do
   let
     triggerCloseEv = config^.configTriggerChannelEvent
                      $ ChannelEvent (config^.configTheirId, config^.configSecret) RTCEventConnectionClosed
-  let
-    addListener' :: forall m1 evTarget. (MonadJSM m1, ET.IsEventTarget evTarget) => Text -> evTarget -> m1 ()
-    addListener' event' evTarget = do
-      jsFun <- liftJSM . function $ \_ _ [] -> triggerCloseEv
-      listener <- liftJSM $ EventListener <$> JS.toJSVal jsFun
-      ET.addEventListener evTarget event' (Just listener) False
-  addListener' "close" conn
+  listener <- newListener . liftJSM $ do
+    state :: Text <- getIceConnectionState conn
+    if state == "closed"
+      then triggerCloseEv
+      else pure ()
+  addListener conn iceConnectionStateChange listener False
 
 -- Handle receiption of a remote stream (trigger channel event)
 handleReceivedStream :: forall m t. (MonadJSM m)
@@ -325,3 +329,10 @@ makeGonimoRTCConnection = liftJSM $ do
   config <# ("credentialType" :: Text) $ JS.toJSVal gonimoTurnCredentialType
   let configDic = case config of JS.Object val -> Dictionary val
   newRTCPeerConnection $ Just configDic
+
+-- Don't use plain close, it throws uncatchable exceptions when connection is already closed:
+safeClose :: MonadJSM m => RTCPeerConnection -> m ()
+safeClose conn = liftJSM $ do
+      jsClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Catched: \" + e.toString());}})" :: Text)
+      _ <- JS.call jsClose JS.obj [conn]
+      pure ()

@@ -78,7 +78,7 @@ socket config = mdo
                       ) (updated $ config^.configEnabled)
   let
     removeChannels :: Event t [ChannelsTransformation t]
-    removeChannels = map Map.delete
+    removeChannels = map (uncurry $ flip Map.update)
                      <$> Channel.getClosedChannels (current channels') gatedResponse channelEvent closeEvent
 
   let applyActions = push (\actions -> do
@@ -89,6 +89,7 @@ socket config = mdo
   channels' <- holdDyn Map.empty . applyActions $ mconcat [removeChannels, addChannel]
 
   let closeRequests = Channel.sendCloseMessages (current $ config^.configAuthData) (current channels') closeEvent
+  Channel.closeRTCConnections (current channels') closeEvent
 
   channelRequests <- Channel.handleMessages (current $ config^.configAuthData) (current channels') gatedResponse
 
