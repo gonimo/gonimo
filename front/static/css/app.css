@@ -1,0 +1,600 @@
+@charset "utf-8";
+/* CSS Document */
+* {
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+}
+html, body {
+	position: relative;
+	height: 100%;
+	font-family: Raleway-Regular, Arial, sans-serif;
+}
+@font-face {
+    font-family: "Raleway-Medium";
+    src: url("/bootstrap/fonts/Raleway-Medium.ttf") format("truetype");
+}
+@font-face {
+    font-family: "Raleway-Regular";
+    src: url("/bootstrap/fonts/Raleway-Regular.ttf") format("truetype");
+}
+@font-face {
+    font-family: "Raleway-Bold";
+    src: url("/bootstrap/fonts/Raleway-Bold.ttf") format("truetype");
+}
+@font-face {
+    font-family: "Raleway-light";
+    src: url("/bootstrap/fonts/Raleway-Light.ttf") format("truetype");
+}
+@font-face {
+  font-family: 'FontAwesome';
+  src: url('/resources/fonts/fontawesome-webfont.eot?v=4.6.3');
+  src: url('/resources/fonts/fontawesome-webfont.eot?#iefix&v=4.6.3') format('embedded-opentype'), url('/resources/fonts/fontawesome-webfont.woff2?v=4.6.3') format('woff2'), url('/resources/fonts/fontawesome-webfont.woff?v=4.6.3') format('woff'), url('/resources/fonts/fontawesome-webfont.ttf?v=4.6.3') format('truetype'), url('/resources/fonts/fontawesome-webfont.svg?v=4.6.3#fontawesomeregular') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+body{
+	text-align:center;
+	font-size: 14px;
+    line-height: 1.42857143;
+    color: #333;
+	margin:0;
+}
+a{
+	color:unset;
+}
+a:hover, a:focus{
+	text-decoration:none;
+	color:unset;
+}
+.container{
+	margin-right: auto;
+	margin-left: auto;
+	height:100%;
+}
+@media(min-width:768px){
+.container, .stream-menu{
+	width:750px;
+}	
+.lang-img{
+	width:50%;
+}
+.welcome-input{
+	letter-spacing:0.05em;
+}
+.family-select{
+	text-align:center;
+}
+}
+@media(max-width:768px){
+.lang-img{
+	width:95%;
+}
+.stream-menu{
+	width:100%;
+}
+}
+@media(min-width:992px){
+.container, .stream-menu{
+	width:970px;
+}
+.welcome-input{
+	letter-spacing:0.15em;
+	}      
+}
+@media(min-width:1200px){
+.container, .stream-menu{
+	width:1170px;
+}
+}
+
+h1{
+	font-family: Raleway-light;
+	text-align:center;
+	color:black;
+	font-size: 36px;
+	font-weight: 500;
+	line-height: 1.1;
+	margin-top: 20px;
+	margin-bottom: 10px;
+}
+h2{
+	font-family: Raleway-light;
+	text-align:center;
+	color:black;
+	font-weight:300;
+	margin-top:unset;
+}
+.lang-img{
+	display:inline-block;
+	height:50vh;
+	background-image: url("/pix/world-de.svg");
+	background-size:auto 100%;
+	background-repeat: no-repeat;
+    background-position: center;
+	margin: 5% 0%;
+}
+.lang-img.de{
+	background-image: url("/pix/world-de.svg");
+}
+.lang-img.en{
+	background-image: url("/pix/world-en.svg");
+}
+.btn-lang{
+	display:inline-block;
+	width:auto;
+	border:3px solid #E6CAD4;
+	color:#E6CAD4;
+	font-size:xx-large;
+	padding: 10px 25px;
+	letter-spacing: 0.25em;
+}
+img.lang-select{
+	display:block;
+	max-height:35px;
+	position: relative;
+	left:90%;
+}
+.back-arrow{
+	text-align:left;
+	font-size:xx-large;
+	width:15%;
+}
+.back-arrow::after{
+	font-family:FontAwesome;
+	content:"\f060";
+	color:rgb(110,110,110);
+}
+h3{
+	color:rgb(110,110,110);
+}
+.welcome-form{
+	display:inline-block;
+	position:relative;
+	width:100%;
+	border-right:none;
+	border-left:none;
+	border-top:solid 2px rgb(50,50,50);
+	border-bottom:solid 2px rgb(50,50,50);
+	margin-bottom:20px;
+	text-align:left;
+}
+.welcome-input{
+	display:inline;
+	width:100%;
+	text-align:center;
+	padding:5px 0px;
+	border:none;
+	font-size:x-large;
+	color:rgb(110,110,110);
+	float:left;
+}
+.welcome-img{
+	max-width:100%;
+	height: auto;
+}
+.input-btn{
+	float:right;
+	font-size:xx-large;
+	font-weight:900;
+	border-left:solid 2px black;
+	width:20%;
+	text-align:center;
+	margin-left:-20%;
+	background:white;
+}
+.input-btn.plus::after{
+	content:"+";
+}
+.input-btn.check, .input-btn.mail{
+	border:solid 4px #E6CAD4;
+}
+.input-btn.check::after{
+	color:#E6CAD4;
+	font-family:FontAwesome;
+	content:"\f00c";
+}
+.mail-form{
+	display:inline-block;
+	position:relative;
+	width:75%;
+	border-right:none;
+	border-left:none;
+	border:solid 1px rgb(50,50,50);
+	margin-bottom:20px;
+	text-align:left;
+}
+.mail-input{
+	display:inline;
+	width:100%;
+	text-align:center;
+	padding:5px 0px;
+	border:none;
+	font-size:x-large;
+	color:rgb(110,110,110);
+	float:left;
+}
+.mail-form.link{
+	border:solid 1px grey;
+	margin-top:5%;
+	
+}
+.mail-input.link{
+	color:rgb(200,200,200);
+}
+.input-btn.link::after{
+	font-family:FontAwesome;
+	color:#E6CAD4;
+	content:"\f0c5";
+	border:none;
+}
+.input-btn.mail::after{
+	font-family:FontAwesome;
+	color:#E6CAD4;
+	content:"\f1d8";
+}
+.family-select{
+	width:100%;
+	padding:5px 0px;
+	border:none;
+	font-family: Raleway-Light;
+	font-size:x-large;
+	font-weight:500;
+	float:left;
+}
+.input-btn.edit{
+	float:left;
+	width:10%;
+	margin-left:-30%;
+	border:none;
+}
+.btn-box{
+	display:flex;
+	justify-content:center;
+}
+.btn-parent{
+	border:solid 4px rgb(50,50,50);
+	color:rgb(50,50,50);
+	font-size:x-large;
+	width:33%;
+	display:inline-block;
+	text-align:center;
+	margin:2%;
+}
+.btn-baby{
+	border:solid 4px #E6CAD4;
+	color:#E6CAD4;
+	font-size:x-large;
+	width:33%;
+	display:inline-block;
+	text-align:center;
+	margin:2%;
+}
+.btn-baby > img, .btn-parent > img{
+	display:inline-block;
+	width:50%;
+	margin-top:5%;
+}
+.btn-baby > span, .btn-parent > span{
+	display:block;
+}
+.input-btn.edit::after{
+	font-family:FontAwesome;
+	content:"\f044";
+}
+.input-btn.delete{
+	background:red;
+}
+.input-btn.delete::after{
+	color:white;
+	font-family:FontAwesome;
+	content:"\f00d";
+}
+.menu{
+	width:100%;
+	max-height:60px;
+	background:rgb(230,202,212);
+	overflow:hidden;
+}
+.menu-left.back{
+	float:left;
+	font-size:xx-large;
+	font-weight:200;
+	padding:5px;
+}
+.menu-left.back::after{
+	font-family:FontAwesome;
+	content:"\f060";
+	color:rgb(110,110,110);	
+}
+.menu-left.home{
+	float:left;
+	font-size:xx-large;
+	font-weight:200;
+	padding:5px;
+	border-left:solid 1px black;
+}
+.menu-left.home::after{
+	font-family:FontAwesome;
+	content:"\f015";
+	color:rgb(110,110,110);		
+}
+.menu-center{
+	padding:5px;
+	font-size:x-large;
+	color:black;
+	font-weight:900;
+}
+.menu-center::after{
+	content:"GONIMO";
+}
+.menu-right{
+	float:right;
+	font-size:large;
+	text-align:left;
+	font-family:Raleway-bold;
+	padding:2px 2.5%;
+	border-left:solid 1px black;
+}
+.device{
+	width:100%;
+	overflow:auto;
+	border-top:solid 1px black;
+	display:flex;
+	align-items:center;
+	flex-wrap:wrap;
+}
+.status{
+	width:10%;
+	float:left;
+}
+.status > div{
+	width:25px;
+	height:25px;
+	border-radius:50%;
+	border:solid 1px black;
+	margin:25% auto;
+}
+.name{
+	width:65%;
+	float:left;
+	text-align:left;
+}
+.name > span{
+	display:block;
+}
+.name > .dev-name{
+	font-size:x-large;
+	font-weight:800;
+}
+.name > .dev-loc{
+	font-size:large;
+	color:rgb(110,110,110);
+}
+.buttons{
+	width:25%;
+	color:#E6CAD4;
+	font-weight:900;
+	float:right;
+}
+.buttons > div{
+	border:solid 2px #E6CAD4;
+	display:none;
+}
+.stream, .disconnect{
+	margin-top:5px;
+}
+.disconnect{
+	color:black;
+	border:solid 2px black;
+}
+.device.active > .status > div {
+	background:rgb(230,202,212);
+}
+.device.active > .buttons > .connect{
+	display:block;
+}
+.device.connected > .buttons > .stream, .device.connected > .buttons > .disconnect {
+	display:block;
+} 
+.device.connected > .buttons > .connect{
+	display:none;
+}
+.info{
+	width:100%;
+	display:none;
+}
+.info > .last-seen{
+	display:block;
+}
+.info > .edit, .info > .delete{
+	margin:auto 5%;
+}
+.info > .edit::before{
+	font-family:FontAwesome;
+	content:"\f044";
+}
+.info > .delete::before{
+	font-family:FontAwesome;
+	content:"\f00d";
+}
+.device.selected > .info{
+	display:block;
+}
+.device-add{
+	width:100%;
+	padding:1%;
+	background:#E6CAD4;
+	color:black;
+	font-size:x-large;
+	font-weight:800;
+}
+.device-add::before{
+	font-family:FontAwesome;
+	content:"\f067";
+}
+.parent{
+	background-color:black;
+	min-height:90%;
+	padding-bottom:50px;
+}
+.stream-baby{
+	min-width:100px;
+	min-height:100px;
+	max-width:50%;
+	display:inline-block;
+	background-image:url("/pix/gonimo-night.svg");
+	background-size:100% 100%;
+}
+.stream-menu{
+	position:fixed;
+	bottom:0;
+	height:50px;
+	background-color:rgb(50,50,50);
+}
+.stop{
+	float:right;
+	color:black;
+	background-color:white;
+	font-size:large;
+	font-weight:200;
+	letter-spacing:0.2em;
+	padding:5px 10px;
+	position: relative;
+	top: 50%;
+	transform:translateY(-50%);
+	margin-right:5%;
+}
+div.volume{
+	float:left;
+	font-size:large;
+	font-weight:200;
+	letter-spacing:0.2em;
+	padding:5px 10px;
+	position: relative;
+	top: 50%;
+	transform:translateY(-50%);
+	margin-left:1.5%;
+}
+div.volume::before{
+	color:white;
+	font-family:FontAwesome;
+	content:"\f028"
+}
+input.volume {
+  -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
+  width: 100%; /* Specific width is required for Firefox. */
+  background: transparent; /* Otherwise white in Chrome */
+  border:solid 1px #E6CAD4;
+}
+input.volume::-moz-range-track{
+	background:#E6CAD4;
+}
+input.volume:focus::-webkit-slider-runnable-track{
+	background:#E6CAD4;
+}
+input.volume::-ms-fill-lower{
+	background:#E6CAD4;
+}
+input.volume::-ms-fill-upper{
+	background:#E6CAD4;
+}
+input.volume::-webkit-slider-thumb{
+	background:#E6CAD4;
+}
+input.volume::-moz-range-thumb{
+	background:#E6CAD4;
+}
+input.volume::-ms-thumb{
+	background:#E6CAD4;
+}
+.cam-on, .autostart{
+	float:right;
+	color:white;
+	font-size:large;
+	font-weight:200;
+	padding:5px;
+	position: relative;
+	top:50%;
+	transform:translateY(-50%);
+	margin-right:1.5%;
+}
+.cam-switch{
+	float:right;
+	position:relative;
+	top:50%;
+	transform:translateY(-50%);
+	margin-right:1.5%;
+	background-image: url("/pix/camswitch.svg");
+	background-size:100% 100%;
+	height:25px;
+	width:25px;
+}
+.cam-on > span::after, .autostart > span::after{
+	font-family:FontAwesome;
+	content:"\f00d";
+	color:red;
+}
+.cam-on::before{
+	font-family:FontAwesome;
+	content:"\f03d";
+}
+.cam-on.active > span::after, .autostart.active > span::after{
+	content:"\f00c";
+	color:green;
+}
+.baby{
+	background-color:black;
+	background-image: url("/pix/gonimo-night.svg");
+	background-size:50% 50%;
+	background-repeat: no-repeat;
+    background-position: center; 
+	min-height:90%;
+	padding-bottom:50px;
+	text-align:center;
+}
+.time{
+	color:#E6CAD4;
+	display:none;
+	position:absolute;
+	bottom:15%;
+	font-size:xx-large;
+	font-weight:900;
+}
+.time::before{
+	font-family:FontAwesome;
+	content:"\f185";
+}
+.baby.day{
+	background-color:white;
+	background-image: url("/pix/gonimo-day.svg");
+}
+.baby.day > .time::before{
+	font-family:FontAwesome;
+	content:"\f186";	
+}
+.welcome-form.baby-form{
+	margin-bottom:0;
+	text-align:center;
+	background:rgba(255,255,255,0.7);
+	border:none;
+}
+.baby-form, .baby-form > select, .input-btn.edit.baby-form, .input-btn.plus.baby-form{
+	background-color:transparent;
+	color:black;
+}
+.baby-form > select{
+	border-top:solid 1px black;
+}
+span.baby-form{
+	display:inline-block;
+	color:black;
+	font-size:xx-large;
+	margin:5%;
+}
+.baby.setup-done > .baby-form{
+	display:none;
+}
+.baby.setup-done > .time{
+	display:inline-block;
+}

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="323.649 1413.836 31.373 24.229">
+  <defs>
+    <style>
+      .cls-1, .cls-2 {
+        fill: none;
+      }
+
+      .cls-1 {
+        stroke: #fff;
+        stroke-miterlimit: 10;
+        stroke-width: 2px;
+      }
+
+      .cls-3 {
+        fill: #fff;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <g id="camera_Swichen" data-name="camera Swichen" transform="translate(11 812)">
+    <path id="Pfad_268" data-name="Pfad 268" class="cls-1" d="M23.475,5.63,22.452,4.266A3.184,3.184,0,0,0,19.919,3H15.34a3.166,3.166,0,0,0-2.712,1.526l-.536.844A3.182,3.182,0,0,1,9.381,6.9H6.166A3.16,3.16,0,0,0,3,10.063v12a3.16,3.16,0,0,0,3.166,3.166h23.04a3.16,3.16,0,0,0,3.166-3.166v-12A3.16,3.16,0,0,0,29.207,6.9h-3.2A3.184,3.184,0,0,1,23.475,5.63Z" transform="translate(310.649 599.836)"/>
+    <g id="ic_refresh" transform="translate(319.31 606)">
+      <rect id="rectangle" class="cls-2" width="17.69" height="17.69"/>
+      <path id="path" class="cls-3" d="M9.9,4a5.9,5.9,0,0,0,0,11.793,6.405,6.405,0,0,0,5.9-4.422H14.319A5.12,5.12,0,0,1,9.9,14.319a4.422,4.422,0,0,1,0-8.845,3.44,3.44,0,0,1,2.948,1.474L10.634,9.159h5.159V4L14.319,5.474A9.289,9.289,0,0,0,9.9,4Z" transform="translate(-1.052 -1.052)"/>
+    </g>
+  </g>
+</svg>
