@@ -12,19 +12,19 @@ html, body {
 }
 @font-face {
     font-family: "Raleway-Medium";
-    src: url("/bootstrap/fonts/Raleway-Medium.ttf") format("truetype");
+    src: url("/resources/fonts/Raleway-Medium.ttf") format("truetype");
 }
 @font-face {
     font-family: "Raleway-Regular";
-    src: url("/bootstrap/fonts/Raleway-Regular.ttf") format("truetype");
+    src: url("/resources/fonts/Raleway-Regular.ttf") format("truetype");
 }
 @font-face {
     font-family: "Raleway-Bold";
-    src: url("/bootstrap/fonts/Raleway-Bold.ttf") format("truetype");
+    src: url("/resources/fonts/Raleway-Bold.ttf") format("truetype");
 }
 @font-face {
     font-family: "Raleway-light";
-    src: url("/bootstrap/fonts/Raleway-Light.ttf") format("truetype");
+    src: url("/resources/fonts/Raleway-Light.ttf") format("truetype");
 }
 @font-face {
   font-family: 'FontAwesome';
