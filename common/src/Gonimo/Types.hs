@@ -32,10 +32,13 @@ import           Database.Persist.Types (PersistValue(PersistText), SqlType(SqlS
 import           Database.Persist.Sql   (PersistFieldSql, sqlType)
 import qualified Data.Text      as T
 import           Data.Text      (Text)
+import           Control.Lens
 
 data DeviceType = NoBaby
                 | Baby Text
                 deriving (Show, Eq, Ord, Generic)
+
+makePrisms ''DeviceType
 
 toBabyName :: MonadPlus m => DeviceType -> m Text
 toBabyName NoBaby = mzero
