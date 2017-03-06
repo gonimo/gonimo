@@ -128,8 +128,8 @@ devices ::forall m t. (HasWebView m, MonadWidget t m)
             -> App.Loaded t
             -> DeviceList.DeviceList t
             -> m (Event t [API.ServerRequest])
-devices appConfig loaded deviceList = do
-    devListReqs <- DeviceList.ui loaded deviceList
+devices appConfig loaded _ = do
+    -- devListReqs <- DeviceList.ui loaded deviceList
     elClass "div" "" $ do
       elClass "div" "page-header" $
         elClass "h4" "" $ text "Invite More Devices to Join Your Family"
@@ -139,4 +139,4 @@ devices appConfig loaded deviceList = do
                                             , Invite._configCreateInvitation = never
                                             , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
                                             }
-        pure $ invite^.Invite.request <> devListReqs
+        pure $ invite^.Invite.request

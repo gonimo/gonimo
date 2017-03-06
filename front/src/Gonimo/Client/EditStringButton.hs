@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
-module Gonimo.Client.EditStringButton (editStringButton) where
+module Gonimo.Client.EditStringButton (editStringButton, editStringEl) where
 
 import Reflex.Dom.Core
 import Control.Lens
@@ -16,8 +16,13 @@ type EditStringConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, Monad
 
 editStringButton :: forall t m. EditStringConstraint t m
                       => Map Text Text -> m () -> m () -> Dynamic t Text -> m (Event t Text)
-editStringButton attrs inner editStringText val = mdo
-  clicked <- buttonAttr attrs $ inner
+editStringButton attrs inner = editStringEl (buttonAttr attrs inner)
+
+-- Button like element for editing a string:
+editStringEl :: forall t m. EditStringConstraint t m
+                      => m (Event t ()) -> m () -> Dynamic t Text -> m (Event t Text)
+editStringEl someButton editStringText val = mdo
+  clicked <- someButton
   editStringDialog <- holdDyn (pure never) $ leftmost [ const (editStringBox editStringText val) <$> clicked
                                                       , const (pure never) <$> gotAnswer
                                                       ]

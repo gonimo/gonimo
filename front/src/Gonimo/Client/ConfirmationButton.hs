@@ -16,9 +16,12 @@ data Confirmed = No | Yes
 
 confirmationButton :: forall t m. ConfirmationConstraint t m
                       => Map Text Text -> m () -> m () -> m (Event t ())
-confirmationButton attrs inner confirmationText = mdo
-  (e, _ ) <- elAttr' "button" attrs $ inner
-  let clicked = domEvent Click e
+confirmationButton attrs inner = confirmationEl (buttonAttr attrs inner)
+
+confirmationEl :: forall t m. ConfirmationConstraint t m
+                      => m (Event t ()) -> m () -> m (Event t ())
+confirmationEl someButton confirmationText = mdo
+  clicked <- someButton
   confirmationDialog <- holdDyn (pure never) $ leftmost [ const (confirmationBox confirmationText) <$> clicked
                                                         , const (pure never) <$> gotAnswer
                                                         ]

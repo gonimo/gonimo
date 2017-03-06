@@ -22,6 +22,7 @@ import qualified Gonimo.SocketAPI.Types   as API
 import           Gonimo.Types             (DeviceType)
 import           Reflex.Dom.Core
 import           Gonimo.Client.Prelude
+import           Data.Default
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 type NestedDeviceInfos t = Map AccountId (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
@@ -41,8 +42,37 @@ data DeviceList t
                , _request :: Event t [ API.ServerRequest ]
                }
 
+data UI t
+  = UI { _uiRequest :: Event t [ API.ServerRequest ]
+       , _uiConnect :: Event t DeviceId
+       , _uiDisconnect :: Event t DeviceId
+       , _uiShowStream :: Event t DeviceId
+       }
+
 makeLenses ''Config
 makeLenses ''DeviceList
+makeLenses ''UI
+
+instance Reflex t => Default (UI t) where
+  def = UI { _uiRequest = never
+           , _uiConnect = never
+           , _uiDisconnect = never
+           , _uiShowStream = never
+           }
+
+uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
+uiSwitchPromptly ev
+  = UI <$> switchPromptly never (_uiRequest <$> ev)
+       <*> switchPromptly never (_uiConnect <$> ev)
+       <*> switchPromptly never (_uiDisconnect <$> ev)
+       <*> switchPromptly never (_uiShowStream <$> ev)
+
+uiLeftmost :: forall t. Reflex t => [UI t] -> UI t
+uiLeftmost uis
+  = UI (leftmost . map _uiRequest $ uis)
+       (leftmost . map _uiConnect $ uis)
+       (leftmost . map _uiDisconnect $ uis)
+       (leftmost . map _uiShowStream $ uis)
 
 ownDeviceName :: forall t. Reflex t => Dynamic t API.AuthData -> DeviceList t -> Dynamic t Text
 ownDeviceName auth deviceList' = fmap (fromMaybe "") . runMaybeT $ do

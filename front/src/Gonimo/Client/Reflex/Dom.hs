@@ -23,10 +23,15 @@ enterPressed = push (\key -> pure $ if key == 13
                                     then Just ()
                                     else Nothing
                     )
+addBtnAttrs :: Text -> Map Text Text
+addBtnAttrs className = "class" =: className <> "type" =: "button" <> "role" =: "button"
 
 buttonAttr :: DomBuilder t m => Map Text Text -> m () -> m (Event t ())
-buttonAttr attrs inner = do
-  (e, _) <- elAttr' "button" attrs inner
+buttonAttr attrs inner = makeClickable $ elAttr' "button" attrs inner
+
+makeClickable :: DomBuilder t m => m (Element EventResult (DomBuilderSpace m) t, ()) -> m (Event t ())
+makeClickable item = do
+  (e, _) <- item
   return $ domEvent Click e
 
 myCheckBox :: (DomBuilder t m, PostBuild t m) => Map Text Text -> Dynamic t Bool -> m () -> m (Event t Bool)

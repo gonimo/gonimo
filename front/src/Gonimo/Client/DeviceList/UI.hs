@@ -11,8 +11,11 @@ import           Control.Monad.Trans.Maybe         (MaybeT (..), runMaybeT)
 import qualified Data.List                         as List
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
+import           Data.Maybe                        (isJust)
 import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid
+import           Data.Set                          (Set)
+import qualified Data.Set                          as Set
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           Data.Time.Clock                   (UTCTime)
@@ -29,183 +32,138 @@ import           Reflex.Dom.Core
 import           Safe                              (headMay)
 
 import qualified Gonimo.Client.App.Types           as App
-import           Gonimo.Client.ConfirmationButton  (confirmationButton)
+import           Gonimo.Client.ConfirmationButton  (confirmationEl)
 import           Gonimo.Client.DeviceList.Internal
-import           Gonimo.Client.EditStringButton    (editStringButton)
+import           Gonimo.Client.EditStringButton    (editStringEl)
+import           Gonimo.Client.Reflex.Dom          (makeClickable, addBtnAttrs)
 
--- TODO: At removal of one self - add note: "this is you"
--- Overrides configCreateDeviceList && configLeaveDeviceList
+
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Loaded t -> DeviceList t -> m (Event t [API.ServerRequest])
-ui loaded deviceList' = do
-    (renameEv, removeEv) <- renderList loaded deviceList'
-    let renameReq = uncurry API.ReqSetDeviceName <$> renameEv
-    let removeReq = uncurry (flip API.ReqLeaveFamily)
-                    <$> attach (current (loaded^.App.selectedFamily)) removeEv
-    pure $  mconcat (fmap (:[]) <$> [renameReq, removeReq])
-
-renderList :: forall m t. (HasWebView m, MonadWidget t m)
               => App.Loaded t -> DeviceList t
-              -> m (Event t (DeviceId, Text), Event t AccountId)
-renderList loaded deviceList' = do
-  elClass "table" "table table-striped" $ do
-    el "thead" $ do
-      elClass "th"  "centered" $ text "Online"
-      -- elClass "th"  "centered" $ text "Type"
-      el "th" $ text "Name"
-      el "th" $ text "Last Seen"
-      el "th" blank
-      el "th" blank
-      el "th" blank
+              -> Dynamic t (Set DeviceId)  -> m (UI t)
+ui loaded deviceList' connected = do
     tz <- liftIO $ getCurrentTimeZone
-    evEvents <- el "tbody" $ do
-      evEv <- dyn $ renderAccounts tz
-                <$> deviceList'^.deviceInfos
-                <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
-                <*> loaded^.App.authData
-      el "tr" $ do
-        elAttr "td" ("colspan" =: "5" <> "style" =: "text-align: right;") $ text "+"
-      pure evEv
-        
-
-    (,) <$> switchPromptly never (fst <$> evEvents)
-        <*> switchPromptly never (snd <$> evEvents)
+    evUI <- dyn $ renderAccounts tz loaded
+            <$> deviceList'^.deviceInfos
+            <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
+            <*> pure connected
+            <*> loaded^.App.authData
+    uiSwitchPromptly evUI
 
 renderAccounts :: forall m t. (HasWebView m, MonadWidget t m)
               => TimeZone
+              -> App.Loaded t
               -> NestedDeviceInfos t
               -> Dynamic t (Map DeviceId DeviceType)
+              -> Dynamic t (Set DeviceId)
               -> API.AuthData
-              -> m (Event t (DeviceId, Text), Event t AccountId)
-renderAccounts tz allInfos onlineStatus authData = do
+              -> m (UI t)
+renderAccounts tz loaded allInfos onlineStatus connected authData = do
     let
       isSelf (aId, _) = aId == API.accountId authData
       (self, others) = List.partition isSelf . Map.toList $ allInfos
 
-    allEvents <- traverse renderAccount' $ self <> others
-    pure ( leftmost . map fst $ allEvents
-         , leftmost . map snd $ allEvents
-         )
+    allUis <- traverse renderAccount $ self <> others
+    pure $ uiLeftmost allUis
   where
-    renderAccount' (aId, infos) = do
-        (renamed, deleted) <- renderAccount tz onlineStatus  authData aId infos
-        pure (renamed, const aId <$> deleted)
+    removeConfirmationText isUs devName
+      = dynText $ if isUs
+                  then pure "This is you!\nReally leave your current family?"
+                  else pure "Do you really want to remove device '" <> devName <> pure "' from the family?"
+    -- Currently pretty dumb, once we have non anonymous accounts render those differently:
+    -- Visible group non devices belonging to a single account. Also family removal is per account.
+    renderAccount :: (AccountId, Dynamic t (Map DeviceId (Dynamic t (API.DeviceInfo))))
+                     -> m (UI t)
+    renderAccount (accountId', infos) = do
+      rs <- dyn $ renderDevices <$> infos
+      uiSwitchPromptly rs
 
--- Currently pretty dumb, once we have non anonymous accounts render those differently:
--- Visible group non devices belonging to a single account. Also family removal is per account.
-renderAccount :: forall m t. (HasWebView m, MonadWidget t m)
-              => TimeZone
-              -> Dynamic t (Map DeviceId DeviceType)
-              -> API.AuthData
-              -> AccountId
-              -> Dynamic t (Map DeviceId (Dynamic t (API.DeviceInfo)))
-              -> m (Event t (DeviceId, Text), Event t ())
-renderAccount tz onlineStatus authData accountId' infos = do
-  let
-    devName = fmap (fromMaybe "") . runMaybeT $ do
-      inf <- MaybeT $ headMay . Map.elems <$> infos
-      lift $ API.deviceInfoName <$> inf
+    renderDevices :: Map DeviceId (Dynamic t (API.DeviceInfo))
+                  -> m (UI t)
+    renderDevices infos = do
+        let
+          isSelf (devId,_) = devId == API.deviceId authData
+          (self, others) = List.partition isSelf . Map.toList $ infos
 
-    isUs = accountId' == API.accountId authData
-  let
-    deleteButton = el "td" $ do
-      confirmationButton ("class" =: "btn btn-default")
-        (
-            elAttr "i" ( "class" =: "fa fa-fw fa-trash"
-                        <> "data-toggle" =: "tooltip"
-                        <> "data-placement" =: "right"
-                        <> "title" =: "Remove from family"
-                      ) blank
-        )
-        (dynText $ if isUs
-                   then pure "This is you!\nReally leave your current family?"
-                   else pure "Do you really want to remove device '" <> devName <> pure "' from the family?"
-        )
-  rs <- dyn $ renderRows <$> pure tz <*> infos <*> pure onlineStatus <*> pure authData <*> pure deleteButton
-  (,) <$> switchPromptly never (fst <$> rs)
-      <*> switchPromptly never (snd <$> rs)
+        selfUIS <- traverse (renderDevice True) self
+        othersUIS <- traverse (renderDevice False) others
+        let allUIS = selfUIS <> othersUIS
+        pure $ uiLeftmost allUIS
 
-renderRows :: forall m t. (HasWebView m, MonadWidget t m)
-              => TimeZone
-              -> Map DeviceId (Dynamic t (API.DeviceInfo))
-              -> Dynamic t (Map DeviceId DeviceType)
-              -> API.AuthData
-              -> m (Event t ())
-              -> m (Event t (DeviceId, Text), Event t ())
-renderRows tz infos onlineStatus authData deleteColumn = do
-    let
-      isSelf (devId,_) = devId == API.deviceId authData
-      (self, others) = List.partition isSelf . Map.toList $ infos
+    renderDevice ::  Bool
+                  -> (DeviceId , Dynamic t API.DeviceInfo)
+                  -> m (UI t)
+    renderDevice isSelf (devId, devInfo) = mdo
+        let
+          mDevType = Map.lookup devId <$> onlineStatus
+          devName = API.deviceInfoName <$> devInfo
+          isConnected = Set.member devId <$> connected
 
-    selfEvents <- traverse (renderRow' True) self
-    othersEvents <- traverse (renderRow' False) others
-    let allEvents = selfEvents <> othersEvents
-    pure (leftmost . map fst $ allEvents, leftmost . map snd $ allEvents)
-  where
-    renderRow' isSelf (devId, dynInfo) = do
-        (renamed, deleted) <- renderRow tz isSelf onlineStatus deleteColumn devId dynInfo
-        pure ((devId,) <$> renamed, deleted)
+          devClass :: Dynamic t Text
+          devClass = mconcat
+                      [ pure "device"
+                      , fmap (\isSel -> if isSel then "selected " else "") isSelected
+                      , fmap (\isConn -> if isConn then "connected " else "") isConnected
+                      , fmap ((\isOnline -> if isOnline then "active " else "") . isJust) mDevType
+                      , pure (if isSelf then "info " else "")
+                      ]
 
+        (isSelected, ui')  <-
+          elDynClass "div" devClass $ do
+            elClass "div" "status" blank
+            selectedClick <- makeClickable
+              . elAttr' "div" (addBtnAttrs "name") $ do
+              elClass "span" "dev-name" $ dynText (API.deviceInfoName <$> devInfo)
+              elClass "span" "dev-loc" $ dynText (renderBabyName <$> mDevType)
+            (connectClick, streamClick, disconnectClick) <-
+              elClass "div" "buttons" $ do
+                conC <- makeClickable . elClass' "div" "connect" $ text "Connect"
+                streamC <- makeClickable . elClass' "div" "stream" $ text "Stream"
+                discC <- makeClickable . elClass' "div" "disconnect" $ text "Disconnect"
+                pure (conC, streamC, discC)
+            (nameChangeClick, removeClick) <-
+              elClass "div" "info" $ do
+                elClass "span" "last-seen" . dynText
+                  $ pure "Last Seen:"
+                  <> (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
+                nameChanged <- editStringEl ( makeClickable
+                                              . elAttr' "span" (addBtnAttrs "edit")
+                                              $ text "Rename"
+                                            )
+                              (text "Change device name to ...")
+                              (API.deviceInfoName <$> devInfo)
+                removeRequested <- confirmationEl ( makeClickable
+                                                    . elAttr' "span" (addBtnAttrs "remove")
+                                                    $ text "Remove"
+                                                  )
+                                   (removeConfirmationText isSelf devName)
+                pure (nameChanged, removeRequested)
 
-renderRow :: forall m t. (HasWebView m, MonadWidget t m)
-              => TimeZone -> Bool -> Dynamic t (Map DeviceId DeviceType)
-              -> m (Event t ())
-              -> DeviceId -> Dynamic t API.DeviceInfo
-              -> m (Event t Text, Event t ())
-renderRow tz isSelf types deleteColumn devId devInfo = do
-  let devType = Map.lookup devId <$> types
-  elClass "tr" (if isSelf then "info" else "") $ do
-    renderOnlineStatus devType
-    -- elClass "td" "centered" $ blank
-    el "td" $ dynText (API.deviceInfoName <$> devInfo)
-    el "td" $ dynText (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
-    nameChanged <- el "td" $ do
-      editStringButton ("class" =: "btn btn-default")
-          ( elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
-                      <> "data-toggle" =: "tooltip"
-                      <> "data-placement" =: "right"
-                      <> "title" =: "edit device name"
-                      ) blank
-          )
-          (text "Change device name to ...")
-          (API.deviceInfoName <$> devInfo)
-    (nameChanged,) <$> deleteColumn
-  where
-    renderLocalTimeString :: UTCTime -> Text
-    renderLocalTimeString t =
-      let
-        locTime = utcToLocalTime tz t
-      in
-        T.pack $ formatTime defaultTimeLocale "%F %R" locTime
+            let renameReq = uncurry API.ReqSetDeviceName <$> fmap (devId,) nameChangeClick
 
-    renderOnlineStatus :: Dynamic t (Maybe DeviceType) -> m ()
-    renderOnlineStatus dynDevType = do
-      _ :: Event t () <- dyn $ renderOnlineStatus' <$> dynDevType
-      pure ()
+            let
+              removeReq = API.ReqLeaveFamily
+                          <$> current (API.deviceInfoAccountId <$> devInfo)
+                          <*> current (loaded^.App.selectedFamily)
+              removeReqEv = tag removeReq removeClick
 
-    renderOnlineStatus' :: Maybe DeviceType -> m ()
-    renderOnlineStatus' Nothing
-      = elClass "td" "centered" $ do
-          elAttr "i" ( "class" =: "fa fa-circle-o"
-                       <> "data-toggle" =: "tooltip"
-                       <> "data-placement" =: "right"
-                       <> "title" =: "offline"
-                     ) blank
-    renderOnlineStatus' (Just NoBaby)
-      = elClass "td" "centered" $ do
-          elAttr "i" ( "class" =: "fa fa-circle"
-                       <> "style" =: "color:green;"
-                       <> "data-toggle" =: "tooltip"
-                       <> "data-placement" =: "right"
-                       <> "title" =: "online"
-                     ) blank
-    renderOnlineStatus' (Just (Baby name))
-      = elClass "td" "centered" $ do
-          elAttr "i" ( "class" =: "fa fa-circle"
-                       <> "style" =: "color:green;"
-                       <> "data-toggle" =: "tooltip"
-                       <> "data-placement" =: "right"
-                       <> "title" =: "online as baby"
-                     ) blank
-          text name
+            let ui'' = UI { _uiRequest = mconcat . map (fmap (:[])) $ [renameReq, removeReqEv]
+                          , _uiConnect = const devId <$> connectClick
+                          , _uiDisconnect = const devId <$> disconnectClick
+                          , _uiShowStream = const devId <$> streamClick
+                          }
+            isSelected' <- toggle False selectedClick
+            pure (isSelected', ui'')
+        pure ui'
+      where
+        renderLocalTimeString :: UTCTime -> Text
+        renderLocalTimeString t =
+          let
+            locTime = utcToLocalTime tz t
+          in
+            T.pack $ formatTime defaultTimeLocale "%F %R" locTime
 
+        renderBabyName :: Maybe DeviceType -> Text
+        renderBabyName devType = case devType of
+                                  Just (Baby name) -> name
+                                  _                -> ""
