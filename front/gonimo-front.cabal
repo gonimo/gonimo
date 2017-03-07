@@ -180,7 +180,6 @@ executable gonimo-front
                     , http-api-data
                     , data-default
                     , reflex-dom-core
-  if !impl(ghcjs)
-     build-depends:  jsaddle-warp
-                   , jsaddle
+                    , jsaddle-warp
+                    , jsaddle
                     
