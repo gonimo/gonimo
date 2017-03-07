@@ -74,7 +74,7 @@ renderAccounts tz loaded allInfos onlineStatus connected authData = do
     -- Visible group non devices belonging to a single account. Also family removal is per account.
     renderAccount :: (AccountId, Dynamic t (Map DeviceId (Dynamic t (API.DeviceInfo))))
                      -> m (UI t)
-    renderAccount (accountId', infos) = do
+    renderAccount (_, infos) = do
       rs <- dyn $ renderDevices <$> infos
       uiSwitchPromptly rs
 
