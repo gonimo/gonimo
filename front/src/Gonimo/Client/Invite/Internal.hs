@@ -40,6 +40,8 @@ data Config t
 data Invite t
   = Invite { _invitation :: Dynamic t (Maybe (InvitationId, Db.Invitation))
            , _request :: Event t [ API.ServerRequest ]
+           , _uiGoBack :: Event t ()
+           , _uiDone :: Event t()
            }
 
 makeLenses ''Config
@@ -76,6 +78,8 @@ invite config = mdo
   inv <- holdDyn Nothing $ Just <$> invEv
   pure Invite { _invitation = inv
               , _request = createInvReq
+              , _uiGoBack = never
+              , _uiDone = never
               }
 
 getBaseLink :: (MonadJSM m) => m Text

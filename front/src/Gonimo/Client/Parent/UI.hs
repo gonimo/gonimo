@@ -40,11 +40,18 @@ ui appConfig loaded deviceList = mdo
                                            , C._configDisconnectBaby = devicesUI^.DeviceList.uiDisconnect
                                            }
 
-  let showParentView = const "isParentView" <$> leftmost [devicesUI^.DeviceList.uiConnect, devicesUI^.DeviceList.uiShowStream]
-  let showParentManage = const "isParentManage" <$> viewNav^.NavBar.backClicked
-  selectedView <- holdDyn "isParentManage" $ leftmost [showParentView, showParentManage]
+  let showParentView = const "isParentView" <$> leftmost [ devicesUI^.DeviceList.uiConnect
+                                                         , devicesUI^.DeviceList.uiShowStream
+                                                         ]
+  let showParentManage = const "isParentManage" <$> leftmost [ viewNav^.NavBar.backClicked
+                                                             , invite^.Invite.uiGoBack
+                                                             , invite^.Invite.uiDone
+                                                             ]
+  let showInviteView = const "isInviteView" <$> inviteRequested
 
-  (navBar, devicesUI, invite) <-
+  selectedView <- holdDyn "isParentManage" $ leftmost [showParentView, showParentManage, showInviteView]
+
+  (navBar, devicesUI, inviteRequested) <-
     elDynClass "div" (pure "container parentManage " <> selectedView) $ do
       manageUi appConfig loaded deviceList connections'
 
@@ -52,6 +59,15 @@ ui appConfig loaded deviceList = mdo
     elDynClass "div" (pure "container parentView " <> selectedView) $ do
       let streams = Map.elems <$> connections'^.C.streams
       viewUi appConfig loaded deviceList streams
+
+  invite <-
+    elDynClass "div" (pure "container inviteView " <> selectedView) $ do
+      Invite.ui loaded
+      $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
+                      , Invite._configSelectedFamily = loaded^.App.selectedFamily
+                      , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
+                      , Invite._configCreateInvitation = never
+                      }
 
   emptySubs <- holdDyn mempty never
   let parentApp = App.App { App._subscriptions = emptySubs
@@ -65,18 +81,14 @@ ui appConfig loaded deviceList = mdo
                     }
 
 manageUi :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Invite.Invite t)
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
 manageUi appConfig loaded deviceList connections' = mdo
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList leaveConfirmation leaveConfirmation)
       devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> connections'^.C.streams)
+      inviteRequested <-
+            makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
 
-      invite <-
-        Invite.ui $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
-                                  , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                                  , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
-                                  , Invite._configCreateInvitation = never
-                                  }
-      pure (navBar, devicesUI, invite)
+      pure (navBar, devicesUI, inviteRequested)
 
 viewUi :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> Dynamic t [MediaStream] -> m (NavBar.NavBar t)

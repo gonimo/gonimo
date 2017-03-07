@@ -12,6 +12,8 @@ import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Db.Entities as Db
 import Data.Map (Map)
 import Control.Monad
+import Gonimo.Client.Prelude
+import qualified Gonimo.Types as Gonimo
 
 data Config t
   = Config { _server :: Server.Server t
@@ -62,3 +64,11 @@ screenSwitchPromptlyDyn ev
   = Screen { _screenApp = appSwitchPromptlyDyn (_screenApp <$> ev)
            , _screenGoHome = switchPromptlyDyn $ _screenGoHome <$> ev
            }
+
+currentFamilyName :: forall t. Reflex t => Loaded t -> Dynamic t Text
+currentFamilyName loaded =
+    let
+      getFamilyName :: Db.FamilyId -> Map Db.FamilyId Db.Family -> Text
+      getFamilyName fid families' = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
+    in
+      zipDynWith getFamilyName (loaded^.selectedFamily) (loaded^.families)

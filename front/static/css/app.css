@@ -459,6 +459,13 @@ h3{
     display: block
 }
 
+.inviteView {
+    display: none;
+}
+.inviteView.isInviteView {
+    display: block
+}
+
 .stream-baby{
 	min-width:100px;
 	min-height:100px;

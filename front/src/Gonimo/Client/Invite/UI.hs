@@ -19,11 +19,12 @@ import Gonimo.Types (InvitationDelivery(..))
 import qualified Gonimo.SocketAPI as API
 import qualified Gonimo.SocketAPI.Types as API
 import Gonimo.Client.Reflex.Dom
+import qualified Gonimo.Client.App.Types as App
 import           GHCJS.DOM.Types (MonadJSM)
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadIO (Performable m), PerformEvent t m)
-      => Config t -> m (Invite t)
-ui config = mdo
+      => App.Loaded t -> Config t -> m (Invite t)
+ui loaded config = mdo
     baseUrl <- getBaseLink
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
     liftIO $ makeCreateInvEv () -- We want a new invitation every time this widget is rendered
@@ -35,22 +36,38 @@ ui config = mdo
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
     let sentEvents = (const SentEmail <$> mailReqs) : reCreateEvents
 
+    backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
+
+    el "h1" $ text "Invite More Devices"
+    el "h2" . dynText $ pure "to your family '" <> App.currentFamilyName loaded <> pure "'"
+    el "br" blank
+    el "br" blank
+
     confirmationBox $ leftmost sentEvents
     invButtons <- elAttr "div" ("style" =: "display:flex; justify-content: space-between;") $ do
       elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
         whatsAppClicked <- inviteButton "/resources/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
         tgClicked <- inviteButton "/resources/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
         pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
-    mailReqs <- divClass "row" $ emailWidget (config^.configResponse) currentInvitation
-    recreateClicked <- divClass "row" $ do
+
+    el "br" blank
+    el "h3" $ text "EMAIL"
+    mailReqs <- emailWidget (config^.configResponse) currentInvitation
+
+    el "br" blank
+    doneClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Done"
+    el "br" blank
+
+    recreateClicked <- el "div" $ do
       copyClipboardScript
-      divClass "input-group" $ do
+      divClass "mail-form link" $ do
           clicked <- refreshLinkButton
           showLinkInput invitationLink
           copyClicked <- copyButton
           pure [const SentRefresh <$> clicked, const SentCopy <$> copyClicked]
     let reCreateEvents = recreateClicked <> invButtons
-    pure invite''
+    pure $ invite'' & uiGoBack .~ backClicked
+                    & uiDone .~ doneClicked
   where
 
     inviteButton img name linkBase payload =
@@ -101,28 +118,22 @@ awesomeAddon t =
 
 copyButton :: forall t m. DomBuilder t m => m (Event t ())
 copyButton
-  = elAttr "span" ("class" =: "input-group-btn") $
-    fmap (domEvent Click . fst)
-    $ elAttr' "button" ( "class" =: "btn btn-default"
-                         <> "type" =: "button"
-                         <> "title" =: "Copy link to clipboard"
-                         <> "onClick" =: "copyInvitationLink()"
-                       ) $ elAttr "i" ( "class" =: "fa fa-copy") blank
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn link" <> "title" =: "Copy link to clipboard"
+                                    <> "type" =: "button" <> "role" =: "button"
+                                    <> "onClick" =: "copyInvitationLink()"
+                                  ) $ blank
+
 
 refreshLinkButton :: forall t m. DomBuilder t m => m (Event t ())
 refreshLinkButton
-  = elAttr "span" ("class" =: "input-group-btn") $
-  fmap (domEvent Click . fst)
-    $ elAttr' "button" ( "class" =: "btn btn-default"
-                         <> "type" =: "button"
-                         <> "title" =: "Generate new link"
-                       ) $ elAttr "i" ( "class" =: "fa fa-refresh") blank
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn link" <> "title" =: "Generate new link"
+                   <> "type" =: "button" <> "role" =: "button") $ blank
 
 showLinkInput :: forall t m. (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m ()
 showLinkInput invitationLink =
   let
     makeLinkAttrs link' = ( "type" =: "text"
-                            <> "class" =: "form-control"
+                            <> "class" =: "mail-input link"
                             <> "readOnly" =: "true"
                             <> "id" =: "invitationLinkUrlInput"
                             <> "value" =: link'
@@ -154,10 +165,9 @@ emailWidget :: forall t m. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace, P
   => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Db.Invitation))
   -> m (Event t [API.ServerRequest])
 emailWidget res invData = mdo
-    (infoBox', req) <- elAttr "div" ("class" =: "input-group" ) $ do
-      awesomeAddon "fa-envelope"
-      addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: "mail@example.com"
-                                                                       <> "class" =: "form-control"
+    (infoBox', req) <- elClass "div" "mail-form" $ do
+      addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: "example@gonimo.com"
+                                                                       <> "class" =: "mail-input"
                                                                    )
                                    , _textInputConfig_inputType = "email"
                                    }
@@ -180,11 +190,7 @@ emailWidget res invData = mdo
       in
         uncurry makeReqs <$> tag invAddr clicked
 
-    sendEmailBtn =
-      fmap (domEvent Click . fst)
-        $ elAttr "span" ("class" =: "input-group-btn") $
-            elAttr' "button" ("class" =: "btn btn-default" <> "type" =: "button") $
-              text "Send Email"
+    sendEmailBtn = makeClickable . elAttr' "div" (addBtnAttrs "input-btn mail") $ blank
 
     invSent :: Event t (Maybe API.SendInvitation)
     invSent = push (\r -> pure $ case r of
