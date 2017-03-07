@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Gonimo.Client.Util where
 
 import           Control.Concurrent.MVar
@@ -24,7 +25,11 @@ getGonimoAudioContext = liftJSM $ do
 getCachedAlertSound :: MonadJSM m => m (Maybe JSVal)
 getCachedAlertSound = liftJSM $ do
   rawVal <- eval ("if (typeof gonimoDecodedAlert == 'undefined') { return null;} else { return gonimoDecodedAlert}" :: Text)
+#ifdef __GHCJS__
   pure . nullableToMaybe $ JS.Nullable rawVal
+#else
+  nullableToMaybe rawVal
+#endif
 
 
 
