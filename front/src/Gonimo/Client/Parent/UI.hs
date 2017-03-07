@@ -32,12 +32,14 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList =
   elClass "div" "container" $ mdo
-      menu
+      navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation NavBar.NoConfirmation)
       connections' <- C.connections $ C.Config { C._configResponse = appConfig^.App.server.webSocket_recv
                                               , C._configAuthData = loaded^.App.authData
                                               , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
                                               -- , C._configDisconnectAll  = leftmost [uiDisconnect, uiGoHome]
-                                              , C._configDisconnectAll = never
+                                              , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
+                                                                                  , navBar^.NavBar.homeClicked
+                                                                                  ]
                                               , C._configDisconnectBaby = devicesUI^.DeviceList.uiDisconnect
                                               }
       devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> connections'^.C.streams)
@@ -62,7 +64,9 @@ ui appConfig loaded deviceList =
                               , App._request = connections'^.C.request <> devicesUI^.DeviceList.uiRequest <> invite^.Invite.request
                               }
       pure $ App.Screen { App._screenApp = parentApp
-                        , App._screenGoHome = never
+                        , App._screenGoHome = leftmost [ navBar^.NavBar.backClicked
+                                                       , navBar^.NavBar.homeClicked
+                                                       ]
                         }
 
 
@@ -83,13 +87,3 @@ renderVideos streams = do
     renderVideo stream
       = mediaVideo stream ("autoplay" =: "true")
   traverse_ renderVideo streams
-
-menu :: forall m t. (HasWebView m, MonadWidget t m) => m ()
-menu = do
-  elClass "div" "menu" $ do
-    elClass "div" "menu-left back" blank
-    elClass "div" "menu-left home" blank
-    elClass "div" "menu-right home" $ do
-      text "Der Geraet ist sehr cool und so"
-      el "br" blank
-      text "Red Dog"

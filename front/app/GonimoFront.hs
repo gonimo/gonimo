@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings, RecursiveDo, ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RankNTypes #-}
 
 import           Control.Lens
 import           Data.Monoid
@@ -16,8 +17,6 @@ import           Reflex.Dom.Core               hiding (webSocketConfig_send)
 import Language.Javascript.JSaddle.Warp (run)
 import qualified Language.Javascript.JSaddle              as JS
 import            Data.Text (Text)
-
-
 
 app :: forall x. Widget x ()
 app = mdo
@@ -49,14 +48,9 @@ app = mdo
   pure ()
 
 main :: IO ()
-main = do
-  -- putStrLn "Run it baby!"
-  -- run 3709 $ do
-  --   liftIO $ putStrLn "Before console.log"
-  --   _ <- JS.eval("console.log('ehehehehe we are here!');" :: Text);
-  --   liftIO $ putStrLn "After console.log"
-  --   pure ()
-  run 3709 $ mainWidgetInElementById "app" app
+-- main = run 3709 $ mainWidget app
+main = run 3709 $ mainWidgetInElementById "app" app
+
 
 -- headTag :: forall x. Widget x ()
 -- headTag = do

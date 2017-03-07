@@ -1,13 +1,16 @@
 module Gonimo.Client.NavBar.UI where
 
-import Control.Lens
-import Reflex.Dom.Core
-import Gonimo.Client.NavBar.Internal
-import Gonimo.Client.Reflex.Dom
-import qualified Gonimo.Client.Family.Internal as Family
+import           Control.Lens
+import           Data.Text                         (Text)
+import qualified Data.Text                         as T
+import qualified Gonimo.Client.App.Types           as App
+import           Gonimo.Client.ConfirmationButton  (confirmationEl)
 import qualified Gonimo.Client.DeviceList.Internal as DeviceList
-import qualified Gonimo.Client.App.Types as App
-import           Gonimo.Client.ConfirmationButton  (confirmationButton)
+import qualified Gonimo.Client.Family.Internal     as Family
+import           Gonimo.Client.NavBar.Internal
+import           Gonimo.Client.Reflex.Dom
+import           Reflex.Dom.Core
+import           Data.Monoid
 
 
 navBar :: forall m t. (HasWebView m, MonadWidget t m)
@@ -15,37 +18,33 @@ navBar :: forall m t. (HasWebView m, MonadWidget t m)
 navBar config = do
     let loaded = config^.configLoaded
     let deviceList = config^.configDeviceList
-    elClass "div" "navbar navbar-default" $ do
-      elClass "div" "container" $ do
+    elClass "div" "menu" $ do
         backClicked' <- backButton
         homeClicked' <- homeButton
-        elClass "div" "nav navbar-nav navbar-right" $ do
-          elClass "p" "" $ do
-            let deviceName = DeviceList.ownDeviceName (loaded^.App.authData) deviceList
-            dynText deviceName
-          elClass "p" "" $ do
-            let cFamilyName = Family.currentFamilyName
-                              $ Family.DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)
-            dynText cFamilyName
+        elClass "div" "menu-right" $ do
+          let deviceName = DeviceList.ownDeviceName (loaded^.App.authData) deviceList
+          dynText $ makeEllipsis 25 <$> deviceName
+          el "br" blank
+          let cFamilyName = Family.currentFamilyName
+                            $ Family.DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)
+          dynText $ makeEllipsis 25 <$> cFamilyName
+        elClass "div" "menu-center" blank
         pure $ NavBar backClicked' homeClicked'
   where
-    btnAttrs = "class" =: "btn btn-default navbar-btn"
-    backInner = elClass "span" "glyphicon glyphicon-menu-left" blank
-    homeInner = elClass "span" "glyphicon glyphicon-home" blank
+    backButton' = makeClickable . elAttr' "div" (addBtnAttrs "menu-left back") $ blank
 
     backButton = case config^.configConfirmationOnBack of
-      NoConfirmation -> buttonAttr btnAttrs backInner
-      WithConfirmation confText -> confirmationButton btnAttrs backInner confText
+      NoConfirmation -> backButton'
+      WithConfirmation confText -> confirmationEl backButton' confText
+
+    homeButton' = makeClickable . elAttr' "div" (addBtnAttrs "menu-left home") $ blank
 
     homeButton = case config^.configConfirmationOnHome of
-      NoConfirmation -> buttonAttr btnAttrs homeInner
-      WithConfirmation confText -> confirmationButton btnAttrs homeInner confText
+      NoConfirmation -> homeButton'
+      WithConfirmation confText -> confirmationEl homeButton' confText
 
-    
-  -- where
-    -- navLogo
-    --   = elAttr "img" ( "alt" =: "gonimo"
-    --                  <> "src" =: "pix/gonimo-brand-01.svg"
-    --                  <> "height" =: "50px"
-    --                  <> "style" =: "padding: 2px 3.5px 0px 3.5px;"
-    --                  ) blank
+
+makeEllipsis :: Int -> Text -> Text
+makeEllipsis maxL t = if T.length t > maxL
+                      then T.take (maxL-2) t <> ".."
+                      else t
