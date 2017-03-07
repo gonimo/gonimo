@@ -4,19 +4,26 @@ import Distribution.Simple.Setup (BuildFlags(..), ConfigFlags(..))
 import Distribution.PackageDescription (PackageDescription (..), FlagName(..), HookedBuildInfo)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
 import Distribution.Simple.Program.Run
+import Distribution.System (Platform(..), Arch(..))
 import Distribution.Verbosity (normal)
 -- #ifndef __GHCJS__
 -- import System.Directory
 -- import System.Posix.Files
 -- #endif
 
-#ifdef __GHCJS__
+-- Can't use __GHCJS__ because Setup.hs might get build with ghc (nix does this!)
+-- #ifdef GHCJS_COMPILER
 finishBuild ::  Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 finishBuild _ _ _ localBuildInfo = do
   let flags = configConfigurationsFlags . configFlags $ localBuildInfo
+  let (Platform arch _) = hostPlatform localBuildInfo
+  let script = case arch of
+                 JavaScript -> "./postBuild.sh"
+                 _ -> "./postBuildGhc.sh"
+
   let unFlagName = \(FlagName s) -> s
   let flagStrings = unFlagName . fst <$> (filter ((=="dev") . unFlagName . fst) . filter snd) flags
-  let prog = emptyProgramInvocation { progInvokePath = "./postBuild.sh"
+  let prog = emptyProgramInvocation { progInvokePath = script
                                     , progInvokeArgs = flagStrings
                                     -- , progInvokeArgs = [ "-a", "./static/*", "./dist/build/gonimo-front/gonimo-front.jsexe/" ]
                                     -- , progInvokeCwd = Just "./"
@@ -30,16 +37,6 @@ cleanBuild _ _ = do
                                     }
   runProgramInvocation normal prog
   pure (Nothing, [])
-#else
-finishBuild ::  Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
-finishBuild _ _ _ localBuildInfo = do
-  let flags = configConfigurationsFlags . configFlags $ localBuildInfo
-  let unFlagName = \(FlagName s) -> s
-  let flagStrings = unFlagName . fst <$> filter snd flags
-  let prog = emptyProgramInvocation { progInvokePath = "./postBuildGhc.sh"
-                                    , progInvokeArgs = flagStrings
-                                    }
-  runProgramInvocation normal prog
   -- Can't use this because of bug in cabal (we cannot conditionally add custom setup dependencies):
   -- cwd <- getCurrentDirectory
   -- let source  = cwd </> "static"
@@ -47,9 +44,6 @@ finishBuild _ _ _ localBuildInfo = do
   -- removeFile dest
   -- createSymbolicLink source dest
 
-cleanBuild ::  Args -> BuildFlags -> IO HookedBuildInfo
-cleanBuild _ _ = pure (Nothing, [])
-#endif
 
 main = do
   defaultMainWithHooks $ simpleUserHooks { postBuild = finishBuild
