@@ -40,6 +40,11 @@ body{
     color: #333;
 	margin:0;
 }
+#app {
+    height: 100%;
+    width: 100%;
+}
+
 a{
 	color:unset;
 }
@@ -391,7 +396,7 @@ h3{
 .device.active > .status > div {
 	background:rgb(230,202,212);
 }
-.device.active > .buttons > .connect{
+.device.isBaby > .buttons > .connect{
 	display:block;
 }
 .device.connected > .buttons > .stream, .device.connected > .buttons > .disconnect {
@@ -597,4 +602,37 @@ span.baby-form{
 }
 .baby.setup-done > .time{
 	display:inline-block;
+}
+
+.hCenteredOverlay {
+    position: fixed;
+    z-index: 10;
+    bottom:0;
+    left:0;
+    display:flex;
+    justify-content:center;
+}
+
+.fullScreen {
+    height:100vh;
+    width:100vw;
+}
+
+.fullContainer {
+    height:100%;
+    width:100%;
+}
+
+.hCenteredBox {
+    display: flex;
+    flex-direction:row;
+    justify-content: center;
+    width: 100%;
+}
+
+.vCenteredBox {
+    display: flex;
+    flex-direction:column;
+    justify-content: center;
+    height: 100%;
 }

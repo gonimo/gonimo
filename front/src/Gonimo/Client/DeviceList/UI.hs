@@ -27,7 +27,7 @@ import           Data.Time.LocalTime               (TimeZone,
 import           Gonimo.Db.Entities                (AccountId, DeviceId)
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
-import           Gonimo.Types                      (DeviceType (..))
+import           Gonimo.Types                      (DeviceType (..), _Baby, _NoBaby)
 import           Reflex.Dom.Core
 import           Safe                              (headMay)
 
@@ -101,30 +101,31 @@ renderAccounts tz loaded allInfos onlineStatus connected authData = do
 
           devClass :: Dynamic t Text
           devClass = mconcat
-                      [ pure "device"
+                      [ pure "device "
                       , fmap (\isSel -> if isSel then "selected " else "") isSelected
                       , fmap (\isConn -> if isConn then "connected " else "") isConnected
                       , fmap ((\isOnline -> if isOnline then "active " else "") . isJust) mDevType
-                      , pure (if isSelf then "info " else "")
+                      , fmap ((\isBaby -> if isBaby then "isBaby " else "") . isJust . (^?_Just._Baby)) mDevType
+                      -- , pure (if isSelf then "info " else "")
                       ]
 
         (isSelected, ui')  <-
           elDynClass "div" devClass $ do
-            elClass "div" "status" blank
+            elClass "div" "status" $ el "div" blank
             selectedClick <- makeClickable
               . elAttr' "div" (addBtnAttrs "name") $ do
               elClass "span" "dev-name" $ dynText (API.deviceInfoName <$> devInfo)
               elClass "span" "dev-loc" $ dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do
-                conC <- makeClickable . elClass' "div" "connect" $ text "Connect"
-                streamC <- makeClickable . elClass' "div" "stream" $ text "Stream"
-                discC <- makeClickable . elClass' "div" "disconnect" $ text "Disconnect"
+                conC <- makeClickable . elAttr' "div" (addBtnAttrs "connect") $ text "Connect"
+                streamC <- makeClickable . elAttr' "div" (addBtnAttrs "stream") $ text "Stream"
+                discC <- makeClickable . elAttr' "div" (addBtnAttrs "disconnect") $ text "Disconnect"
                 pure (conC, streamC, discC)
             (nameChangeClick, removeClick) <-
               elClass "div" "info" $ do
                 elClass "span" "last-seen" . dynText
-                  $ pure "Last Seen:"
+                  $ pure "Last Seen: "
                   <> (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
                 nameChanged <- editStringEl ( makeClickable
                                               . elAttr' "span" (addBtnAttrs "edit")
@@ -133,7 +134,7 @@ renderAccounts tz loaded allInfos onlineStatus connected authData = do
                               (text "Change device name to ...")
                               (API.deviceInfoName <$> devInfo)
                 removeRequested <- confirmationEl ( makeClickable
-                                                    . elAttr' "span" (addBtnAttrs "remove")
+                                                    . elAttr' "span" (addBtnAttrs "delete")
                                                     $ text "Remove"
                                                   )
                                    (removeConfirmationText isSelf devName)

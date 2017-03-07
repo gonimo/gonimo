@@ -25,7 +25,7 @@ import           Gonimo.Client.Reflex.Dom
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
       => Config t -> m (App t)
-ui config = elClass "div" "app" $ mdo
+ui config = mdo
   family <- Family.family
             $ (Family.fromApp config) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
                                                                               , familyUI^.Family.uiSelectFamily
