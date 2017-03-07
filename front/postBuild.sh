@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 dev=$1
+echo "And dev is ..... ${dev}"
 distPath=dist/build/gonimo-front/gonimo-front.jsexe
 cp -a static/* ${distPath}/
-[[ -e devRoot ]] && rm devRoot
-ln -s ${distPath} devRoot
 pushd ${distPath}
 rm index.html
 mv index-ghcjs.html index.html
 popd
 if [[ ${dev} == "dev" ]]
 then
+    rm -f devRoot
+    ln -s ${distPath} devRoot
     echo "Development build, skipping minification"
 else
     pushd ${distPath}

@@ -15,7 +15,7 @@ finishBuild ::  Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO
 finishBuild _ _ _ localBuildInfo = do
   let flags = configConfigurationsFlags . configFlags $ localBuildInfo
   let unFlagName = \(FlagName s) -> s
-  let flagStrings = unFlagName . fst <$> filter snd flags
+  let flagStrings = unFlagName . fst <$> (filter ((=="dev") . unFlagName . fst) . filter snd) flags
   let prog = emptyProgramInvocation { progInvokePath = "./postBuild.sh"
                                     , progInvokeArgs = flagStrings
                                     -- , progInvokeArgs = [ "-a", "./static/*", "./dist/build/gonimo-front/gonimo-front.jsexe/" ]

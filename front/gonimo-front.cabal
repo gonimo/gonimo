@@ -17,10 +17,6 @@ Flag dev
     Description:   Turn on development settings.
     Default:       False
 
-Flag warp
-  description: Build with jsaddle-warp!
-  default: True   
-
 custom-setup
     setup-depends: base >=4.8 && <4.10
                 , Cabal >= 1.18 && < 1.25
