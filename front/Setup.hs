@@ -4,21 +4,19 @@ import Distribution.Simple.Setup (BuildFlags(..), ConfigFlags(..))
 import Distribution.PackageDescription (PackageDescription (..), FlagName(..), HookedBuildInfo)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
 import Distribution.Simple.Program.Run
-import Distribution.System (Platform(..), Arch(..))
 import Distribution.Verbosity (normal)
--- #ifndef __GHCJS__
--- import System.Directory
--- import System.Posix.Files
--- #endif
+import Distribution.Compiler (CompilerInfo(..), CompilerId(..), CompilerFlavor(..))
 
 -- Can't use __GHCJS__ because Setup.hs might get build with ghc (nix does this!)
 -- #ifdef GHCJS_COMPILER
 finishBuild ::  Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 finishBuild _ _ _ localBuildInfo = do
   let flags = configConfigurationsFlags . configFlags $ localBuildInfo
-  let (Platform arch _) = hostPlatform localBuildInfo
-  let script = case arch of
-                 JavaScript -> "./postBuild.sh"
+  let (CompilerId flav _) = compilerInfoId . compilerInfo . compiler $ localBuildInfo
+  putStrLn "Found flavour: "
+  print flav
+  let script = case flav of
+                 GHCJS -> "./postBuild.sh"
                  _ -> "./postBuildGhc.sh"
 
   let unFlagName = \(FlagName s) -> s
