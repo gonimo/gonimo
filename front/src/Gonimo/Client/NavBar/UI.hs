@@ -23,11 +23,11 @@ navBar config = do
         homeClicked' <- homeButton
         elClass "div" "menu-right" $ do
           let deviceName = DeviceList.ownDeviceName (loaded^.App.authData) deviceList
-          dynText $ makeEllipsis 25 <$> deviceName
+          dynText $ makeEllipsis 20 <$> deviceName
           el "br" blank
           let cFamilyName = Family.currentFamilyName
                             $ Family.DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)
-          dynText $ makeEllipsis 25 <$> cFamilyName
+          dynText $ makeEllipsis 20 <$> cFamilyName
         elClass "div" "menu-center" blank
         pure $ NavBar backClicked' homeClicked'
   where
