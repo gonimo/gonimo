@@ -46,6 +46,7 @@ editStringBox editStringText val = do
                                                                             <> "id" =: inputId)
             -- el "script" $ text ("document.getElementById('" <> inputId <> "').focus();")
             -- pure v
+          el "br" blank
           el "div" $ do
             okClicked <- buttonAttr ("class" =: "btn btn-success" <> "role" =: "button" <> "type" =: "button") $ text "Ok"
             cancelClicked <- buttonAttr ("class" =: "btn btn-danger" <> "role" =: "button" <> "type" =: "button") $ text "Cancel"
