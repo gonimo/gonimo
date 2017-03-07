@@ -443,6 +443,22 @@ h3{
 	min-height:90%;
 	padding-bottom:50px;
 }
+
+
+.parentManage {
+    display: none;
+}
+.parentManage.isParentManage {
+    display: block
+}
+
+.parentView {
+    display: none;
+}
+.parentView.isParentView {
+    display: block
+}
+
 .stream-baby{
 	min-width:100px;
 	min-height:100px;

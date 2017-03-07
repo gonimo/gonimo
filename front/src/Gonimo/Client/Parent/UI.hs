@@ -26,64 +26,76 @@ import qualified Gonimo.Client.Auth as Auth
 import qualified Gonimo.Client.Invite as Invite
 -- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
 
-data ParentScreen = ScreenStart | ScreenRunning
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
-ui appConfig loaded deviceList =
-  elClass "div" "container" $ mdo
-      navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation NavBar.NoConfirmation)
-      connections' <- C.connections $ C.Config { C._configResponse = appConfig^.App.server.webSocket_recv
-                                              , C._configAuthData = loaded^.App.authData
-                                              , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
-                                              -- , C._configDisconnectAll  = leftmost [uiDisconnect, uiGoHome]
-                                              , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
-                                                                                  , navBar^.NavBar.homeClicked
-                                                                                  ]
-                                              , C._configDisconnectBaby = devicesUI^.DeviceList.uiDisconnect
-                                              }
+ui appConfig loaded deviceList = mdo
+  connections' <- C.connections $ C.Config { C._configResponse = appConfig^.App.server.webSocket_recv
+                                           , C._configAuthData = loaded^.App.authData
+                                           , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
+                                           , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
+                                                                               , navBar^.NavBar.homeClicked
+                                                                               , viewNav^.NavBar.homeClicked
+                                                                               ]
+                                           , C._configDisconnectBaby = devicesUI^.DeviceList.uiDisconnect
+                                           }
+
+  let showParentView = const "isParentView" <$> leftmost [devicesUI^.DeviceList.uiConnect, devicesUI^.DeviceList.uiShowStream]
+  let showParentManage = const "isParentManage" <$> viewNav^.NavBar.backClicked
+  selectedView <- holdDyn "isParentManage" $ leftmost [showParentView, showParentManage]
+
+  (navBar, devicesUI, invite) <-
+    elDynClass "div" (pure "container parentManage " <> selectedView) $ do
+      manageUi appConfig loaded deviceList connections'
+
+  viewNav <-
+    elDynClass "div" (pure "container parentView " <> selectedView) $ do
+      let streams = Map.elems <$> connections'^.C.streams
+      viewUi appConfig loaded deviceList streams
+
+  emptySubs <- holdDyn mempty never
+  let parentApp = App.App { App._subscriptions = emptySubs
+                          , App._request = connections'^.C.request <> devicesUI^.DeviceList.uiRequest <> invite^.Invite.request
+                          }
+  pure $ App.Screen { App._screenApp = parentApp
+                    , App._screenGoHome = leftmost [ navBar^.NavBar.backClicked
+                                                   , navBar^.NavBar.homeClicked
+                                                   , viewNav^.NavBar.homeClicked
+                                                   ]
+                    }
+
+manageUi :: forall m t. (HasWebView m, MonadWidget t m)
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Invite.Invite t)
+manageUi appConfig loaded deviceList connections' = mdo
+      navBar <- NavBar.navBar (NavBar.Config loaded deviceList leaveConfirmation leaveConfirmation)
       devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> connections'^.C.streams)
 
-      -- uiConnectBabyEv <- dyn $ connectButtons . Map.keys <$> deviceList^.DeviceList.onlineDevices
-      -- uiConnectBaby <- switchPromptly never uiConnectBabyEv
-      -- uiDisconnect <- buttonAttr ("class" =: "btn btn-default") $ text "Disconnect"
-      -- uiGoHome <- buttonAttr ("class" =: "btn btn-default") $ text "Go to your mummy"
-
-      let streams = Map.elems <$> connections'^.C.streams
-      _ <- dyn $ renderVideos <$> streams
-
-      invite <- 
+      invite <-
         Invite.ui $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
                                   , Invite._configSelectedFamily = loaded^.App.selectedFamily
                                   , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
                                   , Invite._configCreateInvitation = never
                                   }
+      pure (navBar, devicesUI, invite)
 
-      emptySubs <- holdDyn mempty never
-      let parentApp = App.App { App._subscriptions = emptySubs
-                              , App._request = connections'^.C.request <> devicesUI^.DeviceList.uiRequest <> invite^.Invite.request
-                              }
-      pure $ App.Screen { App._screenApp = parentApp
-                        , App._screenGoHome = leftmost [ navBar^.NavBar.backClicked
-                                                       , navBar^.NavBar.homeClicked
-                                                       ]
-                        }
-
-
-connectButtons :: forall m t. (HasWebView m, MonadWidget t m) => [DeviceId] -> m (Event t DeviceId)
-connectButtons devIds = do
-  let
-    mkBtn devId = do
-      clicked <- buttonAttr ("class" =: "btn btn-default") . text . T.pack . show $ devId
-      pure $ const devId <$> clicked
-  buttons <- traverse mkBtn devIds
-  pure $ leftmost buttons
-
+viewUi :: forall m t. (HasWebView m, MonadWidget t m)
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> Dynamic t [MediaStream] -> m (NavBar.NavBar t)
+viewUi _ loaded deviceList streams = do
+  navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation leaveConfirmation)
+  elClass "div" "parent" $ do
+    _ <- dyn $ renderVideos <$> streams
+    pure navBar
 
 
 renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => [MediaStream] -> m ()
 renderVideos streams = do
   let
     renderVideo stream
-      = mediaVideo stream ("autoplay" =: "true")
+      = elClass "div" "stream-baby" $ mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
   traverse_ renderVideo streams
+
+
+leaveConfirmation :: NavBar.ConfirmationText t
+leaveConfirmation = NavBar.WithConfirmation $ do
+    el "h3" $ text "Really stop parent station?"
+    el "p" $ text "All connections will be stopped!"
