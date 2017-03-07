@@ -6,10 +6,8 @@ module Gonimo.Client.Parent.UI where
 
 import           Control.Lens
 import           Data.Monoid
-import qualified Data.Text                         as T
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.DeviceList          as DeviceList
-import           Gonimo.Db.Entities                (DeviceId)
 import           Reflex.Dom.Core
 import           Data.Foldable
 
@@ -21,7 +19,6 @@ import qualified Gonimo.Client.NavBar              as NavBar
 import qualified Gonimo.Client.Parent.Connections  as C
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
-import           Gonimo.DOM.Navigator.MediaDevices
 import qualified Gonimo.Client.Auth as Auth
 import qualified Gonimo.Client.Invite as Invite
 -- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
@@ -82,7 +79,7 @@ ui appConfig loaded deviceList = mdo
 
 manageUi :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
-manageUi appConfig loaded deviceList connections' = mdo
+manageUi _ loaded deviceList connections' = mdo
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList leaveConfirmation leaveConfirmation)
       devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> connections'^.C.streams)
       inviteRequested <-
