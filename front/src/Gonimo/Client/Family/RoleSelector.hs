@@ -14,17 +14,15 @@ import           Gonimo.Client.Prelude
 roleSelector :: forall t m. (MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m)
           => m (Event t GonimoRole)
 roleSelector = do
-  let mkRoleButton inner = do
-        elAttr "div" ("class" =: "btn-group" <> "role" =: "group") $
-          buttonAttr ("class" =: "btn btn-default" <> "type" =: "button") inner
-  elClass "div" "container hCenteredBox" $ do
-    elClass "div" "btn-group btn-group-lg" $ do
-      babyClicked <- mkRoleButton $ do
-        text "Baby"
-        elClass "span" "hidden-xs" $ text " Station"
-      parentClicked <- mkRoleButton $ do
-        text "Parent"
-        elClass "span" "hidden-xs" $ text " Station"
-      pure $ leftmost [ const RoleBaby <$> babyClicked
-                      , const RoleParent <$> parentClicked
-                      ]
+  elClass "div" "btn-box" $ do
+    babyClicked <-
+      makeClickable . elAttr' "div" (addBtnAttrs "btn-baby") $ do
+        elAttr "img" ("src" =: "/pix/button-baby.svg") blank
+        el "span" $ text "BABY"
+    parentClicked <-
+      makeClickable . elAttr' "div" (addBtnAttrs "btn-parent") $ do
+        elAttr "img" ("src" =: "/pix/button-parent.svg") blank
+        el "span" $ text "PARENT"
+    pure $ leftmost [ const RoleBaby <$> babyClicked
+                    , const RoleParent <$> parentClicked
+                    ]

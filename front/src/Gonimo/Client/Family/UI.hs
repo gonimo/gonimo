@@ -19,47 +19,85 @@ import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types          as App
 import qualified Gonimo.Client.Auth               as Auth
-import           Gonimo.Client.ConfirmationButton (confirmationButton)
-import           Gonimo.Client.EditStringButton   (editStringButton)
+import           Gonimo.Client.ConfirmationButton (confirmationEl)
+import           Gonimo.Client.EditStringButton   (editStringEl)
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server             (webSocket_recv)
 
--- Overrides configCreateFamily && configLeaveFamily
-ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Config t -> App.Loaded t -> m (UI t)
-ui _ loaded = mdo
+
+uiStart :: forall m t. (HasWebView m, MonadWidget t m) => m (UI t)
+uiStart = do
+  elClass "div" "container" $ do
+    el "h1" $ do
+      text "Welcome to the "
+      el "wbr" blank
+      text "Gonimo World!"
+    el "br" blank
+
+    elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.png") $ blank
+    el "br" blank
+
+    el "h3" $ text "Create a new Family"
+    elClass "div" "welcome-form" $ do
+      elAttr "input" ( "class" =: "welcome-input" <> "readonly" =: "true" <> "type" =: "text"
+                       <> "placeholder" =: "Press >+<, I know you want to!"
+                     ) blank
+
+      plusClicked <-
+        makeClickable
+        $ elAttr' "div" ( "class" =: "input-btn plus" <> "title" =: "Create a family to get started."
+                          <> "type" =: "button" <> "role" =: "button"
+                        ) blank
+      pure $ UI never plusClicked never never never
+
+ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Loaded t -> m (UI t)
+ui loaded =
+  elClass "div" "container" $ do
     let cFamilyName = currentFamilyName
                       $ DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)
+    el "h1" $ do
+      text "Welcome to the "
+      el "wbr" blank
+      text "Gonimo World!"
+    el "br" blank
+
+    elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") $ blank
+    el "br" blank
+
+    el "h3" $ text "FAMILY"
+    (familySelected, clickedAdd, clickedLeave, nameChanged) <-
+      elClass "div" "welcome-form" $ do
+        familySelected <-
+          elClass "ul" "family-select"
+          $ familyChooser'
+          $ DefiniteFamily  (loaded^.App.families) (loaded^.App.selectedFamily)
+
+        clickedAdd <-
+          makeClickable $ elAttr' "div" (addBtnAttrs "input-btn plus") blank
+
+        clickedLeave <-
+          confirmationEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn minus") blank)
+          (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
+
+        nameChanged <-
+          editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn edit") blank)
+          (text "Change your family name to ...")
+          cFamilyName
+        pure (familySelected, clickedAdd, clickedLeave, nameChanged)
+
+    el "br" blank
+
+    roleSelected <- roleSelector
 
 
-    elClass "div" "container" $ do
-      familySelected <- elClass "ul" "nav navbar-nav" $
-                        familyChooser' $ DefiniteFamily  (loaded^.App.families) (loaded^.App.selectedFamily)
-      clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
-      clickedLeave <- confirmationButton ("class" =: "btn btn-danger") (text "-")
-                        (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
-      nameChanged <- editStringButton ("class" =: "btn btn-default")
-                        ( elAttr "i" ( "class" =: "fa fa-fw fa-pencil"
-                                    <> "data-toggle" =: "tooltip"
-                                    <> "data-placement" =: "right"
-                                    <> "title" =: "edit family name"
-                                    ) blank
-                        )
-                        (text "Change your family name to ...")
-                        cFamilyName
-
-      roleSelected <- roleSelector
-      -- devicesReqs <-  devices appConfig loaded deviceList
-
-
-      pure $ UI { _uiSelectFamily = familySelected
-                , _uiCreateFamily = clickedAdd
-                , _uiLeaveFamily = clickedLeave
-                , _uiSetName  = nameChanged
-                , _uiRoleSelected = roleSelected
-                }
+    pure $ UI { _uiSelectFamily = familySelected
+              , _uiCreateFamily = clickedAdd
+              , _uiLeaveFamily = clickedLeave
+              , _uiSetName  = nameChanged
+              , _uiRoleSelected = roleSelected
+              }
 
 
 -- Either create family button or family chooser depending on whether families exist or not.
@@ -123,20 +161,3 @@ renderFamilySelector _ family' selected' = do
         $ dynText
           $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
--- devices ::forall m t. (HasWebView m, MonadWidget t m)
---             => App.Config t
---             -> App.Loaded t
---             -> DeviceList.DeviceList t
---             -> m (Event t [API.ServerRequest])
--- devices appConfig loaded _ = do
---     -- devListReqs <- DeviceList.ui loaded deviceList
---     elClass "div" "" $ do
---       elClass "div" "page-header" $
---         elClass "h4" "" $ text "Invite More Devices to Join Your Family"
---       elClass "div" "" $ do
---         invite <- Invite.ui $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
---                                             , Invite._configSelectedFamily = loaded^.App.selectedFamily
---                                             , Invite._configCreateInvitation = never
---                                             , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
---                                             }
---         pure $ invite^.Invite.request

@@ -191,6 +191,9 @@ h3{
 .input-btn.plus::after{
 	content:"+";
 }
+.input-btn.minus::after{
+	  content:"-";
+}
 .input-btn.check, .input-btn.mail{
 	border:solid 4px #E6CAD4;
 }

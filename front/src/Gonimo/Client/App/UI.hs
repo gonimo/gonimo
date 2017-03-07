@@ -65,10 +65,9 @@ runLoaded config family = do
   let onReady dynAuthFamilies =
         fromMaybeDyn
           (do
-              clickedAdd <- buttonAttr ("class" =: "btn btn-default") $ text "+"
-              elClass "div" "container" $ text "Create a family to get started (+)"
+              startUI <- Family.uiStart
               subs <- holdDyn Set.empty never
-              pure (App subs never, Family.UI never clickedAdd never never never)
+              pure (App subs never, startUI)
           )
           (\selected -> do
               let loaded = Loaded (fst <$> dynAuthFamilies) (snd <$> dynAuthFamilies) selected
@@ -94,7 +93,7 @@ loadedUI config loaded = mdo
                                                           }
   emptyScreen <- mkEmptyScreen
   dynPair <- widgetHold
-             ((emptyScreen,) <$> Family.ui config loaded)
+             ((emptyScreen,) <$> Family.ui loaded)
              (renderCenter config loaded deviceList <$> roleSelected)
 
   let screen = screenSwitchPromptlyDyn . fmap fst $ dynPair
@@ -116,6 +115,6 @@ renderCenter :: forall m t. (HasWebView m, MonadWidget t m)
 renderCenter config loaded deviceList mRole = do
   emptyScreen <- mkEmptyScreen
   case mRole of
-      Nothing -> (emptyScreen,) <$> Family.ui config loaded
+      Nothing -> (emptyScreen,) <$> Family.ui loaded
       Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
       Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList
