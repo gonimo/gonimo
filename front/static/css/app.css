@@ -713,4 +713,5 @@ span.baby-form{
     bottom:0;
     left:0;
     background-color: white;
+    overflow: auto;
 }
