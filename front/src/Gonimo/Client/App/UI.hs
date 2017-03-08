@@ -21,6 +21,7 @@ import           Gonimo.Client.Server           (webSocket_recv)
 import qualified Gonimo.Client.Baby             as Baby
 import qualified Gonimo.Client.Parent           as Parent
 import           Gonimo.Client.Reflex.Dom
+import qualified Gonimo.SocketAPI               as API
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -61,6 +62,11 @@ runLoaded config family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
   evReady <- waitForJust
              $ zipDynWith mkFuncPair (config^.auth.Auth.authData) (family^.Family.families)
+  familyGotCreated <- hold False $ push (\res ->
+                                            case res of
+                                              API.ResCreatedFamily _ -> pure $ Just True
+                                              _ -> pure Nothing
+                                        ) (config^.server.webSocket_recv)
 
   let onReady dynAuthFamilies =
         fromMaybeDyn
@@ -71,7 +77,8 @@ runLoaded config family = do
           )
           (\selected -> do
               let loaded = Loaded (fst <$> dynAuthFamilies) (snd <$> dynAuthFamilies) selected
-              loadedUI config loaded
+              familyCreated <- sample familyGotCreated
+              loadedUI config loaded familyCreated
           )
           (family^.Family.selectedFamily)
   let notReady = do
@@ -85,15 +92,15 @@ runLoaded config family = do
 
 
 loadedUI :: forall m t. (HasWebView m, MonadWidget t m)
-      => Config t -> Loaded t -> m (App t, Family.UI t)
-loadedUI config loaded = mdo
+      => Config t -> Loaded t -> Bool -> m (App t, Family.UI t)
+loadedUI config loaded familyCreated = mdo
   deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.webSocket_recv
                                                           , DeviceList._configAuthData = config^.auth.Auth.authData
                                                           , DeviceList._configFamilyId = loaded^.selectedFamily
                                                           }
   emptyScreen <- mkEmptyScreen
   dynPair <- widgetHold
-             ((emptyScreen,) <$> Family.ui loaded)
+             ((emptyScreen,) <$> Family.ui config loaded familyCreated)
              (renderCenter config loaded deviceList <$> roleSelected)
 
   let screen = screenSwitchPromptlyDyn . fmap fst $ dynPair
@@ -104,6 +111,7 @@ loadedUI config loaded = mdo
                               ]
 
   let app = App { _request = deviceList^.DeviceList.request <> screen^.screenApp.request
+                             <> familyUI^.Family.uiRequest
                 , _subscriptions = deviceList^.DeviceList.subscriptions <> screen^.screenApp.subscriptions
                 }
   pure (app, familyUI)
@@ -115,6 +123,6 @@ renderCenter :: forall m t. (HasWebView m, MonadWidget t m)
 renderCenter config loaded deviceList mRole = do
   emptyScreen <- mkEmptyScreen
   case mRole of
-      Nothing -> (emptyScreen,) <$> Family.ui loaded
+      Nothing -> (emptyScreen,) <$> Family.ui config loaded False
       Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
       Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList

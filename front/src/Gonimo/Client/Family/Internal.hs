@@ -61,7 +61,10 @@ data UI t
        , _uiLeaveFamily  :: Event t ()
        , _uiSetName :: Event t Text
        , _uiRoleSelected :: Event t GonimoRole
+       , _uiRequest :: Event t [ API.ServerRequest ]
        }
+
+data CreateFamilyResult = CreateFamilyCancel | CreateFamilyOk | CreateFamilySetName !Text
 
 data DefiniteFamily t
   = DefiniteFamily { _definiteFamilies :: Dynamic t FamilyMap
@@ -73,9 +76,10 @@ makeLenses ''Config
 makeLenses ''Family
 makeLenses ''UI
 makeLenses ''DefiniteFamily
+makePrisms ''CreateFamilyResult
 
 instance Reflex t => Default (UI t) where
-  def = UI never never never never never
+  def = UI never never never never never never
 
 fromApp :: Reflex t => App.Config t -> Config t
 fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
@@ -94,6 +98,7 @@ uiSwitchPromptly ev
        <*> switchPromptly never (_uiLeaveFamily <$> ev)
        <*> switchPromptly never (_uiSetName <$> ev)
        <*> switchPromptly never (_uiRoleSelected <$> ev)
+       <*> switchPromptly never (_uiRequest <$> ev)
 
 uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
 uiSwitchPromptlyDyn ev
@@ -102,6 +107,7 @@ uiSwitchPromptlyDyn ev
        (switchPromptlyDyn (_uiLeaveFamily <$> ev))
        (switchPromptlyDyn (_uiSetName <$> ev))
        (switchPromptlyDyn (_uiRoleSelected <$> ev))
+       (switchPromptlyDyn (_uiRequest <$> ev))
 
 -- makeDefinite :: forall m t. Reflex t => Family t -> Dynamic t (Maybe DefiniteFamily t)
 -- makeDefinite family' =

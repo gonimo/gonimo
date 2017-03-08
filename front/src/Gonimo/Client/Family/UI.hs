@@ -7,6 +7,7 @@ import           Control.Lens
 import           Data.Map                         (Map)
 import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid
+import           Control.Applicative
 import           Data.Text                        (Text)
 import qualified Gonimo.Client.DeviceList         as DeviceList
 import qualified Gonimo.Client.Invite             as Invite
@@ -41,19 +42,24 @@ uiStart = do
 
     el "h3" $ text "Create a new Family"
     elClass "div" "welcome-form" $ do
-      elAttr "input" ( "class" =: "welcome-input" <> "readonly" =: "true" <> "type" =: "text"
-                       <> "placeholder" =: "Press >+<, I know you want to!"
-                     ) blank
+      inputFieldClicked <-
+        makeClickable
+        $ elAttr' "input" ( "class" =: "welcome-input" <> "readonly" =: "true" <> "type" =: "text"
+                            <> "placeholder" =: "Press >+<, I know you want to!"
+                          ) blank
 
       plusClicked <-
         makeClickable
         $ elAttr' "div" ( "class" =: "input-btn plus" <> "title" =: "Create a family to get started."
                           <> "type" =: "button" <> "role" =: "button"
                         ) blank
-      pure $ UI never plusClicked never never never
+      let userWantsFamily = leftmost [ plusClicked, inputFieldClicked ]
+      pure $ UI never userWantsFamily never never never never
 
-ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Loaded t -> m (UI t)
-ui loaded =
+ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded t -> Bool -> m (UI t)
+ui appConfig loaded familyGotCreated = do
+  (newFamilyResult, newFamilyReqs) <-
+    createFamily appConfig loaded familyGotCreated
   elClass "div" "container" $ do
     el "h1" $ do
       text "Welcome to the "
@@ -75,9 +81,14 @@ ui loaded =
 
     pure $ UI { _uiSelectFamily = familySelected
               , _uiCreateFamily = clickedAdd
-              , _uiLeaveFamily = clickedLeave
-              , _uiSetName  = nameChanged
+              , _uiLeaveFamily = leftmost [ clickedLeave
+                                          , push (\r -> pure $ r^?_CreateFamilyCancel) newFamilyResult
+                                          ]
+              , _uiSetName  = leftmost [ nameChanged
+                                       , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
+                                       ]
               , _uiRoleSelected = roleSelected
+              , _uiRequest = newFamilyReqs
               }
 
 
@@ -153,3 +164,97 @@ renderFamilySelector _ family' selected' = do
       makeClickable . elAttr' "a" (addBtnAttrs "")
         $ dynText
           $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
+
+
+createFamily :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded t -> Bool
+  -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
+createFamily appConfig loaded familyGotCreated = mdo
+  let response = appConfig^.App.server.webSocket_recv
+  let
+    familyCreated :: Event t FamilyId
+    familyCreated = push (\res ->
+                              case res of
+                                API.ResCreatedFamily fid -> pure $ Just fid
+                                _ -> pure Nothing
+                           ) response
+  mFamilyId' :: Dynamic t (Maybe FamilyId) <- holdDyn Nothing $ leftmost [ Just <$> familyCreated
+                                                                         , const Nothing <$> gotValidFamilyId'
+                                                                         ]
+
+  let gotValidFamilyId' = leftmost [ push (\fid -> do
+                                           cFamilies <- sample . current $ loaded^.App.families
+                                           pure $ cFamilies ^. at fid
+                                          ) familyCreated
+                                   , push (\cFamilies -> do
+                                           mFid <- sample $ current mFamilyId'
+                                           pure $ do
+                                             fid <- mFid
+                                             cFamilies ^. at fid
+                                          ) (updated (loaded^.App.families))
+                                     ]
+  let uiTrue = elClass "div" "fullScreenOverlay" $ createFamily' appConfig loaded
+  let uiFalse = pure (never, never)
+
+  let startUI = if familyGotCreated then uiTrue else uiFalse
+
+  let uiEv = leftmost [ const uiTrue <$> gotValidFamilyId'
+                      , const uiFalse
+                        <$> push (\ev -> pure
+                                        $ ev^?_CreateFamilyCancel
+                                        <|> ev^?_CreateFamilyOk
+                                ) createFamilyEv
+                      ]
+
+  evEv <- widgetHold startUI uiEv
+
+  let createFamilyEv = switchPromptlyDyn (fst <$> evEv)
+  let reqs = switchPromptlyDyn  (snd <$> evEv)
+  pure (createFamilyEv, reqs)
+
+-- Dialog to configure family when a new one get's created:
+createFamily' :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded t
+  -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
+createFamily' appConfig loaded = mdo
+  let showNameEdit = const "isFamilyNameEdit" <$> invite^.Invite.uiGoBack
+  let showInviteView = const "isInviteView" <$> familyEditOk
+
+  selectedView <- holdDyn "isFamilyNameEdit" $ leftmost [showNameEdit, showInviteView]
+
+  (familyEditBack, familyEditOk) <-
+    elDynClass "div" (pure "container familyNameEdit " <> selectedView) $ do
+      familyEditName loaded
+
+  invite <-
+    elDynClass "div" (pure "container inviteView " <> selectedView) $ do
+      Invite.ui loaded
+      $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
+                      , Invite._configSelectedFamily = loaded^.App.selectedFamily
+                      , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
+                      , Invite._configCreateInvitation = never
+                      }
+  let doneEv = leftmost [ const CreateFamilyOk <$> invite^.Invite.uiDone
+                        , const CreateFamilyCancel <$> familyEditBack
+                        , CreateFamilySetName <$> familyEditOk
+                        ]
+
+  pure (doneEv, invite^.Invite.request)
+
+familyEditName :: forall m t. (HasWebView m, MonadWidget t m) => App.Loaded t -> m (Event t (), Event t Text)
+familyEditName loaded = do
+    backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
+    el "br" blank
+    el "br" blank
+
+    el "h1" $ text "Create New Family"
+    elClass "div" "welcome-form" $ do
+      genName <- sample . current $ App.currentFamilyName loaded
+      nameInput <- textInput $ (def :: TextInputConfig t)
+        { _textInputConfig_attributes = (pure $ "class" =: "welcome-input")
+        , _textInputConfig_inputType = "text"
+        , _textInputConfig_initialValue = genName
+        , _textInputConfig_setValue = updated (App.currentFamilyName loaded)
+        }
+      okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "input-btn check ") $ blank
+      let nameValue = current $ nameInput^.textInput_value
+      let confirmed = leftmost [ okClicked, keypress Enter nameInput ]
+      pure (backClicked, tag nameValue confirmed)
