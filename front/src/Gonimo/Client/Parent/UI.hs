@@ -83,7 +83,7 @@ ui appConfig loaded deviceList = mdo
 
 manageUi :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
-manageUi _ loaded deviceList connections' = mdo
+manageUi _ loaded deviceList connections' = do
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList leaveConfirmation leaveConfirmation)
       devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> connections'^.C.streams)
       inviteRequested <-

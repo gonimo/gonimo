@@ -72,7 +72,7 @@ runLoaded config family = do
         fromMaybeDyn
           (do
               startUI <- Family.uiStart
-              subs <- holdDyn Set.empty never
+              let subs = constDyn Set.empty
               pure (App subs never, startUI)
           )
           (\selected -> do
