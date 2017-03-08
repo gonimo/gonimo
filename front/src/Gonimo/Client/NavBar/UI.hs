@@ -28,8 +28,8 @@ navBar config = do
           let cFamilyName = Family.currentFamilyName
                             $ Family.DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)
           dynText $ makeEllipsis 20 <$> cFamilyName
-        elClass "div" "menu-center" blank
-        pure $ NavBar backClicked' homeClicked'
+        gonimoClicked <- makeClickable .  elAttr' "div" (addBtnAttrs "menu-center") $ blank
+        pure $ NavBar backClicked' (leftmost [homeClicked', gonimoClicked])
   where
     backButton' = makeClickable . elAttr' "div" (addBtnAttrs "menu-left back") $ blank
 
