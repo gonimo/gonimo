@@ -68,24 +68,6 @@ ui loaded =
 
     el "h3" $ text "FAMILY"
     (familySelected, clickedAdd, clickedLeave, nameChanged) <-
-      elClass "div" "welcome-form" $ do
-        familySelected <-
-          elClass "ul" "family-select"
-          $ familyChooser'
-          $ DefiniteFamily  (loaded^.App.families) (loaded^.App.selectedFamily)
-
-        clickedAdd <-
-          makeClickable $ elAttr' "div" (addBtnAttrs "input-btn plus") blank
-
-        clickedLeave <-
-          confirmationEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn minus") blank)
-          (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
-
-        nameChanged <-
-          editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn edit") blank)
-          (text "Change your family name to ...")
-          cFamilyName
-        pure (familySelected, clickedAdd, clickedLeave, nameChanged)
 
     el "br" blank
 
@@ -100,49 +82,45 @@ ui loaded =
               }
 
 
--- Either create family button or family chooser depending on whether families exist or not.
+-- familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
+--                  => DefiniteFamily t -> m (Event t FamilyId)
+-- familyChooser family' = do
+--   initVal <- sample . current $ family'^.definiteSelected
+--   let familyNames = fmap (Gonimo.familyName . Db.familyName) <$> family'^.definiteFamilies
+--   dropdown' <-
+--     dropdown initVal familyNames
+--     $ DropdownConfig { _dropdownConfig_setValue = updated $ family'^.definiteSelected
+--                      , _dropdownConfig_attributes = pure ("class" =: "family-select")
+--                      }
+--   pure $ dropdown'^.dropdown_change
+
+
+
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
-                 => Family t -> m (Event t (Either () FamilyId))
-familyChooser family' = do
-  evFamilies <- waitForJust (family'^.families)
-
-  let onFamilies families' =
-        fromMaybeDyn
-          (do
-              clickedAdd <- buttonAttr ("class" =: "btn btn-default navbar-btn") $ text "+"
-              pure $ Left <$> clickedAdd
-          )
-          (\selected -> do
-              selEv <- familyChooser' (DefiniteFamily families' selected)
-              pure $ Right <$> selEv
-          )
-          (family'^.selectedFamily)
-  let noFamilies = do
-        pure never
-  dynEvEv <- widgetHold noFamilies (onFamilies <$> evFamilies)
-  let evEv = switchPromptlyDyn dynEvEv -- Flatten Dynamic Event Event
-  switchPromptly never evEv
-
-
-familyChooser' :: forall m t. (HasWebView m, MonadWidget t m)
                  => DefiniteFamily t -> m (Event t FamilyId)
-familyChooser' family' = do
-  elAttr "li" ( "class" =: "dropdown" <> "data-toggle" =: "collapse" ) $ do
-    elAttr "a" ( "class" =: "dropdown-toggle" <> "href" =: "#"
-                <> "role" =: "button" <> "data-toggle" =: "dropdown"
-                <> "type" =: "button") $ do
-      elClass "span" ".h1" $ do
-        elClass "i" "fa fa-fw fa-users" blank
-        text " "
-        dynText $ zipDynWith getFamilyName (family'^.definiteSelected) (family'^.definiteFamilies)
-        text " "
-        elClass "span" "caret" blank
-    selectedId <- elClass "ul" "dropdown-menu" $ do
-      elAttr "li" ("data-toggle" =: "collapse") $
-        elAttr "div" ("class" =: "dropdown-header") $
-        text "Switch to family:"
-      renderFamilySelectors family'
-    pure selectedId
+familyChooser family' = mdo
+  clicked <-
+    makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
+      elClass "i" "fa fa-fw fa-users" blank
+      text " "
+      dynText $ zipDynWith getFamilyName (family'^.definiteSelected) (family'^.definiteFamilies)
+      text " "
+      elClass "span" "caret" blank
+
+  let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
+  droppedDown <- holdDyn False $ leftmost [ openClose
+                                          , const False <$> selectedId
+                                          ]
+  let
+    droppedDownClass :: Dynamic t Text
+    droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
+  let
+    dropDownClass :: Dynamic t Text
+    dropDownClass = pure "dropDown " <> droppedDownClass
+
+  selectedId :: Event t FamilyId <- elDynClass "div" dropDownClass $
+    renderFamilySelectors family'
+  pure selectedId
   where
     getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
     getFamilyName famId families'
@@ -156,8 +134,7 @@ renderFamilySelectors family' = fmap fst <$> selectViewListWithKey (family'^.def
 renderFamilySelector :: forall m t. (HasWebView m, MonadWidget t m)
                     => FamilyId -> Dynamic t Db.Family -> Dynamic t Bool -> m (Event t ())
 renderFamilySelector _ family' selected' = do
-    elAttr "li" ("data-toggle" =: "collapse") $ do
-      fmap (domEvent Click . fst) . elAttr' "a" ("type" =: "button" <> "role" =: "button")
+    el "div" $ do
+      makeClickable . elAttr' "a" (addBtnAttrs "")
         $ dynText
           $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
-

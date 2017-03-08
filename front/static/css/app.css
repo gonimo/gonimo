@@ -250,6 +250,15 @@ h3{
 	font-weight:500;
 	float:left;
 }
+
+
+.dropDown {
+    display: none;
+}
+.dropDown.isDroppedDown {
+    display: block
+}
+
 .input-btn.edit{
 	float:left;
 	width:10%;
