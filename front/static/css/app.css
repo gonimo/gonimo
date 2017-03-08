@@ -188,10 +188,30 @@ h3{
 	margin-left:-20%;
 	background:white;
 }
-.input-btn.plus::after{
+.input-btn-grp{
+	  float:right;
+	  font-size:xx-large;
+	  font-weight:900;
+	  border-left:solid 2px black;
+	  width:20%;
+	  text-align:center;
+	  margin-left:-20%;
+	  background:white;
+}
+.input-btn.plus::after, .input-btn-grp>.plus::after{
 	content:"+";
 }
-.input-btn.minus::after{
+.input-btn-grp>.plus{
+    float: left;
+	  width:10%;
+    margin-left: 4%;
+}
+.input-btn-grp>.minus{
+    float: right;
+	  width:10%;
+    margin-right: 4%;
+}
+.input-btn.minus::after, .input-btn-grp,.minus::after{
 	  content:"-";
 }
 .input-btn.check, .input-btn.mail{
@@ -251,12 +271,17 @@ h3{
 	float:left;
 }
 
-
+.dropDown.family-select {
+    float: none;
+}
 .dropDown {
     display: none;
 }
+.dropDown.family-select {
+    display: none;
+}
 .dropDown.isDroppedDown {
-    display: block
+    display: block;
 }
 
 .input-btn.edit{

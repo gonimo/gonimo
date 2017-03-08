@@ -55,8 +55,6 @@ uiStart = do
 ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Loaded t -> m (UI t)
 ui loaded =
   elClass "div" "container" $ do
-    let cFamilyName = currentFamilyName
-                      $ DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)
     el "h1" $ do
       text "Welcome to the "
       el "wbr" blank
@@ -68,6 +66,7 @@ ui loaded =
 
     el "h3" $ text "FAMILY"
     (familySelected, clickedAdd, clickedLeave, nameChanged) <-
+      familyChooser $ DefiniteFamily  (loaded^.App.families) (loaded^.App.selectedFamily)
 
     el "br" blank
 
@@ -97,15 +96,31 @@ ui loaded =
 
 
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
-                 => DefiniteFamily t -> m (Event t FamilyId)
+                 => DefiniteFamily t -> m (Event t FamilyId, Event t (), Event t (), Event t Text)
 familyChooser family' = mdo
-  clicked <-
-    makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
-      elClass "i" "fa fa-fw fa-users" blank
-      text " "
-      dynText $ zipDynWith getFamilyName (family'^.definiteSelected) (family'^.definiteFamilies)
-      text " "
-      elClass "span" "caret" blank
+  (clicked, clickedAdd, clickedLeave, nameChanged) <- do
+    let cFamilyName = currentFamilyName family'
+    elClass "div" "welcome-form" $ do
+      clicked' <-
+        makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
+          elClass "i" "fa fa-fw fa-users" blank
+          text " "
+          dynText $ zipDynWith getFamilyName (family'^.definiteSelected) (family'^.definiteFamilies)
+          text " "
+          elClass "span" "caret" blank
+
+      (clickedAdd', clickedLeave') <-
+        elClass "div" "input-btn-grp" $ do
+          let mkMyButton t = makeClickable $ elAttr' "div" (addBtnAttrs t) blank
+          let mkLeaveBtn = confirmationEl (makeClickable $ elAttr' "div" (addBtnAttrs "minus") blank)
+                             (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
+          (,) <$> mkMyButton "plus" <*> mkLeaveBtn
+
+      nameChanged' <-
+        editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn edit") blank)
+        (text "Change your family name to ...")
+        cFamilyName
+      pure (clicked', clickedAdd', clickedLeave', nameChanged')
 
   let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
   droppedDown <- holdDyn False $ leftmost [ openClose
@@ -116,11 +131,11 @@ familyChooser family' = mdo
     droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
   let
     dropDownClass :: Dynamic t Text
-    dropDownClass = pure "dropDown " <> droppedDownClass
+    dropDownClass = pure "family-select dropDown " <> droppedDownClass
 
   selectedId :: Event t FamilyId <- elDynClass "div" dropDownClass $
     renderFamilySelectors family'
-  pure selectedId
+  pure (selectedId, clickedAdd, clickedLeave, nameChanged)
   where
     getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
     getFamilyName famId families'
