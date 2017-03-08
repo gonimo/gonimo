@@ -331,7 +331,9 @@ makeGonimoRTCConnection = liftJSM $ do
   config <# ("username" :: Text)$ JS.toJSVal gonimoTurnUser
   config <# ("credential" :: Text) $ JS.toJSVal gonimoTurnPassword
   config <# ("credentialType" :: Text) $ JS.toJSVal gonimoTurnCredentialType
-  let configDic = case config of JS.Object val -> Dictionary val
+  allServers <- JS.obj
+  allServers <# ("iceServers" :: Text) $ [config]
+  let configDic = case allServers of JS.Object val -> Dictionary val
   newRTCPeerConnection $ Just configDic
 
 -- Don't use plain close, it throws uncatchable exceptions when connection is already closed:
