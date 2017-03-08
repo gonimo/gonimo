@@ -98,7 +98,9 @@ deviceList config = do
     (accountDeviceIdsSubs, accountDeviceIds') <- getDeviceIdsSubscription config accountIds'
 
     let deviceInfoSubs = getDeviceInfosSubscription accountDeviceIds'
-    deviceInfos' <- holdBackUntilReady accountDeviceIds' =<< getDeviceInfos config accountDeviceIds'
+    -- deviceInfos' <- holdBackUntilReady accountDeviceIds' =<< getDeviceInfos config accountDeviceIds'
+    deviceInfos' <- getDeviceInfos config accountDeviceIds'
+
 
     onlineDevices' <- holdDyn Map.empty gotOnlineDevices
     pure $ DeviceList { _deviceInfos = deviceInfos'
@@ -109,24 +111,25 @@ deviceList config = do
                                          <> deviceInfoSubs
                       , _request = never
                       }
-  where
-    holdBackUntilReady :: Dynamic t (Map AccountId (Dynamic t [DeviceId]))
-                       -> Dynamic t (NestedDeviceInfos t) -> m (Dynamic t (NestedDeviceInfos t))
-    holdBackUntilReady devIds infos = do
-      let
-        devIds' = joinDynThroughMap devIds
-        infos' = joinDynThroughMap infos
-        flattenedIdsIn = sort . concat . Map.elems <$> devIds'
-        flattenedIdsOut = sort . concat . map Map.keys . Map.elems <$> infos'
-        ourGate = zipDynWith (==) flattenedIdsIn flattenedIdsOut
-        gated = (,) <$> ourGate <*> infos
-        nextVal = push (\(newGate, newInfos) -> do
-                           if newGate
-                             then pure $ Just newInfos
-                             else pure Nothing
-                       ) (updated gated)
-      initVal <- sample $ current infos
-      holdDyn initVal nextVal
+  -- where
+  --   -- Causes causality loop - why?
+  --   holdBackUntilReady :: Dynamic t (Map AccountId (Dynamic t [DeviceId]))
+  --                      -> Dynamic t (NestedDeviceInfos t) -> m (Dynamic t (NestedDeviceInfos t))
+  --   holdBackUntilReady devIds infos = do
+  --     let
+  --       devIds' = joinDynThroughMap devIds
+  --       infos' = joinDynThroughMap infos
+  --       flattenedIdsIn = sort . concat . Map.elems <$> devIds'
+  --       flattenedIdsOut = sort . concat . map Map.keys . Map.elems <$> infos'
+  --       ourGate = zipDynWith (==) flattenedIdsIn flattenedIdsOut
+  --       gated = (,) <$> ourGate <*> infos
+  --       nextVal = push (\(newGate, newInfos) -> do
+  --                          if newGate
+  --                            then pure $ Just newInfos
+  --                            else pure Nothing
+  --                      ) (updated gated)
+  --     initVal <- sample $ current infos
+  --     holdDyn initVal nextVal
 
 
 getMembersSubscription :: Reflex t => Config t -> (SubscriptionsDyn t, Event t [AccountId])
