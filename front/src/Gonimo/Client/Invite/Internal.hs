@@ -26,6 +26,7 @@ import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as BL
 import Network.HTTP.Types (urlEncode)
 import Control.Monad.Fix (MonadFix)
+import Data.Default (Default(..))
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -54,7 +55,7 @@ data InvitationSent
   | SentRefresh
   | SentEmail
 
-invite :: forall t m. (MonadHold t m, MonadFix m) => Reflex t => Config t -> m (Invite t)
+invite :: forall t m. (MonadHold t m, MonadFix m, Reflex t) => Config t -> m (Invite t)
 invite config = mdo
   let
     currentSelected = current (config^.configSelectedFamily)
@@ -108,3 +109,19 @@ makeInvitationLink baseURL inv =
 -- foreign import javascript unsafe
 --   "encodeURIComponent $1"
 --   jsEncodeURIComponent :: JSVal -> JSVal
+
+
+instance Reflex t => Default (Invite t) where
+  def = Invite { _invitation = constDyn Nothing
+               , _request = never
+               , _uiGoBack = never
+               , _uiDone = never
+               }
+
+inviteSwitchPromptlyDyn :: Reflex t => Dynamic t (Invite t) -> Invite t
+inviteSwitchPromptlyDyn dynInvite
+  = Invite { _invitation = join (_invitation <$> dynInvite)
+           , _request = switchPromptlyDyn (_request <$> dynInvite)
+           , _uiGoBack = switchPromptlyDyn (_uiGoBack <$> dynInvite)
+           , _uiDone = switchPromptlyDyn (_uiDone <$> dynInvite)
+           }

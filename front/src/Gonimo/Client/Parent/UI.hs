@@ -59,12 +59,16 @@ ui appConfig loaded deviceList = mdo
 
   invite <-
     elDynClass "div" (pure "container inviteView " <> selectedView) $ do
-      Invite.ui loaded
-      $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
-                      , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                      , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
-                      , Invite._configCreateInvitation = never
-                      }
+      firstCreation <- headE inviteRequested
+      let inviteUI
+            = Invite.ui loaded
+              $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
+                              , Invite._configSelectedFamily = loaded^.App.selectedFamily
+                              , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
+                              , Invite._configCreateInvitation = never
+                              }
+      dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
+      pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
   emptySubs <- holdDyn mempty never
   let parentApp = App.App { App._subscriptions = emptySubs
