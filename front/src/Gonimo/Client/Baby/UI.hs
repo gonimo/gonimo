@@ -147,7 +147,7 @@ cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
 cameraSelect baby' =
   case baby'^.videoDevices of
     [] -> pure never
-    -- [_] -> pure never
+    [_] -> pure never
     _   -> mdo
             clicked <-
               makeClickable . elAttr' "div" (addBtnAttrs "cam-switch") $ el "span" blank
