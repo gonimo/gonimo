@@ -125,7 +125,7 @@ uiRunning loaded deviceList baby' = do
 
     pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
               , _uiStartMonitor = never
-              , _uiStopMonitor = goBack
+              , _uiStopMonitor = leftmost [goBack, navbar^.NavBar.homeClicked]
               , _uiEnableCamera = never
               , _uiSelectCamera = never
               , _uiRequest = never
