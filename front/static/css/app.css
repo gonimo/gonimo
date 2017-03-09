@@ -729,3 +729,28 @@ span.baby-form{
     background-color: white;
     overflow: auto;
 }
+
+.dropDown-container,.dropUp-container {
+    position: absolute;
+    z-index: 5;
+    left: 0px;
+    display: none;
+}
+.dropDown-container.isDroppedDown {
+    display: block;
+}
+.dropUp-container.isDroppedDown {
+    display: block;
+}
+
+.dropDown-container {
+    top: calc(100% + 2px);
+}
+.dropUp-container {
+    bottom: calc(100% + 2px);
+}
+
+/* .dropDown-container,dropUp-Container>* { */
+/*     background-color: white; */
+/* } */
+

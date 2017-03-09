@@ -76,19 +76,13 @@ uiStart loaded deviceList  baby' = do
         elClass "div" "time" blank
         startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Done"
         elClass "div" "stream-menu" $ do
-
-          enableCamera <- enableCameraCheckbox baby'
           selectCamera <- cameraSelect baby'
-        -- elClass "div" "videoOverlay fullContainer" $ do
-        --   elClass "div" "vCenteredBox" $ do
-        --     enableCamera <- enableCameraCheckbox baby'
-        --       text "Start "
-        --       elClass "span" "glyphicon glyphicon-ok" blank
+          enableCamera <- enableCameraCheckbox baby'
           pure $ UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
                     , _uiStartMonitor = startClicked
                     , _uiStopMonitor = never -- already there
                     , _uiEnableCamera = enableCamera
-                    , _uiSelectCamera = never -- selectCamera
+                    , _uiSelectCamera = selectCamera
                     , _uiRequest = setBabyNameReq
                     }
   where
@@ -153,46 +147,43 @@ cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
 cameraSelect baby' =
   case baby'^.videoDevices of
     [] -> pure never
-    [_] -> pure never
-    _   -> do
-            enabledElClass "div" "dropdown" (baby'^.cameraEnabled)$ do
-              elAttr "button" ( "class" =: "btn btn-default dropdown-toggle"
-                                <> "type" =: "button"
-                                <> "id" =: "cameraSelectBaby"
-                                <> "data-toggle" =: "dropdown"
-                              ) $ do
-                text " "
-                dynText selectedCameraText
-                text " "
-                elClass "span" "caret" blank
-              elClass "ul" "dropdown-menu" $ renderCameraSelectors
+    -- [_] -> pure never
+    _   -> mdo
+            clicked <-
+              makeClickable . elAttr' "div" (addBtnAttrs "cam-switch") $ el "span" blank
+
+            let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
+            droppedDown <- holdDyn False $ leftmost [ openClose
+                                                    , const False <$> selectedName
+                                                    ]
+            let
+              droppedDownClass :: Dynamic t Text
+              droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
+            let
+              dropDownClass :: Dynamic t Text
+              dropDownClass = pure "baby-form welcome-form dropUp-container .container " <> droppedDownClass
+
+            selectedName <-
+              elDynClass "div" dropDownClass $ renderCameraSelectors cameras
+            pure selectedName
   where
-    selectedCameraText = fromMaybe "" <$> baby'^.selectedCamera
-    enabledElClass name className enabled =
-      let
-        attrDyn = (\on -> if on
-                          then "class" =: className
-                          else "class" =: (className <> " disabled")) <$> enabled
-      in
-        elDynAttr name $ attrDyn
+    selectedCameraText = fromMaybe "Standard Setting" <$> baby'^.selectedCamera
 
-    videoMap = pure . Map.fromList $ zip
-                (baby'^.videoDevices.to (map mediaDeviceLabel))
-                (baby'^.videoDevices)
+    cameras = baby'^.videoDevices.to (map mediaDeviceLabel)
 
-    renderCameraSelectors
-      = fmap fst <$> selectViewListWithKey selectedCameraText videoMap renderCameraSelector
+    renderCameraSelectors :: [Text] -> m (Event t Text)
+    renderCameraSelectors cams =
+      elClass "div" "family-select" $
+        leftmost <$> traverse renderCameraSelector cams
 
-
-    renderCameraSelector :: Text -> Dynamic t MediaDeviceInfo -> Dynamic t Bool ->  m (Event t ())
-    renderCameraSelector label _ selected' = do
-      elAttr "li" ("role" =: "presentation" <> "data-toggle" =: "collapse") $ do
-        fmap (domEvent Click . fst )
-        . elAttr' "a" ( "role" =: "menuitem"
-                        <> "tabindex" =: "-1" <> "href" =: "#"
-                      ) $ do
-          text label
-          dynText $ ffor selected' (\selected -> if selected then " ✔" else "")
+    renderCameraSelector :: Text -> m (Event t Text)
+    renderCameraSelector label = do
+        clicked <-
+          makeClickable
+          . elAttr' "div" (addBtnAttrs "") $ do
+              text label
+              dynText $ ffor selectedCameraText (\selected -> if selected == label then " ✔" else "")
+        pure $ const label <$> clicked
 
 enableCameraCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Bool)
@@ -235,7 +226,7 @@ setBabyNameForm loaded started = --mdo
       droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
     let
       dropDownClass :: Dynamic t Text
-      dropDownClass = pure "family-select dropDown " <> droppedDownClass
+      dropDownClass = pure "baby-form welcome-form dropDown-container .container " <> droppedDownClass
 
     selectedName <-
       elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)
@@ -256,6 +247,13 @@ renderBabySelectors names =
         fmap (fmap (const name)) . el "div" $ do
           makeClickable . elAttr' "a" (addBtnAttrs "") $ text name
 
-    renderSelectors names' = leftmost <$> traverse renderBabySelector names'
+    renderSelectors names' =
+      let
+        names'' = case names' of
+                    [] -> [""] -- So user gets feedback on click!
+                    _  -> names'
+      in
+        leftmost <$> traverse renderBabySelector names''
   in
-    switchPromptly never =<< (dyn $ renderSelectors <$> names)
+    elClass "div" "family-select" $
+      switchPromptly never =<< (dyn $ renderSelectors <$> names)
