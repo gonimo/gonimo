@@ -11,8 +11,9 @@ import Data.Text (Text)
 import Control.Monad.Fix (MonadFix)
 import Gonimo.Client.Reflex.Dom
 import Data.Monoid
+import GHCJS.DOM.Types (MonadJSM)
 
-type EditStringConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, DomBuilderSpace m ~ GhcjsDomSpace)
+type EditStringConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM m, MonadJSM (Performable m), PerformEvent t m)
 
 editStringButton :: forall t m. EditStringConstraint t m
                       => Map Text Text -> m () -> m () -> Dynamic t Text -> m (Event t Text)
@@ -32,26 +33,24 @@ editStringEl someButton editStringText val = mdo
 
 editStringBox :: forall t m. EditStringConstraint t m => m () -> Dynamic t Text -> m (Event t (Maybe Text))
 editStringBox editStringText val = do
-  elClass "div" "hCenteredOverlay fullScreen" $ do
-    elClass "div" "vCenteredBox" $ do
-      elClass "div" "panel panel-default" $ do
-        elClass "div" "panel-heading" $ elClass "h3" "panel-title" $ editStringText
-        elClass "div" "panel-body" $ do
-          valEdit <- el "div" $ do
-            val' <- sample $ current val
-            let inputId = "editStringBox_TheOnlyOne"
-            textInput $ def & textInputConfig_initialValue .~ val'
-                                       & textInputConfig_attributes .~ pure ( "class" =: "form-control"
-                                                                            <> "autofocus" =: "true"
-                                                                            <> "id" =: inputId)
-            -- el "script" $ text ("document.getElementById('" <> inputId <> "').focus();")
-            -- pure v
-          el "br" blank
-          el "div" $ do
-            okClicked <- buttonAttr ("class" =: "btn btn-success" <> "role" =: "button" <> "type" =: "button") $ text "Ok"
-            cancelClicked <- buttonAttr ("class" =: "btn btn-danger" <> "role" =: "button" <> "type" =: "button") $ text "Cancel"
-            let confirmed = leftmost [ okClicked, keypress Enter valEdit ]
-            let cancelled = leftmost [ cancelClicked, keypress Escape valEdit ]
-            let editValue = current $ valEdit^.textInput_value
-            pure $ leftmost [ const Nothing <$> cancelled, Just <$> tag editValue confirmed ]
+  elClass "div" "fullScreenOverlay" $
+    elClass "div" "container" $ do
+      cancelClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
+      el "h1" editStringText
+      el "br" blank
+      el "br" blank
+
+      el "h3" $ text "EDIT NAME"
+      elClass "div" "welcome-form" $ do
+        val' <- sample $ current val
+        valEdit <-
+          textInput $ def & textInputConfig_initialValue .~ val'
+                          & textInputConfig_attributes .~ pure ( "class" =: "welcome-input"
+                                                               <> "id" =: "myInputField")
+        addFocus $ valEdit^.textInput_builderElement
+        okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "input-btn check") $ blank
+        let confirmed = leftmost [ okClicked, keypress Enter valEdit ]
+        let cancelled = leftmost [ cancelClicked, keypress Escape valEdit ]
+        let editValue = current $ valEdit^.textInput_value
+        pure $ leftmost [ const Nothing <$> cancelled, Just <$> tag editValue confirmed ]
 

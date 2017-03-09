@@ -101,3 +101,17 @@ toggleAttr attr onOff staticAttrs =
     attrDyn = (\on -> if on then Map.empty else attr =: "true") <$> onOff
   in
     pure staticAttrs <> attrDyn
+
+
+addFocus :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
+            , PostBuild t m, MonadJSM (Performable m) , PerformEvent t m
+            )
+            => InputElement EventResult (DomBuilderSpace m) t -> m ()
+addFocus htmlEl = do
+  postBuild <- getPostBuild
+  let rawElement = _inputElement_raw htmlEl
+  let addFocus' = liftJSM $ do
+        _ <- JS.toJSVal rawElement JS.# ("focus" :: Text) $ ()
+        _ <- JS.toJSVal rawElement JS.# ("select" :: Text) $ ()
+        pure ()
+  performEvent_ $ const addFocus' <$> postBuild

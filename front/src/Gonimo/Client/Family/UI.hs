@@ -254,6 +254,7 @@ familyEditName loaded = do
         , _textInputConfig_initialValue = genName
         , _textInputConfig_setValue = updated (App.currentFamilyName loaded)
         }
+      addFocus $ nameInput^.textInput_builderElement
       okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "input-btn check ") $ blank
       let nameValue = current $ nameInput^.textInput_value
       let confirmed = leftmost [ okClicked, keypress Enter nameInput ]
