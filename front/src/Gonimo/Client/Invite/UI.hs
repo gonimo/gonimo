@@ -118,7 +118,7 @@ awesomeAddon t =
 
 copyButton :: forall t m. DomBuilder t m => m (Event t ())
 copyButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn link" <> "title" =: "Copy link to clipboard"
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-right link" <> "title" =: "Copy link to clipboard"
                                     <> "type" =: "button" <> "role" =: "button"
                                     <> "onClick" =: "copyInvitationLink()"
                                   ) $ blank
@@ -126,7 +126,7 @@ copyButton
 
 refreshLinkButton :: forall t m. DomBuilder t m => m (Event t ())
 refreshLinkButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn link" <> "title" =: "Generate new link"
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-left link" <> "title" =: "Generate new link"
                    <> "type" =: "button" <> "role" =: "button") $ blank
 
 showLinkInput :: forall t m. (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m ()
