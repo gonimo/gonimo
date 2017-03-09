@@ -48,6 +48,7 @@ data UI t
        , _uiStopMonitor  :: Event t ()
        , _uiEnableCamera :: Event t Bool
        , _uiSelectCamera  :: Event t Text
+       , _uiRequest :: Event t [ API.ServerRequest ]
        }
 
 makeLenses ''Config
@@ -61,6 +62,7 @@ uiSwitchPromptly ev
        <*> switchPromptly never (_uiStopMonitor <$> ev)
        <*> switchPromptly never (_uiEnableCamera <$> ev)
        <*> switchPromptly never (_uiSelectCamera <$> ev)
+       <*> switchPromptly never (_uiRequest <$> ev)
 
 uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
 uiSwitchPromptlyDyn ev
@@ -69,6 +71,7 @@ uiSwitchPromptlyDyn ev
        ( switchPromptlyDyn (_uiStopMonitor <$> ev) )
        ( switchPromptlyDyn (_uiEnableCamera <$> ev) )
        ( switchPromptlyDyn (_uiSelectCamera <$> ev) )
+       ( switchPromptlyDyn (_uiRequest <$> ev) )
 
 baby :: forall m t. (MonadWidget t m, HasWebView m)
         => Config t -> m (Baby t)

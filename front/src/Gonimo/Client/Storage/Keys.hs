@@ -13,6 +13,7 @@ data Key a = KeyAuthData
            | CurrentFamily
            | CameraEnabled
            | SelectedCamera
+           | LastBabyName
 
 deriving instance Generic (Key a)
 
@@ -28,6 +29,9 @@ selectedCamera = SelectedCamera
 
 cameraEnabled :: Key Bool
 cameraEnabled = CameraEnabled
+
+lastBabyName :: Key Text
+lastBabyName = LastBabyName
 
 instance FromJSON (Key a)
 instance ToJSON (Key a) where

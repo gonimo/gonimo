@@ -7,6 +7,7 @@ import           Control.Monad                   (MonadPlus, guard)
 import           Control.Monad.State.Class
 import           Control.Monad.Trans.Maybe       (MaybeT)
 import           Data.Text                       (Text)
+import           Data.Maybe                      (listToMaybe)
 
 import           Gonimo.Server.Error             (ServerError (NoSuchFamily))
 
@@ -27,9 +28,9 @@ pushBabyName :: (MonadState Family m, MonadPlus m) => Text -> m ()
 pushBabyName name = do
   oldFamily <- get
   let oldBabies = familyLastUsedBabyNames oldFamily
-  guard $ not (name `elem` oldBabies)
+  guard $ (Just name /= listToMaybe oldBabies)
   put $ oldFamily
-    { familyLastUsedBabyNames = take 5 (name : familyLastUsedBabyNames oldFamily)
+    { familyLastUsedBabyNames = take 5 (name : filter (/= name) oldBabies)
     }
 
 setFamilyName :: (MonadState Family m, MonadPlus m) => Text -> m ()

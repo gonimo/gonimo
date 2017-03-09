@@ -13,12 +13,19 @@ import           Reflex.Dom.Core
 
 import qualified Data.Map                          as Map
 import qualified Gonimo.Client.App.Types           as App
+import qualified Gonimo.SocketAPI                  as API
 import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.Baby.Socket         as Socket
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.EditStringButton    (editStringEl)
+import qualified Gonimo.Client.Storage as GStorage
+import qualified Gonimo.Client.Storage.Keys as GStorage
+import qualified GHCJS.DOM.Window as Window
+import qualified GHCJS.DOM as DOM
 -- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
 
 data BabyScreen = ScreenStart | ScreenRunning
@@ -47,7 +54,7 @@ ui appConfig loaded deviceList = mdo
                               stopMediaStream cStream
                           ) <$> ui'^.uiGoHome
     let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
-                          , App._request = baby'^.socket.Socket.request
+                          , App._request = baby'^.socket.Socket.request <> ui'^.uiRequest
                           }
     pure $ App.Screen { App._screenApp = babyApp
                       , App._screenGoHome = ui'^.uiGoHome
@@ -60,21 +67,29 @@ uiStart :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t
             -> m (UI t)
 uiStart loaded deviceList  baby' = do
-    navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation NavBar.NoConfirmation)
-    elClass "div" "container absoluteReference" $ do
-      _ <- dyn $ renderVideo <$> baby'^.mediaStream
-      elClass "div" "videoOverlay fullContainer" $ do
-        elClass "div" "vCenteredBox" $ do
+    elClass "div" "container" $ do
+      navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation NavBar.NoConfirmation)
+      elClass "div" "baby" $ mdo
+        (setBabyNameReq, cBabyName) <-
+          setBabyNameForm loaded startClicked
+        _ <- dyn $ renderVideo <$> baby'^.mediaStream
+        elClass "div" "time" blank
+        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Done"
+        elClass "div" "stream-menu" $ do
+
           enableCamera <- enableCameraCheckbox baby'
           selectCamera <- cameraSelect baby'
-          startClicked <- buttonAttr ("class" =: "btn btn-lg btn-success") $ do
-            text "Start "
-            elClass "span" "glyphicon glyphicon-ok" blank
+        -- elClass "div" "videoOverlay fullContainer" $ do
+        --   elClass "div" "vCenteredBox" $ do
+        --     enableCamera <- enableCameraCheckbox baby'
+        --       text "Start "
+        --       elClass "span" "glyphicon glyphicon-ok" blank
           pure $ UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
                     , _uiStartMonitor = startClicked
                     , _uiStopMonitor = never -- already there
                     , _uiEnableCamera = enableCamera
-                    , _uiSelectCamera = selectCamera
+                    , _uiSelectCamera = never -- selectCamera
+                    , _uiRequest = setBabyNameReq
                     }
   where
     renderVideo stream
@@ -119,6 +134,7 @@ uiRunning loaded deviceList baby' = do
               , _uiStopMonitor = goBack
               , _uiEnableCamera = never
               , _uiSelectCamera = never
+              , _uiRequest = never
               }
   where
     noSleep stream
@@ -183,10 +199,63 @@ enableCameraCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
 enableCameraCheckbox baby' =
   case baby'^.videoDevices of
     [] -> pure never -- No need to enable the camera when there is none!
-    _  -> do
-      myCheckBox ("class" =: "btn btn-default") (baby'^.cameraEnabled) $
-        dynText $ makeEnableText <$> baby'^.cameraEnabled
-  where
-    makeEnableText :: Bool -> Text
-    makeEnableText False = "Enable Camera"
-    makeEnableText True = "Disable Camera"
+    _  -> myCheckBox (addBtnAttrs "cam-on ") (baby'^.cameraEnabled) $ el "span" blank
+
+setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
+                   => App.Loaded t -> Event t () -> m (Event t [ API.ServerRequest ], Dynamic t Text)
+setBabyNameForm loaded started = --mdo
+  -- (clicked, nameAdded) <- do
+  elClass "div" "welcome-form baby-form" $ mdo
+    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    mInitial <- GStorage.getItem storage GStorage.lastBabyName
+    cBabyName <- holdDyn (fromMaybe "baby" mInitial) $ leftmost [nameAdded, selectedName]
+    performEvent_
+      $ GStorage.setItem storage GStorage.lastBabyName <$> updated cBabyName
+
+    elClass "span" "baby-form" $ text "Adjust camera for"
+
+    clicked <-
+      makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
+        dynText $ cBabyName
+        text " "
+        elClass "span" "caret" blank
+
+    nameAdded <-
+      editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn plus baby-form") blank)
+      (text "Add new baby name ...")
+      (constDyn "")
+    -- pure (clicked', nameAdded')
+
+    let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
+    droppedDown <- holdDyn False $ leftmost [ openClose
+                                            , const False <$> selectedName
+                                            ]
+    let
+      droppedDownClass :: Dynamic t Text
+      droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
+    let
+      dropDownClass :: Dynamic t Text
+      dropDownClass = pure "family-select dropDown " <> droppedDownClass
+
+    selectedName <-
+      elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)
+    let
+      mkRequest = API.ReqSaveBabyName <$> current (loaded^.App.selectedFamily)
+    let req = fmap (:[]) . attachWith ($) mkRequest $ leftmost [ nameAdded
+                                                               , selectedName
+                                                               , tag (current cBabyName) started
+                                                               ]
+    pure (req, cBabyName)
+
+renderBabySelectors :: forall m t. (HasWebView m, MonadWidget t m)
+                    => Dynamic t [Text] -> m (Event t Text)
+renderBabySelectors names =
+  let
+    renderBabySelector :: Text -> m (Event t Text)
+    renderBabySelector name = do
+        fmap (fmap (const name)) . el "div" $ do
+          makeClickable . elAttr' "a" (addBtnAttrs "") $ text name
+
+    renderSelectors names' = leftmost <$> traverse renderBabySelector names'
+  in
+    switchPromptly never =<< (dyn $ renderSelectors <$> names)

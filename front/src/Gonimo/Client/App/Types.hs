@@ -72,3 +72,11 @@ currentFamilyName loaded =
       getFamilyName fid families' = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
     in
       zipDynWith getFamilyName (loaded^.selectedFamily) (loaded^.families)
+
+babyNames :: forall t. Reflex t => Loaded t -> Dynamic t [Text]
+babyNames loaded =
+    let
+      getBabyNames :: Db.FamilyId -> Map Db.FamilyId Db.Family -> [Text]
+      getBabyNames fid families' = families'^.at fid._Just.to Db.familyLastUsedBabyNames
+    in
+      zipDynWith getBabyNames (loaded^.selectedFamily) (loaded^.families)

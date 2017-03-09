@@ -39,9 +39,8 @@ myCheckBox attrs checked inner = do
   let markedStr active = if active then "active " else ""
   let markedAttr = ("class" =:) . markedStr <$> checked
   let allAttrs = zipDynWith (Map.unionWith (<>)) markedAttr (pure attrs)
-  (e, _) <- elDynAttr' "button" allAttrs inner
-  let clicked = domEvent Click e
-  pure $ push (\() -> Just . not <$> (sample $ current checked)) clicked
+  clicked <- makeClickable $ elDynAttr' "div" allAttrs inner
+  pure $ pushAlwaysCheap (\() -> not <$> (sample $ current checked)) clicked
 
 tabBar :: forall t m k. (MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m, Ord k)
           => Text -> Text -> Map k (Dynamic t Text -> m (Event t ())) -> m (Demux t (Maybe k))
