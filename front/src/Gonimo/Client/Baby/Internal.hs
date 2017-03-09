@@ -24,13 +24,14 @@ import           Reflex.Dom.Core
 import           GHCJS.DOM.Types                   (MediaStream, MonadJSM)
 import           Gonimo.DOM.Navigator.MediaDevices
 import qualified Gonimo.Client.Baby.Socket         as Socket
+import qualified Gonimo.Types                      as Gonimo
 
 data Config t
   = Config  { _configSelectCamera :: Event t Text
             , _configEnableCamera :: Event t Bool
             , _configResponse :: Event t API.ServerResponse
             , _configAuthData :: Dynamic t API.AuthData
-            , _configStartMonitor  :: Event t ()
+            , _configStartMonitor  :: Event t Text
             , _configStopMonitor  :: Event t ()
             }
 
@@ -44,7 +45,7 @@ data Baby t
 
 data UI t
   = UI { _uiGoHome :: Event t ()
-       , _uiStartMonitor  :: Event t ()
+       , _uiStartMonitor  :: Event t Text
        , _uiStopMonitor  :: Event t ()
        , _uiEnableCamera :: Event t Bool
        , _uiSelectCamera  :: Event t Text
@@ -89,9 +90,9 @@ baby config = mdo
   -- cSelected <- sample $ current selected
   mediaStream' <- holdDyn badInit gotNewStream
 
-  sockEnabled <- holdDyn False $ leftmost [ const True <$> config^.configStartMonitor
-                                          , const False <$> config^.configStopMonitor
-                                          ]
+  sockEnabled <- holdDyn Gonimo.NoBaby $ leftmost [ Gonimo.Baby <$> config^.configStartMonitor
+                                                  , const Gonimo.NoBaby <$> config^.configStopMonitor
+                                                  ]
 
   socket' <- Socket.socket $ Socket.Config { Socket._configResponse = config^.configResponse
                                            , Socket._configAuthData = config^.configAuthData

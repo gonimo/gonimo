@@ -79,7 +79,7 @@ uiStart loaded deviceList  baby' = do
           selectCamera <- cameraSelect baby'
           enableCamera <- enableCameraCheckbox baby'
           pure $ UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
-                    , _uiStartMonitor = startClicked
+                    , _uiStartMonitor = tag (current cBabyName) startClicked
                     , _uiStopMonitor = never -- already there
                     , _uiEnableCamera = enableCamera
                     , _uiSelectCamera = selectCamera

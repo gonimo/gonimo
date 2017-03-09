@@ -26,7 +26,7 @@ import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
             , _configAuthData :: Dynamic t API.AuthData
-            , _configEnabled :: Dynamic t Bool
+            , _configEnabled :: Dynamic t DeviceType
             , _configMediaStream :: Dynamic t MediaStream
             }
 
@@ -45,7 +45,10 @@ type ChannelsTransformation t = Map (API.FromId, Secret) (Channel t) -> Map (API
 socket :: forall m t. MonadWidget t m => Config t -> m (Socket t)
 socket config = mdo
   let
-    gatedResponse = gate (current $ config^.configEnabled) (config^.configResponse)
+    isEnabled = (\dt -> case dt of
+                    NoBaby -> False
+                    Baby _ -> True) <$> config^.configEnabled
+    gatedResponse = gate (current $ isEnabled) (config^.configResponse)
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
   let
     makeChannel = push (\res -> do
@@ -75,7 +78,7 @@ socket config = mdo
                          if enabled
                          then pure $ Nothing
                          else pure $ Just Channel.AllChannels
-                      ) (updated $ config^.configEnabled)
+                      ) (updated isEnabled)
   let
     removeChannels :: Event t [ChannelsTransformation t]
     removeChannels = map (uncurry $ flip Map.update)
@@ -95,7 +98,7 @@ socket config = mdo
 
   rtcRequests <- Channel.handleRTCEvents (current $ config^.configAuthData) (current channels') channelEvent
 
-  let deviceTypeDyn = (\on -> if on then Baby "baby" else NoBaby) <$> config^.configEnabled
+  let deviceTypeDyn = config^.configEnabled
   let setDeviceType = zipDynWith API.ReqSetDeviceType (API.deviceId <$> config^.configAuthData) deviceTypeDyn
   let subs = Set.singleton <$> setDeviceType -- Dummy subscription, never changes but it will be re-executed when the connection breaks.
   pure $ Socket { _request = channelRequests <> closeRequests <> rtcRequests
