@@ -74,7 +74,7 @@ uiStart loaded deviceList  baby' = do
           setBabyNameForm loaded startClicked
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
         elClass "div" "time" blank
-        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Done"
+        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Start"
         elClass "div" "stream-menu" $ do
           selectCamera <- cameraSelect baby'
           enableCamera <- enableCameraCheckbox baby'
@@ -94,52 +94,45 @@ uiStart loaded deviceList  baby' = do
 
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
-uiRunning loaded deviceList baby' = do
-    _ <- dyn $ noSleep <$> baby'^.mediaStream
-    let
-      leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
-      leaveConfirmation = do
-          el "h3" $ text "Really stop baby monitor?"
-          el "p" $ text "All connected devices will be disconnected!"
+uiRunning loaded deviceList baby' =
+  elClass "div" "container" $ do
+    elClass "div" "baby day" $ do
+      _ <- dyn $ noSleep <$> baby'^.mediaStream
+      let
+        leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
+        leaveConfirmation = do
+            el "h3" $ text "Really stop baby monitor?"
+            el "p" $ text "All connected devices will be disconnected!"
 
-    let navConfirmation = NavBar.WithConfirmation leaveConfirmation
-    navBar <- NavBar.navBar (NavBar.Config loaded deviceList navConfirmation navConfirmation)
-    cuteBunny
-    -- TODO: As confirmation button this triggers: Maybe.fromJust: Nothing! WTF!
-    -- stopClicked' <- confirmationButton ("class" =: "btn btn-lg btn-danger")
-    --                 ( do
-    --                     text "Stop "
-    --                     elClass "span" "glyphicon glyphicon-off" blank
-    --                 )
-    --                 leaveConfirmation
-    -- let stopClicked = traceEvent "_bad_click_" stopClicked'
+      let navConfirmation = NavBar.WithConfirmation leaveConfirmation
+      navBar <- NavBar.navBar (NavBar.Config loaded deviceList navConfirmation navConfirmation)
+      -- TODO: As confirmation button this triggers: Maybe.fromJust: Nothing! WTF!
+      -- stopClicked' <- confirmationButton ("class" =: "btn btn-lg btn-danger")
+      --                 ( do
+      --                     text "Stop "
+      --                     elClass "span" "glyphicon glyphicon-off" blank
+      --                 )
+      --                 leaveConfirmation
+      -- let stopClicked = traceEvent "_bad_click_" stopClicked'
 
-    stopClicked <- buttonAttr ("class" =: "btn btn-lg btn-danger")
-                    ( do
-                        text "Stop "
-                        elClass "span" "glyphicon glyphicon-off" blank
-                    )
-    let goBack = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
-    -- let leave = leftmost [ navBar^.NavBar.homeClicked, goBack ]
+      stopClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop"
+      let goBack = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
+      -- let leave = leftmost [ navBar^.NavBar.homeClicked, goBack ]
 
 
-    pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
-              , _uiStartMonitor = never
-              , _uiStopMonitor = leftmost [goBack, navBar^.NavBar.homeClicked]
-              , _uiEnableCamera = never
-              , _uiSelectCamera = never
-              , _uiRequest = never
-              }
+      pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
+                , _uiStartMonitor = never
+                , _uiStopMonitor = leftmost [goBack, navBar^.NavBar.homeClicked]
+                , _uiEnableCamera = never
+                , _uiSelectCamera = never
+                , _uiRequest = never
+                }
   where
     noSleep stream
       = mediaVideo stream ( "style" =: "display:none"
                             <> "autoplay" =: "true"
                             <> "muted" =: "true"
                           )
-    cuteBunny = elAttr "img" ( "alt" =: "gonimo"
-                    <> "src" =: "pix/gonimo-brand-01.svg"
-                    <> "height" =: "100%"
-                    ) blank
 
 
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
