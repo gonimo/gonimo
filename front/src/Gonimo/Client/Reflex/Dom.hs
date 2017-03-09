@@ -103,15 +103,17 @@ toggleAttr attr onOff staticAttrs =
     pure staticAttrs <> attrDyn
 
 
-addFocus :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
+addFocus :: MonadJSM m => InputElement EventResult GhcjsDomSpace t -> m ()
+addFocus htmlEl = liftJSM $ do
+  let rawElement = _inputElement_raw htmlEl
+  _ <- JS.toJSVal rawElement JS.# ("focus" :: Text) $ ()
+  _ <- JS.toJSVal rawElement JS.# ("select" :: Text) $ ()
+  pure ()
+
+addFocusPostBuild :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
             , PostBuild t m, MonadJSM (Performable m) , PerformEvent t m
             )
             => InputElement EventResult (DomBuilderSpace m) t -> m ()
-addFocus htmlEl = do
+addFocusPostBuild htmlEl = do
   postBuild <- getPostBuild
-  let rawElement = _inputElement_raw htmlEl
-  let addFocus' = liftJSM $ do
-        _ <- JS.toJSVal rawElement JS.# ("focus" :: Text) $ ()
-        _ <- JS.toJSVal rawElement JS.# ("select" :: Text) $ ()
-        pure ()
-  performEvent_ $ const addFocus' <$> postBuild
+  performEvent_ $ const (addFocus htmlEl) <$> postBuild -- Make sure it works always

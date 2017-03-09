@@ -10,7 +10,6 @@ import Data.Map (Map)
 import Data.Text (Text)
 import Control.Monad.Fix (MonadFix)
 import Gonimo.Client.Reflex.Dom
-import Data.Monoid
 import GHCJS.DOM.Types (MonadJSM)
 
 type EditStringConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM m, MonadJSM (Performable m), PerformEvent t m)
@@ -45,9 +44,8 @@ editStringBox editStringText val = do
         val' <- sample $ current val
         valEdit <-
           textInput $ def & textInputConfig_initialValue .~ val'
-                          & textInputConfig_attributes .~ pure ( "class" =: "welcome-input"
-                                                               <> "id" =: "myInputField")
-        addFocus $ valEdit^.textInput_builderElement
+                          & textInputConfig_attributes .~ pure ( "class" =: "welcome-input" )
+        addFocusPostBuild $ valEdit^.textInput_builderElement
         okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "input-btn check") $ blank
         let confirmed = leftmost [ okClicked, keypress Enter valEdit ]
         let cancelled = leftmost [ cancelClicked, keypress Escape valEdit ]

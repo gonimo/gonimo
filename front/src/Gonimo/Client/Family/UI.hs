@@ -222,7 +222,7 @@ createFamily' appConfig loaded = mdo
 
   (familyEditBack, familyEditOk) <-
     elDynClass "div" (pure "container familyNameEdit " <> selectedView) $ do
-      familyEditName loaded
+      familyEditName loaded (invite^.Invite.uiGoBack)
 
   invite <-
     elDynClass "div" (pure "container inviteView " <> selectedView) $ do
@@ -239,8 +239,10 @@ createFamily' appConfig loaded = mdo
 
   pure (doneEv, invite^.Invite.request)
 
-familyEditName :: forall m t. (HasWebView m, MonadWidget t m) => App.Loaded t -> m (Event t (), Event t Text)
-familyEditName loaded = do
+familyEditName :: forall m t. (HasWebView m, MonadWidget t m)
+                  => App.Loaded t -> Event t () -> m (Event t (), Event t Text)
+familyEditName loaded reactivated' = do
+    reactivated <- delay 0.2 reactivated' -- necessary because focus isn't triggered otherwise
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
     el "br" blank
     el "br" blank
@@ -254,7 +256,13 @@ familyEditName loaded = do
         , _textInputConfig_initialValue = genName
         , _textInputConfig_setValue = updated (App.currentFamilyName loaded)
         }
-      addFocus $ nameInput^.textInput_builderElement
+      -- Handle focus:
+      addFocusPostBuild $ nameInput^.textInput_builderElement
+      performEvent_ $ const (addFocus $ nameInput^.textInput_builderElement)
+                      <$> leftmost [ const () <$> updated (App.currentFamilyName loaded)
+                                   , reactivated
+                                   ]
+
       okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "input-btn check ") $ blank
       let nameValue = current $ nameInput^.textInput_value
       let confirmed = leftmost [ okClicked, keypress Enter nameInput ]
