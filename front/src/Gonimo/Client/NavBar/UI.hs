@@ -31,18 +31,9 @@ navBar config = do
         gonimoClicked <- makeClickable .  elAttr' "div" (addBtnAttrs "menu-center") $ blank
         pure $ NavBar backClicked' (leftmost [homeClicked', gonimoClicked])
   where
-    backButton' = makeClickable . elAttr' "div" (addBtnAttrs "menu-left back") $ blank
+    backButton = makeClickable . elAttr' "div" (addBtnAttrs "menu-left back") $ blank
 
-    backButton = case config^.configConfirmationOnBack of
-      NoConfirmation -> backButton'
-      WithConfirmation confText -> confirmationEl backButton' confText
-
-    homeButton' = makeClickable . elAttr' "div" (addBtnAttrs "menu-left home") $ blank
-
-    homeButton = case config^.configConfirmationOnHome of
-      NoConfirmation -> homeButton'
-      WithConfirmation confText -> confirmationEl homeButton' confText
-
+    homeButton = makeClickable . elAttr' "div" (addBtnAttrs "menu-left home") $ blank
 
 makeEllipsis :: Int -> Text -> Text
 makeEllipsis maxL t = if T.length t > maxL

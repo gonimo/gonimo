@@ -26,7 +26,7 @@ import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM.Window as Window
 import qualified GHCJS.DOM as DOM
--- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
+import           Gonimo.Client.ConfirmationButton  (addConfirmation)
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -68,7 +68,7 @@ uiStart :: forall m t. (HasWebView m, MonadWidget t m)
             -> m (UI t)
 uiStart loaded deviceList  baby' = do
     elClass "div" "container" $ do
-      navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation NavBar.NoConfirmation)
+      navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
       elClass "div" "baby" $ mdo
         (setBabyNameReq, cBabyName) <-
           setBabyNameForm loaded startClicked
@@ -104,21 +104,16 @@ uiRunning loaded deviceList baby' =
             el "h3" $ text "Really stop baby monitor?"
             el "p" $ text "All connected devices will be disconnected!"
 
-      let navConfirmation = NavBar.WithConfirmation leaveConfirmation
-      navBar <- NavBar.navBar (NavBar.Config loaded deviceList navConfirmation navConfirmation)
-      -- TODO: As confirmation button this triggers: Maybe.fromJust: Nothing! WTF!
-      -- stopClicked' <- confirmationButton ("class" =: "btn btn-lg btn-danger")
-      --                 ( do
-      --                     text "Stop "
-      --                     elClass "span" "glyphicon glyphicon-off" blank
-      --                 )
-      --                 leaveConfirmation
-      -- let stopClicked = traceEvent "_bad_click_" stopClicked'
+      navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
 
-      stopClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop"
+      navBar <- NavBar.NavBar
+                <$> addConfirmation leaveConfirmation (navBar'^.NavBar.backClicked)
+                <*> addConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked)
+
+      stopClicked <- addConfirmation leaveConfirmation
+                     =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop")
+
       let goBack = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
-      -- let leave = leftmost [ navBar^.NavBar.homeClicked, goBack ]
-
 
       pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
                 , _uiStartMonitor = never

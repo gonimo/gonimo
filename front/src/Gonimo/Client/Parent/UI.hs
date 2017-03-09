@@ -21,7 +21,7 @@ import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
 import qualified Gonimo.Client.Auth as Auth
 import qualified Gonimo.Client.Invite as Invite
--- import           Gonimo.Client.ConfirmationButton  (confirmationButton)
+import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -84,20 +84,27 @@ ui appConfig loaded deviceList = mdo
 manageUi :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
 manageUi _ loaded deviceList connections' = do
-      navBar <- NavBar.navBar (NavBar.Config loaded deviceList leaveConfirmation leaveConfirmation)
-      devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> connections'^.C.streams)
+      navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+      let openStreams = connections'^.C.streams
+      navBar' <- NavBar.NavBar
+                 <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.backClicked) (not . Map.null <$> openStreams)
+                 <*> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . Map.null <$> openStreams)
+      devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> openStreams)
       inviteRequested <-
             makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
 
-      pure (navBar, devicesUI, inviteRequested)
+      pure (navBar', devicesUI, inviteRequested)
 
 viewUi :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> Dynamic t [MediaStream] -> m (NavBar.NavBar t)
 viewUi _ loaded deviceList streams = do
-  navBar <- NavBar.navBar (NavBar.Config loaded deviceList NavBar.NoConfirmation leaveConfirmation)
+  navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+
+  navBar' <- NavBar.NavBar (navBar^.NavBar.backClicked)
+             <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
   elClass "div" "parent" $ do
     _ <- dyn $ renderVideos <$> streams
-    pure navBar
+    pure navBar'
 
 
 renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => [MediaStream] -> m ()
@@ -108,7 +115,7 @@ renderVideos streams = do
   traverse_ renderVideo streams
 
 
-leaveConfirmation :: NavBar.ConfirmationText t
-leaveConfirmation = NavBar.WithConfirmation $ do
+leaveConfirmation :: DomBuilder t m => m ()
+leaveConfirmation = do
     el "h3" $ text "Really stop parent station?"
-    el "p" $ text "All connections will be stopped!"
+    el "p" $ text "All open streams will be disconnected!"

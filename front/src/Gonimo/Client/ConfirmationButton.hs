@@ -10,7 +10,7 @@ import Control.Monad.Fix (MonadFix)
 import Gonimo.Client.Reflex.Dom
 import Data.Monoid
 
-type ConfirmationConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m)
+type ConfirmationConstraint t m = (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m)
 
 data Confirmed = No | Yes
 
@@ -20,8 +20,21 @@ confirmationButton attrs inner = confirmationEl (buttonAttr attrs inner)
 
 confirmationEl :: forall t m. ConfirmationConstraint t m
                       => m (Event t ()) -> m () -> m (Event t ())
-confirmationEl someButton confirmationText = mdo
-  clicked <- someButton
+confirmationEl someButton confirmationText = addConfirmation confirmationText =<< someButton
+
+
+mayAddConfirmation :: forall t m. ConfirmationConstraint t m
+                      => m () -> Event t () -> Dynamic t Bool -> m (Event t ())
+mayAddConfirmation confirmationText clicked needsConfirmation = do
+  let
+    go False = pure clicked
+    go True = addConfirmation confirmationText clicked
+  evEv <- dyn $ go <$> needsConfirmation
+  switchPromptly never evEv
+
+addConfirmation :: forall t m. ConfirmationConstraint t m
+                      => m () -> Event t () -> m (Event t ())
+addConfirmation confirmationText clicked = mdo
   confirmationDialog <- holdDyn (pure never) $ leftmost [ const (confirmationBox confirmationText) <$> clicked
                                                         , const (pure never) <$> gotAnswer
                                                         ]
@@ -34,14 +47,17 @@ confirmationEl someButton confirmationText = mdo
 
 confirmationBox :: forall t m. ConfirmationConstraint t m => m () -> m (Event t Confirmed)
 confirmationBox confirmationText = do
-  elClass "div" "hCenteredOverlay fullScreen" $ do
-    elClass "div" "vCenteredBox" $ do
-      elClass "div" "panel panel-default" $ do
-        elClass "div" "panel-heading" $ elClass "h3" "panel-title" $ text "Are you sure?"
-        elClass "div" "panel-body" $ do
-          confirmationText
-          el "div" $ do
-            yesClicked <- buttonAttr ("class" =: "btn btn-success" <> "role" =: "button" <> "type" =: "button") $ text "Yes"
-            noClicked <- buttonAttr ("class" =: "btn btn-danger" <> "role" =: "button" <> "type" =: "button") $ text "No"
-            pure $ leftmost [ const No <$> noClicked, const Yes <$> yesClicked ]
+  elClass "div" "fullScreenOverlay" $ do
+    elClass "div" "container" $ do
+      noClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
+      el "h1" $ text "Are you sure ..."
+      el "br" blank
+      el "br" blank
+
+      confirmationText
+      el "br" blank
+      el "br" blank
+
+      yesClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Ok"
+      pure $ leftmost [ const No <$> noClicked, const Yes <$> yesClicked ]
 
