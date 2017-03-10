@@ -91,37 +91,48 @@ uiStart loaded deviceList  baby' = do
                             <> "autoplay" =: "true"
                             <> "muted" =: "true"
                           )
-
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
-  elClass "div" "container" $ do
-    elClass "div" "baby day" $ do
-      _ <- dyn $ noSleep <$> baby'^.mediaStream
-      let
-        leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
-        leaveConfirmation = do
-            el "h3" $ text "Really stop baby monitor?"
-            el "p" $ text "All connected devices will be disconnected!"
+  elClass "div" "container" $ mdo
+    dayNight <- holdDyn "day" $ tag toggledDayNight dayNightClicked
+    let
+      toggledDayNight :: Behavior t Text
+      toggledDayNight = (\c -> if c == "day" then "night" else "day") <$> current dayNight
+    let
+      babyClass :: Dynamic t Text
+      babyClass = pure "baby setup-done " <> dayNight
 
-      navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
+    (ui', dayNightClicked) <-
+      elDynClass "div" babyClass $ do
+        _ <- dyn $ noSleep <$> baby'^.mediaStream
+        let
+          leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
+          leaveConfirmation = do
+              el "h3" $ text "Really stop baby monitor?"
+              el "p" $ text "All connected devices will be disconnected!"
 
-      navBar <- NavBar.NavBar
-                <$> addConfirmation leaveConfirmation (navBar'^.NavBar.backClicked)
-                <*> addConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked)
+        navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
 
-      stopClicked <- addConfirmation leaveConfirmation
-                     =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop")
+        navBar <- NavBar.NavBar
+                  <$> addConfirmation leaveConfirmation (navBar'^.NavBar.backClicked)
+                  <*> addConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked)
 
-      let goBack = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
+        dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
+        stopClicked <- addConfirmation leaveConfirmation
+                      =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop")
 
-      pure $ UI { _uiGoHome = navBar^.NavBar.homeClicked
-                , _uiStartMonitor = never
-                , _uiStopMonitor = leftmost [goBack, navBar^.NavBar.homeClicked]
-                , _uiEnableCamera = never
-                , _uiSelectCamera = never
-                , _uiRequest = never
-                }
+        let goBack = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
+
+        let ui'' = UI { _uiGoHome = navBar^.NavBar.homeClicked
+                      , _uiStartMonitor = never
+                      , _uiStopMonitor = leftmost [goBack, navBar^.NavBar.homeClicked]
+                      , _uiEnableCamera = never
+                      , _uiSelectCamera = never
+                      , _uiRequest = never
+                      }
+        pure (ui'', dayNightClicked')
+    pure ui'
   where
     noSleep stream
       = mediaVideo stream ( "style" =: "display:none"
