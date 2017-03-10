@@ -270,6 +270,12 @@ h3{
 	content:"\f0c5";
 	border:none;
 }
+.input-btn.recreate::after{
+	  font-family:FontAwesome;
+	  color:#E6CAD4;
+    content: "\f021";
+	  border:none;
+}
 .input-btn.mail::after{
 	font-family:FontAwesome;
 	color:#E6CAD4;
