@@ -52,9 +52,16 @@ a:hover, a:focus{
 	text-decoration:none;
 	color:unset;
 }
+*[type="button"]:active {
+    /* box-shadow: 10px 10px 5px #888888 inset; */
+    background-color: #E6CAD4;
+    color: white;
+}
 .container{
 	margin-right: auto;
 	margin-left: auto;
+  padding-left: 0px;
+  padding-right: 0px;
 	height:100%;
 }
 @media(min-width:768px){
