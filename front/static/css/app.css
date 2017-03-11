@@ -533,10 +533,11 @@ h3{
 .stream-baby{
 	min-width:100px;
 	min-height:100px;
-	max-width:50%;
+	max-width:100%;
 	display:inline-block;
 	background-image:url("/pix/gonimo-night.svg");
 	background-size:100% 100%;
+  position: relative;
 }
 .stream-menu{
 	position:fixed;
@@ -767,3 +768,11 @@ span.baby-form{
 /*     background-color: white; */
 /* } */
 
+
+canvas {
+    position: absolute;
+    bottom: 0px;
+    z-index: 4;
+    left: 0px;
+    right: 0px;
+}

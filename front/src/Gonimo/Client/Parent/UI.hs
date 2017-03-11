@@ -22,6 +22,7 @@ import           Gonimo.Client.Server              (webSocket_recv)
 import qualified Gonimo.Client.Auth as Auth
 import qualified Gonimo.Client.Invite as Invite
 import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
+import           Gonimo.Client.Util (volumeMeter)
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -110,8 +111,9 @@ viewUi _ loaded deviceList streams = do
 renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => [MediaStream] -> m ()
 renderVideos streams = do
   let
-    renderVideo stream
-      = elClass "div" "stream-baby" $ mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
+    renderVideo stream = elClass "div" "stream-baby" $ do
+      mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
+      volumeMeter stream
   traverse_ renderVideo streams
 
 
