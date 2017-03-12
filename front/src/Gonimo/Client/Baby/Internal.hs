@@ -25,6 +25,7 @@ import           GHCJS.DOM.Types                   (MediaStream, MonadJSM)
 import           Gonimo.DOM.Navigator.MediaDevices
 import qualified Gonimo.Client.Baby.Socket         as Socket
 import qualified Gonimo.Types                      as Gonimo
+import           Gonimo.Client.Util                (oyd)
 
 data Config t
   = Config  { _configSelectCamera :: Event t Text
@@ -99,6 +100,8 @@ baby config = mdo
                                            , Socket._configEnabled = sockEnabled
                                            , Socket._configMediaStream = mediaStream'
                                            }
+  -- OYD integration, if enabled by user. (Currently a hidden feature, use has to set local storage object 'OYD')
+  performEvent_ $ oyd <$> gotNewStream
 
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
