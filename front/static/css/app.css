@@ -734,7 +734,7 @@ span.baby-form{
 }
 
 .fullScreenOverlay {
-    height:100vh;
+    height:100%; /* Use %, vh does not work correctly in chrome (top is hidden by address bar) */
     width:100vw;
     z-index: 10;
     position: fixed;
