@@ -226,7 +226,7 @@ oyd stream = liftJSM $ do
            , "        };"
            , "    }"
            , "    function sendValue (oyd, val) {"
-           , "        var pia_url = 'https://gonimo.datentresor.org';"
+           , "        var pia_url = 'https://gonimo-vault.datentresor.org';"
            , "        var app_key = 'eu.ownyourdata.gonimo';"
            , "        var repo = app_key;"
            , "        var app_secret = 'Mtw1lTzLUFSMdoMV0kUz';"
