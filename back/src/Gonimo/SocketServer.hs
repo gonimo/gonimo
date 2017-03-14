@@ -141,7 +141,12 @@ handleServerRequest receiver sub req = errorToResponse $ case req of
       flip runReaderT authData' $ handleAuthServerRequest sub req
   where
     errorToResponse :: m ServerResponse -> m ServerResponse
-    errorToResponse action = either (ResError req) id <$> try action
+    errorToResponse action = do
+      r <- try action
+      case r of
+        Left e -> $logError ("Caught ERROR: " <> (T.pack. show) e)
+        _ -> pure ()
+      pure $ either (ResError req) id r
 
 
 handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
