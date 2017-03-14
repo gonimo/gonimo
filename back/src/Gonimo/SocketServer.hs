@@ -142,11 +142,11 @@ handleServerRequest receiver sub req = errorToResponse $ case req of
   where
     errorToResponse :: m ServerResponse -> m ServerResponse
     errorToResponse action = do
-      r <- try action
+      r <- either (ResError req) id <$> try action
       case r of
-        Left e -> $logError ("Caught ERROR: " <> (T.pack. show) e)
+        ResError _ _ -> $logError ((T.pack. show) r)
         _ -> pure ()
-      pure $ either (ResError req) id r
+      pure r
 
 
 handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
