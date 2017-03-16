@@ -11,7 +11,6 @@ import           Data.Text                         (Text)
 import qualified Gonimo.Client.DeviceList          as DeviceList
 import           Reflex.Dom.Core
 
-import qualified Data.Map                          as Map
 import qualified Gonimo.Client.App.Types           as App
 import qualified Gonimo.SocketAPI                  as API
 import           Gonimo.Client.Baby.Internal
@@ -20,7 +19,6 @@ import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
-import           Gonimo.Client.Prelude
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
@@ -35,6 +33,7 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
 ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
+                           , _configEnableAutoStart = ui'^.uiEnableAutoStart
                            , _configResponse = appConfig^.App.server.webSocket_recv
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = ui'^.uiStartMonitor
@@ -77,11 +76,13 @@ uiStart loaded deviceList  baby' = do
         startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Start"
         elClass "div" "stream-menu" $ do
           selectCamera <- cameraSelect baby'
+          autoStart <- enableAutoStartCheckbox baby'
           enableCamera <- enableCameraCheckbox baby'
           pure $ UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
                     , _uiStartMonitor = tag (current cBabyName) startClicked
                     , _uiStopMonitor = never -- already there
                     , _uiEnableCamera = enableCamera
+                    , _uiEnableAutoStart = autoStart
                     , _uiSelectCamera = selectCamera
                     , _uiRequest = setBabyNameReq
                     }
@@ -128,6 +129,7 @@ uiRunning loaded deviceList baby' =
                       , _uiStartMonitor = never
                       , _uiStopMonitor = leftmost [goBack, navBar^.NavBar.homeClicked]
                       , _uiEnableCamera = never
+                      , _uiEnableAutoStart = never
                       , _uiSelectCamera = never
                       , _uiRequest = never
                       }
@@ -190,6 +192,11 @@ enableCameraCheckbox baby' =
   case baby'^.videoDevices of
     [] -> pure never -- No need to enable the camera when there is none!
     _  -> myCheckBox (addBtnAttrs "cam-on ") (baby'^.cameraEnabled) $ el "span" blank
+
+enableAutoStartCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
+                => Baby t -> m (Event t Bool)
+enableAutoStartCheckbox baby' =
+    myCheckBox (addBtnAttrs "autostart ") (baby'^.autoStartEnabled) . el "span" $ text "Autostart"
 
 setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
                    => App.Loaded t -> Event t () -> m (Event t [ API.ServerRequest ], Dynamic t Text)

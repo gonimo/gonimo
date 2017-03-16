@@ -94,35 +94,37 @@ runLoaded config family = do
 loadedUI :: forall m t. (HasWebView m, MonadWidget t m)
       => Config t -> Loaded t -> Bool -> m (App t, Family.UI t)
 loadedUI config loaded familyCreated = mdo
-  deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.webSocket_recv
-                                                          , DeviceList._configAuthData = config^.auth.Auth.authData
-                                                          , DeviceList._configFamilyId = loaded^.selectedFamily
-                                                          }
-  emptyScreen <- mkEmptyScreen
-  dynPair <- widgetHold
-             ((emptyScreen,) <$> Family.ui config loaded familyCreated)
-             (renderCenter config loaded deviceList <$> roleSelected)
+    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.webSocket_recv
+                                                            , DeviceList._configAuthData = config^.auth.Auth.authData
+                                                            , DeviceList._configFamilyId = loaded^.selectedFamily
+                                                            }
+    initialRole <- getInitialRole
+    dynPair <- widgetHold
+              (renderCenter deviceList familyCreated initialRole)
+              (renderCenter deviceList False <$> roleSelected)
 
-  let screen = screenSwitchPromptlyDyn . fmap fst $ dynPair
-  let familyUI = Family.uiSwitchPromptlyDyn . fmap snd $ dynPair
+    let screen = screenSwitchPromptlyDyn . fmap fst $ dynPair
+    let familyUI = Family.uiSwitchPromptlyDyn . fmap snd $ dynPair
 
-  let roleSelected = leftmost [ Just <$> familyUI^.Family.uiRoleSelected
-                              , const Nothing <$> screen^.screenGoHome
-                              ]
+    let roleSelected = leftmost [ Just <$> familyUI^.Family.uiRoleSelected
+                                , const Nothing <$> screen^.screenGoHome
+                                ]
 
-  let app = App { _request = deviceList^.DeviceList.request <> screen^.screenApp.request
-                             <> familyUI^.Family.uiRequest
-                , _subscriptions = deviceList^.DeviceList.subscriptions <> screen^.screenApp.subscriptions
-                }
-  pure (app, familyUI)
+    let app = App { _request = deviceList^.DeviceList.request <> screen^.screenApp.request
+                              <> familyUI^.Family.uiRequest
+                  , _subscriptions = deviceList^.DeviceList.subscriptions <> screen^.screenApp.subscriptions
+                  }
+    pure (app, familyUI)
+  where
+    renderCenter :: DeviceList.DeviceList t -> Bool -> Maybe Family.GonimoRole -> m (Screen t, Family.UI t)
+    renderCenter deviceList familyCreated' mRole =
+      case mRole of
+          Nothing -> (def,) <$> Family.ui config loaded familyCreated'
+          Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
+          Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList
 
-
--- Returned pair: Cancel event (go back to family screen and Family.UI)
-renderCenter :: forall m t. (HasWebView m, MonadWidget t m)
-      => Config t -> Loaded t -> DeviceList.DeviceList t -> Maybe Family.GonimoRole -> m (Screen t, Family.UI t)
-renderCenter config loaded deviceList mRole = do
-  emptyScreen <- mkEmptyScreen
-  case mRole of
-      Nothing -> (emptyScreen,) <$> Family.ui config loaded False
-      Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
-      Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList
+    getInitialRole = do
+      isAutoStart <- Baby.readAutoStart
+      pure $ if isAutoStart
+             then Just Family.RoleBaby
+             else Nothing

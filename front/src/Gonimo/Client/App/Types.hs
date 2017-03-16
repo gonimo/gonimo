@@ -14,6 +14,8 @@ import Data.Map (Map)
 import Control.Monad
 import Gonimo.Client.Prelude
 import qualified Gonimo.Types as Gonimo
+import Data.Default
+import qualified Data.Set as Set
 
 data Config t
   = Config { _server :: Server.Server t
@@ -43,15 +45,11 @@ makeLenses ''App
 makeLenses ''Screen
 
 
-mkEmptyApp :: (Reflex t, MonadHold t m) => m (App t)
-mkEmptyApp = do
-  subs <- holdDyn mempty never
-  pure $ App subs never
+instance (Reflex t) => Default (App t) where
+  def = App (constDyn Set.empty) never
 
-mkEmptyScreen :: (Reflex t, MonadHold t m) => m (Screen t)
-mkEmptyScreen = do
-  app <- mkEmptyApp
-  pure $ Screen app never
+instance (Reflex t) => Default (Screen t) where
+  def = Screen def never
 
 appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev

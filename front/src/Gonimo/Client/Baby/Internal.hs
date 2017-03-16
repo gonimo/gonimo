@@ -30,6 +30,7 @@ import           Gonimo.Client.Util                (oyd)
 data Config t
   = Config  { _configSelectCamera :: Event t Text
             , _configEnableCamera :: Event t Bool
+            , _configEnableAutoStart :: Event t Bool
             , _configResponse :: Event t API.ServerResponse
             , _configAuthData :: Dynamic t API.AuthData
             , _configStartMonitor  :: Event t Text
@@ -40,6 +41,7 @@ data Baby t
   = Baby { _videoDevices :: [MediaDeviceInfo]
          , _selectedCamera :: Dynamic t (Maybe Text)
          , _cameraEnabled :: Dynamic t Bool
+         , _autoStartEnabled :: Dynamic t Bool
          , _mediaStream :: Dynamic t MediaStream
          , _socket :: Socket.Socket t
          }
@@ -49,6 +51,7 @@ data UI t
        , _uiStartMonitor  :: Event t Text
        , _uiStopMonitor  :: Event t ()
        , _uiEnableCamera :: Event t Bool
+       , _uiEnableAutoStart :: Event t Bool
        , _uiSelectCamera  :: Event t Text
        , _uiRequest :: Event t [ API.ServerRequest ]
        }
@@ -63,6 +66,7 @@ uiSwitchPromptly ev
        <*> switchPromptly never (_uiStartMonitor <$> ev)
        <*> switchPromptly never (_uiStopMonitor <$> ev)
        <*> switchPromptly never (_uiEnableCamera <$> ev)
+       <*> switchPromptly never (_uiEnableAutoStart <$> ev)
        <*> switchPromptly never (_uiSelectCamera <$> ev)
        <*> switchPromptly never (_uiRequest <$> ev)
 
@@ -72,6 +76,7 @@ uiSwitchPromptlyDyn ev
        ( switchPromptlyDyn (_uiStartMonitor <$> ev) )
        ( switchPromptlyDyn (_uiStopMonitor <$> ev) )
        ( switchPromptlyDyn (_uiEnableCamera <$> ev) )
+       ( switchPromptlyDyn (_uiEnableAutoStart <$> ev) )
        ( switchPromptlyDyn (_uiSelectCamera <$> ev) )
        ( switchPromptlyDyn (_uiRequest <$> ev) )
 
@@ -103,8 +108,13 @@ baby config = mdo
   -- OYD integration, if enabled by user. (Currently a hidden feature, use has to set local storage object 'OYD')
   performEvent_ $ oyd <$> gotNewStream
 
+  initAutoStart <- readAutoStart
+  autoStart <- holdDyn initAutoStart $ config^.configEnableAutoStart
+  performEvent_ $ writeAutoStart <$> updated autoStart
+
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
+              , _autoStartEnabled = autoStart
               , _cameraEnabled = enabled
               , _mediaStream = mediaStream'
               , _socket = socket'
@@ -175,3 +185,13 @@ stopMediaStream :: forall m. MonadJSM m => MediaStream -> m ()
 stopMediaStream stream = do
   tracks <- catMaybes <$> MediaStream.getTracks stream
   traverse_ MediaStreamTrack.stop tracks
+
+readAutoStart :: MonadJSM m => m Bool
+readAutoStart = do
+  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  fromMaybe False <$> GStorage.getItem storage GStorage.autoStart
+
+writeAutoStart :: MonadJSM m => Bool -> m ()
+writeAutoStart haveAutoStart = do
+  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  GStorage.setItem storage GStorage.autoStart haveAutoStart
