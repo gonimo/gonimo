@@ -14,7 +14,6 @@ import qualified Gonimo.Client.DeviceList          as DeviceList
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types           as App
-import qualified Gonimo.SocketAPI                  as API
 import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.Baby.Socket         as Socket
 import qualified Gonimo.Client.NavBar              as NavBar
@@ -22,10 +21,6 @@ import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.Client.EditStringButton    (editStringEl)
-import qualified Gonimo.Client.Storage as GStorage
-import qualified Gonimo.Client.Storage.Keys as GStorage
-import qualified GHCJS.DOM.Window as Window
-import qualified GHCJS.DOM as DOM
 import           Gonimo.Client.ConfirmationButton  (addConfirmation)
 
 data BabyScreen = ScreenStart | ScreenRunning
@@ -252,9 +247,9 @@ renderBabySelectors :: forall m t. (HasWebView m, MonadWidget t m)
 renderBabySelectors names =
   let
     renderBabySelector :: Text -> m (Event t Text)
-    renderBabySelector name = do
-        fmap (fmap (const name)) . el "div" $ do
-          makeClickable . elAttr' "a" (addBtnAttrs "") $ text name
+    renderBabySelector name' = do
+        fmap (fmap (const name')) . el "div" $ do
+          makeClickable . elAttr' "a" (addBtnAttrs "") $ text name'
 
     renderSelectors names' =
       let
