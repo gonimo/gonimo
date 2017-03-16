@@ -26,6 +26,7 @@ app = mdo
                     <> app^.App.request
 
   let wsConfig = def & webSocketConfig_send .~ serverRequests
+                     & webSocketConfig_reconnect .~ True
   server <- Server.server Config.gonimoBackWSURL  wsConfig
 
   let authConfig = Auth.Config { Auth._configResponse = server^.webSocket_recv
