@@ -66,13 +66,16 @@ makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)
   => Config t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
 makeAuthData config = do
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    userAgentString <- getUserAgentString
 
     initial <- loadAuthData storage
-    makeDevice <- if isNothing initial
-                  then Just . API.ReqMakeDevice . Just <$> getUserAgentString
-                  else pure Nothing
-    let makeDeviceEvent = push (pure . const makeDevice) $ config^.configServerOpen
     authDataDyn <- holdDyn initial (Just <$> serverAuth)
+    let makeDevice = do
+          cAuth <- sample $ current authDataDyn
+          if isNothing cAuth
+          then pure . Just . API.ReqMakeDevice . Just $ userAgentString
+          else pure Nothing
+    let makeDeviceEvent = push (const makeDevice) $ config^.configServerOpen
 
     performEvent_
       $ writeAuthData storage <$> updated authDataDyn
