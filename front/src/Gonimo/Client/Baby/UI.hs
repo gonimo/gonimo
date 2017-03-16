@@ -5,6 +5,8 @@
 module Gonimo.Client.Baby.UI where
 
 import           Control.Lens
+import           Control.Monad
+import           Control.Monad.IO.Class
 import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid
 import           Data.Text                         (Text)
@@ -36,16 +38,27 @@ ui appConfig loaded deviceList = mdo
                            , _configEnableAutoStart = ui'^.uiEnableAutoStart
                            , _configResponse = appConfig^.App.server.webSocket_recv
                            , _configAuthData = loaded^.App.authData
-                           , _configStartMonitor = ui'^.uiStartMonitor
+                           , _configStartMonitor = startMonitor
                            , _configStopMonitor  = ui'^.uiStopMonitor
+                           , _configSetBabyName = ui'^.uiSetBabyName
+                           , _configSelectedFamily = loaded^.App.selectedFamily
                            }
 
+    (autoStartEv, triggerAutoStart) <- newTriggerEvent
+    doAutoStart <- readAutoStart
+
     uiDyn <- widgetHold (uiStart loaded deviceList baby') (renderCenter baby' <$> screenSelected)
+
+    liftIO $ when doAutoStart $ triggerAutoStart ()
+
+    let startMonitor = leftmost [ ui'^.uiStartMonitor
+                                , autoStartEv
+                                ]
 
     let ui' = uiSwitchPromptlyDyn uiDyn
 
     let screenSelected = leftmost [ const ScreenStart <$> ui'^.uiStopMonitor
-                                  , const ScreenRunning <$> ui'^.uiStartMonitor
+                                  , const ScreenRunning <$> startMonitor
                                   ]
 
     performEvent_ $ const (do
@@ -53,7 +66,7 @@ ui appConfig loaded deviceList = mdo
                               stopMediaStream cStream
                           ) <$> ui'^.uiGoHome
     let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
-                          , App._request = baby'^.socket.Socket.request <> ui'^.uiRequest
+                          , App._request = baby'^.socket.Socket.request <> baby'^.request
                           }
     pure $ App.Screen { App._screenApp = babyApp
                       , App._screenGoHome = ui'^.uiGoHome
@@ -69,8 +82,8 @@ uiStart loaded deviceList  baby' = do
     elClass "div" "container" $ do
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
       elClass "div" "baby" $ mdo
-        (setBabyNameReq, cBabyName) <-
-          setBabyNameForm loaded startClicked
+        newBabyName <-
+          setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
         elClass "div" "time" blank
         startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Start"
@@ -79,12 +92,12 @@ uiStart loaded deviceList  baby' = do
           autoStart <- enableAutoStartCheckbox baby'
           enableCamera <- enableCameraCheckbox baby'
           pure $ UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
-                    , _uiStartMonitor = tag (current cBabyName) startClicked
+                    , _uiStartMonitor = startClicked
                     , _uiStopMonitor = never -- already there
                     , _uiEnableCamera = enableCamera
                     , _uiEnableAutoStart = autoStart
                     , _uiSelectCamera = selectCamera
-                    , _uiRequest = setBabyNameReq
+                    , _uiSetBabyName = newBabyName
                     }
   where
     renderVideo stream
@@ -131,7 +144,7 @@ uiRunning loaded deviceList baby' =
                       , _uiEnableCamera = never
                       , _uiEnableAutoStart = never
                       , _uiSelectCamera = never
-                      , _uiRequest = never
+                      , _uiSetBabyName = never
                       }
         pure (ui'', dayNightClicked')
     pure ui'
@@ -199,21 +212,15 @@ enableAutoStartCheckbox baby' =
     myCheckBox (addBtnAttrs "autostart ") (baby'^.autoStartEnabled) . el "span" $ text "Autostart"
 
 setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
-                   => App.Loaded t -> Event t () -> m (Event t [ API.ServerRequest ], Dynamic t Text)
-setBabyNameForm loaded started = --mdo
+                   => App.Loaded t -> Baby t -> m (Event t Text)
+setBabyNameForm loaded baby' = --mdo
   -- (clicked, nameAdded) <- do
   elClass "div" "welcome-form baby-form" $ mdo
-    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
-    mInitial <- GStorage.getItem storage GStorage.lastBabyName
-    cBabyName <- holdDyn (fromMaybe "baby" mInitial) $ leftmost [nameAdded, selectedName]
-    performEvent_
-      $ GStorage.setItem storage GStorage.lastBabyName <$> updated cBabyName
-
     elClass "span" "baby-form" $ text "Adjust camera for"
 
     clicked <-
       makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
-        dynText $ cBabyName
+        dynText $ baby'^.name
         text " "
         elClass "span" "caret" blank
 
@@ -236,13 +243,9 @@ setBabyNameForm loaded started = --mdo
 
     selectedName <-
       elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)
-    let
-      mkRequest = API.ReqSaveBabyName <$> current (loaded^.App.selectedFamily)
-    let req = fmap (:[]) . attachWith ($) mkRequest $ leftmost [ nameAdded
-                                                               , selectedName
-                                                               , tag (current cBabyName) started
-                                                               ]
-    pure (req, cBabyName)
+    pure $ leftmost [ nameAdded
+                    , selectedName
+                    ]
 
 renderBabySelectors :: forall m t. (HasWebView m, MonadWidget t m)
                     => Dynamic t [Text] -> m (Event t Text)

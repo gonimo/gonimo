@@ -20,6 +20,7 @@ import qualified Gonimo.Client.Storage.Keys        as GStorage
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
+import qualified Gonimo.Db.Entities         as Db
 
 import           GHCJS.DOM.Types                   (MediaStream, MonadJSM)
 import           Gonimo.DOM.Navigator.MediaDevices
@@ -33,8 +34,10 @@ data Config t
             , _configEnableAutoStart :: Event t Bool
             , _configResponse :: Event t API.ServerResponse
             , _configAuthData :: Dynamic t API.AuthData
-            , _configStartMonitor  :: Event t Text
+            , _configStartMonitor  :: Event t ()
             , _configStopMonitor  :: Event t ()
+            , _configSetBabyName :: Event t Text
+            , _configSelectedFamily :: Dynamic t Db.FamilyId
             }
 
 data Baby t
@@ -44,16 +47,18 @@ data Baby t
          , _autoStartEnabled :: Dynamic t Bool
          , _mediaStream :: Dynamic t MediaStream
          , _socket :: Socket.Socket t
+         , _name :: Dynamic t Text
+         , _request :: Event t [API.ServerRequest]
          }
 
 data UI t
   = UI { _uiGoHome :: Event t ()
-       , _uiStartMonitor  :: Event t Text
+       , _uiStartMonitor  :: Event t ()
        , _uiStopMonitor  :: Event t ()
        , _uiEnableCamera :: Event t Bool
        , _uiEnableAutoStart :: Event t Bool
        , _uiSelectCamera  :: Event t Text
-       , _uiRequest :: Event t [ API.ServerRequest ]
+       , _uiSetBabyName :: Event t Text
        }
 
 makeLenses ''Config
@@ -68,7 +73,7 @@ uiSwitchPromptly ev
        <*> switchPromptly never (_uiEnableCamera <$> ev)
        <*> switchPromptly never (_uiEnableAutoStart <$> ev)
        <*> switchPromptly never (_uiSelectCamera <$> ev)
-       <*> switchPromptly never (_uiRequest <$> ev)
+       <*> switchPromptly never (_uiSetBabyName <$> ev)
 
 uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
 uiSwitchPromptlyDyn ev
@@ -78,7 +83,7 @@ uiSwitchPromptlyDyn ev
        ( switchPromptlyDyn (_uiEnableCamera <$> ev) )
        ( switchPromptlyDyn (_uiEnableAutoStart <$> ev) )
        ( switchPromptlyDyn (_uiSelectCamera <$> ev) )
-       ( switchPromptlyDyn (_uiRequest <$> ev) )
+       ( switchPromptlyDyn (_uiSetBabyName <$> ev) )
 
 baby :: forall m t. (MonadWidget t m, HasWebView m)
         => Config t -> m (Baby t)
@@ -96,9 +101,10 @@ baby config = mdo
   -- cSelected <- sample $ current selected
   mediaStream' <- holdDyn badInit gotNewStream
 
-  sockEnabled <- holdDyn Gonimo.NoBaby $ leftmost [ Gonimo.Baby <$> config^.configStartMonitor
-                                                  , const Gonimo.NoBaby <$> config^.configStopMonitor
-                                                  ]
+  sockEnabled <- holdDyn Gonimo.NoBaby
+                 $ leftmost [ Gonimo.Baby <$> tag (current babyName) (config^.configStartMonitor)
+                            , const Gonimo.NoBaby <$> config^.configStopMonitor
+                            ]
 
   socket' <- Socket.socket $ Socket.Config { Socket._configResponse = config^.configResponse
                                            , Socket._configAuthData = config^.configAuthData
@@ -112,12 +118,23 @@ baby config = mdo
   autoStart <- holdDyn initAutoStart $ config^.configEnableAutoStart
   performEvent_ $ writeAutoStart <$> updated autoStart
 
+  initBabyName <- readLastBabyName
+  babyName <- holdDyn initBabyName $ config^.configSetBabyName
+  let mkSaveNameReq = API.ReqSaveBabyName <$> current (config^.configSelectedFamily)
+  let saveNameReq = fmap (:[]) . attachWith ($) mkSaveNameReq
+                    $ leftmost [ updated babyName
+                               , tag (current babyName) (config^.configStartMonitor)
+                               ]
+  performEvent_ $ writeLastBabyName <$> updated babyName
+
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
               , _autoStartEnabled = autoStart
               , _cameraEnabled = enabled
               , _mediaStream = mediaStream'
               , _socket = socket'
+              , _name = babyName
+              , _request = saveNameReq
               }
 
 handleCameraEnable :: forall m t. (MonadHold t m, MonadJSM (Performable m), MonadJSM m, PerformEvent t m)
@@ -195,3 +212,13 @@ writeAutoStart :: MonadJSM m => Bool -> m ()
 writeAutoStart haveAutoStart = do
   storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
   GStorage.setItem storage GStorage.autoStart haveAutoStart
+
+readLastBabyName :: MonadJSM m => m Text
+readLastBabyName = do
+  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  fromMaybe "baby" <$> GStorage.getItem storage GStorage.lastBabyName
+
+writeLastBabyName :: MonadJSM m => Text -> m ()
+writeLastBabyName lastBabyName = do
+  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  GStorage.setItem storage GStorage.lastBabyName lastBabyName
