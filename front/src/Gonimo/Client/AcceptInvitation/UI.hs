@@ -10,7 +10,6 @@ import           Control.Monad.Fix                       (MonadFix)
 import           Control.Monad.Trans.Class               (lift)
 import           Control.Monad.Trans.Maybe               (runMaybeT)
 import           Data.Maybe                              (fromMaybe, maybe)
-import           Data.Monoid
 import           Data.Text                               (Text)
 import           Gonimo.Client.AcceptInvitation.Internal
 import qualified Gonimo.SocketAPI                        as API
@@ -20,17 +19,20 @@ import           Gonimo.Types                            (Secret)
 import qualified Gonimo.Types                            as Gonimo
 import           Reflex.Dom.Core
 import           GHCJS.DOM.Types (MonadJSM)
+import qualified Data.Set                                as Set
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
       => Config t -> m (AcceptInvitation t)
 ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
     secret <- getInvitationSecret
     clearInvitationFromURL
-    let claimReq = makeClaimInvitation config secret
     answerReq <- lift . fmap switchPromptlyDyn -- Only display until user accepted/declined.
                  . widgetHold (onInvitationUI secret)
                  $ const (pure never) <$> gotAnswerResponse
-    pure $ AcceptInvitation (claimReq <> answerReq)
+
+    -- Make sure invitation gets claimed, by subscribing the request:
+    claimSub <- lift . holdDyn (Set.singleton (API.ReqClaimInvitation secret)) $ const Set.empty <$> answerReq
+    pure $ AcceptInvitation answerReq claimSub
   where
     onInvitationUI secret = fmap switchPromptlyDyn
                      . widgetHold (pure never)

@@ -20,7 +20,6 @@ import qualified Gonimo.Client.MessageBox       as MessageBox
 import           Gonimo.Client.Server           (webSocket_recv)
 import qualified Gonimo.Client.Baby             as Baby
 import qualified Gonimo.Client.Parent           as Parent
-import           Gonimo.Client.Reflex.Dom
 import qualified Gonimo.SocketAPI               as API
 
 
@@ -54,6 +53,7 @@ ui config = mdo
                               )
                           )
              & subscriptions %~ (<> family^.Family.subscriptions)
+             & subscriptions %~ (<> accept^.AcceptInvitation.subscriptions)
 
 
 runLoaded :: forall m t. (HasWebView m, MonadWidget t m)
