@@ -41,7 +41,7 @@ data Config t
             }
 
 data Baby t
-  = Baby { _videoDevices :: [MediaDeviceInfo]
+  = Baby { _videoDevices :: Dynamic t [MediaDeviceInfo]
          , _selectedCamera :: Dynamic t (Maybe Text)
          , _cameraEnabled :: Dynamic t Bool
          , _autoStartEnabled :: Dynamic t Bool
@@ -89,14 +89,21 @@ baby :: forall m t. (MonadWidget t m, HasWebView m)
         => Config t -> m (Baby t)
 baby config = mdo
   badInit <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!
-  devices <- enumerateDevices
-  let videoDevices' = filter ((== VideoInput) . mediaDeviceKind) devices
+  initDevices <- enumerateDevices
+  -- Get devicelist whenever stream changes - if only audio is requested the first time - the list will be empty.
+  gotDevices <- performEvent $ const enumerateDevices <$> gotNewStream
+  devices <- uniqDyn <$> holdDyn initDevices gotDevices
+  let
+    videoDevices' :: Dynamic t [MediaDeviceInfo]
+    videoDevices' = filter ((== VideoInput) . mediaDeviceKind) <$> devices
+
   selected <- handleCameraSelect config devices
   enabled  <- handleCameraEnable config
   let mSelected = (\enabled' selected' -> if enabled' then selected' else Nothing)
                   <$> enabled <*> selected
 
-  gotNewStream <- performEvent $ getConstrainedMediaStream mediaStream' videoDevices' <$> updated mSelected
+  gotNewStream <- performEvent $ uncurry (getConstrainedMediaStream mediaStream')
+                  <$> attach (current videoDevices') (updated mSelected)
   -- WARNING: Don't do that- -inifinte MonadFix loop will down on you!
   -- cSelected <- sample $ current selected
   mediaStream' <- holdDyn badInit gotNewStream
@@ -151,21 +158,27 @@ handleCameraEnable config = do
     pure enabled
 
 handleCameraSelect :: forall m t. (MonadHold t m, MonadJSM (Performable m), MonadJSM m, PerformEvent t m, TriggerEvent t m)
-                      => Config t -> [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
+                      => Config t -> Dynamic t [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
 handleCameraSelect config devices = do
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
     mLastCameraLabel <- GStorage.getItem storage GStorage.selectedCamera
 
-    let mLastUsedInfo = do
-          lastCameraLabel <- mLastCameraLabel
-          headMay . filter ((== lastCameraLabel) . mediaDeviceLabel) $ devices -- Only if still valid!
+    let
+      mLastUsedInfo :: Dynamic t (Maybe MediaDeviceInfo)
+      mLastUsedInfo
+        = case mLastCameraLabel of
+            Nothing
+              -> pure Nothing
+            Just lastCameraLabel
+              -> headMay . filter ((== lastCameraLabel) . mediaDeviceLabel) <$> devices -- Only if still valid!
 
-    let initVal = mediaDeviceLabel <$> (mLastUsedInfo <|> headMay devices)
+    let initVal = runMaybeT $ mediaDeviceLabel <$> (MaybeT mLastUsedInfo <|> MaybeT (headMay <$> devices))
 
     (initEv, trigger) <- newTriggerEvent
-    liftIO $ trigger initVal -- We need to trigger a change for selecting the right MediaStream, we cannot sample current because this would result in a MonadFix loop.
-    let selectEvent = leftmost [Just <$> config^.configSelectCamera, initEv]
-    selected <- holdDyn initVal selectEvent
+    liftIO $ trigger () -- We need to trigger a change for selecting the right MediaStream, we cannot sample current because this would result in a MonadFix loop.
+    let selectEvent = leftmost [Just <$> config^.configSelectCamera, tag (current initVal) initEv]
+    withoutInit <- holdDyn Nothing selectEvent
+    let selected = zipDynWith (<|>) withoutInit initVal
     performEvent_
       $ traverse_ (GStorage.setItem storage GStorage.selectedCamera) <$> updated selected
 

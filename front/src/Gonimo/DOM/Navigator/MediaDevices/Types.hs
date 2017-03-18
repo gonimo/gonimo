@@ -5,11 +5,11 @@ import           Control.Monad.Trans.Maybe   (MaybeT (..), runMaybeT)
 import           Data.Text                   (Text)
 
 import           GHCJS.DOM.Types               (FromJSVal, ToJSVal, fromJSVal, toJSVal)
-import           Language.Javascript.JSaddle (JSM, JSVal, MonadJSM)
+import           Language.Javascript.JSaddle (JSM, JSVal)
 
 
   
-data MediaDeviceKind = AudioInput | VideoInput | AudioOutput deriving (Show, Eq)
+data MediaDeviceKind = AudioInput | VideoInput | AudioOutput deriving (Show, Eq, Ord)
 
 
 data MediaDeviceInfo
@@ -17,7 +17,7 @@ data MediaDeviceInfo
                     , mediaDeviceKind :: MediaDeviceKind
                     , mediaDeviceLabel :: Text
                     , mediaDeviceGroupId :: Text
-                    } deriving (Show)
+                    } deriving (Show, Eq, Ord)
 
 
 instance FromJSVal MediaDeviceKind where

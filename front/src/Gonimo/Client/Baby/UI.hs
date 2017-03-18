@@ -153,8 +153,14 @@ uiRunning loaded deviceList baby' =
 
 cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Text)
-cameraSelect baby' =
-  case baby'^.videoDevices of
+cameraSelect baby' = do
+  evEv <- dyn $ cameraSelect' baby' <$> baby'^.videoDevices
+  switchPromptly never evEv
+
+cameraSelect' :: forall m t. (HasWebView m, MonadWidget t m)
+                => Baby t -> [MediaDeviceInfo] -> m (Event t Text)
+cameraSelect' baby' videoDevices' =
+  case videoDevices' of
     [] -> pure never
     [_] -> pure never
     _   -> mdo
@@ -178,7 +184,7 @@ cameraSelect baby' =
   where
     selectedCameraText = fromMaybe "Standard Setting" <$> baby'^.selectedCamera
 
-    cameras = baby'^.videoDevices.to (map mediaDeviceLabel)
+    cameras = map mediaDeviceLabel videoDevices'
 
     renderCameraSelectors :: [Text] -> m (Event t Text)
     renderCameraSelectors cams =
@@ -196,8 +202,15 @@ cameraSelect baby' =
 
 enableCameraCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Bool)
-enableCameraCheckbox baby' =
-  case baby'^.videoDevices of
+enableCameraCheckbox baby' = do
+  evEv <- dyn $ enableCameraCheckbox' baby' <$> baby'^.videoDevices
+  switchPromptly never evEv
+
+
+enableCameraCheckbox' :: forall m t. (HasWebView m, MonadWidget t m)
+                => Baby t -> [MediaDeviceInfo] -> m (Event t Bool)
+enableCameraCheckbox' baby' videoDevices' =
+  case videoDevices' of
     [] -> pure never -- No need to enable the camera when there is none!
     _  -> myCheckBox (addBtnAttrs "cam-on ") (baby'^.cameraEnabled) $ el "span" blank
 
