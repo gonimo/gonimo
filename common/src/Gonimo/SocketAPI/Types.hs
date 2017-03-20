@@ -85,8 +85,7 @@ data IceCandidate
                  } deriving (Generic, Eq, Ord, Show)
 
 data Message
-  = MsgStartStreaming
-  | MsgSessionDescriptionOffer SessionDescription
+  = MsgSessionDescriptionOffer SessionDescription
   | MsgSessionDescriptionAnswer SessionDescription
   | MsgIceCandidate IceCandidate
   | MsgCloseConnection deriving (Generic, Eq, Ord, Show)
