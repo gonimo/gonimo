@@ -11,31 +11,34 @@ import Gonimo.Client.Prelude
 
 import           Control.Lens
 import           Control.Monad.Reader.Class
-import           Data.Map                     (Map)
+import           Data.Map                       (Map)
+import           GHCJS.DOM.EventM
+import           GHCJS.DOM.Enums                (MediaStreamTrackState(..))
 import           GHCJS.DOM.RTCIceCandidate
 import           GHCJS.DOM.RTCIceCandidateEvent as IceEvent
-import           GHCJS.DOM.EventM
 -- #ifdef __GHCJS__
-import           GHCJS.DOM.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
+import           GHCJS.DOM.RTCPeerConnection    as RTCPeerConnection hiding (newRTCPeerConnection)
 -- #else
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
 -- -- import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection (addStream)
 -- #endif
-import           Gonimo.Db.Entities           (DeviceId)
-import qualified Gonimo.SocketAPI             as API
-import qualified Gonimo.SocketAPI.Types       as API
-import           Gonimo.Types                 (Secret)
+import           Gonimo.Db.Entities             (DeviceId)
+import qualified Gonimo.SocketAPI               as API
+import qualified Gonimo.SocketAPI.Types         as API
+import           Gonimo.Types                   (Secret)
 import           Reflex.Dom.Core
 
-import           GHCJS.DOM.Types              (Dictionary (..),
-                                               MediaStream,
-                                               MonadJSM, RTCPeerConnection)
+import           GHCJS.DOM.Types                (Dictionary (..), MediaStream,
+                                                 MonadJSM, RTCPeerConnection)
 import           Gonimo.Client.Config
-import           Gonimo.DOM.Window            (newRTCPeerConnection)
+import           Gonimo.DOM.Window              (newRTCPeerConnection)
 
-import           Language.Javascript.JSaddle  (liftJSM, (<#))
-import qualified Language.Javascript.JSaddle  as JS
-import           Safe                         (fromJustNote)
+import           Data.Maybe
+import qualified GHCJS.DOM.MediaStream          as MediaStream
+import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
+import           Language.Javascript.JSaddle    (liftJSM, (<#))
+import qualified Language.Javascript.JSaddle    as JS
+import           Safe                           (fromJustNote)
 
 data CloseEvent = CloseRequested | CloseConnectionLoss
 type Message = API.Message
@@ -46,6 +49,7 @@ data RTCEvent
   | RTCEventNegotiationNeeded
   | RTCEventIceCandidate !RTCIceCandidate
   | RTCEventConnectionClosed
+  | RTCEventRemoteStreamEnded
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -100,14 +104,26 @@ handleRTCClosedEvent config conn = liftJSM $ do
 handleReceivedStream :: forall m t. (MonadJSM m)
                         => Config t -> RTCPeerConnection -> m ()
 handleReceivedStream config conn = liftJSM $ do
-  let triggerRTCEvent = (config^.configTriggerChannelEvent)
-                        . ChannelEvent (config^.configTheirId, config^.configSecret)
+  let mapKey = (config^.configTheirId, config^.configSecret)
+  let triggerChannelEvent = config^.configTriggerChannelEvent
+  let triggerRTCEvent = triggerChannelEvent
+                        . ChannelEvent mapKey
                         . RTCEventGotRemoteStream
   listener <- newListener $ do
     e <- ask
     rawStream <- liftJSM $ (JS.toJSVal e) JS.! ("stream" :: Text)
     mStream <- liftJSM $ JS.fromJSVal rawStream
-    liftIO . triggerRTCEvent $ fromJustNote "event had no valid MediaStream!" mStream
+    let stream = fromJustNote "event had no valid MediaStream!" mStream
+
+    tracks <- catMaybes <$> MediaStream.getTracks stream
+    endedListener <- lift . newListener . liftIO . triggerChannelEvent $ ChannelEvent mapKey RTCEventRemoteStreamEnded
+    let addEndedListener (event', track) = liftJSM $ addListener track event' endedListener False
+    traverse_ addEndedListener $ (ended,) <$> tracks
+    cStates <- traverse getReadyState tracks
+    liftIO . when (any (== MediaStreamTrackStateEnded) cStates) $
+      triggerChannelEvent $ ChannelEvent mapKey RTCEventRemoteStreamEnded
+
+    liftIO . triggerRTCEvent $ stream
 
   addListener conn addStreamEvent listener False
 

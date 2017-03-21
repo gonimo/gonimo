@@ -22,6 +22,7 @@ import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import qualified Gonimo.Client.WebRTC.Channels      as Channels
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret)
+import           Data.Maybe
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -68,22 +69,14 @@ connections config = mdo
     channelsConfig = Channels.Config { Channels._configResponse = config^.configResponse
                                      , Channels._configOurId = API.deviceId <$> config^.configAuthData
                                      , Channels._configBroadcastStream = constDyn Nothing
-                                     , Channels.configCreateChannel = newChannelReq
-                                     , Channels.closeChannel = closeEvent
+                                     , Channels._configCreateChannel = newChannelReq
+                                     , Channels._configCloseChannel = closeEvent
                                      }
   channels' <- Channels.channels channelsConfig
-  let secrets' = Map.fromList . Map.keys <$> channels'^.channelMap
+  let secrets' = Map.fromList . Map.keys <$> channels'^.Channels.channelMap
 
-  channelStreams <- Channels.getRemoteStreams channelEvent
-  let streams' = Map.fromList . (over (mapped._1) (^._1)) . Map.toList <$> channelStreams
+  let streams' = Map.fromList . (over (mapped._1) (^._1)) . catMaybes . fmap sequence . Map.toList . fmap (^.Channel.theirStream) <$> channels'^.Channels.channelMap
 
-  pure $ Connections { _request = channels'^.Channel.request <> openChannelReq
+  pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
                      , _streams = streams'
                      }
-
-
-startStreamingReq :: forall t. Reflex t => Config t -> Event t [API.ServerRequest]
-startStreamingReq = push (\res -> case res of
-                             API.ResCreatedChannel fromId toId secret -> pure . Just $ [API.ReqSendMessage fromId toId secret API.MsgStartStreaming]
-                             _ -> pure Nothing
-                         ) . _configResponse

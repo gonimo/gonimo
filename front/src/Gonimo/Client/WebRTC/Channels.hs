@@ -34,7 +34,7 @@ import           Language.Javascript.JSaddle    (liftJSM)
 import           Gonimo.Client.Reflex           (buildDynMap)
 import           Gonimo.Client.WebRTC.Channel   (ChannelEvent (..),
                                                  CloseEvent (..), RTCEvent (..),
-                                                 closeRequested, rtcConnection)
+                                                 closeRequested, rtcConnection, theirStream)
 import qualified Gonimo.Client.WebRTC.Channel   as Channel
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
@@ -67,8 +67,9 @@ channels config = mdo
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
   insertChannel <- handleCreateChannel config triggerChannelEvent
   (removeChannel, sendCloseRequest) <- handleCloseChannel config channels' channelEvent
+  let updateStreams = handleRemoteStreams channelEvent
 
-  channels' <- holdDyn Map.empty . buildDynMap (current channels') $ [insertChannel, removeChannel]
+  channels' <- holdDyn Map.empty . buildDynMap (current channels') $ [insertChannel, removeChannel, updateStreams]
 
   rtcRequest <- handleRTCEvents (current $ config^.configOurId) (current channels') channelEvent
 
@@ -92,17 +93,17 @@ getCloseEvent chans
                _            -> pure Nothing
          )
 
--- handleRemoteStreams :: Reflex t
---                     => Event t ChannelEvent -> Event t (ChannelMap t -> ChannelMap t)
--- handleRemoteStreams =
---     push (\ev' -> do
---               case ev' of
---                 ChannelEvent mapKey (RTCEventGotRemoteStream stream)
---                   -> pure . Just $ at mapKey . _Just . theirStream .~ Just stream
---                 ChannelEvent mapKey RTCEventConnectionClosed
---                   -> pure . Just $ cStreams & at mapKey .~ Nothing
---                 _ -> pure Nothing
---           ) ev
+handleRemoteStreams :: Reflex t
+                    => Event t ChannelEvent -> Event t (ChannelMap t -> ChannelMap t)
+handleRemoteStreams
+    = push (\ev' -> do
+              case ev' of
+                ChannelEvent mapKey (RTCEventGotRemoteStream stream)
+                  -> pure . Just $ at mapKey . _Just . theirStream .~ Just stream
+                ChannelEvent mapKey RTCEventRemoteStreamEnded
+                  -> pure . Just $ at mapKey . _Just . theirStream .~ Nothing
+                _ -> pure Nothing
+          )
 
 handleBroadcastStream :: forall t m. ( MonadHold t m, MonadFix m, Reflex t, Applicative (Performable m)
                                      , MonadJSM (Performable m), PerformEvent t m
@@ -283,8 +284,7 @@ handleRTCEvents ourId chans chanEv = do
                                       offer <- fromJSSessionDescription jsOffer
                                       pure $ API.MsgSessionDescriptionOffer offer
                                     RTCEventIceCandidate candidate
-                                      -> liftJSM $ do
-                                      API.MsgIceCandidate <$> fromJSIceCandidate candidate
+                                      -> liftJSM $ API.MsgIceCandidate <$> fromJSIceCandidate candidate
                                     _            -> mzero
                          cOurId <- lift $ sample ourId
                          pure $ [API.ReqSendMessage cOurId toId secret' msg]
