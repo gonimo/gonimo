@@ -47,7 +47,6 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     "    var gainNode = ctx.createGain();\n" <>
     "    gainNode.gain.value = 10;\n" <>
     "    source.connect(gainNode);\n" <>
-    "    // gainNode.connect(ctx.destination);\n" <>
     "    var destNode = ctx.createMediaStreamDestination();\n" <>
     "    gainNode.connect(destNode);\n" <>
     "    var outStream = destNode.stream;\n" <>
@@ -55,8 +54,9 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     "    for(var i=0; i < videoTracks.length; i++) {\n" <>
     "        outStream.addTrack(videoTracks[i]);\n" <>
     "    }\n" <>
+    -- "    document.getElementById('myvideo').srcObject = outStream;" <>
     "    return outStream;\n" <>
-    "    return stream;\n" <>
+    -- "    return stream;\n" <>
     "})"
   rawStream <- JS.call boostJS JS.obj [JS.toJSVal stream]
   pure $ MediaStream rawStream

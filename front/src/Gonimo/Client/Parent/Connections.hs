@@ -19,10 +19,11 @@ import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
-import qualified Gonimo.Client.WebRTC.Channels      as Channels
+import qualified Gonimo.Client.WebRTC.Channels     as Channels
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret)
 import           Data.Maybe
+import           Gonimo.Client.Util                (boostMediaStreamVolume)
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -76,7 +77,10 @@ connections config = mdo
   let secrets' = Map.fromList . Map.keys <$> channels'^.Channels.channelMap
 
   let streams' = Map.fromList . (over (mapped._1) (^._1)) . catMaybes . fmap sequence . Map.toList . fmap (^.Channel.theirStream) <$> channels'^.Channels.channelMap
+  -- boostedStreamsEv <- performEvent $ traverse boostMediaStreamVolume <$> (updated streams') -- updated should be fine, as at startup there should be no streams.
+  -- boostedStreams <- holdDyn Map.empty boostedStreamsEv
+  let boostedStreams = streams'
 
   pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
-                     , _streams = streams'
+                     , _streams = boostedStreams
                      }

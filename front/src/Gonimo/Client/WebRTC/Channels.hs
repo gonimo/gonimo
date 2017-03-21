@@ -103,7 +103,7 @@ handleRemoteStreams
                 ChannelEvent mapKey RTCEventRemoteStreamEnded
                   -> pure . Just $ at mapKey . _Just . theirStream .~ Nothing
                 _ -> pure Nothing
-          )
+           )
 
 handleBroadcastStream :: forall t m. ( MonadHold t m, MonadFix m, Reflex t, Applicative (Performable m)
                                      , MonadJSM (Performable m), PerformEvent t m
