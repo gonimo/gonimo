@@ -121,6 +121,7 @@ library
                     , Gonimo.Client.Util
                     , Gonimo.Client.WebRTC.Message
                     , Gonimo.Client.WebRTC.Channel
+                    , Gonimo.Client.WebRTC.Channels
                     , Gonimo.Client.Parent.Connections
                     , Gonimo.Client.Parent.UI
                     , Gonimo.Client.Parent

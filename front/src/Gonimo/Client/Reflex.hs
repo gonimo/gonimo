@@ -15,6 +15,12 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set ((\\))
 
+buildDynMap :: (Ord k, Eq k, Reflex t) => Behavior t (Map k v) -> [Event t (Map k v -> Map k v)] -> Event t (Map k v)
+buildDynMap bMap = pushAlways (\builder -> do
+                                  cMap <- sample bMap
+                                  pure $ builder cMap
+                              ) . mergeWith (.)
+
 -- class FlattenAble a where
 --   flattenEvent ::  forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t a -> m a
 
@@ -118,10 +124,5 @@ buildMap keys gotNewKeyVal' = mdo
                            else pure $ Just $ \oldMap -> foldr Map.delete oldMap deletedKeys
                      ) (updated keys)
 
-    updateMap :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val)) -> Event t (Map key (Dynamic t val))
-    updateMap = push (\updateF -> do
-                         oldMap <- sample $ current resultMap
-                         pure $ Just $ updateF oldMap
-                     )
-  resultMap <- holdDyn Map.empty . updateMap $ mergeWith (.) [ insertKeys, deleteKeys ]
+  resultMap <- holdDyn Map.empty . buildDynMap (current resultMap) $ [ insertKeys, deleteKeys ]
   pure resultMap

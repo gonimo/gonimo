@@ -19,8 +19,10 @@ import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
+import qualified Gonimo.Client.WebRTC.Channels      as Channels
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret)
+import           Data.Maybe
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -49,66 +51,32 @@ connections config = mdo
   let
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
   let
-    makeChannel = push (\res -> do
-                          case res of
-                            API.ResCreatedChannel _ toId secret
-                              -> do
-                              let chanConfig
-                                    = Channel.Config { Channel._configResponse = config^.configResponse
-                                                     , Channel._configTriggerChannelEvent = triggerChannelEvent
-                                                     , Channel._configSourceStream = Nothing
-                                                     , Channel._configTheirId = toId
-                                                     , Channel._configSecret = secret
-                                                     }
-
-                              pure . Just $ ((toId,secret),) <$> Channel.channel chanConfig
-                            _ -> pure Nothing
-                       )
-                  (config^.configResponse)
-  newChannel <- performEvent makeChannel
-  let
-    addChannel :: Event t [ChannelsTransformation t]
-    addChannel = (:[]) . uncurry Map.insert <$> newChannel
-
-
+    newChannelReq = push (\res -> do
+                             case res of
+                               API.ResCreatedChannel _ toId secret -> pure $ Just (toId, secret)
+                               _ -> pure Nothing
+                         ) (config^.configResponse)
   let
     getChannelsKey :: Event t DeviceId -> Event t (DeviceId, Secret)
     getChannelsKey devId = push (\devId' -> do
                                     cSecrets <- sample $ current secrets'
                                     pure $ (devId',) <$> cSecrets^.at devId'
                                 ) devId
-    closeEvent = leftmost [ const Channel.AllChannels <$> config^.configDisconnectAll
-                          , Channel.OnlyChannel <$> getChannelsKey (config^.configDisconnectBaby)
+    closeEvent = leftmost [ const Channels.AllChannels <$> config^.configDisconnectAll
+                          , Channels.OnlyChannel <$> getChannelsKey (config^.configDisconnectBaby)
                           ]
   let
-    removeChannels :: Event t [ChannelsTransformation t]
-    removeChannels = map (uncurry $ flip Map.update)
-                     <$> Channel.getClosedChannels (current channels') (config^.configResponse) channelEvent closeEvent
+    channelsConfig = Channels.Config { Channels._configResponse = config^.configResponse
+                                     , Channels._configOurId = API.deviceId <$> config^.configAuthData
+                                     , Channels._configBroadcastStream = constDyn Nothing
+                                     , Channels._configCreateChannel = newChannelReq
+                                     , Channels._configCloseChannel = closeEvent
+                                     }
+  channels' <- Channels.channels channelsConfig
+  let secrets' = Map.fromList . Map.keys <$> channels'^.Channels.channelMap
 
-  let applyActions = push (\actions -> do
-                             cChannels <- sample $ current channels'
-                             pure . Just $ foldr ($) cChannels actions
-                         )
+  let streams' = Map.fromList . (over (mapped._1) (^._1)) . catMaybes . fmap sequence . Map.toList . fmap (^.Channel.theirStream) <$> channels'^.Channels.channelMap
 
-  channels' <- holdDyn Map.empty . applyActions $ mconcat [removeChannels, addChannel]
-  let secrets' = Map.fromList . Map.keys <$> channels'
-
-  let closeRequests = Channel.sendCloseMessages (current $ config^.configAuthData) (current channels') closeEvent
-  Channel.closeRTCConnections (current channels') closeEvent
-
-  channelRequests <- Channel.handleMessages (current $ config^.configAuthData) (current channels') (config^.configResponse)
-  rtcRequests <- Channel.handleRTCEvents (current $ config^.configAuthData) (current channels') channelEvent
-
-  channelStreams <- Channel.getRemoteStreams channelEvent
-  let streams' = Map.fromList . (over (mapped._1) (^._1)) . Map.toList <$> channelStreams
-
-  pure $ Connections { _request = openChannelReq <> channelRequests <> closeRequests <> startStreamingReq config <> rtcRequests
+  pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
                      , _streams = streams'
                      }
-
-
-startStreamingReq :: forall t. Reflex t => Config t -> Event t [API.ServerRequest]
-startStreamingReq = push (\res -> case res of
-                             API.ResCreatedChannel fromId toId secret -> pure . Just $ [API.ReqSendMessage fromId toId secret API.MsgStartStreaming]
-                             _ -> pure Nothing
-                         ) . _configResponse
