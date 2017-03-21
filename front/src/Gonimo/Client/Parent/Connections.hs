@@ -50,8 +50,6 @@ connections config = mdo
     ourDevId = API.deviceId <$> current (config^.configAuthData)
     openChannelReq = (:[]) <$> attachWith API.ReqCreateChannel ourDevId (config^.configConnectBaby)
   let
-  (channelEvent, triggerChannelEvent) <- newTriggerEvent
-  let
     newChannelReq = push (\res -> do
                              case res of
                                API.ResCreatedChannel _ toId secret -> pure $ Just (toId, secret)
