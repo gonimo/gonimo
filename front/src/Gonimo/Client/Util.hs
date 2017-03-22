@@ -12,10 +12,12 @@ import           Language.Javascript.JSaddle                       (JSVal,
 import qualified Language.Javascript.JSaddle                       as JS
 import GHCJS.DOM.MediaStream             as MediaStream
 import GHCJS.DOM.AudioNode (AudioNode(..))
+import           GHCJS.DOM.Types                   (MediaStreamTrack, RTCPeerConnection)
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam
 import GHCJS.DOM.Types                   (AudioContext(..), nullableToMaybe)
+import GHCJS.Marshal.Pure ()
 import Gonimo.Client.Prelude
 import Reflex.Dom.Core
 import qualified Data.Text as T
@@ -281,3 +283,80 @@ oyd babyName stream = liftJSM $ do
            ]
   jsSetName <- JS.call jsOYD JS.obj (babyName, stream)
   pure (liftJSM . void . JS.call jsSetName JS.obj . (:[]))
+
+
+
+getTransmissionInfo :: MonadJSM m
+                       => MediaStreamTrack -> RTCPeerConnection -> (Maybe Int -> JS.JSM ()) -> m ()
+getTransmissionInfo track conn callBack = liftJSM $ do
+  jsGetTransmissionInfo <- JS.eval . T.unlines $
+    [ "(function getTransmissionInfo(track, pc, success) {"
+    , "    var hasConnected = new Promise(function (resolve) {"
+    , "            function checkState() {"
+    , "                if (pc.iceConnectionState == 'connected') {"
+    , "                    resolve();"
+    , "                    return true;"
+    , "                }"
+    , "                return false;"
+    , "            }"
+    , "            if (!checkState())"
+    , "                pc.addEventListener('iceconnectionstatechange', checkState, false);"
+    , "        });"
+    , "    return hasConnected.then(function() {"
+    , "        console.log('in hasConnected!');"
+    , "        var is = function(stat, type) {"
+    , "            var isRemoteChromium = typeof stat.bytesReceived == 'undefined';"
+    , "            var isRemote_ = typeof stat.isRemote == 'undefined' ? isRemoteChromium : stat.isRemote;"
+    , "            var fixedType = stat.type == 'ssrc' ? 'inboundrtp' : stat.type; // Fix chrome again: ssrc can also be outboundrtp but this gets checked by isRemoteChromium"
+    , "            //console.log('Checking type: ' + stat.type + ', is remote: ' + isRemote_);"
+    , "            return  (fixedType == type && !isRemote_);"
+    , "        }; // skip RTCP"
+    , "        //var findStat = function (o, type) { return o[Object.keys(o).find(function (key) { return is(o[key], type);})];};"
+    , "        // Same as this, but above works in all browsers:"
+    , "        var findStat = function (o, type) {"
+    , "            var arr= Array.from(o.values());"
+    , "            //console.log('Got array for finding stat:' + arr.toString());"
+    , "            //console.log('Got key array for finding stat:' + Array.from(o.keys()).toString());"
+    , "            return arr.find (function (val) { return is(val, type); });"
+    , "        };"
+    , ""
+    , "        var lastPackets = 0; // seconds"
+    , "        var countdown = 0;"
+    , "        var timeout = 3;"
+    , "        console.log('ok setting interval .....');"
+    , "        var iv = setInterval(function() { return pc.getStats(track).then(function (stats) {"
+    , "            try"
+    , "            {"
+    , "                var packets = findStat(stats, 'inboundrtp').packetsReceived;"
+    , "                countdown = (packets - lastPackets)? timeout : countdown - 1;"
+    , "                if (countdown <= 0) {"
+    , "                    clearInterval(iv);"
+    , "                    success(null);"
+    , "                }"
+    , "                else {"
+    , "                    success(packets);"
+    , "                }"
+    , "                lastPackets = packets;"
+    , "            }"
+    , "            catch(e) {"
+    , "                console.log('Error while watching connection(try): ' + e.message);"
+    , "                clearInterval(iv);"
+    , "            }"
+    , "        });}, 1000);"
+    , "    }).catch(function (e) {"
+    , "        console.log('Error while watching connection(promise): ' + e.message);"
+    , "        clearInterval(iv);"
+    , "    }); // Clean up in case of error"
+    , "})"
+    ]
+
+  jsCallBack <- JS.function $ \ _ _ [jsStats] -> do
+#ifdef __GHCJS__
+      let stats = nullableToMaybe $ JS.Nullable jsStats
+#else
+      stats <- nullableToMaybe jsStats
+#endif
+      callBack stats
+
+  _ <- JS.call jsGetTransmissionInfo JS.obj (track, conn, jsCallBack)
+  pure ()
