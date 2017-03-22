@@ -180,7 +180,7 @@ jsVolumeMeter stream canvas = liftJSM $ do
   pure ()
 
 
-oyd :: (MonadJSM m) => Text -> MediaStream -> m ()
+oyd :: (MonadJSM m) => Text -> MediaStream -> m (Text -> m ())
 oyd babyName stream = liftJSM $ do
   jsOYD <- JS.eval . T.unlines $
            [ "(function (babyName, stream) {"
@@ -274,7 +274,10 @@ oyd babyName stream = liftJSM $ do
            -- , "    oyd.sendValue = eval(oyd.sendValue);"
            , "    oyd.sendValue = sendValue;"
            , "    getValues(oyd,stream,audioCtx);"
+           , "    return function (newName) {"
+           , "        babyName = newName;"
+           , "    }"
            , "})"
            ]
-  _ <- JS.call jsOYD JS.obj (babyName, stream)
-  pure ()
+  jsSetName <- JS.call jsOYD JS.obj (babyName, stream)
+  pure (liftJSM . void . JS.call jsSetName JS.obj . (:[]))
