@@ -776,3 +776,8 @@ canvas {
     left: 0px;
     right: 0px;
 }
+
+/* Workaround for dumb chrome https://bugs.chromium.org/p/chromium/issues/detail?id=121673 */
+.fakeVideo {
+    display: none;
+}

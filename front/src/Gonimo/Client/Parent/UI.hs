@@ -5,6 +5,7 @@
 module Gonimo.Client.Parent.UI where
 
 import           Control.Lens
+import           Control.Monad
 import           Data.Monoid
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.DeviceList          as DeviceList
@@ -55,8 +56,7 @@ ui appConfig loaded deviceList = mdo
 
   viewNav <-
     elDynClass "div" (pure "container parentView " <> selectedView) $ do
-      let streams = Map.elems <$> connections'^.C.streams
-      viewUi appConfig loaded deviceList streams
+      viewUi appConfig loaded deviceList connections'
 
   invite <-
     elDynClass "div" (pure "container inviteView " <> selectedView) $ do
@@ -97,23 +97,30 @@ manageUi _ loaded deviceList connections' = do
       pure (navBar', devicesUI, inviteRequested)
 
 viewUi :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> Dynamic t [MediaStream] -> m (NavBar.NavBar t)
-viewUi _ loaded deviceList streams = do
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t)
+viewUi _ loaded deviceList connections = do
+  let streams = connections^.C.streams
+  let origStreams = connections^.C.origStreams
   navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
 
   navBar' <- NavBar.NavBar (navBar^.NavBar.backClicked)
              <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
   elClass "div" "parent" $ do
-    _ <- dyn $ renderVideos <$> streams
+    _ <- dyn $ renderVideos True . Map.elems <$> origStreams
+    _ <- dyn $ renderVideos False . Map.elems <$> streams
     pure navBar'
 
 
-renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => [MediaStream] -> m ()
-renderVideos streams = do
+renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => Bool -> [MediaStream] -> m ()
+renderVideos fakeRender streams = do
   let
     renderVideo stream = elClass "div" "stream-baby" $ do
-      mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
-      volumeMeter stream
+      let fakeAttrs = if fakeRender
+                      then "class" =: "fakeVideo" <> "muted" =: "true"
+                      else Map.empty
+      mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;" <> fakeAttrs)
+      when (not fakeRender)
+        $ volumeMeter stream
   traverse_ renderVideo streams
 
 
