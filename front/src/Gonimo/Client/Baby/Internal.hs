@@ -119,7 +119,7 @@ baby config = mdo
                                            , Socket._configMediaStream = mediaStream'
                                            }
   -- OYD integration, if enabled by user. (Currently a hidden feature, use has to set local storage object 'OYD')
-  performEvent_ $ oyd <$> gotNewStream
+  performEvent_ $ uncurry oyd <$> attach (current babyName) gotNewStream
 
   initAutoStart <- readAutoStart
   autoStart <- holdDyn initAutoStart $ config^.configEnableAutoStart

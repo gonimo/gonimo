@@ -180,10 +180,10 @@ jsVolumeMeter stream canvas = liftJSM $ do
   pure ()
 
 
-oyd :: (MonadJSM m) => MediaStream -> m ()
-oyd stream = liftJSM $ do
+oyd :: (MonadJSM m) => Text -> MediaStream -> m ()
+oyd babyName stream = liftJSM $ do
   jsOYD <- JS.eval . T.unlines $
-           [ "(function (stream) {"
+           [ "(function (babyName, stream) {"
            , "    function getValues(oyd, stream, context) {"
            , "        var source = context.createMediaStreamSource(stream);"
            , "        var script = context.createScriptProcessor(2048, 1, 1);"
@@ -193,7 +193,7 @@ oyd stream = liftJSM $ do
            , ""
            , "        function sendAndReset() {"
            , "            if (currentMax > oyd.threshold) {"
-           , "                oyd.sendValue(oyd, currentMax);"
+           , "                oyd.sendValue(oyd, babyName, currentMax);"
            , "            }"
            , "            currentMax = 0;"
            , "        }"
@@ -226,10 +226,12 @@ oyd stream = liftJSM $ do
            , "        };"
            , "    }"
            , ""
-           , "    function sendValue (oyd, val) {"
-           , "      var pia_url = 'https://gonimo-vault.datentresor.org';"
+           , "    function sendValue (oyd, babyName, val) {"
+           -- , "      var pia_url = 'https://gonimo-vault.datentresor.org';"
+           , "      var pia_url = oyd.piaURL;"
            , "      var app_key = 'eu.ownyourdata.gonimo';"
-           , "      var app_secret = 'Mtw1lTzLUFSMdoMV0kUz';"
+           -- , "      var app_secret = 'Mtw1lTzLUFSMdoMV0kUz';"
+           , "      var app_secret = oyd.appSecret;"
            , "      var repo = app_key;"
            , "      var request = new XMLHttpRequest();"
            , "      request.open('POST', pia_url + '/oauth/token?' + "
@@ -246,6 +248,7 @@ oyd stream = liftJSM $ do
            , "          req2.setRequestHeader('Content-Type', 'application/json');"
            , "          req2.setRequestHeader('Authorization', 'Bearer ' + token);"
            , "          var data = JSON.stringify({volume: val,"
+           , "                                     name: babyName, "
            , "                                     time: Date.now(), "
            , "                                     _oydRepoName: 'Gonimo'});"
            , "          req2.send(data);"
@@ -263,7 +266,7 @@ oyd stream = liftJSM $ do
            , "    }"
            , ""
            , "    var oyd = JSON.parse(localStorage.getItem('OYD'));"
-           , "    if (oyd == null)"
+           , "    if (oyd == null || typeof oyd.appSecret === 'undefined' || typeof oyd.piaURL === 'undefined')"
            , "        return;"
            , "    if (typeof gonimoAudioContext === 'undefined') {gonimoAudioContext = new AudioContext();}"
            , "    var audioCtx = gonimoAudioContext;"
@@ -273,5 +276,5 @@ oyd stream = liftJSM $ do
            , "    getValues(oyd,stream,audioCtx);"
            , "})"
            ]
-  _ <- JS.call jsOYD JS.obj [stream]
+  _ <- JS.call jsOYD JS.obj (babyName, stream)
   pure ()
