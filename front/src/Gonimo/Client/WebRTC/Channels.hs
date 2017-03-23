@@ -24,18 +24,22 @@ import qualified Gonimo.SocketAPI.Types         as API
 import           Gonimo.Types                   (Secret)
 import           Reflex.Dom.Core
 
-import           GHCJS.DOM.Types                (MediaStream, MonadJSM)
+import           GHCJS.DOM.Types                (MediaStream, MonadJSM, MediaStreamTrack)
 
 import           Data.Maybe
 import           Debug.Trace                    (trace)
 import           Gonimo.Client.WebRTC.Message
-import           Language.Javascript.JSaddle    (liftJSM)
+import           Language.Javascript.JSaddle    (liftJSM, JSM)
 
 import           Gonimo.Client.Reflex           (buildDynMap)
 import           Gonimo.Client.WebRTC.Channel   (ChannelEvent (..),
                                                  CloseEvent (..), RTCEvent (..),
-                                                 closeRequested, rtcConnection, theirStream)
+                                                 closeRequested, rtcConnection, theirStream,
+                                                 audioReceivingState, videoReceivingState,
+                                                 ReceivingState(..), Channel(..))
 import qualified Gonimo.Client.WebRTC.Channel   as Channel
+import qualified GHCJS.DOM.MediaStream          as MediaStream
+import           Gonimo.Client.Util             (getTransmissionInfo)
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
 type ChannelsBehavior t = Behavior t (ChannelMap t)
@@ -68,8 +72,9 @@ channels config = mdo
   insertChannel <- handleCreateChannel config triggerChannelEvent
   (removeChannel, sendCloseRequest) <- handleCloseChannel config channels' channelEvent
   let updateStreams = handleRemoteStreams channelEvent
+  updateReceivingState <- handleConnectionStateUpdate (current channels') channelEvent
 
-  channels' <- holdDyn Map.empty . buildDynMap (current channels') $ [insertChannel, removeChannel, updateStreams]
+  channels' <- holdDyn Map.empty . buildDynMap (current channels') $ [insertChannel, removeChannel, updateStreams] <> updateReceivingState
 
   rtcRequest <- handleRTCEvents (current $ config^.configOurId) (current channels') channelEvent
 
@@ -92,6 +97,63 @@ getCloseEvent chans
                                   else pure . Just $ (mapKey, CloseRequested)
                _            -> pure Nothing
          )
+
+handleConnectionStateUpdate :: forall t m. ( TriggerEvent t m, MonadJSM m, Reflex t, PerformEvent t m
+                                           , MonadJSM (Performable m)
+                                           )
+                               => ChannelsBehavior t -> Event t ChannelEvent
+                            -> m [Event t (ChannelMap t -> ChannelMap t)]
+handleConnectionStateUpdate chans chanEv = do
+    (statUpdate, triggerStatUpdate) <- newTriggerEvent
+    let
+      updateState :: Traversal' (ChannelMap t) ReceivingState -> Maybe Int -> JSM ()
+      updateState stateField newStat = liftIO $ triggerStatUpdate (stateField %~ updateStat newStat)
+
+    let
+      newStreamEv = push (\ev' ->
+                            case ev' of
+                              ChannelEvent mapKey (RTCEventGotRemoteStream stream) -> runMaybeT $ do
+                                cChans <- lift $ sample chans
+                                conn <- MaybeT . pure $ cChans^?at mapKey._Just.rtcConnection
+                                pure (mapKey, stream, conn)
+                              _ -> pure Nothing
+                         ) chanEv
+    let
+      registerGetTransmissionInfo (mapKey, stream, conn) = do
+        videoTracks <- catMaybes <$> MediaStream.getVideoTracks stream
+        audioTracks <- catMaybes <$> MediaStream.getAudioTracks stream
+
+        let
+          sendStats :: forall m1. (MonadJSM m1)
+                       => Lens' (Channel t) ReceivingState -> MediaStreamTrack -> m1 ()
+          sendStats audioVideo = getTransmissionInfo conn $ updateState (at mapKey._Just.audioVideo)
+
+        traverse_ (sendStats audioReceivingState) audioTracks
+        traverse_ (sendStats videoReceivingState) videoTracks
+
+        pure $ at mapKey . _Just %~ over audioReceivingState (makeUnreliable (not . null $ audioTracks))
+                                  . over videoReceivingState (makeUnreliable (not . null $ videoTracks))
+
+
+    setUnreliable' <- performEvent $ registerGetTransmissionInfo <$> newStreamEv
+    setUnreliable <- delay 2 setUnreliable'
+    pure [setUnreliable, statUpdate]
+
+  where
+    makeUnreliable :: Bool -> ReceivingState -> ReceivingState
+    makeUnreliable True oldState = case oldState of
+                                     StateNotReceiving -> StateUnreliable
+                                     _                 -> oldState
+    makeUnreliable False oldState = oldState
+
+    updateStat :: Maybe Int -> ReceivingState -> ReceivingState
+    updateStat mStat oldState = case (mStat, oldState) of
+      (Nothing, StateNotReceiving) -> oldState
+      (Nothing, _)                 -> StateBroken
+      (Just _, StateUnreliable)    -> StateReceiving
+      (Just _, StateReceiving)     -> oldState
+      (Just _, StateNotReceiving)  -> oldState -- (should not happen)
+      (Just _, StateBroken)        -> oldState -- Once broken always broken.
 
 handleRemoteStreams :: Reflex t
                     => Event t ChannelEvent -> Event t (ChannelMap t -> ChannelMap t)

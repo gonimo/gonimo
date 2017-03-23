@@ -51,18 +51,27 @@ data RTCEvent
   | RTCEventConnectionClosed
   | RTCEventRemoteStreamEnded
 
+data ReceivingState
+  = StateNotReceiving
+  | StateUnreliable -- We got a stream but did not get any stats for more than two seconds!
+  | StateReceiving -- All is fine - we are receiving stats!
+  | StateBroken -- Did not receive stream data for longer than 3 seconds!
+  deriving (Eq, Ord, Show)
+
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
             , _configTriggerChannelEvent :: ChannelEvent -> IO ()
             , _configTheirId :: DeviceId
             , _configSecret :: Secret
             }
+
 data Channel t
   = Channel { _rtcConnection :: RTCPeerConnection
             , _theirStream :: Maybe MediaStream
             , _closeRequested :: Bool -- Signal that a close is requested (don't trigger alarm when connection gets closed)
+            , _audioReceivingState :: ReceivingState
+            , _videoReceivingState :: ReceivingState
             }
-
 
 makeLenses ''Config
 makeLenses ''Channel
@@ -85,6 +94,8 @@ channel config = mdo
   pure $ Channel { _rtcConnection = conn
                  , _theirStream = Nothing
                  , _closeRequested = False
+                 , _audioReceivingState = StateNotReceiving
+                 , _videoReceivingState = StateNotReceiving
                  }
 
 -- Handle RTCPeerConnection close.

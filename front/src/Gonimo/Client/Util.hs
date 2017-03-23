@@ -287,8 +287,8 @@ oyd babyName stream = liftJSM $ do
 
 
 getTransmissionInfo :: MonadJSM m
-                       => MediaStreamTrack -> RTCPeerConnection -> (Maybe Int -> JS.JSM ()) -> m ()
-getTransmissionInfo track conn callBack = liftJSM $ do
+                       => RTCPeerConnection -> (Maybe Int -> JS.JSM ()) -> MediaStreamTrack -> m ()
+getTransmissionInfo conn callBack track = liftJSM $ do
   jsGetTransmissionInfo <- JS.eval . T.unlines $
     [ "(function getTransmissionInfo(track, pc, success) {"
     , "    var hasConnected = new Promise(function (resolve) {"
