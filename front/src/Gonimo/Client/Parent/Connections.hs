@@ -119,9 +119,8 @@ pTraverseCache cache f inStreams = do
     reallyCached :: Map k (MediaStream,MediaStream)
     reallyCached = Map.intersection possiblyCached reallyCachedBool
 
-    cleanedCache = Map.difference reallyCached inStreams
     toProcess = Map.difference inStreams reallyCached
   newEntries <- traverse f toProcess
   let
-    newCache = cleanedCache <> Map.intersectionWith (\s d -> (s,d)) toProcess newEntries
+    newCache = reallyCached <> Map.intersectionWith (\s d -> (s,d)) toProcess newEntries
   pure (snd <$> newCache, newCache)
