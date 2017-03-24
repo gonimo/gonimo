@@ -17,7 +17,6 @@ import           GHCJS.DOM.Types                   (MediaStreamTrack, RTCPeerCon
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam
 import GHCJS.DOM.Types                   (AudioContext(..), nullableToMaybe)
-import GHCJS.Marshal.Pure ()
 import Gonimo.Client.Prelude
 import Reflex.Dom.Core
 import qualified Data.Text as T
