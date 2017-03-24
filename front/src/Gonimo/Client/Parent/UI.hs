@@ -5,7 +5,6 @@
 module Gonimo.Client.Parent.UI where
 
 import           Control.Lens
-import           Control.Monad
 import           Data.Monoid
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified Gonimo.Client.DeviceList          as DeviceList
@@ -114,14 +113,14 @@ viewUi _ loaded deviceList connections = do
 renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => Bool -> [MediaStream] -> m ()
 renderVideos fakeRender streams = do
   let
+    renderFake stream = mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;" <> "class" =: "fakeVideo" <> "muted" =: "true")
     renderVideo stream = elClass "div" "stream-baby" $ do
-      let fakeAttrs = if fakeRender
-                      then "class" =: "fakeVideo" <> "muted" =: "true"
-                      else Map.empty
-      mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;" <> fakeAttrs)
-      when (not fakeRender)
-        $ volumeMeter stream
-  traverse_ renderVideo streams
+      mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
+      volumeMeter stream
+    renderFakeOrNot = if fakeRender
+      then renderFake
+      else renderVideo
+  traverse_ renderFakeOrNot streams
 
 
 leaveConfirmation :: DomBuilder t m => m ()
