@@ -42,6 +42,7 @@ import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           Gonimo.Client.Util             (getTransmissionInfo)
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
+type StreamMap = Map (API.FromId, Secret) MediaStream
 type ChannelsBehavior t = Behavior t (ChannelMap t)
 
 data ChannelSelector = AllChannels | OnlyChannel (DeviceId, Secret)
@@ -58,6 +59,7 @@ data Config t
 data Channels t
   = Channels { _channelMap :: Dynamic t (ChannelMap t)
              , _request :: Event t [ API.ServerRequest ]
+             , _remoteStreams :: Dynamic t StreamMap -- Useful to have this separate for rendering. (Don't reload videos on every change to map.)
              }
 
 
@@ -71,18 +73,23 @@ channels config = mdo
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
   insertChannel <- handleCreateChannel config triggerChannelEvent
   (removeChannel, sendCloseRequest) <- handleCloseChannel config channels' channelEvent
-  let updateStreams = handleRemoteStreams channelEvent
+  let streamUpdates = handleRemoteStreams channelEvent
+  let updateStreamChannels = fst <$> streamUpdates
+  let updateStreams = snd <$> streamUpdates
   updateReceivingState <- handleConnectionStateUpdate (current channels') channelEvent
 
-  channels' <- holdDyn Map.empty . buildDynMap (current channels') $ [insertChannel, removeChannel, updateStreams] <> updateReceivingState
+  channels' <- holdDyn Map.empty . buildDynMap (current channels') $ [insertChannel, removeChannel, updateStreamChannels] <> updateReceivingState
 
   rtcRequest <- handleRTCEvents (current $ config^.configOurId) (current channels') channelEvent
 
   handleBroadcastStream config channels'
   msgRequest <- handleMessages config (current channels')
 
+  rStreams <- holdDyn Map.empty . buildDynMap (current rStreams) $ [updateStreams]
+
   pure $ Channels { _request = sendCloseRequest <> msgRequest <> rtcRequest
                   , _channelMap = channels'
+                  , _remoteStreams = rStreams
                   }
 
 -- Get notified when a channel gets closed.
@@ -156,14 +163,14 @@ handleConnectionStateUpdate chans chanEv = do
       (Just _, StateBroken)        -> oldState -- Once broken always broken.
 
 handleRemoteStreams :: Reflex t
-                    => Event t ChannelEvent -> Event t (ChannelMap t -> ChannelMap t)
+                    => Event t ChannelEvent -> Event t (ChannelMap t -> ChannelMap t, StreamMap -> StreamMap)
 handleRemoteStreams
     = push (\ev' -> do
               case ev' of
                 ChannelEvent mapKey (RTCEventGotRemoteStream stream)
-                  -> pure . Just $ at mapKey . _Just . theirStream .~ Just stream
+                  -> pure . Just $ (at mapKey . _Just . theirStream .~ Just stream, at mapKey .~ Just stream)
                 ChannelEvent mapKey RTCEventRemoteStreamEnded
-                  -> pure . Just $ at mapKey . _Just . theirStream .~ Nothing
+                  -> pure . Just $ (at mapKey . _Just . theirStream .~ Nothing, at mapKey .~ Nothing)
                 _ -> pure Nothing
            )
 

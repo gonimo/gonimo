@@ -17,13 +17,12 @@ import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Db.Entities (DeviceId)
 import           Reflex.Dom.Core
 
-import           GHCJS.DOM.Types                   (MediaStream)
-import qualified Gonimo.Client.WebRTC.Channel      as Channel
+import           GHCJS.DOM.Types                   (MediaStream, MonadJSM, liftJSM)
 import qualified Gonimo.Client.WebRTC.Channels     as Channels
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret)
-import           Data.Maybe
 import           Gonimo.Client.Util                (boostMediaStreamVolume)
+import qualified Language.Javascript.JSaddle.Value as JS
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -74,13 +73,55 @@ connections config = mdo
                                      }
   channels' <- Channels.channels channelsConfig
   let secrets' = Map.fromList . Map.keys <$> channels'^.Channels.channelMap
-
-  let streams' = Map.fromList . (over (mapped._1) (^._1)) . catMaybes . fmap sequence . Map.toList . fmap (^.Channel.theirStream) <$> channels'^.Channels.channelMap
-  boostedStreamsEv <- performEvent $ traverse boostMediaStreamVolume <$> (updated streams') -- updated should be fine, as at startup there should be no streams.
-  boostedStreams <- holdDyn Map.empty boostedStreamsEv
-  -- let boostedStreams = streams'
+  -- Kick secret from map: 
+  let streams' = Map.fromList . over (mapped._1) (^._1) . Map.toList <$> channels'^.Channels.remoteStreams
+  boostedStreams <- traverseCache boostMediaStreamVolume (updated streams') -- updated should be fine, as at startup there should be no streams.
 
   pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
                      , _origStreams = streams'
                      , _streams = boostedStreams
                      }
+
+-- A special traverse function which does not reapply the effectful function if an element stayed the same.
+traverseCache :: forall m k t. ( MonadJSM m, Ord k, Reflex t, PerformEvent t m
+                               , MonadJSM (Performable m), MonadFix m
+                               , MonadHold t m
+                               )
+                 => (MediaStream -> (Performable m) MediaStream)
+              -> Event t (Map k MediaStream)
+              -> m (Dynamic t (Map k MediaStream))
+traverseCache f inStreams = mdo
+  let traverseEv = pushAlways (\newStreams -> do
+                                  cCache <- sample cache
+                                  pure $ pTraverseCache cCache f newStreams
+                              ) inStreams
+  newResult <- performEvent traverseEv
+  results <- holdDyn Map.empty $ fst <$> newResult
+  cache <- hold Map.empty $ snd <$> newResult
+  pure results
+
+
+pTraverseCache :: forall m k. (MonadJSM m, Ord k)
+                  => Map k (MediaStream,MediaStream)
+               -> (MediaStream -> m MediaStream)
+               -> Map k MediaStream
+               -> m (Map k MediaStream, Map k (MediaStream, MediaStream))
+pTraverseCache cache f inStreams = do
+  let
+    possiblyCached = Map.intersection cache inStreams
+    checkReallyCached k (sourceStream,_) = liftJSM $ do
+      mR <- traverse (JS.strictEqual sourceStream) (inStreams^.at k)
+      case mR of
+        Nothing -> pure False
+        Just r -> pure r
+  reallyCachedBool <- Map.traverseWithKey checkReallyCached possiblyCached
+  let
+    reallyCached :: Map k (MediaStream,MediaStream)
+    reallyCached = Map.intersection possiblyCached reallyCachedBool
+
+    cleanedCache = Map.difference reallyCached inStreams
+    toProcess = Map.difference inStreams reallyCached
+  newEntries <- traverse f toProcess
+  let
+    newCache = cleanedCache <> Map.intersectionWith (\s d -> (s,d)) toProcess newEntries
+  pure (snd <$> newCache, newCache)
