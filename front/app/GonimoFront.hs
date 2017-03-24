@@ -15,8 +15,6 @@ import qualified Gonimo.Client.Subscriber as Subscriber
 import           Reflex.Dom.Core               hiding (webSocketConfig_send)
 
 import Language.Javascript.JSaddle.Warp (run)
-import qualified Language.Javascript.JSaddle              as JS
-import            Data.Text (Text)
 
 app :: forall x. Widget x ()
 app = mdo

@@ -11,7 +11,6 @@ import Gonimo.Client.Prelude
 
 import           Control.Lens
 import           Data.Map                          (Map)
-import qualified Data.Map                          as Map
 import qualified Data.Set                          as Set
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
@@ -20,7 +19,6 @@ import           Reflex.Dom.Core
 import           GHCJS.DOM.Types                   (MediaStream, liftJSM, MonadJSM)
 import qualified GHCJS.DOM.MediaStream             as MediaStream
 import           GHCJS.DOM.MediaStreamTrack        (mute)
-import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import qualified Gonimo.Client.WebRTC.Channels     as Channels
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret, DeviceType(..))

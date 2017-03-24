@@ -359,12 +359,16 @@ getTransmissionInfo conn callBack track = liftJSM $ do
 
 
 -- nullableToMaybe behaves differently on GHC and GHCJS ...
+#ifdef __GHCJS__
 crossNullableToMaybe :: (MonadJSM m, MonadIO m, JS.PFromJSVal a) => JSVal -> m (Maybe a)
+#else
+crossNullableToMaybe :: (MonadJSM m, MonadIO m, JS.FromJSVal a) => JSVal -> m (Maybe a)
+#endif
 crossNullableToMaybe jsVal = do
 #ifdef __GHCJS__
       let val = nullableToMaybe $ JS.Nullable jsVal
 #else
-      val <- nullableToMaybe jsVal
+      val <- liftJSM $ nullableToMaybe jsVal
 #endif
       pure val
   
