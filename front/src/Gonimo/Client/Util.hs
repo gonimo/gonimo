@@ -266,18 +266,19 @@ oyd babyName stream = liftJSM $ do
            -- , "            oyd.sendValue = '(function (oyd, value) {console.log(\"Sending to oyd: \" + value.toString());})';"
            , "    }"
            , ""
+           , "    var setBabyNameCallBack = function (newName) {"
+           , "        babyName = newName;"
+           , "    }"
            , "    var oyd = JSON.parse(localStorage.getItem('OYD'));"
            , "    if (oyd == null || typeof oyd.appSecret === 'undefined' || typeof oyd.piaURL === 'undefined')"
-           , "        return;"
+           , "        return function () {};"
            , "    if (typeof gonimoAudioContext === 'undefined') {gonimoAudioContext = new AudioContext();}"
            , "    var audioCtx = gonimoAudioContext;"
            , "    setDefaultValues(oyd);"
            -- , "    oyd.sendValue = eval(oyd.sendValue);"
            , "    oyd.sendValue = sendValue;"
            , "    getValues(oyd,stream,audioCtx);"
-           , "    return function (newName) {"
-           , "        babyName = newName;"
-           , "    }"
+           , "    return setBabyNameCallBack"
            , "})"
            ]
   jsSetName <- JS.call jsOYD JS.obj (babyName, stream)
@@ -350,12 +351,20 @@ getTransmissionInfo conn callBack track = liftJSM $ do
     ]
 
   jsCallBack <- JS.function $ \ _ _ [jsStats] -> do
-#ifdef __GHCJS__
-      let stats = nullableToMaybe $ JS.Nullable jsStats
-#else
-      stats <- nullableToMaybe jsStats
-#endif
+      stats <- crossNullableToMaybe jsStats
       callBack stats
 
   _ <- JS.call jsGetTransmissionInfo JS.obj (track, conn, jsCallBack)
   pure ()
+
+
+-- nullableToMaybe behaves differently on GHC and GHCJS ...
+crossNullableToMaybe :: (MonadJSM m, MonadIO m, JS.PFromJSVal a) => JSVal -> m (Maybe a)
+crossNullableToMaybe jsVal = do
+#ifdef __GHCJS__
+      let val = nullableToMaybe $ JS.Nullable jsVal
+#else
+      val <- nullableToMaybe jsVal
+#endif
+      pure val
+  
