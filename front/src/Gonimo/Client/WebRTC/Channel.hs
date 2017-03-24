@@ -127,12 +127,16 @@ handleReceivedStream config conn = liftJSM $ do
     let stream = fromJustNote "event had no valid MediaStream!" mStream
 
     tracks <- catMaybes <$> MediaStream.getTracks stream
-    endedListener <- lift . newListener . liftIO . triggerChannelEvent $ ChannelEvent mapKey RTCEventRemoteStreamEnded
+    let sendStreamEnded = do
+          cStates <- traverse getReadyState tracks
+          liftIO . when (all (== MediaStreamTrackStateEnded) cStates) $
+            triggerChannelEvent $ ChannelEvent mapKey RTCEventRemoteStreamEnded
+
+    endedListener <- lift . newListener $ sendStreamEnded
+
     let addEndedListener (event', track) = liftJSM $ addListener track event' endedListener False
     traverse_ addEndedListener $ (ended,) <$> tracks
-    cStates <- traverse getReadyState tracks
-    liftIO . when (any (== MediaStreamTrackStateEnded) cStates) $
-      triggerChannelEvent $ ChannelEvent mapKey RTCEventRemoteStreamEnded
+    sendStreamEnded
 
     liftIO . triggerRTCEvent $ stream
 
