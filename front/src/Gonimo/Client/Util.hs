@@ -11,7 +11,7 @@ import           Language.Javascript.JSaddle                       (JSVal,
 
 import qualified Language.Javascript.JSaddle                       as JS
 import GHCJS.DOM.MediaStream             as MediaStream
-import GHCJS.DOM.AudioNode (AudioNode(..))
+import GHCJS.DOM.AudioBufferSourceNode (AudioBufferSourceNode(..))
 import           GHCJS.DOM.Types                   (MediaStreamTrack, RTCPeerConnection)
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
@@ -73,7 +73,7 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
   -- outStream <- getStreamUnsafe destNode
 
 -- TODO: Once we might load different sounds, we might not just use one global buffer!
-loadSound :: MonadJSM m => Text -> m AudioNode
+loadSound :: MonadJSM m => Text -> m AudioBufferSourceNode
 loadSound url = do
   jsGetSound <- liftJSM . eval $
     ("" :: Text) <>
@@ -122,7 +122,7 @@ loadSound url = do
                                            , JS.toJSVal . JS.function $ \_ _ [snd']
                                                                         -> liftIO (putMVar sndVar snd')
                                            ]
-  liftIO $ AudioNode <$> takeMVar sndVar
+  liftIO $ AudioBufferSourceNode <$> takeMVar sndVar
 
 volumeMeter :: (DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace)
               => MediaStream -> m ()

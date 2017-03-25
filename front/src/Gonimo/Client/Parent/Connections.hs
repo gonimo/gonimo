@@ -18,10 +18,12 @@ import           Gonimo.Db.Entities (DeviceId)
 import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types                   (MediaStream, MonadJSM, liftJSM)
+import qualified GHCJS.DOM.AudioBufferSourceNode   as AudioNode
 import qualified Gonimo.Client.WebRTC.Channels     as Channels
+import qualified Gonimo.Client.WebRTC.Channel     as Channel
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret)
-import           Gonimo.Client.Util                (boostMediaStreamVolume)
+import           Gonimo.Client.Util                (boostMediaStreamVolume, loadSound)
 import qualified Language.Javascript.JSaddle.Value as JS
 
 data Config t
@@ -77,10 +79,38 @@ connections config = mdo
   let streams' = Map.fromList . over (mapped._1) (^._1) . Map.toList <$> channels'^.Channels.remoteStreams
   boostedStreams <- traverseCache boostMediaStreamVolume (updated streams') -- updated should be fine, as at startup there should be no streams.
 
+  playAlarmOnBrokenConnection channels'
+
   pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
                      , _origStreams = streams'
                      , _streams = boostedStreams
                      }
+
+playAlarmOnBrokenConnection :: ( Reflex t, MonadJSM m, PerformEvent t m, MonadJSM (Performable m)
+                               , MonadFix m, MonadHold t m
+                               )
+                               => Channels.Channels t -> m ()
+playAlarmOnBrokenConnection channels' = mdo
+    let
+      loadAlert :: forall m1. MonadJSM m1 => m1 AudioNode.AudioBufferSourceNode
+      loadAlert = loadSound "/sounds/gonimo_alarm_96kb_smoothstart.mp3"
+    alarmSound <- loadAlert
+    newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only played once!
+    -- AudioNode.start alarmSound 0 0 1000000 -- 0 for duration does not work on Chrome at least! fs
+    let anyConnectionBroken = uniqDyn $ getAnyBrokenConnections <$> channels'^.Channels.channelMap
+    alarmSoundBeh <- hold alarmSound newAlertEv
+    performEvent_ $ startStopSound <$> attach alarmSoundBeh (traceEventWith show (updated anyConnectionBroken))
+  where
+    startStopSound (sound, onOff)
+      = if onOff
+        then AudioNode.start sound 0 0 1000 -- 0 for duration does not work on Chrome at least! fs
+        else AudioNode.stop  sound 0
+
+getAnyBrokenConnections :: Channels.ChannelMap t -> Bool
+getAnyBrokenConnections = any isChanBroken . Map.elems
+  where
+    isChanBroken chan = chan^.Channel.audioReceivingState == Channel.StateBroken
+                        || chan^.Channel.videoReceivingState == Channel.StateBroken
 
 -- A special traverse function which does not reapply the effectful function if an element stayed the same.
 traverseCache :: forall m k t. ( MonadJSM m, Ord k, Reflex t, PerformEvent t m
