@@ -143,7 +143,7 @@ handleConnectionStateUpdate chans chanEv = do
 
 
     setUnreliable' <- performEvent $ registerGetTransmissionInfo <$> newStreamEv
-    setUnreliable <- delay 2 setUnreliable'
+    setUnreliable <- delay 4 setUnreliable'
     pure [setUnreliable, statUpdate]
 
   where
