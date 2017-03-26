@@ -169,12 +169,14 @@ unreliableAlert :: forall t m. MonadWidget t m => m (Event t ())
 unreliableAlert = do
   elClass "div" "fullScreenOverlay" $ do
     elClass "div" "container" $ do
-      el "h1" $ text "Connection is unreliable!"
+      el "h1" $ text "Connection probably unreliable!"
       el "br" blank
       el "br" blank
       text "We are sorry, we can not guarantee a reliable connection to your child on this browser!"
       el "br" blank
-      text "This means the connection might break unnoticed at any time - there will be no alarm!"
+      text "This is indicated by a red border around the connected device and the video, if you don't see a red border this was a false alert - sorry about that."
+      el "br" blank
+      text "If you see a red border, this means the connection might break unnoticed at any time - there will be no alarm!"
       el "br" blank
       el "h1" $ text "What can I do?"
       el "ul" $ do
