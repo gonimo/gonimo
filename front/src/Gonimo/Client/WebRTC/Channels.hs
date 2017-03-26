@@ -159,7 +159,7 @@ handleConnectionStateUpdate chans chanEv = do
       (Nothing, _)                 -> StateBroken
       (Just _, StateUnreliable)    -> StateReceiving
       (Just _, StateReceiving)     -> oldState
-      (Just _, StateNotReceiving)  -> oldState -- (should not happen)
+      (Just _, StateNotReceiving)  -> StateReceiving
       (Just _, StateBroken)        -> oldState -- Once broken always broken.
 
 handleRemoteStreams :: Reflex t

@@ -53,7 +53,7 @@ data RTCEvent
 
 data ReceivingState
   = StateNotReceiving
-  | StateUnreliable -- We got a stream but did not get any stats for more than two seconds!
+  | StateUnreliable -- We got a stream but did not get any stats for more than a few seconds!
   | StateReceiving -- All is fine - we are receiving stats!
   | StateBroken -- Did not receive stream data for longer than 3 seconds!
   deriving (Eq, Ord, Show)
@@ -79,18 +79,12 @@ makeLenses ''Channel
 channel :: forall m t. (MonadJSM m, Reflex t) => Config t -> m (Channel t)
 channel config = mdo
   conn <- makeGonimoRTCConnection
-  -- ourStream' <- runMaybeT $ do
-  --   origStream <- MaybeT . pure $ config^.configSourceStream
-  --   boostMediaStreamVolume origStream
 
   handleRTCClosedEvent config conn
   handleReceivedStream config conn
   handleIceCandidate config conn
   handleNegotiationNeeded config conn
-  -- let isBabyStation = isJust ourStream'
-  -- alarm' <- if isBabyStation
-  --           then  Just <$> loadSound "/sounds/pup_alert.mp3"
-  --           else pure Nothing
+
   pure $ Channel { _rtcConnection = conn
                  , _theirStream = Nothing
                  , _closeRequested = False

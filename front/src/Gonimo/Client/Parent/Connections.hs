@@ -38,6 +38,7 @@ data Connections t
   = Connections { _request :: Event t [ API.ServerRequest ]
                 , _origStreams :: Dynamic t (Map DeviceId MediaStream) -- neccessary to work around a bug in Chrome.
                 , _streams :: Dynamic t (Map DeviceId MediaStream)
+                , _unreliableConnections :: Dynamic t Bool
                 }
 
 
@@ -84,6 +85,7 @@ connections config = mdo
   pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
                      , _origStreams = streams'
                      , _streams = boostedStreams
+                     , _unreliableConnections = areThereUnreliableConnections channels'
                      }
 
 playAlarmOnBrokenConnection :: ( Reflex t, MonadJSM m, PerformEvent t m, MonadJSM (Performable m)
@@ -106,11 +108,20 @@ playAlarmOnBrokenConnection channels' = mdo
         then AudioNode.start sound 0 0 1000 -- 0 for duration does not work on Chrome at least! fs
         else AudioNode.stop  sound 0
 
+areThereUnreliableConnections :: Reflex t => Channels.Channels t -> Dynamic t Bool
+areThereUnreliableConnections = uniqDyn . fmap getAnyUnreliableConnections . (^.Channels.channelMap)
+
 getAnyBrokenConnections :: Channels.ChannelMap t -> Bool
-getAnyBrokenConnections = any isChanBroken . Map.elems
+getAnyBrokenConnections = getConnectionsInState Channel.StateBroken
+
+getAnyUnreliableConnections :: Channels.ChannelMap t -> Bool
+getAnyUnreliableConnections = getConnectionsInState Channel.StateUnreliable
+
+getConnectionsInState :: Channel.ReceivingState -> Channels.ChannelMap t -> Bool
+getConnectionsInState state = any isChanInState . Map.elems
   where
-    isChanBroken chan = chan^.Channel.audioReceivingState == Channel.StateBroken
-                        || chan^.Channel.videoReceivingState == Channel.StateBroken
+    isChanInState chan = chan^.Channel.audioReceivingState == state
+                         || chan^.Channel.videoReceivingState == state
 
 -- A special traverse function which does not reapply the effectful function if an element stayed the same.
 traverseCache :: forall m k t. ( MonadJSM m, Ord k, Reflex t, PerformEvent t m

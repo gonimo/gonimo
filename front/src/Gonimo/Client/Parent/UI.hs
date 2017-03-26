@@ -37,6 +37,7 @@ ui appConfig loaded deviceList = mdo
                                                                                ]
                                            , C._configDisconnectBaby = devicesUI^.DeviceList.uiDisconnect
                                            }
+  handleUnreliableAlert connections'
 
   let showParentView = const "isParentView" <$> leftmost [ devicesUI^.DeviceList.uiConnect
                                                          , devicesUI^.DeviceList.uiShowStream
@@ -127,3 +128,39 @@ leaveConfirmation :: DomBuilder t m => m ()
 leaveConfirmation = do
     el "h3" $ text "Really stop parent station?"
     el "p" $ text "All open streams will be disconnected!"
+
+handleUnreliableAlert :: forall t m. MonadWidget t m => C.Connections t -> m ()
+handleUnreliableAlert connections' = mdo
+  gotUnreliable <- headE . ffilter id . updated $ connections'^.C.unreliableConnections
+
+  let
+    renderAlert False = pure never
+    renderAlert True = unreliableAlert
+
+  clickedDyn <- widgetHold (pure never) $ renderAlert <$> leftmost [gotUnreliable, const False <$> clicked]
+  let clicked = switchPromptlyDyn clickedDyn
+  pure ()
+
+unreliableAlert :: forall t m. MonadWidget t m => m (Event t ())
+unreliableAlert = do
+  elClass "div" "fullScreenOverlay" $ do
+    elClass "div" "container" $ do
+      el "h1" $ text "Connection is unreliable!"
+      el "br" blank
+      el "br" blank
+      text "We are sorry, we can not guarantee a reliable connection to your child on this browser!"
+      el "br" blank
+      text "This means the connection might break unnoticed at any time - there will be no alarm!"
+      el "br" blank
+      el "h1" $ text "What can I do?"
+      el "ul" $ do
+        el "li" $ text "Use a different browser - currently we recommend Chrome."
+        el "li" $ text "Disconnect/Connect periodically to be sure everything is alright."
+        el "li" $ text "For Audio connections, have some sound at the baby side, e.g. open the window."
+        el "li" $ text "For Video connections, have some constant motion in the picture, for example a clock."
+
+      el "br" blank
+      el "br" blank
+
+      okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Ok"
+      pure $ okClicked
