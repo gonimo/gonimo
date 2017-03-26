@@ -36,6 +36,7 @@ data Config t
 
 data Connections t
   = Connections { _request :: Event t [ API.ServerRequest ]
+                , _channelMap :: Dynamic t (Map DeviceId (Channel.Channel t))
                 , _origStreams :: Dynamic t (Map DeviceId MediaStream) -- neccessary to work around a bug in Chrome.
                 , _streams :: Dynamic t (Map DeviceId MediaStream)
                 , _unreliableConnections :: Dynamic t Bool
@@ -76,17 +77,21 @@ connections config = mdo
                                      }
   channels' <- Channels.channels channelsConfig
   let secrets' = Map.fromList . Map.keys <$> channels'^.Channels.channelMap
-  -- Kick secret from map: 
-  let streams' = Map.fromList . over (mapped._1) (^._1) . Map.toList <$> channels'^.Channels.remoteStreams
+
+  let streams' = kickSecret <$> channels'^.Channels.remoteStreams
   boostedStreams <- traverseCache boostMediaStreamVolume (updated streams') -- updated should be fine, as at startup there should be no streams.
 
   playAlarmOnBrokenConnection channels'
 
   pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
+                     , _channelMap = kickSecret <$> channels'^.Channels.channelMap
                      , _origStreams = streams'
                      , _streams = boostedStreams
                      , _unreliableConnections = areThereUnreliableConnections channels'
                      }
+  where
+    kickSecret :: forall v. Map (DeviceId, Secret) v -> Map DeviceId v
+    kickSecret = Map.fromList . over (mapped._1) (^._1) . Map.toList
 
 playAlarmOnBrokenConnection :: ( Reflex t, MonadJSM m, PerformEvent t m, MonadJSM (Performable m)
                                , MonadFix m, MonadHold t m

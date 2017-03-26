@@ -11,7 +11,6 @@ import Gonimo.Client.Prelude
 
 import           Control.Lens
 import           Control.Monad.Reader.Class
-import           Data.Map                       (Map)
 import           GHCJS.DOM.EventM
 import           GHCJS.DOM.Enums                (MediaStreamTrackState(..))
 import           GHCJS.DOM.RTCIceCandidate
@@ -91,6 +90,17 @@ channel config = mdo
                  , _audioReceivingState = StateNotReceiving
                  , _videoReceivingState = StateNotReceiving
                  }
+
+-- Get the worst state available for a channel.
+worstState :: Channel t -> ReceivingState
+worstState chan = case (chan^.audioReceivingState, chan^.videoReceivingState) of
+                    (_                 , StateBroken)       -> StateBroken
+                    (StateBroken       , _)                 -> StateBroken
+                    (StateUnreliable   , _)                 -> StateUnreliable
+                    (_                 , StateUnreliable)   -> StateUnreliable
+                    (StateNotReceiving , _)                 -> StateNotReceiving
+                    (_                 , StateNotReceiving) -> StateNotReceiving
+                    (StateReceiving    , StateReceiving)    -> StateReceiving
 
 -- Handle RTCPeerConnection close.
 handleRTCClosedEvent :: forall m t. (MonadJSM m) => Config t -> RTCPeerConnection -> m ()

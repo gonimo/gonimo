@@ -36,16 +36,21 @@ import           Gonimo.Client.ConfirmationButton  (confirmationEl)
 import           Gonimo.Client.DeviceList.Internal
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.Reflex.Dom          (makeClickable, addBtnAttrs)
+import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
+                                                   audioReceivingState,
+                                                   videoReceivingState,
+                                                   Channel)
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-              => App.Loaded t -> DeviceList t
+              => App.Loaded t -> DeviceList t -> Dynamic t (Map DeviceId ReceivingState)
               -> Dynamic t (Set DeviceId)  -> m (UI t)
-ui loaded deviceList' connected = do
+ui loaded deviceList' connState connected = do
     tz <- liftIO $ getCurrentTimeZone
     evUI <- dyn $ renderAccounts tz loaded
             <$> deviceList'^.deviceInfos
             <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
+            <*> pure connState
             <*> pure connected
             <*> loaded^.App.authData
     uiSwitchPromptly evUI
@@ -55,10 +60,11 @@ renderAccounts :: forall m t. (HasWebView m, MonadWidget t m)
               -> App.Loaded t
               -> NestedDeviceInfos t
               -> Dynamic t (Map DeviceId DeviceType)
+              -> Dynamic t (Map DeviceId ReceivingState)
               -> Dynamic t (Set DeviceId)
               -> API.AuthData
               -> m (UI t)
-renderAccounts tz loaded allInfos onlineStatus connected authData = do
+renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = do
     let
       isSelf (aId, _) = aId == API.accountId authData
       (self, others) = List.partition isSelf . Map.toList $ allInfos
@@ -96,6 +102,7 @@ renderAccounts tz loaded allInfos onlineStatus connected authData = do
     renderDevice isSelf (devId, devInfo) = mdo
         let
           mDevType = Map.lookup devId <$> onlineStatus
+          mConnStatus = Map.lookup devId <$> connStatus
           devName = API.deviceInfoName <$> devInfo
           isConnected = Set.member devId <$> connected
 
@@ -106,6 +113,7 @@ renderAccounts tz loaded allInfos onlineStatus connected authData = do
                       , fmap (\isConn -> if isConn then "connected " else "") isConnected
                       , fmap ((\isOnline -> if isOnline then "active " else "") . isJust) mDevType
                       , fmap ((\isBaby -> if isBaby then "isBaby " else "") . isJust . (^?_Just._Baby)) mDevType
+                      , fmap (\cStatus -> if cStatus == Just StateUnreliable then "connectionUnreliable " else "") mConnStatus
                       -- , pure (if isSelf then "info " else "")
                       ]
 

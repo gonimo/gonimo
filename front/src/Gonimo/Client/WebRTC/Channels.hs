@@ -136,7 +136,7 @@ handleConnectionStateUpdate chans chanEv = do
           sendStats audioVideo = getTransmissionInfo conn $ updateState (at mapKey._Just.audioVideo)
 
         traverse_ (sendStats audioReceivingState) audioTracks
-        traverse_ (sendStats videoReceivingState) videoTracks
+        -- traverse_ (sendStats videoReceivingState) videoTracks
 
         pure $ at mapKey . _Just %~ over audioReceivingState (makeUnreliable (not . null $ audioTracks))
                                   . over videoReceivingState (makeUnreliable (not . null $ videoTracks))

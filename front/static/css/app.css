@@ -781,3 +781,10 @@ canvas {
 .fakeVideo {
     display: none;
 }
+
+
+.connectionUnreliable {
+    border: solid;
+    border-color: red;
+    border-width: 4px;
+}

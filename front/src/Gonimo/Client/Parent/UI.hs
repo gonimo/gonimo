@@ -5,24 +5,30 @@
 module Gonimo.Client.Parent.UI where
 
 import           Control.Lens
-import           Data.Monoid
-import           GHCJS.DOM.Types                   (MediaStream)
-import qualified Gonimo.Client.DeviceList          as DeviceList
-import           Reflex.Dom.Core
 import           Data.Foldable
+import           Data.Monoid
+import           GHCJS.DOM.Types                  (MediaStream)
+import qualified Gonimo.Client.DeviceList         as DeviceList
+import           Reflex.Dom.Core
 
-import qualified Data.Map                          as Map
-import qualified Data.Set                          as Set
-import qualified Gonimo.Client.App.Types           as App
+import qualified Data.Map                         as Map
+import qualified Data.Set                         as Set
+import qualified Gonimo.Client.App.Types          as App
 -- import           Gonimo.Client.Parent.Internal
-import qualified Gonimo.Client.NavBar              as NavBar
-import qualified Gonimo.Client.Parent.Connections  as C
+import qualified Gonimo.Client.Auth               as Auth
+import           Gonimo.Client.ConfirmationButton (mayAddConfirmation)
+import qualified Gonimo.Client.Invite             as Invite
+import qualified Gonimo.Client.NavBar             as NavBar
+import qualified Gonimo.Client.Parent.Connections as C
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server              (webSocket_recv)
-import qualified Gonimo.Client.Auth as Auth
-import qualified Gonimo.Client.Invite as Invite
-import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
-import           Gonimo.Client.Util (volumeMeter)
+import           Gonimo.Client.Server             (webSocket_recv)
+import           Gonimo.Client.Util               (volumeMeter)
+import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
+                                                   audioReceivingState,
+                                                   videoReceivingState,
+                                                   Channel, worstState )
+import           Gonimo.Db.Entities        (DeviceId)
+import           Gonimo.Client.Prelude
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -90,7 +96,9 @@ manageUi _ loaded deviceList connections' = do
       navBar' <- NavBar.NavBar
                  <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.backClicked) (not . Map.null <$> openStreams)
                  <*> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . Map.null <$> openStreams)
-      devicesUI <- DeviceList.ui loaded deviceList (Set.fromList . Map.keys <$> openStreams)
+      devicesUI <- DeviceList.ui loaded deviceList
+                   (fmap worstState <$> connections'^.C.channelMap)
+                   (Set.fromList . Map.keys <$> openStreams)
       inviteRequested <-
             makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
 
@@ -100,28 +108,44 @@ viewUi :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t)
 viewUi _ loaded deviceList connections = do
   let streams = connections^.C.streams
-  let origStreams = connections^.C.origStreams
   navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
 
   navBar' <- NavBar.NavBar (navBar^.NavBar.backClicked)
              <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
   elClass "div" "parent" $ do
-    _ <- dyn $ renderVideos True . Map.elems <$> origStreams
-    _ <- dyn $ renderVideos False . Map.elems <$> streams
+    _ <- dyn $ renderFakeVideos connections
+    _ <- dyn $ renderVideos connections
     pure navBar'
 
-
-renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => Bool -> [MediaStream] -> m ()
-renderVideos fakeRender streams = do
+renderFakeVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m ())
+renderFakeVideos connections =
   let
     renderFake stream = mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;" <> "class" =: "fakeVideo" <> "muted" =: "true")
-    renderVideo stream = elClass "div" "stream-baby" $ do
+  in
+    traverse_ renderFake . Map.elems <$> connections^.C.origStreams
+
+renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m ())
+renderVideos connections' = traverse_ renderVideo . Map.toList <$> connections'^.C.streams
+  where
+    dynChannelMap = connections'^.C.channelMap
+
+    renderVideo (key, stream) = elDynClass "div" (dynVideoClass key <> pure "stream-baby ") $ do
       mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
       volumeMeter stream
-    renderFakeOrNot = if fakeRender
-      then renderFake
-      else renderVideo
-  traverse_ renderFakeOrNot streams
+
+    dynVideoClass key = videoClass key <$> dynChannelMap
+
+    videoClass :: DeviceId -> Map.Map DeviceId (Channel t) -> Text
+    videoClass key chanMap = case chanMap ^? at key . _Just . to worstState of
+                               Just StateUnreliable -> "connectionUnreliable "
+                               Just StateBroken -> "connectionBroken "
+                               _           -> ""
+
+    -- isUnreliable Nothing = False
+    -- isUnreliable (Just chan) = chan^.audioReceivingState == StateUnreliable
+    --                            || chan^.videoReceivingState == StateUnreliable
+
+
 
 
 leaveConfirmation :: DomBuilder t m => m ()
