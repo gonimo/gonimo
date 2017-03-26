@@ -372,3 +372,32 @@ crossNullableToMaybe jsVal = do
 #endif
       pure val
   
+
+newtype Vibrator = Vibrator JSVal
+
+startVibraAlert :: MonadJSM m => m Vibrator
+startVibraAlert = liftJSM $ do
+  jsStart <- JS.eval . T.unlines $
+      [ "(function () {"
+      , "   var vibrate = navigator.vibrate || navigator.mozVibrate || navigator.webkitVibrate;"
+      , "   var interval = 1050;"
+      , "   var vals = [200, 100, 250, 100, 300];"
+      , "   var vibrator = setInterval(function() {"
+      , "       try {"
+      , "           vibrate.call(navigator, vals);"
+      , "       }"
+      , "       catch (e) {"
+      , "           console.log('Enabling vibrations failed!');"
+      , "       }"
+      , "   }, interval);"
+      , "   return vibrator;"
+      , "})"
+      ]
+  jsTimer <- JS.call jsStart JS.obj [ 0 :: Int ] -- Just adummy parameter
+  pure $ Vibrator jsTimer
+
+stopVibraAlert :: MonadJSM m => Vibrator -> m ()
+stopVibraAlert (Vibrator jsTimer) = liftJSM $ do
+  jsStop <- JS.eval . T.unlines $ ["window.clearInterval"]
+  _ <- JS.call jsStop JS.obj [jsTimer]
+  pure ()

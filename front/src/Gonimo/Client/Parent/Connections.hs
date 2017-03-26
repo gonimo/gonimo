@@ -23,7 +23,7 @@ import qualified Gonimo.Client.WebRTC.Channels     as Channels
 import qualified Gonimo.Client.WebRTC.Channel     as Channel
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret)
-import           Gonimo.Client.Util                (boostMediaStreamVolume, loadSound)
+import           Gonimo.Client.Util                (boostMediaStreamVolume, loadSound, startVibraAlert, stopVibraAlert)
 import qualified Language.Javascript.JSaddle.Value as JS
 
 data Config t
@@ -105,9 +105,24 @@ playAlarmOnBrokenConnection channels' = mdo
     newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only played once!
     -- AudioNode.start alarmSound 0 0 1000000 -- 0 for duration does not work on Chrome at least! fs
     let anyConnectionBroken = uniqDyn $ getAnyBrokenConnections <$> channels'^.Channels.channelMap
+
     alarmSoundBeh <- hold alarmSound newAlertEv
     performEvent_ $ startStopSound <$> attach alarmSoundBeh (traceEventWith show (updated anyConnectionBroken))
+
+    vibra <- performEvent $ startStopVibra <$> attach vibraBeh (updated anyConnectionBroken)
+    vibraBeh <- hold Nothing vibra
+
+    pure ()
   where
+    startStopVibra (mVibra, onOff)
+      =  if onOff
+         then Just <$> startVibraAlert
+         else case mVibra of
+                Nothing -> pure Nothing
+                Just vibra -> do
+                  stopVibraAlert vibra
+                  pure Nothing
+
     startStopSound (sound, onOff)
       = if onOff
         then AudioNode.start sound 0 0 1000 -- 0 for duration does not work on Chrome at least! fs
