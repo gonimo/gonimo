@@ -788,3 +788,15 @@ canvas {
     border-color: red;
     border-width: 4px;
 }
+
+@keyframes brokenConnectionAnim {
+    from { border-color: rgb(0, 0, 0);}
+    to { border-color: rgb(255, 0, 0);}
+}
+
+.connectionBroken {
+    border: solid;
+    animation-name: brokenConnectionAnim;
+    animation-duration: 1.804s;
+    animation-iteration-count: infinite;
+}

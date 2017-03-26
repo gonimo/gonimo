@@ -398,6 +398,6 @@ startVibraAlert = liftJSM $ do
 
 stopVibraAlert :: MonadJSM m => Vibrator -> m ()
 stopVibraAlert (Vibrator jsTimer) = liftJSM $ do
-  jsStop <- JS.eval . T.unlines $ ["window.clearInterval"]
+  jsStop <- JS.eval . T.unlines $ ["(function(jsTimer) {clearInterval(jsTimer);})"]
   _ <- JS.call jsStop JS.obj [jsTimer]
   pure ()

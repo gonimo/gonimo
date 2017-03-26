@@ -114,6 +114,7 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
                       , fmap ((\isOnline -> if isOnline then "active " else "") . isJust) mDevType
                       , fmap ((\isBaby -> if isBaby then "isBaby " else "") . isJust . (^?_Just._Baby)) mDevType
                       , fmap (\cStatus -> if cStatus == Just StateUnreliable then "connectionUnreliable " else "") mConnStatus
+                      , fmap (\cStatus -> if cStatus == Just StateBroken then "connectionBroken " else "") mConnStatus
                       -- , pure (if isSelf then "info " else "")
                       ]
 
