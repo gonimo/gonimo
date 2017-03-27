@@ -802,8 +802,12 @@ canvas {
 }
 
 @keyframes brokenConnectionAnimDisconnect {
-    from { background-color: rgb(255, 255, 255);}
-    to { background-color: rgb(255, 0, 0);}
+    from { background-color: rgb(255, 255, 255);
+           border-width: 1px;
+         }
+    to { background-color: rgb(255, 0, 0);
+         border-width: 3px;
+       }
 }
 .connectionBroken.disconnect {
     animation-name: brokenConnectionAnimDisconnect;
