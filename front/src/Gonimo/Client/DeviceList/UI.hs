@@ -6,13 +6,10 @@ module Gonimo.Client.DeviceList.UI where
 
 import           Control.Lens
 import           Control.Monad.IO.Class            (liftIO)
-import           Control.Monad.Trans.Class         (lift)
-import           Control.Monad.Trans.Maybe         (MaybeT (..), runMaybeT)
 import qualified Data.List                         as List
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Maybe                        (isJust)
-import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid
 import           Data.Set                          (Set)
 import qualified Data.Set                          as Set
@@ -27,19 +24,15 @@ import           Data.Time.LocalTime               (TimeZone,
 import           Gonimo.Db.Entities                (AccountId, DeviceId)
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
-import           Gonimo.Types                      (DeviceType (..), _Baby, _NoBaby)
+import           Gonimo.Types                      (DeviceType (..), _Baby)
 import           Reflex.Dom.Core
-import           Safe                              (headMay)
 
 import qualified Gonimo.Client.App.Types           as App
 import           Gonimo.Client.ConfirmationButton  (confirmationEl)
 import           Gonimo.Client.DeviceList.Internal
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.Reflex.Dom          (makeClickable, addBtnAttrs)
-import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
-                                                   audioReceivingState,
-                                                   videoReceivingState,
-                                                   Channel)
+import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..))
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
