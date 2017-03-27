@@ -790,13 +790,23 @@ canvas {
 }
 
 @keyframes brokenConnectionAnim {
-    from { border-color: rgb(0, 0, 0);}
-    to { border-color: rgb(255, 0, 0);}
+    from { border-color: rgb(255, 0, 0);}
+    to { border-color: rgb(255, 255, 255);}
 }
 
 .connectionBroken {
     border: solid;
     animation-name: brokenConnectionAnim;
+    animation-duration: 1.804s;
+    animation-iteration-count: infinite;
+}
+
+@keyframes brokenConnectionAnimDisconnect {
+    from { background-color: rgb(255, 255, 255);}
+    to { background-color: rgb(255, 0, 0);}
+}
+.connectionBroken.disconnect {
+    animation-name: brokenConnectionAnimDisconnect;
     animation-duration: 1.804s;
     animation-iteration-count: infinite;
 }

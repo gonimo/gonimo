@@ -122,7 +122,8 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
               elClass "div" "buttons" $ do
                 conC <- makeClickable . elAttr' "div" (addBtnAttrs "connect") $ text "Connect"
                 streamC <- makeClickable . elAttr' "div" (addBtnAttrs "stream") $ text "Stream"
-                discC <- makeClickable . elAttr' "div" (addBtnAttrs "disconnect") $ text "Disconnect"
+                let disconnectOnBroken = fmap (\cStatus -> if cStatus == Just StateBroken then "disconnect connectionBroken " else "disconnect ")  mConnStatus
+                discC <- makeClickable . elDynAttr' "div" (addBtnAttrs <$> disconnectOnBroken) $ text "Disconnect"
                 pure (conC, streamC, discC)
             (nameChangeClick, removeClick) <-
               elClass "div" "info" $ do
