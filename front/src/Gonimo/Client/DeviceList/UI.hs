@@ -116,7 +116,8 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
             elClass "div" "status" $ el "div" blank
             selectedClick <- makeClickable
               . elAttr' "div" (addBtnAttrs "name") $ do
-              elClass "span" "dev-name" $ dynText (API.deviceInfoName <$> devInfo)
+              let devNameClass = if isSelf then "device-self dev-name" else "dev-name"
+              elClass "span" devNameClass $ dynText (API.deviceInfoName <$> devInfo)
               elClass "span" "dev-loc" $ dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do

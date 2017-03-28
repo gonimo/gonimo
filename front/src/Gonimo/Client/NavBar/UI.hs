@@ -23,7 +23,8 @@ navBar config = do
         homeClicked' <- homeButton
         elClass "div" "menu-right" $ do
           let deviceName = DeviceList.ownDeviceName (loaded^.App.authData) deviceList
-          dynText $ makeEllipsis 20 <$> deviceName
+          elClass "span" "device-self" $
+            dynText $ makeEllipsis 20 <$> deviceName
           el "br" blank
           let cFamilyName = Family.currentFamilyName
                             $ Family.DefiniteFamily (loaded^.App.families) (loaded^.App.selectedFamily)

@@ -405,6 +405,13 @@ h3{
 	padding:2px 2.5%;
 	border-left:solid 1px black;
 }
+span.device-self {
+	  /* color:rgb(230,202,212); */
+    /* font-weight: bold; */
+    color: #E6CAD4;
+    text-shadow: 2px 2px 2px #000000;
+}
+
 .device{
 	width:100%;
 	overflow:auto;
@@ -413,6 +420,7 @@ h3{
 	align-items:center;
 	flex-wrap:wrap;
 }
+
 .status{
 	width:10%;
 	float:left;
