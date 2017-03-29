@@ -102,6 +102,7 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
           devClass :: Dynamic t Text
           devClass = mconcat
                       [ pure "device "
+                      , pure (if isSelf then "device-self " else "")
                       , fmap (\isSel -> if isSel then "selected " else "") isSelected
                       , fmap (\isConn -> if isConn then "connected " else "") isConnected
                       , fmap ((\isOnline -> if isOnline then "active " else "") . isJust) mDevType

@@ -408,8 +408,8 @@ h3{
 span.device-self {
 	  /* color:rgb(230,202,212); */
     /* font-weight: bold; */
-    color: #E6CAD4;
-    text-shadow: 2px 2px 2px #000000;
+    /* color: #E6CAD4; */
+    /* text-shadow: 2px 2px 2px #000000; */
 }
 
 .device{
@@ -419,6 +419,12 @@ span.device-self {
 	display:flex;
 	align-items:center;
 	flex-wrap:wrap;
+}
+
+.device.device-self {
+    /* background: rgb(102,102,102); */
+    background: rgb(200,200,200);
+    /* color: rgb(230,202,212); */
 }
 
 .status{
@@ -497,6 +503,9 @@ span.device-self {
 }
 .device.selected > .info{
 	display:block;
+}
+.device.selected {
+    background: rgb(240,240,240);
 }
 .device-add{
 	width:100%;
