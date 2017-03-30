@@ -523,6 +523,15 @@ span.device-self {
 	background-color:black;
 	min-height:90%;
 	padding-bottom:50px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+
+  @media(min-width:768px){
+      flex-direction: row;
+  }
 }
 
 
@@ -549,12 +558,37 @@ span.device-self {
 
 .stream-baby{
 	min-width:100px;
+  width: 100%;
 	min-height:100px;
 	max-width:100%;
+  max-height: 100%;
 	display:inline-block;
-	background-image:url("/pix/gonimo-night.svg");
-	background-size:100% 100%;
   position: relative;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  flex-grow: 1;
+}
+
+.stream-baby.justAudio {
+	  background-image:url("/pix/gonimo-night.svg");
+	  background-size:70% 70%;
+    background-repeat: no-repeat;
+    background-position: center center;
+}
+.stream-baby video {
+    /* Make video to at least 100% wide and tall */
+    min-width: 100%;
+    min-height: 100%;
+
+    /* Setting width & height to auto prevents the browser from stretching or squishing the video */
+    width: auto;
+    height: auto;
+
+    /* Center the video */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
 }
 .volumemeter {
     display: flex;
@@ -563,17 +597,26 @@ span.device-self {
     position: absolute;
     right: 5%;
     bottom: 5%;
+    top: 10%;
+    max-height: 85%;
 }
 
 .volBarItem {
     border: solid;
-    border-width: 1px;
-    border-color: white;
-    min-height: 18px;
+    border-width: 2px;
+    border-color: rgb(102,102,102);
+    flex-grow: 1;
+    min-height: 0;
+    height: 18px;
     min-width: 18px;
-    max-height: 20px;
-    max-width: 20px;
+    max-height: 18px;
+    max-width: 18px;
     margin-top: 5px;
+}
+
+.stream-baby.justAudio > .volumemeter > .volBarItem {
+    border-color: white;
+    border-width: 1px;
 }
 
 .volBarItem.volBarItemActive {

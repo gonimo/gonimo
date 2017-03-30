@@ -131,17 +131,18 @@ renderVideos connections' = traverse_ renderVideo . Map.toList <$> connections'^
     dynChannelMap = connections'^.C.channelMap
 
     renderVideo (key, C.StreamData stream volEvent) = do
-      elDynClass "div" (dynVideoClass key <> pure "stream-baby ") $ do
-        mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
-        hasVideo <- not . null <$> MediaStream.getVideoTracks stream
-        if hasVideo
+      hasVideo <- not . null <$> MediaStream.getVideoTracks stream
+      let hasBackground = if hasVideo then "" else "justAudio "
+      elDynClass "div" (dynConnectionClass key <> pure "stream-baby " <> pure hasBackground) $ do
+        mediaVideo stream ("autoplay" =: "true")
+        if True
           then renderVolumemeter volEvent
           else volumeMeter stream
 
-    dynVideoClass key = videoClass key <$> dynChannelMap
+    dynConnectionClass key = connectionClass key <$> dynChannelMap
 
-    videoClass :: DeviceId -> Map.Map DeviceId (Channel t) -> Text
-    videoClass key chanMap = case chanMap ^? at key . _Just . to worstState of
+    connectionClass :: DeviceId -> Map.Map DeviceId (Channel t) -> Text
+    connectionClass key chanMap = case chanMap ^? at key . _Just . to worstState of
                                Just StateUnreliable -> "connectionUnreliable "
                                Just StateBroken -> "connectionBroken "
                                _           -> ""
@@ -159,7 +160,7 @@ renderVolumemeter volEvent = do
   where
     renderVolBarItem :: Dynamic t Double -> Double -> m ()
     renderVolBarItem currentVolume minVal = do
-      let isActive = (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
+      let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
       elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
 
 leaveConfirmation :: DomBuilder t m => m ()
