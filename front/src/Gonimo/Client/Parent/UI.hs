@@ -41,6 +41,7 @@ ui appConfig loaded deviceList = mdo
                                            , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
                                                                                , navBar^.NavBar.homeClicked
                                                                                , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
+                                                                               , viewUI^.C.videoViewDisconnectAll
                                                                                ]
                                            , C._configDisconnectBaby = leftmost [ devicesUI^.DeviceList.uiDisconnect
                                                                                 , viewUI^.C.videoViewDisconnectBaby
@@ -123,7 +124,9 @@ viewUi _ loaded deviceList connections = do
     closedsEvEv <- dyn $ renderVideos connections
     let closedEvEv  = leftmost <$> closedsEvEv
     closedEv <- switchPromptly never closedEvEv
-    pure $ C.VideoView navBar' closedEv never
+    stopAllClicked <- elClass "div" "stream-menu" $
+        makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "Stop All"
+    pure $ C.VideoView navBar' closedEv stopAllClicked
 
 renderFakeVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m ())
 renderFakeVideos connections =
