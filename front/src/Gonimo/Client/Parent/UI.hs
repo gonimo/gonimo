@@ -29,6 +29,7 @@ import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
                                                    Channel, worstState )
 import           Gonimo.Db.Entities        (DeviceId)
 import           Gonimo.Client.Prelude
+import qualified GHCJS.DOM.MediaStream          as MediaStream
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -129,9 +130,13 @@ renderVideos connections' = traverse_ renderVideo . Map.toList <$> connections'^
   where
     dynChannelMap = connections'^.C.channelMap
 
-    renderVideo (key, stream) = elDynClass "div" (dynVideoClass key <> pure "stream-baby ") $ do
-      mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
-      volumeMeter stream
+    renderVideo (key, C.StreamData stream volEvent) = do
+      elDynClass "div" (dynVideoClass key <> pure "stream-baby ") $ do
+        mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;")
+        hasVideo <- not . null <$> MediaStream.getVideoTracks stream
+        if hasVideo
+          then renderVolumemeter volEvent
+          else volumeMeter stream
 
     dynVideoClass key = videoClass key <$> dynChannelMap
 
@@ -146,7 +151,16 @@ renderVideos connections' = traverse_ renderVideo . Map.toList <$> connections'^
     --                            || chan^.videoReceivingState == StateUnreliable
 
 
-
+renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
+renderVolumemeter volEvent = do
+    elClass "div" "volumemeter" $ do
+      volDyn <- holdDyn 0 volEvent
+      traverse_ (renderVolBarItem volDyn) [0, 0.1 .. 0.9]
+  where
+    renderVolBarItem :: Dynamic t Double -> Double -> m ()
+    renderVolBarItem currentVolume minVal = do
+      let isActive = (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
+      elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
 
 leaveConfirmation :: DomBuilder t m => m ()
 leaveConfirmation = do

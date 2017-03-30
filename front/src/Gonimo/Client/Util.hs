@@ -181,6 +181,55 @@ jsVolumeMeter stream canvas = liftJSM $ do
   pure ()
 
 
+getVolumeInfo :: (MonadJSM m) => MediaStream -> (Double -> JS.JSM ()) -> m ()
+getVolumeInfo stream callBack = liftJSM $ do
+  jsGetVolumeInfo <- JS.eval . T.unlines $
+    [ "(function (stream, getSample) {"
+    , "    if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}"
+    , "    var ctx = gonimoAudioContext;"
+    , "    var source = ctx.createMediaStreamSource(stream);"
+    , "    var script = ctx.createScriptProcessor(2048, 1, 1);"
+    , "    source.connect(script);"
+    , "    script.connect(ctx.destination);"
+    , ""
+    , "    var currentMax = 0;"
+    , "    function reportAndReset() {"
+    , "        getSample(currentMax);"
+    , "        currentMax = 0;"
+    , "    }"
+    , "    var timer = setInterval(reportAndReset, 100);"
+    , ""
+    , "    var cleanup = function () {"
+    , "        source.disconnect();"
+    , "        script.disconnect();"
+    , "        clearInterval(timer);"
+    , "        cleanup = function () {}"
+    , "    }"
+    , "    var audioTracks = stream.getAudioTracks();"
+    , "    var u = 0;"
+    , "    for (; u< audioTracks.length; ++u) {"
+    , "        audioTracks[u].addEventListener('ended', cleanup, false);"
+    , "    }"
+    , "    script.onaudioprocess = function (event) {"
+    , "        var input = event.inputBuffer.getChannelData(0);"
+    , "        var i;"
+    , "        var sum = 0.0;"
+    , "        for (i = 0; i < input.length; ++i) {"
+    , "            sum += input[i] * input[i];"
+    , "        }"
+    , "        var instant = Math.sqrt(sum / input.length);"
+    , "        currentMax = instant > currentMax ? instant : currentMax;"
+    , "    }"
+    , "})"
+    ]
+  jsCallBack <- JS.function $ \ _ _ [jsVolumeLevel] -> do
+      volumeLevel <- fromMaybe 0 <$> JS.fromJSVal jsVolumeLevel
+      callBack volumeLevel
+
+  _ <- JS.call jsGetVolumeInfo JS.obj (stream, jsCallBack)
+  pure ()
+
+
 oyd :: (MonadJSM m) => Text -> MediaStream -> m (Text -> m ())
 oyd babyName stream = liftJSM $ do
   jsOYD <- JS.eval . T.unlines $

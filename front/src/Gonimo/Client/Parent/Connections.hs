@@ -12,18 +12,22 @@ import Gonimo.Client.Prelude
 import           Control.Lens
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
+import           Gonimo.Db.Entities                (DeviceId)
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
-import           Gonimo.Db.Entities (DeviceId)
 import           Reflex.Dom.Core
 
-import           GHCJS.DOM.Types                   (MediaStream, MonadJSM, liftJSM)
 import qualified GHCJS.DOM.AudioBufferSourceNode   as AudioNode
-import qualified Gonimo.Client.WebRTC.Channels     as Channels
-import qualified Gonimo.Client.WebRTC.Channel     as Channel
+import           GHCJS.DOM.Types                   (MediaStream, MonadJSM,
+                                                    liftJSM)
+import           Gonimo.Client.Util                (boostMediaStreamVolume,
+                                                    getVolumeInfo, loadSound,
+                                                    startVibraAlert,
+                                                    stopVibraAlert)
 import           Gonimo.Client.WebRTC.Channel      (Channel)
+import qualified Gonimo.Client.WebRTC.Channel      as Channel
+import qualified Gonimo.Client.WebRTC.Channels     as Channels
 import           Gonimo.Types                      (Secret)
-import           Gonimo.Client.Util                (boostMediaStreamVolume, loadSound, startVibraAlert, stopVibraAlert)
 import qualified Language.Javascript.JSaddle.Value as JS
 
 data Config t
@@ -38,17 +42,23 @@ data Connections t
   = Connections { _request :: Event t [ API.ServerRequest ]
                 , _channelMap :: Dynamic t (Map DeviceId (Channel.Channel t))
                 , _origStreams :: Dynamic t (Map DeviceId MediaStream) -- neccessary to work around a bug in Chrome.
-                , _streams :: Dynamic t (Map DeviceId MediaStream)
+                , _streams :: Dynamic t (Map DeviceId (StreamData t))
                 , _unreliableConnections :: Dynamic t Bool
                 }
 
 
+data StreamData t
+  = StreamData { _stream :: MediaStream
+               , _volumeLevel :: Event t Double
+               }
+
 makeLenses ''Config
 makeLenses ''Connections
+makeLenses ''StreamData
 
 type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
-connections :: forall m t. MonadWidget t m => Config t -> m (Connections t)
+connections :: forall m t. (MonadWidget t m, HasWebView m) => Config t -> m (Connections t)
 connections config = mdo
   let
     ourDevId = API.deviceId <$> current (config^.configAuthData)
@@ -79,7 +89,8 @@ connections config = mdo
   let secrets' = Map.fromList . Map.keys <$> channels'^.Channels.channelMap
 
   let streams' = kickSecret <$> channels'^.Channels.remoteStreams
-  boostedStreams <- traverseCache boostMediaStreamVolume (updated streams') -- updated should be fine, as at startup there should be no streams.
+  (volumeEvent, triggerVolumeEvent) <- newTriggerEvent
+  boostedStreams <- traverseCache (handleVolume triggerVolumeEvent volumeEvent) (updated streams') -- updated should be fine, as at startup there should be no streams.
 
   playAlarmOnBrokenConnection channels'
 
@@ -143,14 +154,23 @@ getConnectionsInState state = any isChanInState . Map.elems
     isChanInState chan = chan^.Channel.audioReceivingState == state
                          || chan^.Channel.videoReceivingState == state
 
+
+handleVolume :: (Reflex t, MonadJSM m) => ((DeviceId, Double) -> IO ()) -> Event t (DeviceId, Double) -> DeviceId -> MediaStream -> m (StreamData t)
+handleVolume triggerVolumeEvent volEvent key stream' = do
+  boosted <- boostMediaStreamVolume stream'
+  getVolumeInfo stream' (liftIO . triggerVolumeEvent . (key,))
+  let ourVolEvent = snd <$> ffilter (\(k, _) -> k == key) volEvent
+  pure $ StreamData boosted ourVolEvent
+
+
 -- A special traverse function which does not reapply the effectful function if an element stayed the same.
 traverseCache :: forall m k t. ( MonadJSM m, Ord k, Reflex t, PerformEvent t m
                                , MonadJSM (Performable m), MonadFix m
                                , MonadHold t m
                                )
-                 => (MediaStream -> (Performable m) MediaStream)
+                 => (k -> MediaStream -> (Performable m) (StreamData t))
               -> Event t (Map k MediaStream)
-              -> m (Dynamic t (Map k MediaStream))
+              -> m (Dynamic t (Map k (StreamData t)))
 traverseCache f inStreams = mdo
   let traverseEv = pushAlways (\newStreams -> do
                                   cCache <- sample cache
@@ -162,11 +182,11 @@ traverseCache f inStreams = mdo
   pure results
 
 
-pTraverseCache :: forall m k. (MonadJSM m, Ord k)
-                  => Map k (MediaStream,MediaStream)
-               -> (MediaStream -> m MediaStream)
+pTraverseCache :: forall m k t. (MonadJSM m, Ord k)
+                  => Map k (MediaStream,StreamData t)
+               -> (k -> MediaStream -> m (StreamData t))
                -> Map k MediaStream
-               -> m (Map k MediaStream, Map k (MediaStream, MediaStream))
+               -> m (Map k (StreamData t), Map k (MediaStream, (StreamData t)))
 pTraverseCache cache f inStreams = do
   let
     possiblyCached = Map.intersection cache inStreams
@@ -177,11 +197,11 @@ pTraverseCache cache f inStreams = do
         Just r -> pure r
   reallyCachedBool <- Map.traverseWithKey checkReallyCached possiblyCached
   let
-    reallyCached :: Map k (MediaStream,MediaStream)
+    reallyCached :: Map k (MediaStream, StreamData t)
     reallyCached = Map.intersection possiblyCached reallyCachedBool
 
     toProcess = Map.difference inStreams reallyCached
-  newEntries <- traverse f toProcess
+  newEntries <- Map.traverseWithKey f toProcess
   let
     newCache = reallyCached <> Map.intersectionWith (\s d -> (s,d)) toProcess newEntries
   pure (snd <$> newCache, newCache)
