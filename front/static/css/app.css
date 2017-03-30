@@ -522,16 +522,20 @@ span.device-self {
 .parent{
 	background-color:black;
 	min-height:90%;
+  max-height: 90%;
+  width: 100%;
 	padding-bottom:50px;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
+}
 
-  @media(min-width:768px){
-      flex-direction: row;
-  }
+@media(min-width:768px){
+    .parent {
+        flex-direction: row;
+    }
 }
 
 
@@ -557,12 +561,12 @@ span.device-self {
 }
 
 .stream-baby{
-	min-width:100px;
-  width: 100%;
-	min-height:100px;
+	min-width:200px;
+  width: auto;
 	max-width:100%;
+	min-height:200px;
+  height: auto;
   max-height: 100%;
-	display:inline-block;
   position: relative;
   overflow-x: hidden;
   overflow-y: hidden;
@@ -590,6 +594,7 @@ span.device-self {
     left: 50%;
     transform: translate(-50%,-50%);
 }
+
 .volumemeter {
     display: flex;
     flex-direction: column-reverse;
