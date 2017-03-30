@@ -157,6 +157,7 @@ img.lang-select{
 	content:"\f060";
 	color:rgb(110,110,110);
 }
+
 h3{
 	color:rgb(110,110,110);
 }
@@ -561,10 +562,10 @@ span.device-self {
 }
 
 .stream-baby{
-	min-width:200px;
+	min-width:50vw;
   width: auto;
 	max-width:100%;
-	min-height:200px;
+	min-height:40vh;
   height: auto;
   max-height: 100%;
   position: relative;
@@ -579,6 +580,17 @@ span.device-self {
     background-repeat: no-repeat;
     background-position: center center;
 }
+
+.stream-baby > .btn-close-x {
+    position: absolute;
+    top: 3%;
+    right: 5%;
+    height: 5%;
+    min-height: 18px;
+    min-width: 18px;
+    width: 5%;
+}
+
 .stream-baby video {
     /* Make video to at least 100% wide and tall */
     min-width: 100%;
@@ -902,4 +914,11 @@ canvas {
     animation-name: brokenConnectionAnimDisconnect;
     animation-duration: 1.804s;
     animation-iteration-count: infinite;
+}
+
+.btn-close-x {
+	  background-image: url("/pix/ic_expand_close.svg");
+	  background-size:100% 100%;
+	  height:25px;
+	  width:25px;
 }
