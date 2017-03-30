@@ -522,8 +522,9 @@ span.device-self {
 }
 .parent{
 	background-color:black;
-	min-height:90%;
-  max-height: 90%;
+
+	min-height:94%;
+  max-height: 94%;
   width: 100%;
 	padding-bottom:50px;
   display: flex;
@@ -641,7 +642,7 @@ span.device-self {
 }
 
 .stream-menu{
-	position:fixed;
+	position:absolute;
 	bottom:0;
 	height:50px;
 	background-color:rgb(50,50,50);
