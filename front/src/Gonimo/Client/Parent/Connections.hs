@@ -29,6 +29,7 @@ import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import qualified Gonimo.Client.WebRTC.Channels     as Channels
 import           Gonimo.Types                      (Secret)
 import qualified Language.Javascript.JSaddle.Value as JS
+import qualified Gonimo.Client.NavBar             as NavBar
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -52,9 +53,16 @@ data StreamData t
                , _volumeLevel :: Event t Double
                }
 
+data VideoView t
+  = VideoView { _videoViewNavBar :: NavBar.NavBar t
+              , _videoViewDisconnectBaby :: Event t DeviceId
+              , _videoViewDisconnectAll  :: Event t ()
+              }
+
 makeLenses ''Config
 makeLenses ''Connections
 makeLenses ''StreamData
+makeLenses ''VideoView
 
 type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 

@@ -40,18 +40,23 @@ ui appConfig loaded deviceList = mdo
                                            , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
                                            , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
                                                                                , navBar^.NavBar.homeClicked
-                                                                               , viewNav^.NavBar.homeClicked
+                                                                               , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
                                                                                ]
-                                           , C._configDisconnectBaby = devicesUI^.DeviceList.uiDisconnect
+                                           , C._configDisconnectBaby = leftmost [ devicesUI^.DeviceList.uiDisconnect
+                                                                                , viewUI^.C.videoViewDisconnectBaby
+                                                                                ]
                                            }
   handleUnreliableAlert connections'
+
+  let noStreamsLeft = fmap (const ()) . ffilter id $ Map.null <$> updated (connections'^.C.streams)
 
   let showParentView = const "isParentView" <$> leftmost [ devicesUI^.DeviceList.uiConnect
                                                          , devicesUI^.DeviceList.uiShowStream
                                                          ]
-  let showParentManage = const "isParentManage" <$> leftmost [ viewNav^.NavBar.backClicked
+  let showParentManage = const "isParentManage" <$> leftmost [ viewUI^.C.videoViewNavBar^.NavBar.backClicked
                                                              , invite^.Invite.uiGoBack
                                                              , invite^.Invite.uiDone
+                                                             , noStreamsLeft
                                                              ]
   let showInviteView = const "isInviteView" <$> inviteRequested
 
@@ -61,7 +66,7 @@ ui appConfig loaded deviceList = mdo
     elDynClass "div" (pure "container parentManage " <> selectedView) $ do
       manageUi appConfig loaded deviceList connections'
 
-  viewNav <-
+  viewUI <-
     elDynClass "div" (pure "container parentView " <> selectedView) $ do
       viewUi appConfig loaded deviceList connections'
 
@@ -85,7 +90,7 @@ ui appConfig loaded deviceList = mdo
   pure $ App.Screen { App._screenApp = parentApp
                     , App._screenGoHome = leftmost [ navBar^.NavBar.backClicked
                                                    , navBar^.NavBar.homeClicked
-                                                   , viewNav^.NavBar.homeClicked
+                                                   , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
                                                    ]
                     }
 
@@ -106,7 +111,7 @@ manageUi _ loaded deviceList connections' = do
       pure (navBar', devicesUI, inviteRequested)
 
 viewUi :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t)
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (C.VideoView t)
 viewUi _ loaded deviceList connections = do
   let streams = connections^.C.streams
   navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
@@ -115,8 +120,10 @@ viewUi _ loaded deviceList connections = do
              <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
   elClass "div" "parent" $ do
     _ <- dyn $ renderFakeVideos connections
-    _ <- dyn $ renderVideos connections
-    pure navBar'
+    closedsEvEv <- dyn $ renderVideos connections
+    let closedEvEv  = leftmost <$> closedsEvEv
+    closedEv <- switchPromptly never closedEvEv
+    pure $ C.VideoView navBar' closedEv never
 
 renderFakeVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m ())
 renderFakeVideos connections =
@@ -125,19 +132,22 @@ renderFakeVideos connections =
   in
     traverse_ renderFake . Map.elems <$> connections^.C.origStreams
 
-renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m ())
-renderVideos connections' = traverse_ renderVideo . Map.toList <$> connections'^.C.streams
+renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m [Event t DeviceId])
+renderVideos connections' = traverse renderVideo . Map.toList <$> connections'^.C.streams
   where
     dynChannelMap = connections'^.C.channelMap
 
+    renderVideo :: (DeviceId, C.StreamData t) -> m (Event t DeviceId)
     renderVideo (key, C.StreamData stream volEvent) = do
       hasVideo <- not . null <$> MediaStream.getVideoTracks stream
       let hasBackground = if hasVideo then "" else "justAudio "
       elDynClass "div" (dynConnectionClass key <> pure "stream-baby " <> pure hasBackground) $ do
         mediaVideo stream ("autoplay" =: "true")
+        closeClicked <- makeClickable $ elAttr' "div" (addBtnAttrs "btn-close-x") blank
         if True
           then renderVolumemeter volEvent
           else volumeMeter stream
+        pure $ const key <$> closeClicked
 
     dynConnectionClass key = connectionClass key <$> dynChannelMap
 
