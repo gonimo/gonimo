@@ -67,7 +67,7 @@ a:hover, a:focus{
 @media(min-width:768px){
 .container, .stream-menu{
 	width:750px;
-}	
+}
 .lang-img{
 	width:50%;
 }
@@ -534,7 +534,7 @@ span.device-self {
   align-items: stretch;
 }
 
-@media(min-width:768px){
+@media(min-width:1200px) {
     .parent {
         flex-direction: row;
     }
@@ -563,10 +563,10 @@ span.device-self {
 }
 
 .stream-baby{
-	min-width:50vw;
+	min-width:50%;
   width: auto;
 	max-width:100%;
-	min-height:40vh;
+	min-height:40%;
   height: auto;
   max-height: 100%;
   position: relative;
