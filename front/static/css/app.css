@@ -534,7 +534,7 @@ span.device-self {
   align-items: stretch;
 }
 
-@media(min-width:1200px) {
+@media (orientation: landscape) {
     .parent {
         flex-direction: row;
     }
