@@ -30,6 +30,7 @@ import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
 import           Gonimo.Db.Entities        (DeviceId)
 import           Gonimo.Client.Prelude
 import qualified GHCJS.DOM.MediaStream          as MediaStream
+import           Gonimo.Types                   (_Baby)
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -121,7 +122,7 @@ viewUi _ loaded deviceList connections = do
              <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
   elClass "div" "parent" $ do
     _ <- dyn $ renderFakeVideos connections
-    closedsEvEv <- dyn $ renderVideos connections
+    closedsEvEv <- dyn $ renderVideos deviceList connections
     let closedEvEv  = leftmost <$> closedsEvEv
     closedEv <- switchPromptly never closedEvEv
     stopAllClicked <- elClass "div" "stream-menu" $
@@ -135,8 +136,8 @@ renderFakeVideos connections =
   in
     traverse_ renderFake . Map.elems <$> connections^.C.origStreams
 
-renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m [Event t DeviceId])
-renderVideos connections' = traverse renderVideo . Map.toList <$> connections'^.C.streams
+renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => DeviceList.DeviceList t -> C.Connections t -> Dynamic t (m [Event t DeviceId])
+renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> connections'^.C.streams
   where
     dynChannelMap = connections'^.C.channelMap
 
@@ -145,6 +146,9 @@ renderVideos connections' = traverse renderVideo . Map.toList <$> connections'^.
       hasVideo <- not . null <$> MediaStream.getVideoTracks stream
       let hasBackground = if hasVideo then "" else "justAudio "
       elDynClass "div" (dynConnectionClass key <> pure "stream-baby " <> pure hasBackground) $ do
+        elClass "div" "stream-baby-heading" $ do
+          elClass "div" "stream-baby-name" $ do
+            el "h1" $ dynText ((^. at key._Just._Baby) <$> deviceList^.DeviceList.onlineDevices)
         mediaVideo stream ("autoplay" =: "true")
         closeClicked <- makeClickable $ elAttr' "div" (addBtnAttrs "btn-close-x") blank
         if True

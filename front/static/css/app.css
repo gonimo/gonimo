@@ -590,6 +590,7 @@ span.device-self {
     min-height: 18px;
     min-width: 18px;
     width: 5%;
+    z-index: 4;
 }
 
 .stream-baby video {
@@ -606,6 +607,34 @@ span.device-self {
     top: 50%;
     left: 50%;
     transform: translate(-50%,-50%);
+}
+
+.stream-baby-heading {
+    display: flex;
+    position: absolute;
+    flex-direction: row;
+    justify-content: center;
+    top: 3%;
+    left: 0px;
+    right: 0px;
+    height: auto;
+    z-index: 3;
+}
+.stream-baby-name {
+    background-color: rgba(255,255,255, 0.3);
+    width: auto;
+    text-align: center;
+    border-radius: 8px;
+    padding-left: 2em;
+    padding-right: 2em;
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+
+.stream-baby-name > h1 {
+    margin-top: 0px;
+    margin-bottom: 0px;
+	  /* color: rgb(230,202,212); */
 }
 
 .volumemeter {
@@ -919,7 +948,9 @@ canvas {
 
 .btn-close-x {
 	  background-image: url("/pix/ic_expand_close.svg");
+    background-color: rgba(255,255,255, 0.3);
 	  background-size:100% 100%;
 	  height:25px;
 	  width:25px;
+    border-radius: 4px;
 }
