@@ -61,6 +61,7 @@ ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
   elClass "div" "container" $ do
+    el "script" $ text "screenfull.exit();"
     el "h1" $ do
       text "Welcome to the "
       el "wbr" blank

@@ -17,6 +17,7 @@ import Data.Maybe (listToMaybe)
 import Control.Lens
 import GHCJS.DOM.Types (MediaStream, liftJSM, MonadJSM)
 import qualified Language.Javascript.JSaddle                       as JS
+import Gonimo.Client.Util (registerTriggerFullScreen)
 
 enterPressed :: Reflex t => Event t Int -> Event t ()
 enterPressed = push (\key -> pure $ if key == 13
@@ -91,6 +92,8 @@ mediaVideo stream attrs = do
   liftJSM $ do
     JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
     _ <- JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])
+    -- Does not seem to work properly right now ... :-(
+    -- registerTriggerFullScreen rawElement
     pure ()
 
 -- mediaVideo :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace

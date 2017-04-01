@@ -450,3 +450,26 @@ stopVibraAlert (Vibrator jsTimer) = liftJSM $ do
   jsStop <- JS.eval . T.unlines $ ["(function(jsTimer) {clearInterval(jsTimer);})"]
   _ <- JS.call jsStop JS.obj [jsTimer]
   pure ()
+
+-- Does not seem to work properly right now ... :-(
+registerTriggerFullScreen :: (MonadJSM m, JS.ToJSVal element) => element -> m ()
+registerTriggerFullScreen element' = liftJSM $ do
+  jsRegister <- JS.eval . T.unlines $
+    [ "(function(el) {"
+    , "try {"
+    , "  addEventListener('dblclick', () => {"
+    , "    if (screenfull.enabled) {"
+    , "            if(screenfull.element == el) {"
+    , "               screenfull.exit(el);"
+    , "               screenfull.request();"
+    , "             }"
+    , "             else"
+    , "               screenfull.request(el);"
+    , "    }"
+    , "  })"
+    , "}"
+    , "catch(e) {console.log('Switching video to fullscreen failed!');}"
+    , "})"
+    ]
+  _ <- JS.call jsRegister JS.obj [element']
+  pure ()
