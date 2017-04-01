@@ -34,7 +34,7 @@ ui appConfig loaded deviceList = mdo
                            , _configResponse = appConfig^.App.server.webSocket_recv
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = startMonitor
-                           , _configStopMonitor  = ui'^.uiStopMonitor
+                           , _configStopMonitor  = leftmost [ui'^.uiGoHome, ui'^.uiStopMonitor]
                            , _configSetBabyName = ui'^.uiSetBabyName
                            , _configSelectedFamily = loaded^.App.selectedFamily
                            }
