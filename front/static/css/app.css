@@ -879,6 +879,7 @@ input.volume::-ms-thumb{
 .baby > .volumemeter {
     bottom: calc(5% + 50px);
     right: 3%;
+    z-index: 2;
 }
 
 .baby > .volumemeter > .volBarItem {

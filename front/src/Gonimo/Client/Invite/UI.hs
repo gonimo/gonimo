@@ -40,8 +40,6 @@ ui loaded config = mdo
 
     el "h1" $ text "Invite More Devices"
     el "h2" . dynText $ pure "to your family '" <> App.currentFamilyName loaded <> pure "'"
-    el "br" blank
-    el "br" blank
 
     confirmationBox $ leftmost sentEvents
     invButtons <- elClass "div" "invite-buttons" $ do
@@ -49,7 +47,6 @@ ui loaded config = mdo
       tgClicked <- inviteButton "telegram" "tg://msg?text=" escapedLink
       pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
 
-    el "br" blank
     el "h3" $ text "EMAIL"
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
 
