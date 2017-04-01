@@ -44,11 +44,10 @@ ui loaded config = mdo
     el "br" blank
 
     confirmationBox $ leftmost sentEvents
-    invButtons <- elAttr "div" ("style" =: "display:flex; justify-content: space-between;") $ do
-      elAttr "div" ("class" =: "btn-group btn-group-justified" <> "role" =: "group") $ do
-        whatsAppClicked <- inviteButton "/resources/pix/WhatsApp.png" "WhatsApp" "whatsapp://send?text=" escapedLink
-        tgClicked <- inviteButton "/resources/pix/Telegram.png" "Telegram" "tg://msg?text=" escapedLink
-        pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
+    invButtons <- elClass "div" "invite-buttons" $ do
+      whatsAppClicked <- inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
+      tgClicked <- inviteButton "telegram" "tg://msg?text=" escapedLink
+      pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
 
     el "br" blank
     el "h3" $ text "EMAIL"
@@ -69,20 +68,10 @@ ui loaded config = mdo
     pure $ invite'' & uiGoBack .~ backClicked
                     & uiDone .~ doneClicked
   where
-
-    inviteButton img name linkBase payload =
-      elAttr "div" ("class" =: "btn-group" <> "role" =: "group"
-                    <> "style" =: "height: 20vh;") $ do
-        let mkBtnAttrs link' = ("class" =: "btn btn-default" <> "style" =: "height: 100%;"
-                                <> "role" =: "button"
-                                <> "type" =: "button"
-                                <> "href" =: (linkBase <> link')
-                               )
-        let clickAttr n attrs children' = domEvent Click . fst <$> elDynAttr' n attrs children'
-        clickAttr "a" (mkBtnAttrs <$> payload) $ do
-          elAttr "img" ("src" =: img <> "style" =: "height: 80px;") $ pure ()
-          elAttr "div" ("style" =: "text-align: center") $
-            text name
+    inviteButton className linkBase payload = do
+        let mkLinkAttrs link' = "href" =: (linkBase <> link')
+        elAttr "div" (addBtnAttrs $ "invite-button " <> className) $
+          makeClickable . elDynAttr' "a" (mkLinkAttrs <$> payload) $ blank
 
 confirmationBox :: forall m t. (DomBuilder t m, MonadIO (Performable m), MonadHold t m
                                , TriggerEvent t m, PerformEvent t m)
