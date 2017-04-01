@@ -833,7 +833,7 @@ input.volume::-ms-thumb{
 	background-image: url("/pix/gonimo-night.svg");
 	background-size:50% 50%;
 	background-repeat: no-repeat;
-  background-position: 60% 50%;
+  background-position: 59% 50%;
 	text-align:center;
 }
 
@@ -882,23 +882,22 @@ input.volume::-ms-thumb{
 	font-weight:900;
   height: 1.5em;
   width: 1.5em;
+
+	background-image: url("/pix/sun.svg");
+	background-size: 90% 90%;
+	background-repeat: no-repeat;
+  background-position: 50% 50%;
 }
-.time::before{
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-	font-family:FontAwesome;
-	content:"\f185";
-}
+
 .baby.day{
 	background-color:white;
 	background-image: url("/pix/gonimo-day.svg");
 }
-.baby.day > .time::before{
-	font-family:FontAwesome;
-	content:"\f186";
+
+.baby.day > .time {
+	background-image: url("/pix/moon.svg");
 }
+
 .welcome-form.baby-form{
   position: absolute;
   top: 60px;
@@ -954,6 +953,9 @@ span.baby-form{
     }
     .good-night {
         display: none;
+    }
+    .time {
+        bottom: 10%;
     }
 }
 

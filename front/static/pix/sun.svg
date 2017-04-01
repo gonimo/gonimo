@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1042 1284 28 28">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #e6cad4;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #cda4b4;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: none;
+      }
+    </style>
+  </defs>
+  <g id="Gruppe_217" data-name="Gruppe 217" transform="translate(1042 1284)">
+    <circle id="Ellipse_41" data-name="Ellipse 41" class="cls-1" cx="6.354" cy="6.354" r="6.354" transform="translate(7.646 7.646)"/>
+    <line id="Linie_65" data-name="Linie 65" class="cls-2" y1="5.169" transform="translate(14)"/>
+    <line id="Linie_66" data-name="Linie 66" class="cls-2" x2="5.062" transform="translate(22.938 14)"/>
+    <line id="Linie_67" data-name="Linie 67" class="cls-2" y2="5.062" transform="translate(14 22.938)"/>
+    <line id="Linie_68" data-name="Linie 68" class="cls-2" x1="5.169" transform="translate(0 14)"/>
+    <line id="Linie_69" data-name="Linie 69" class="cls-2" x1="3.662" y1="3.662" transform="translate(4.092 4.092)"/>
+    <line id="Linie_70" data-name="Linie 70" class="cls-2" y1="3.662" x2="3.662" transform="translate(20.246 4.092)"/>
+    <line id="Linie_71" data-name="Linie 71" class="cls-2" x2="3.662" y2="3.662" transform="translate(20.246 20.246)"/>
+    <line id="Linie_72" data-name="Linie 72" class="cls-2" x1="3.662" y2="3.662" transform="translate(4.092 20.246)"/>
+  </g>
+</svg>
