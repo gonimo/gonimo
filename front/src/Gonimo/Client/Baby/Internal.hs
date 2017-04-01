@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TupleSections #-}
 
 module Gonimo.Client.Baby.Internal where
 
@@ -26,7 +27,7 @@ import           GHCJS.DOM.Types                   (MediaStream, MonadJSM)
 import           Gonimo.DOM.Navigator.MediaDevices
 import qualified Gonimo.Client.Baby.Socket         as Socket
 import qualified Gonimo.Types                      as Gonimo
-import           Gonimo.Client.Util                (oyd)
+import           Gonimo.Client.Util                (oyd, getVolumeInfo)
 
 data Config t
   = Config  { _configSelectCamera :: Event t Text
@@ -49,6 +50,7 @@ data Baby t
          , _socket :: Socket.Socket t
          , _name :: Dynamic t Text
          , _request :: Event t [API.ServerRequest]
+         , _volumeLevel :: Event t Double
          }
 
 data UI t
@@ -136,6 +138,9 @@ baby config = mdo
                                ]
   performEvent_ $ writeLastBabyName <$> updated babyName
 
+  (volEvent, triggerVolumeEvent) <- newTriggerEvent
+  performEvent_ $ flip getVolumeInfo (liftIO . triggerVolumeEvent) <$> updated mediaStream'
+
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
               , _autoStartEnabled = autoStart
@@ -144,6 +149,7 @@ baby config = mdo
               , _socket = socket'
               , _name = babyName
               , _request = saveNameReq
+              , _volumeLevel = volEvent
               }
 
 handleCameraEnable :: forall m t. (MonadHold t m, MonadJSM (Performable m), MonadJSM m, PerformEvent t m)

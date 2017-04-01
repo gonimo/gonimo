@@ -22,6 +22,7 @@ import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.ConfirmationButton  (addConfirmation)
+import           Gonimo.Client.Prelude
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -81,6 +82,7 @@ uiStart loaded deviceList  baby' = do
           setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
         startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Start"
+        renderVolumemeter $ baby'^.volumeLevel
         elClass "div" "stream-menu" $ do
           selectCamera <- cameraSelect baby'
           autoStart <- enableAutoStartCheckbox baby'
@@ -279,3 +281,15 @@ renderBabySelectors names =
   in
     elClass "div" "family-select" $
       switchPromptly never =<< (dyn $ renderSelectors <$> names)
+
+-- copy & paste for now. mimimimi ....
+renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
+renderVolumemeter volEvent = do
+    elClass "div" "volumemeter" $ do
+      volDyn <- holdDyn 0 volEvent
+      traverse_ (renderVolBarItem volDyn) [0, 0.1 .. 0.9]
+  where
+    renderVolBarItem :: Dynamic t Double -> Double -> m ()
+    renderVolBarItem currentVolume minVal = do
+      let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
+      elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
