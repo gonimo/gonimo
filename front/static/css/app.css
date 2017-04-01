@@ -830,7 +830,6 @@ input.volume::-ms-thumb{
 	padding-bottom:50px;
 
 	background-color:black;
-  color: white;
 	background-image: url("/pix/gonimo-night.svg");
 	background-size:50% 50%;
 	background-repeat: no-repeat;
@@ -898,7 +897,7 @@ input.volume::-ms-thumb{
 }
 .baby.day > .time::before{
 	font-family:FontAwesome;
-	content:"\f186";	
+	content:"\f186";
 }
 .welcome-form.baby-form{
   position: absolute;
@@ -924,7 +923,26 @@ span.baby-form{
 	font-size:xx-large;
 	margin:2%;
 }
-.baby.setup-done > .baby-form{
+
+.good-night {
+    text-align: center;
+    position: absolute;
+    z-index: 1;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    padding-top: calc(60px + 5%);
+}
+
+.baby.night > .good-night > h1 {
+    color: white;
+}
+
+.baby.night > .good-night > h2 {
+    color: white;
+}
+
+.baby.setup-done > .baby-form {
 	display:none;
 }
 .baby.setup-done > .time{
@@ -932,6 +950,9 @@ span.baby-form{
 }
 @media (orientation: landscape) {
     .baby.setup-done > .stream-menu {
+        display: none;
+    }
+    .good-night {
         display: none;
     }
 }

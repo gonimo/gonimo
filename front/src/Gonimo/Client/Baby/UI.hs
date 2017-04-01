@@ -114,6 +114,9 @@ uiRunning loaded deviceList baby' =
 
     (ui', dayNightClicked) <-
       elDynClass "div" babyClass $ do
+        elClass "div" "good-night" $ do
+          el "h1" $ text "Good Night"
+          el "h2" $ dynText $ baby'^.name <> pure "!"
         elClass "div" "fill-full-screen" blank
         _ <- dyn $ noSleep <$> baby'^.mediaStream
         let
