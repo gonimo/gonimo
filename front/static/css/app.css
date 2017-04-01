@@ -674,10 +674,8 @@ span.device-self {
     position: absolute;
     top: 3%;
     right: 5%;
-    height: 5%;
-    min-height: 18px;
-    min-width: 18px;
-    width: 5%;
+    height: 30px;
+    width: 30px;
     z-index: 4;
 }
 
@@ -733,7 +731,8 @@ span.device-self {
     right: 5%;
     bottom: 5%;
     top: 10%;
-    max-height: 85%;
+    max-height: 70%;
+    overflow-y: hidden;
 }
 
 .volBarItem {
