@@ -930,6 +930,11 @@ span.baby-form{
 .baby.setup-done > .time{
 	display:inline-block;
 }
+@media (orientation: landscape) {
+    .baby.setup-done > .stream-menu {
+        display: none;
+    }
+}
 
 .hCenteredOverlay {
     position: fixed;
@@ -991,6 +996,7 @@ span.baby-form{
     display: none;
 	  text-align:center;
 	  background:rgba(255,255,255,0.9);
+    color: black;
 }
 .dropDown-container.isDroppedDown {
     display: block;
