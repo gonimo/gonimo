@@ -625,8 +625,8 @@ span.device-self {
 }
 
 .invite-button {
-    height: 20vh;
-    width: 20vw;
+    height: 100px;
+    width: 100px;
 }
 
 .invite-button > a {
