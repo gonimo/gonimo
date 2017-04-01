@@ -555,6 +555,7 @@ span.device-self {
 @media (orientation: landscape) {
     .parent {
         flex-direction: row;
+        padding-bottom: 0px;
     }
     .parent.single-video > .menu {
 	      background-color: rgba(230,202,212, 0.3);
@@ -574,8 +575,10 @@ span.device-self {
     }
     .parent.single-video > .stream-baby > .volumemeter {
         bottom: calc(5% + 50px);
+        top: calc (10% + 60px);
     }
     .parent.single-video > .stream-menu {
+        display: block;
         background-color: rgba(0,0,0,0.3);
     }
     .parent > .stream-menu {
