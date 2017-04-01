@@ -75,12 +75,11 @@ uiStart :: forall m t. (HasWebView m, MonadWidget t m)
             -> m (UI t)
 uiStart loaded deviceList  baby' = do
     elClass "div" "container" $ do
-      navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
       elClass "div" "baby" $ mdo
+        navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
         newBabyName <-
           setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
-        elClass "div" "time" blank
         startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Start"
         elClass "div" "stream-menu" $ do
           selectCamera <- cameraSelect baby'
@@ -96,10 +95,11 @@ uiStart loaded deviceList  baby' = do
                     }
   where
     renderVideo stream
-      = mediaVideo stream ( "style" =: "height:100%; width:100%"
-                            <> "autoplay" =: "true"
-                            <> "muted" =: "true"
+      = elClass "div" "stream-baby" $
+        mediaVideo stream ( "autoplay" =: "true"
+                          <> "muted" =: "true"
                           )
+
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
@@ -114,6 +114,7 @@ uiRunning loaded deviceList baby' =
 
     (ui', dayNightClicked) <-
       elDynClass "div" babyClass $ do
+        elClass "div" "fill-full-screen" blank
         _ <- dyn $ noSleep <$> baby'^.mediaStream
         let
           leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
@@ -128,14 +129,15 @@ uiRunning loaded deviceList baby' =
                   <*> addConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked)
 
         dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
-        stopClicked <- addConfirmation leaveConfirmation
-                      =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop")
+        stopClicked <- elClass "div" "stream-menu" $
+          addConfirmation leaveConfirmation
+          =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "Stop")
+        -- stopClicked <- addConfirmation leaveConfirmation
+        --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop")
 
-        let goBack = leftmost [ stopClicked, navBar^.NavBar.backClicked ]
-
-        let ui'' = UI { _uiGoHome = navBar^.NavBar.homeClicked
+        let ui'' = UI { _uiGoHome = leftmost [navBar^.NavBar.homeClicked, stopClicked]
                       , _uiStartMonitor = never
-                      , _uiStopMonitor = leftmost [goBack, navBar^.NavBar.homeClicked]
+                      , _uiStopMonitor = navBar^.NavBar.backClicked
                       , _uiEnableCamera = never
                       , _uiEnableAutoStart = never
                       , _uiSelectCamera = never
@@ -176,7 +178,7 @@ cameraSelect' baby' videoDevices' =
               droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
             let
               dropDownClass :: Dynamic t Text
-              dropDownClass = pure "baby-form welcome-form dropUp-container .container " <> droppedDownClass
+              dropDownClass = pure "dropUp-container " <> droppedDownClass
 
             selectedName <-
               elDynClass "div" dropDownClass $ renderCameraSelectors cameras
@@ -247,7 +249,7 @@ setBabyNameForm loaded baby' = --mdo
       droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
     let
       dropDownClass :: Dynamic t Text
-      dropDownClass = pure "baby-form welcome-form dropDown-container .container " <> droppedDownClass
+      dropDownClass = pure "dropDown-container " <> droppedDownClass
 
     selectedName <-
       elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)

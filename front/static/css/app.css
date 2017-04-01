@@ -36,9 +36,10 @@ html, body {
 body{
 	text-align:center;
 	font-size: 14px;
-    line-height: 1.42857143;
-    color: #333;
+  line-height: 1.42857143;
+  color: #333;
 	margin:0;
+  background-color: rgba(0,0,0,0);
 }
 #app {
     height: 100%;
@@ -80,25 +81,30 @@ a:hover, a:focus{
 }
 }
 @media(max-width:768px){
-.lang-img{
-	width:95%;
-}
-.stream-menu{
-	width:100%;
-}
+    .lang-img{
+    width:95%;
+    }
 }
 @media(min-width:992px){
-.container, .stream-menu{
-	width:970px;
-}
-.welcome-input{
-	letter-spacing:0.15em;
-	}      
+    .container, .stream-menu{
+    width:970px;
+    }
+    .welcome-input{
+    letter-spacing:0.15em;
+    }      
 }
 @media(min-width:1200px){
-.container, .stream-menu{
-	width:1170px;
+    .container, .stream-menu{
+    width:1170px;
+    }
 }
+
+.stream-menu {
+    position: absolute;
+    width:100%;
+    bottom: 0px;
+    height:50px;
+    background-color:rgb(50,50,50);
 }
 
 h1{
@@ -136,8 +142,8 @@ h2{
 .btn-lang{
 	display:inline-block;
 	width:auto;
-	border:3px solid #E6CAD4;
-	color:#E6CAD4;
+	border:3px solid #CDA5B4;
+	color:#CDA5B4;
 	font-size:xx-large;
 	padding: 10px 25px;
 	letter-spacing: 0.25em;
@@ -238,10 +244,10 @@ h3{
 	  content:"-";
 }
 .input-btn.check, .input-btn.mail{
-	border:solid 4px #E6CAD4;
+	  border:solid 4px #CDA5B4;
 }
 .input-btn.check::after{
-	color:#E6CAD4;
+	  color:#CDA5B4;
 	font-family:FontAwesome;
 	content:"\f00c";
 }
@@ -275,25 +281,25 @@ h3{
 }
 .input-btn.link::after{
 	font-family:FontAwesome;
-	color:#E6CAD4;
+	color:#CDA5B4;
 	content:"\f0c5";
 	border:none;
 }
 .input-btn.recreate::after{
 	  font-family:FontAwesome;
-	  color:#E6CAD4;
+	  color:#CDA5B4;
     content: "\f021";
 	  border:none;
 }
 .input-btn.mail::after{
 	font-family:FontAwesome;
-	color:#E6CAD4;
+	color:#CDA5B4;
 	content:"\f1d8";
 }
 .family-select{
 	width:100%;
 	padding:5px 0px;
-	border:none;
+  border-style: none;
 	font-family: Raleway-Light;
 	font-size:x-large;
 	font-weight:500;
@@ -333,8 +339,8 @@ h3{
 	margin:2%;
 }
 .btn-baby{
-	border:solid 4px #E6CAD4;
-	color:#E6CAD4;
+	  border:solid 4px #CDA5B4;
+	  color:#CDA5B4;
 	font-size:x-large;
 	width:33%;
 	display:inline-block;
@@ -362,11 +368,22 @@ h3{
 	content:"\f00d";
 }
 .menu{
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  position: absolute;
+  height: 60px;
+  z-index: 1;
 	width:100%;
-	max-height:60px;
 	background:rgb(230,202,212);
 	overflow:hidden;
 }
+.container > .menu {
+    position: static;
+    height: 60px;
+    width: 100%;
+}
+
 .menu-left.back{
 	float:left;
 	font-size:xx-large;
@@ -406,6 +423,7 @@ h3{
 	font-family:Raleway-bold;
 	padding:2px 2.5%;
 	border-left:solid 1px black;
+  color: black;
 }
 span.device-self {
 	  /* color:rgb(230,202,212); */
@@ -458,12 +476,12 @@ span.device-self {
 }
 .buttons{
 	width:25%;
-	color:#E6CAD4;
+	color:#CDA5B4;
 	font-weight:900;
 	float:right;
 }
 .buttons > div{
-	border:solid 2px #E6CAD4;
+	  border:solid 2px #CDA5B4;
 	display:none;
 }
 .stream, .disconnect{
@@ -478,13 +496,14 @@ span.device-self {
 }
 .device.active > .status > div {
 	background:rgb(230,202,212);
+  border-color: #CDA5B4;
 }
 .device.isBaby > .buttons > .connect{
 	display:block;
 }
 .device.connected > .buttons > .stream, .device.connected > .buttons > .disconnect {
 	display:block;
-} 
+}
 .device.connected > .buttons > .connect{
 	display:none;
 }
@@ -522,6 +541,7 @@ span.device-self {
 }
 .device-add::before{
 	font-family:FontAwesome;
+	font-size:x-large;
 	content:"\f067";
 }
 .parent{
@@ -540,19 +560,6 @@ span.device-self {
   flex-wrap: wrap;
   justify-content: center;
   align-items: stretch;
-}
-
-.parent > .menu {
-    top: 0px;
-    left: 0px;
-    right: 0px;
-    position: absolute;
-    height: 60px;
-    z-index: 7;
-}
-
-.parent > .stream-menu {
-    bottom: 0px;
 }
 
 @media (orientation: landscape) {
@@ -611,16 +618,19 @@ span.device-self {
     display: block
 }
 
-.stream-baby{
+.stream-baby {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.parent > .stream-baby {
 	min-width:50%;
   width: auto;
 	max-width:100%;
 	min-height:40%;
   height: auto;
   max-height: 100%;
-  position: relative;
-  overflow-x: hidden;
-  overflow-y: hidden;
   flex-grow: 1;
 }
 
@@ -719,12 +729,6 @@ span.device-self {
     background-color: white;
 }
 
-.stream-menu{
-	position:absolute;
-	bottom:0;
-	height:50px;
-	background-color:rgb(50,50,50);
-}
 .stop{
 	float:right;
 	color:black;
@@ -758,28 +762,28 @@ input.volume {
   -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
   width: 100%; /* Specific width is required for Firefox. */
   background: transparent; /* Otherwise white in Chrome */
-  border:solid 1px #E6CAD4;
+  border:solid 1px #CDA5B4;
 }
 input.volume::-moz-range-track{
-	background:#E6CAD4;
+	  background:#CDA5B4;
 }
 input.volume:focus::-webkit-slider-runnable-track{
-	background:#E6CAD4;
+	  background:#CDA5B4;
 }
 input.volume::-ms-fill-lower{
-	background:#E6CAD4;
+	  background:#CDA5B4;
 }
 input.volume::-ms-fill-upper{
-	background:#E6CAD4;
+	  background:#CDA5B4;
 }
 input.volume::-webkit-slider-thumb{
-	background:#E6CAD4;
+	  background:#CDA5B4;
 }
 input.volume::-moz-range-thumb{
-	background:#E6CAD4;
+	  background:#CDA5B4;
 }
 input.volume::-ms-thumb{
-	background:#E6CAD4;
+	  background:#CDA5B4;
 }
 .cam-on, .autostart{
 	float:right;
@@ -816,25 +820,75 @@ input.volume::-ms-thumb{
 	content:"\f00c";
 	color:green;
 }
-.baby{
+.baby {
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  padding-top: 60px;
+	padding-bottom:50px;
+
 	background-color:black;
+  color: white;
 	background-image: url("/pix/gonimo-night.svg");
 	background-size:50% 50%;
 	background-repeat: no-repeat;
-    background-position: center; 
-	min-height:90%;
-	padding-bottom:50px;
+  background-position: 60% 50%;
 	text-align:center;
 }
+
+.baby > .fill-full-screen {
+    position: fixed;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    background-color: black;
+    z-index: -1;
+}
+
+.baby.day > .fill-full-screen {
+    background-color: white;
+}
+
+.baby > .stream-baby {
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    z-index: 0;
+}
+
+.baby > .btn-lang {
+    position: absolute;
+    background-color: rgb(255, 255, 255);
+    bottom: calc(50px + 10%);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
 .time{
-	color:#E6CAD4;
+	color:#CDA5B4;
+	border-color:#CDA5B4;
+  border-style: solid;
 	display:none;
 	position:absolute;
 	bottom:15%;
+  left: 50%;
+  transform: translateX(-50%);
 	font-size:xx-large;
 	font-weight:900;
+  height: 1.5em;
+  width: 1.5em;
 }
 .time::before{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 	font-family:FontAwesome;
 	content:"\f185";
 }
@@ -847,10 +901,15 @@ input.volume::-ms-thumb{
 	content:"\f186";	
 }
 .welcome-form.baby-form{
+  position: absolute;
+  top: 60px;
+  left: 0px;
+  right: 0px;
 	margin-bottom:0;
 	text-align:center;
-	background:rgba(255,255,255,0.7);
+	background:rgba(255,255,255,0.9);
 	border:none;
+  z-index: 1;
 }
 .baby-form, .baby-form > select, .input-btn.edit.baby-form, .input-btn.plus.baby-form{
 	background-color:transparent;
@@ -863,7 +922,7 @@ span.baby-form{
 	display:inline-block;
 	color:black;
 	font-size:xx-large;
-	margin:5%;
+	margin:2%;
 }
 .baby.setup-done > .baby-form{
 	display:none;
@@ -928,7 +987,10 @@ span.baby-form{
     position: absolute;
     z-index: 5;
     left: 0px;
+    right: 0px;
     display: none;
+	  text-align:center;
+	  background:rgba(255,255,255,0.9);
 }
 .dropDown-container.isDroppedDown {
     display: block;
@@ -938,10 +1000,10 @@ span.baby-form{
 }
 
 .dropDown-container {
-    top: calc(100% + 2px);
+    top: calc(100% + 1px);
 }
 .dropUp-container {
-    bottom: calc(100% + 2px);
+    bottom: calc(100% + 1px);
 }
 
 /* .dropDown-container,dropUp-Container>* { */
@@ -1002,4 +1064,9 @@ canvas {
 	  height:25px;
 	  width:25px;
     border-radius: 4px;
+}
+
+/* Stolen from bootstrap: */
+[role=button] {
+    cursor: pointer;
 }
