@@ -116,11 +116,12 @@ viewUi :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (C.VideoView t)
 viewUi _ loaded deviceList connections = do
   let streams = connections^.C.streams
-  navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+  let singleVideoClass = (\streams' -> if Map.size streams' == 1 then "single-video " else "") <$> streams
+  elDynClass "div" (pure "parent " <> singleVideoClass) $ do
+    navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
 
-  navBar' <- NavBar.NavBar (navBar^.NavBar.backClicked)
-             <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
-  elClass "div" "parent" $ do
+    navBar' <- NavBar.NavBar (navBar^.NavBar.backClicked)
+              <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
     _ <- dyn $ renderFakeVideos connections
     closedsEvEv <- dyn $ renderVideos deviceList connections
     let closedEvEv  = leftmost <$> closedsEvEv

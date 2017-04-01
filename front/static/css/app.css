@@ -58,6 +58,7 @@ a:hover, a:focus{
     color: white;
 }
 .container{
+  position: relative;
 	margin-right: auto;
 	margin-left: auto;
   padding-left: 0px;
@@ -521,12 +522,16 @@ span.device-self {
 	content:"\f067";
 }
 .parent{
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  right: 0px;
+  left: 0px;
 	background-color:black;
-
-	min-height:94%;
-  max-height: 94%;
+  padding-top: 60px;
+  padding-bottom: 50px;
+  height: 100%;
   width: 100%;
-	padding-bottom:50px;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
@@ -534,9 +539,47 @@ span.device-self {
   align-items: stretch;
 }
 
+.parent > .menu {
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    position: absolute;
+    height: 60px;
+    z-index: 7;
+}
+
+.parent > .stream-menu {
+    bottom: 0px;
+}
+
 @media (orientation: landscape) {
     .parent {
         flex-direction: row;
+    }
+    .parent.single-video > .menu {
+	      background-color: rgba(230,202,212, 0.3);
+    }
+    .parent.single-video > .stream-baby {
+        position: absolute;
+        top: 0px;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+    }
+    .parent.single-video > .stream-baby > .stream-baby-heading {
+        top: calc(3% + 60px);
+    }
+    .parent.single-video > .stream-baby > .btn-close-x {
+        top: calc(3% + 60px);
+    }
+    .parent.single-video > .stream-baby > .volumemeter {
+        bottom: calc(5% + 50px);
+    }
+    .parent.single-video > .stream-menu {
+        background-color: rgba(0,0,0,0.3);
+    }
+    .parent > .stream-menu {
+        display: none;
     }
 }
 
