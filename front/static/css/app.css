@@ -469,6 +469,9 @@ span.device-self {
 .stream, .disconnect{
 	margin-top:5px;
 }
+.buttons > .disconnect {
+	  border-color:black;
+}
 .disconnect{
 	color:black;
 	border:solid 2px black;
