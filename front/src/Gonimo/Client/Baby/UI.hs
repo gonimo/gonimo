@@ -27,6 +27,7 @@ import           Data.Foldable
 import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException(..))
 import           GHCJS.DOM.Types                   (MediaStream)
 import           Control.Monad
+import           Gonimo.Client.Baby.UI.I18N
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -102,7 +103,7 @@ uiStart loaded deviceList  baby' = do
         newBabyName <-
           setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
-        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "START"
+        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text $ i18n Start
         renderVolumemeter $ baby'^.volumeLevel
         elClass "div" "stream-menu" $ do
           selectCamera <- cameraSelect baby'
@@ -146,15 +147,15 @@ uiRunning loaded deviceList baby' =
     (ui', dayNightClicked) <-
       elDynClass "div" babyClass $ do
         elClass "div" "good-night" $ do
-          el "h1" $ text "Good Night"
+          el "h1" $ text $ i18n Good_Night
           el "h2" $ dynText $ baby'^.name <> pure "!"
         elClass "div" "fill-full-screen" blank
         _ <- dyn $ noSleep <$> baby'^.mediaStream
         let
           leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
           leaveConfirmation = do
-              el "h3" $ text "Really stop baby monitor?"
-              el "p" $ text "All connected devices will be disconnected!"
+              el "h3" $ text $ i18n Really_stop_baby_monitor
+              el "p" $ text $ i18n All_connected_devices_will_be_disconnected 
 
         navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
 
@@ -167,9 +168,9 @@ uiRunning loaded deviceList baby' =
         dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
         stopClicked <- elClass "div" "stream-menu" $
           flip (mayAddConfirmation leaveConfirmation) needConfirmation
-          =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "STOP")
+          =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text $ i18n Stop)
         -- stopClicked <- flip (mayAddConfirmation leaveConfirmation) needConfirmation
-        --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "STOP")
+        --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text $ i18n Stop)
         let handleStop f = push (\_ -> do
                                   autoStartOn' <- sample $ current (baby'^.autoStartEnabled)
                                   if f autoStartOn'
@@ -230,7 +231,7 @@ cameraSelect' baby' videoDevices' =
               elDynClass "div" dropDownClass $ renderCameraSelectors cameras
             pure selectedName
   where
-    selectedCameraText = fromMaybe "Standard Setting" <$> baby'^.selectedCamera
+    selectedCameraText = fromMaybe (i18n Standard_Setting) <$> baby'^.selectedCamera
 
     cameras = map mediaDeviceLabel videoDevices'
 
@@ -265,14 +266,14 @@ enableCameraCheckbox' baby' videoDevices' =
 enableAutoStartCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Bool)
 enableAutoStartCheckbox baby' =
-    myCheckBox ("class" =: "autostart ") (baby'^.autoStartEnabled) $ text "AUTOSTART"
+    myCheckBox ("class" =: "autostart ") (baby'^.autoStartEnabled) $ text $ i18n Autostart
 
 setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
                    => App.Loaded t -> Baby t -> m (Event t Text)
 setBabyNameForm loaded baby' = do
   (nameAddRequest, selectedName) <-
     elClass "div" "welcome-form baby-form" $ mdo
-      elClass "span" "baby-form" $ text "Adjust camera for"
+    elClass "span" "baby-form" $ text $ i18n Adjust_camera_for
       elClass "span" "baby-text" $ text "BABY"
 
       clicked <-
@@ -300,7 +301,7 @@ setBabyNameForm loaded baby' = do
         elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)
       pure (nameAddRequest, selectedName)
   -- Necessary for stacking order with volumemeter:
-  nameAdded <- editStringEl (pure nameAddRequest) (text "Add new baby name ...") (constDyn "")
+  nameAdded <- editStringEl (pure nameAddRequest) (text $ i18n Add_new_baby_name) (constDyn "")
   pure $ leftmost [ selectedName, nameAdded ]
 
 renderBabySelectors :: forall m t. (HasWebView m, MonadWidget t m)

@@ -122,6 +122,7 @@ library
                     , Gonimo.Client.Baby.Internal
                     , Gonimo.Client.Baby.Socket
                     , Gonimo.Client.Baby.UI
+                    , Gonimo.Client.Baby.UI.I18N
                     , Gonimo.Client.Baby
                     , Gonimo.DOM.Navigator.MediaDevices.Types
                     , Gonimo.DOM.Navigator.MediaDevices.Internal
