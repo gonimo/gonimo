@@ -17,6 +17,10 @@ Flag dev
     Description:   Turn on development settings.
     Default:       False
 
+Flag DE
+    Description:   Translate the app to German
+    Default:       False
+
 custom-setup
     setup-depends: base >=4.8 && <4.10
                  , Cabal >= 1.18 && < 1.25
@@ -86,10 +90,10 @@ library
                     , Gonimo.Client.Server
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Invite.UI
+                    , Gonimo.Client.Invite.UI.I18N
                     , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.UI
-                    , Gonimo.Client.AcceptInvitation.Internal
                     , Gonimo.Client.MessageBox
                     , Gonimo.Client.MessageBox.UI
                     , Gonimo.Client.MessageBox.Internal

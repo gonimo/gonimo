@@ -22,6 +22,7 @@ import qualified Gonimo.SocketAPI.Types as API
 import Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.App.Types as App
 import           GHCJS.DOM.Types (MonadJSM)
+import           I18N.Translation
 import           Gonimo.Client.Util
 import qualified GHCJS.DOM.Element as Element
 
@@ -50,8 +51,8 @@ ui loaded config = mdo
 
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
 
-    el "h1" $ text "Invite More Devices"
-    el "h2" . dynText $ pure "to your family '" <> App.currentFamilyName loaded <> pure "'"
+    el "h1" $ text $ i18n Invite_More_Devices
+    el "h2" . dynText $ pure $ i18n (To_your_family $ App.currentFamilyName loaded)
 
     confirmationBox $ leftmost sentEvents
     invButtons <- elClass "div" "invite-buttons" $ do
@@ -63,6 +64,10 @@ ui loaded config = mdo
 
     el "h3" $ text "EMAIL"
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
+
+    el "br" blank
+    doneClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text $ i18n Done
+    el "br" blank
 
     recreateClicked <- el "div" $ do
       copyClipboardScript
@@ -105,11 +110,11 @@ confirmationBox' Nothing = pure ()
 confirmationBox' (Just sendMethod) = do
   elClass "div" "alert alert-success" $ do
     case sendMethod of
-      SentWhatsApp -> el "strong" $ text "Sent with WhatsApp!"
-      SentTelegram -> el "strong" $ text "Sent with Telegram!"
-      SentCopy     -> el "strong" $ text "Copied invitation link to clipboard!"
-      SentRefresh  -> el "strong" $ text "New invitation generated!"
-      SentEmail    -> el "strong" $ text "Sent email!"
+      SentWhatsApp -> el "strong" $ text Sent_WhatsApp
+      SentTelegram -> el "strong" $ text Sent_Telegram
+      SentCopy     -> el "strong" $ text Sent_Copy
+      SentRefresh  -> el "strong" $ text Sent_Refresh
+      SentEmail    -> el "strong" $ text Sent_Email
 
 awesomeAddon :: forall m t. (DomBuilder t m) =>  Text -> m ()
 awesomeAddon t =
@@ -118,7 +123,7 @@ awesomeAddon t =
 
 copyButton :: forall t m. DomBuilder t m => m (Event t ())
 copyButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-right link" <> "title" =: "Copy link to clipboard"
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-right link" <> "title" =: i18n Copy_link_to_clipboard 
                                     <> "type" =: "button" <> "role" =: "button"
                                     <> "onClick" =: "copyInvitationLink()"
                                   ) $ blank
@@ -126,7 +131,7 @@ copyButton
 
 refreshLinkButton :: forall t m. DomBuilder t m => m (Event t ())
 refreshLinkButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-left recreate" <> "title" =: "Generate new link"
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-left recreate" <> "title" =: i18n Generate_new_link
                    <> "type" =: "button" <> "role" =: "button") $ blank
 
 showLinkInput :: forall t m. (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m ()
@@ -143,7 +148,7 @@ showLinkInput invitationLink =
 
 
 copyClipboardScript :: forall t m. (DomBuilder t m) => m ()
-copyClipboardScript = el "script" $ text $
+copyClipboardScript = el "script" $ text $ 
        "copyTextFromId = function(id_) {\n"
     <> "    try\n"
     <> "    {\n"
