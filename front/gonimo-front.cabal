@@ -94,6 +94,7 @@ library
                     , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.UI
+                    , Gonimo.Client.AcceptInvitation.UI.I18N
                     , Gonimo.Client.MessageBox
                     , Gonimo.Client.MessageBox.UI
                     , Gonimo.Client.MessageBox.Internal
