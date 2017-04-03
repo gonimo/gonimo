@@ -328,6 +328,7 @@ h3{
 .btn-box{
 	display:flex;
 	justify-content:center;
+  flex-wrap: wrap;
 }
 .btn-parent{
 	border:solid 4px rgb(50,50,50);

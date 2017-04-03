@@ -9,9 +9,7 @@ import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid
 import           Control.Applicative
 import           Data.Text                        (Text)
-import qualified Gonimo.Client.DeviceList         as DeviceList
 import qualified Gonimo.Client.Invite             as Invite
-import           Gonimo.Client.Reflex
 import           Gonimo.Db.Entities               (FamilyId)
 import qualified Gonimo.Db.Entities               as Db
 import qualified Gonimo.SocketAPI                 as API
@@ -60,7 +58,7 @@ ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded 
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
-  elClass "div" "container" $ do
+  elClass "div" "container" $ mdo
     el "script" $ text "screenfull.exit();"
     el "h1" $ do
       text "Welcome to the "
@@ -77,7 +75,24 @@ ui appConfig loaded familyGotCreated = do
 
     el "br" blank
 
-    roleSelected <- roleSelector
+    selectedView <- holdDyn "" $ leftmost [ const "isInviteView " <$> inviteRequested
+                                          , const "" <$> invite^.Invite.uiGoBack
+                                          , const "" <$> invite^.Invite.uiDone
+                                          ]
+    invite <-
+      elDynClass "div" (pure "container fullScreenOverlay inviteView " <> selectedView) $ do
+        firstCreation <- headE inviteRequested
+        let inviteUI
+              = Invite.ui loaded
+                $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
+                                , Invite._configSelectedFamily = loaded^.App.selectedFamily
+                                , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
+                                , Invite._configCreateInvitation = never
+                                }
+        dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
+        pure $ Invite.inviteSwitchPromptlyDyn dynInvite
+
+    (roleSelected, inviteRequested) <- roleSelector
 
 
     pure $ UI { _uiSelectFamily = familySelected
@@ -89,7 +104,7 @@ ui appConfig loaded familyGotCreated = do
                                        , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
                                        ]
               , _uiRoleSelected = roleSelected
-              , _uiRequest = newFamilyReqs
+              , _uiRequest = newFamilyReqs <> invite^.Invite.request
               }
 
 

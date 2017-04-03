@@ -13,7 +13,7 @@ import           Data.Map (Map)
 
 
 roleSelector :: forall t m. (MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m)
-          => m (Event t GonimoRole)
+          => m (Event t GonimoRole, Event t ())
 roleSelector = do
   elClass "div" "btn-box" $ do
     babyClicked <-
@@ -24,9 +24,13 @@ roleSelector = do
       makeClickable . elAttr' "div" (addFullScreenBtnAttrs "btn-parent") $ do
         elAttr "img" ("src" =: "/pix/button-parent.svg") blank
         el "span" $ text "PARENT"
-    pure $ leftmost [ const RoleBaby <$> babyClicked
-                    , const RoleParent <$> parentClicked
-                    ]
+    inviteRequested <-
+          makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
+    pure $ ( leftmost [ const RoleBaby <$> babyClicked
+                      , const RoleParent <$> parentClicked
+                      ]
+           , inviteRequested
+           )
 
 addFullScreenBtnAttrs :: Text -> Map Text Text
 addFullScreenBtnAttrs className
