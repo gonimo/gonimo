@@ -106,7 +106,7 @@ uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
   elClass "div" "container" $ mdo
-    dayNight <- holdDyn "day" $ tag toggledDayNight dayNightClicked
+    dayNight <- holdDyn "night" $ tag toggledDayNight dayNightClicked
     let
       toggledDayNight :: Behavior t Text
       toggledDayNight = (\c -> if c == "day" then "night" else "day") <$> current dayNight
