@@ -35,7 +35,9 @@ uiStart = do
       text "Gonimo World!"
     el "br" blank
 
-    elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.png") $ blank
+    -- elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.png") $ blank
+    elClass "div" "welcome-container" $
+      elClass "div" "start-welcome-img" $ blank
     el "br" blank
 
     el "h3" $ text "Create a new Family"
