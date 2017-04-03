@@ -457,7 +457,7 @@ registerTriggerFullScreen element' = liftJSM $ do
   jsRegister <- JS.eval . T.unlines $
     [ "(function(el) {"
     , "try {"
-    , "  el.addEventListener('click', () => {"
+    , "  el.addEventListener('click', function () {"
     , "    if (screenfull.enabled) {"
     , "            if(screenfull.element == el) {"
     , "               screenfull.exit(el);"
