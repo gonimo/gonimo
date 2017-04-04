@@ -103,13 +103,6 @@ box' title panelClass inner = do
     pure (ev, leftmost [closeEvent, closeClicked])
 
 
-delayed :: (PerformEvent t m, TriggerEvent t m, MonadIO (Performable m), MonadIO m) => NominalDiffTime -> m (Event t ())
-delayed dt = do
-  (ev, trigger) <- newTriggerEvent
-  liftIO $ trigger ()
-  delay dt ev
-
-
 closeButton :: DomBuilder t m => m (Event t ())
 closeButton = do
   (e, _) <- elClass' "span" "close" $ text "x"

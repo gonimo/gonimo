@@ -60,7 +60,7 @@ ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded 
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
-  elClass "div" "container" $ mdo
+  elClass "div" "container has-footer" $ mdo
     el "script" $ text "screenfull.exit();"
     el "h1" $ do
       text "Welcome to the "

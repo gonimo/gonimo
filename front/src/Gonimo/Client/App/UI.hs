@@ -29,6 +29,7 @@ import qualified GHCJS.DOM.Window                  as Window
 import qualified Language.Javascript.JSaddle                       as JS
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Client.Util (getBrowserProperty)
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -141,9 +142,10 @@ loadedUI config loaded familyCreated = mdo
 
 checkBrowser ::forall m t. (HasWebView m, MonadWidget t m) => m ()
 checkBrowser = do
-    isiOS <- JS.liftJSM $ getBrowserProperty "ios"
-    isBlink <- JS.liftJSM $ getBrowserProperty "blink"
-    hideWarning <- readHideBrowserWarning
+    isiOS <- getBrowserProperty "ios"
+    isBlink <- getBrowserProperty "blink"
+    -- hideWarning <- readHideBrowserWarning
+    let hideWarning = False
 
     let warnMessage = if isiOS
                       then "Unfortunately Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology. Also Apple restricts all other browsers on iOS to the same technology Safari supports, so on iOS not even Chrome will work."
@@ -153,15 +155,13 @@ checkBrowser = do
     let warningRequired = not hideWarning && (isiOS || not isBlink)
     if warningRequired
       then do
-      okClicked <- displayWarning warnMessage
+      _ <- displayWarning warnMessage
+      pure ()
       -- Warn everytime - so user will know when the browser gets supported!
       -- performEvent_ $ const (writeHideBrowserWarning True) <$> okClicked
       else
       pure ()
   where
-    getBrowserProperty :: Text -> JS.JSM Bool
-    getBrowserProperty property = fromMaybe False <$> (JS.fromJSVal =<< JS.eval ("bowser." <> property))
-
     displayWarning msg = mdo
       displayIt <- holdDyn (displayWarning' msg) $ const (pure never) <$> gotAnswer
       gotAnswer <- switchPromptly never =<< dyn displayIt

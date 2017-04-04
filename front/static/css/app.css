@@ -65,8 +65,12 @@ a:hover, a:focus{
   padding-left: 0px;
   padding-right: 0px;
 	height:100%;
-  display: table;
 }
+ 
+.has-footer {
+    display: table;
+}
+
 @media(min-width:768px){
 .container, .stream-menu{
 	width:750px;
@@ -578,6 +582,17 @@ span.device-self {
 	font-weight:800;
 }
 
+.keep-screen-on-warning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    background-color: rgba(255,0,0,0.8);
+    z-index: 10;
+	  font-size:x-large;
+	  font-weight:800;
+}
+
 .device-add::before{
 	font-family:FontAwesome;
 	font-size:x-large;
@@ -601,7 +616,7 @@ span.device-self {
   align-items: stretch;
 }
 
-@media (orientation: landscape) {
+@media (max-height:500px) {
     .parent {
         flex-direction: row;
         padding-bottom: 0px;
@@ -1027,7 +1042,8 @@ span.baby-form{
 .baby.setup-done > .time{
 	display:inline-block;
 }
-@media (orientation: landscape) {
+
+@media (max-height: 600px) {
     .baby.setup-done > .stream-menu {
         display: none;
     }

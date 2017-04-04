@@ -473,3 +473,6 @@ registerTriggerFullScreen element' = liftJSM $ do
     ]
   _ <- JS.call jsRegister JS.obj [element']
   pure ()
+
+getBrowserProperty :: forall m. MonadJSM m => Text -> m Bool
+getBrowserProperty property = liftJSM $ fromMaybe False <$> (JS.fromJSVal =<< JS.eval ("bowser." <> property))

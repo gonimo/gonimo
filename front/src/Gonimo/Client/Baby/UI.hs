@@ -23,6 +23,7 @@ import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.ConfirmationButton  (addConfirmation)
 import           Gonimo.Client.Prelude
+import           Gonimo.Client.Util
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -106,6 +107,7 @@ uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
   elClass "div" "container" $ mdo
+    displayScreenOnWarning baby'
     dayNight <- holdDyn "night" $ tag toggledDayNight dayNightClicked
     let
       toggledDayNight :: Behavior t Text
@@ -293,3 +295,23 @@ renderVolumemeter volEvent = do
     renderVolBarItem currentVolume minVal = do
       let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
       elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
+
+displayScreenOnWarning :: forall m t. (HasWebView m, MonadWidget t m)
+            => Baby t -> m ()
+displayScreenOnWarning baby' = do
+  isMobile <- getBrowserProperty "mobile"
+  isTablet <- getBrowserProperty "tablet"
+  let haveVideo = baby'^.cameraEnabled
+  let needWarning = (&& (isMobile || isTablet)) <$> haveVideo
+
+  dismissedEv <- delayed 10 -- Hide after 10 seconds
+  dismissed <- holdDyn False $ const True <$> dismissedEv
+  let shown = (&&) <$> needWarning <*> (not <$> dismissed)
+  _ <- dyn $ displayWarning <$> shown
+  pure ()
+  where
+    displayWarning False = pure ()
+    displayWarning True = elClass "div" "keep-screen-on-warning" $ do
+      text "For video to work, please don't switch off the screen!"
+      el "br" blank
+      text "Alternatively, if all you need is audio, please switch off the camera!"

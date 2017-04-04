@@ -65,7 +65,7 @@ ui appConfig loaded deviceList = mdo
   selectedView <- holdDyn "isParentManage" $ leftmost [showParentView, showParentManage, showInviteView]
 
   (navBar, devicesUI, inviteRequested) <-
-    elDynClass "div" (pure "container parentManage " <> selectedView) $ do
+    elDynClass "div" (pure "container has-footer parentManage " <> selectedView) $ do
       manageUi appConfig loaded deviceList connections'
 
   viewUI <-

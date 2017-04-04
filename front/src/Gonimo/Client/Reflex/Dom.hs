@@ -7,6 +7,7 @@
 -- | Reflex helper functions
 module Gonimo.Client.Reflex.Dom where
 
+import Control.Monad.IO.Class
 import Reflex.Dom.Core
 import Control.Monad.Fix (MonadFix)
 import Data.Monoid
@@ -18,6 +19,7 @@ import Control.Lens
 import GHCJS.DOM.Types (MediaStream, liftJSM, MonadJSM)
 import qualified Language.Javascript.JSaddle                       as JS
 import Gonimo.Client.Util (registerTriggerFullScreen)
+import Data.Time.Clock
 
 enterPressed :: Reflex t => Event t Int -> Event t ()
 enterPressed = push (\key -> pure $ if key == 13
@@ -137,3 +139,9 @@ addFocusPostBuild :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomS
 addFocusPostBuild htmlEl = do
   postBuild <- getPostBuild
   performEvent_ $ const (addFocus htmlEl) <$> postBuild -- Make sure it works always
+
+delayed :: (PerformEvent t m, TriggerEvent t m, MonadIO (Performable m), MonadIO m) => NominalDiffTime -> m (Event t ())
+delayed dt = do
+  (ev, trigger) <- newTriggerEvent
+  liftIO $ trigger ()
+  delay dt ev
