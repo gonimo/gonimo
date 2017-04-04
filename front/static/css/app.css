@@ -65,6 +65,7 @@ a:hover, a:focus{
   padding-left: 0px;
   padding-right: 0px;
 	height:100%;
+  display: table;
 }
 @media(min-width:768px){
 .container, .stream-menu{
@@ -561,6 +562,13 @@ span.device-self {
 .device.selected {
     background: rgb(240,240,240);
 }
+
+.footer {
+    display: table-footer-group;
+    vertical-align: bottom;
+    height: 1px;
+}
+
 .device-add{
 	width:100%;
 	padding:1%;
@@ -569,6 +577,7 @@ span.device-self {
 	font-size:x-large;
 	font-weight:800;
 }
+
 .device-add::before{
 	font-family:FontAwesome;
 	font-size:x-large;
@@ -631,7 +640,7 @@ span.device-self {
     display: none;
 }
 .parentManage.isParentManage {
-    display: block
+    display: table;
 }
 
 .parentView {

@@ -107,7 +107,7 @@ manageUi _ loaded deviceList connections' = do
       devicesUI <- DeviceList.ui loaded deviceList
                    (fmap worstState <$> connections'^.C.channelMap)
                    (Set.fromList . Map.keys <$> openStreams)
-      inviteRequested <-
+      inviteRequested <- elClass "div" "footer" $
             makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
 
       pure (navBar', devicesUI, inviteRequested)

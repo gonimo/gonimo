@@ -94,7 +94,9 @@ ui appConfig loaded familyGotCreated = do
         dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
         pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
-    (roleSelected, inviteRequested) <- roleSelector
+    roleSelected <- roleSelector
+    inviteRequested <- elClass "div" "footer" $
+          makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
 
 
     pure $ UI { _uiSelectFamily = familySelected
