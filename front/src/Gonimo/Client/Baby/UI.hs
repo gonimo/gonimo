@@ -314,4 +314,4 @@ displayScreenOnWarning baby' = do
     displayWarning True = elClass "div" "keep-screen-on-warning" $ do
       text "For video to work, please don't switch off the screen."
       el "br" blank
-      text "Alternatively, if all you need is audio, please switch off the camera."
+      text "Alternatively, if all you need is audio, please disable the camera."
