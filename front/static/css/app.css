@@ -254,7 +254,6 @@ h3{
 .input-btn-grp{
 	  float:right;
 	  font-size:xx-large;
-	  font-weight:900;
 	  border-left:solid 2px black;
 	  width:20%;
 	  text-align:center;
@@ -262,7 +261,8 @@ h3{
 	  background:white;
 }
 .input-btn.plus::after, .input-btn-grp>.plus::after{
-	content:"+";
+	font-family:FontAwesome;
+	content:"\f067";
 }
 .input-btn-grp>.plus{
     float: left;
@@ -272,10 +272,11 @@ h3{
 .input-btn-grp>.minus{
     float: right;
 	  width:10%;
-    margin-right: 4%;
+    margin-right: 15%;
 }
 .input-btn.minus::after, .input-btn-grp,.minus::after{
-	  content:"-";
+	font-family:FontAwesome;
+	content:"\f00d";
 }
 .input-btn.check, .input-btn.mail{
 	  border:solid 4px #CDA5B4;
@@ -292,7 +293,7 @@ h3{
 	border-right:none;
 	border-left:none;
 	border:solid 1px rgb(50,50,50);
-	margin-bottom:20px;
+	margin-bottom:50px;
 	text-align:left;
 }
 .mail-input{
@@ -304,6 +305,18 @@ h3{
 	font-size:x-large;
 	color:rgb(110,110,110);
 	float:left;
+}
+@media(max-width:460px){
+	.mail-form{
+		border:none !important;
+	}
+	.mail-input{
+		float:none !important;
+	}
+	.input-btn.mail{
+		float:none !important;
+		margin-left:0% !important;
+	}
 }
 .mail-form.link{
 	border:solid 1px grey;
@@ -326,10 +339,10 @@ h3{
 	  border:none;
 }
 .input-btn.mail::after{
-	font-family:FontAwesome;
 	color:#CDA5B4;
-	content:"\f1d8";
+	content:"SEND";
 }
+
 .family-select{
 	width:100%;
 	padding:5px 0px;
@@ -339,7 +352,6 @@ h3{
 	font-weight:500;
 	float:left;
 }
-
 .dropDown.family-select {
     float: none;
 }
@@ -443,7 +455,7 @@ h3{
 	color:rgb(110,110,110);		
 }
 .menu-center{
-	padding:5px;
+	padding:12px;
 	font-size:x-large;
 	color:black;
 	font-weight:900;
@@ -555,10 +567,12 @@ span.device-self {
 .info > .edit::before{
 	font-family:FontAwesome;
 	content:"\f044";
+	padding:0px 3px;
 }
 .info > .delete::before{
 	font-family:FontAwesome;
 	content:"\f00d";
+	padding:0px 3px;
 }
 .device.selected > .info{
 	display:block;
@@ -580,18 +594,6 @@ span.device-self {
 	color:black;
 	font-size:x-large;
 	font-weight:800;
-}
-
-.keep-screen-on-warning {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    width: 70%;
-    background-color: rgba(255,0,0,0.8);
-    z-index: 10;
-	  font-size:x-large;
-	  font-weight:500;
 }
 
 .device-add::before{
@@ -617,7 +619,7 @@ span.device-self {
   align-items: stretch;
 }
 
-@media (max-height:500px) {
+@media (max-height: 500px) {
     .parent {
         flex-direction: row;
         padding-bottom: 0px;
@@ -1043,7 +1045,6 @@ span.baby-form{
 .baby.setup-done > .time{
 	display:inline-block;
 }
-
 @media (max-height: 600px) {
     .baby.setup-done > .stream-menu {
         display: none;
@@ -1196,3 +1197,15 @@ canvas {
 [role=button] {
     cursor: pointer;
 }
+
+.keep-screen-on-warning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    width: 70%;
+    background-color: rgba(255,0,0,0.8);
+    z-index: 10;
+	  font-size:x-large;
+	  font-weight:500;
+}
