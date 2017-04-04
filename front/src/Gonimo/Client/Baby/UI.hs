@@ -312,6 +312,6 @@ displayScreenOnWarning baby' = do
   where
     displayWarning False = pure ()
     displayWarning True = elClass "div" "keep-screen-on-warning" $ do
-      text "For video to work, please don't switch off the screen!"
+      text "For video to work, please don't switch off the screen."
       el "br" blank
-      text "Alternatively, if all you need is audio, please switch off the camera!"
+      text "Alternatively, if all you need is audio, please switch off the camera."

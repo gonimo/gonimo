@@ -589,8 +589,8 @@ span.device-self {
     transform: translate(-50%,-50%);
     background-color: rgba(255,0,0,0.8);
     z-index: 10;
-	  font-size:x-large;
-	  font-weight:800;
+	  font-size:large;
+	  font-weight:500;
 }
 
 .device-add::before{
@@ -1043,7 +1043,7 @@ span.baby-form{
 	display:inline-block;
 }
 
-@media (max-height: 700px) {
+@media (max-height: 600px) {
     .baby.setup-done > .stream-menu {
         display: none;
     }
