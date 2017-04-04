@@ -305,12 +305,12 @@ h3{
 	font-size:x-large;
 	color:rgb(110,110,110);
 	float:left;
-	outline:none;
+	outline:1px solid #CDA5B4;
 }
 .mail-input:focus{
-	outline:none;
+	outline:1px solid #CDA5B4;
 }
-@media(max-width:460px){
+@media(max-width:750px){
 	.mail-form{
 		border:none !important;
 	}
@@ -320,6 +320,7 @@ h3{
 	.input-btn.mail{
 		float:none !important;
 		margin-left:0% !important;
+		width:100% !important;
 	}
 }
 .mail-form.link{
