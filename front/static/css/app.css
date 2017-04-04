@@ -66,9 +66,10 @@ a:hover, a:focus{
   padding-right: 0px;
 	height:100%;
 }
- 
+
 .has-footer {
     display: table;
+    width: 100%;
 }
 
 @media(min-width:768px){
@@ -272,7 +273,7 @@ h3{
 .input-btn-grp>.minus{
     float: right;
 	  width:10%;
-    margin-right: 25%;
+    margin-right: 35%;
 }
 .input-btn.minus::after, .input-btn-grp,.minus::after{
 	font-family:FontAwesome;
