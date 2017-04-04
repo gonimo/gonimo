@@ -154,7 +154,8 @@ checkBrowser = do
     if warningRequired
       then do
       okClicked <- displayWarning warnMessage
-      performEvent_ $ const (writeHideBrowserWarning True) <$> okClicked
+      -- Warn everytime - so user will know when the browser gets supported!
+      -- performEvent_ $ const (writeHideBrowserWarning True) <$> okClicked
       else
       pure ()
   where
