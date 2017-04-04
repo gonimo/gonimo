@@ -1043,7 +1043,7 @@ span.baby-form{
 	display:inline-block;
 }
 
-@media (max-height: 600px) {
+@media (max-height: 700px) {
     .baby.setup-done > .stream-menu {
         display: none;
     }
