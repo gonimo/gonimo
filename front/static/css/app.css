@@ -272,7 +272,7 @@ h3{
 .input-btn-grp>.minus{
     float: right;
 	  width:10%;
-    margin-right: 15%;
+    margin-right: 25%;
 }
 .input-btn.minus::after, .input-btn-grp,.minus::after{
 	font-family:FontAwesome;
@@ -305,6 +305,10 @@ h3{
 	font-size:x-large;
 	color:rgb(110,110,110);
 	float:left;
+	outline:none;
+}
+.mail-input:focus{
+	outline:none;
 }
 @media(max-width:460px){
 	.mail-form{
