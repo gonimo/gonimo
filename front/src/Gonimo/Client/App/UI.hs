@@ -21,11 +21,20 @@ import           Gonimo.Client.Server           (webSocket_recv)
 import qualified Gonimo.Client.Baby             as Baby
 import qualified Gonimo.Client.Parent           as Parent
 import qualified Gonimo.SocketAPI               as API
+import qualified Gonimo.Client.Storage             as GStorage
+import qualified Gonimo.Client.Storage.Keys        as GStorage
+import qualified GHCJS.DOM                         as DOM
+import qualified GHCJS.DOM.Navigator               as Navigator
+import qualified GHCJS.DOM.Window                  as Window
+import qualified Language.Javascript.JSaddle                       as JS
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
       => Config t -> m (App t)
 ui config = mdo
+  checkBrowser
   family <- Family.family
             $ (Family.fromApp config) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
                                                                               , familyUI^.Family.uiSelectFamily
@@ -128,3 +137,54 @@ loadedUI config loaded familyCreated = mdo
       pure $ if isAutoStart
              then Just Family.RoleBaby
              else Nothing
+
+
+checkBrowser ::forall m t. (HasWebView m, MonadWidget t m) => m ()
+checkBrowser = do
+    isiOS <- JS.liftJSM $ getBrowserProperty "ios"
+    isBlink <- JS.liftJSM $ getBrowserProperty "blink"
+    hideWarning <- readHideBrowserWarning
+
+    let warnMessage = if isiOS
+                      then "Unfortunately Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology. Also Apple restricts all other browsers on iOS to the same technology Safari supports, so on iOS not even Chrome will work."
+                      else if not isBlink
+                           then "Unfortunately the only fully supported browser currently is Chrome. This is especially true on mobile, here even if Firefox works for you - beware that the connection-loss alert will not be played when your device's screen is switched off!"
+                           else "All fine!"
+    let warningRequired = not hideWarning && (isiOS || not isBlink)
+    if warningRequired
+      then do
+      okClicked <- displayWarning warnMessage
+      performEvent_ $ const (writeHideBrowserWarning True) <$> okClicked
+      else
+      pure ()
+  where
+    getBrowserProperty :: Text -> JS.JSM Bool
+    getBrowserProperty property = fromMaybe False <$> (JS.fromJSVal =<< JS.eval ("bowser." <> property))
+
+    displayWarning msg = mdo
+      displayIt <- holdDyn (displayWarning' msg) $ const (pure never) <$> gotAnswer
+      gotAnswer <- switchPromptly never =<< dyn displayIt
+      pure gotAnswer
+
+    displayWarning' msg = do
+      elClass "div" "fullScreenOverlay" $ do
+        elClass "div" "container" $ do
+          el "h1" $ text "Unsupported browser or device!"
+          el "br" blank
+          el "h2" $ text "Gonimo might not work as expected"
+          el "br" blank
+          text msg
+          el "br" blank
+          el "br" blank
+          makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "OK"
+    
+
+readHideBrowserWarning :: JS.MonadJSM m => m Bool
+readHideBrowserWarning = do
+  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  fromMaybe False <$> GStorage.getItem storage GStorage.hideBrowserWarning
+
+writeHideBrowserWarning :: JS.MonadJSM m => Bool -> m ()
+writeHideBrowserWarning hideBrowserWarning = do
+  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  GStorage.setItem storage GStorage.hideBrowserWarning hideBrowserWarning

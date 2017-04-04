@@ -15,6 +15,7 @@ data Key a = KeyAuthData
            | SelectedCamera
            | LastBabyName
            | AutoStart
+           | HideBrowserWarning
 
 deriving instance Generic (Key a)
 
@@ -36,6 +37,9 @@ lastBabyName = LastBabyName
 
 autoStart :: Key Bool
 autoStart = AutoStart
+
+hideBrowserWarning :: Key Bool
+hideBrowserWarning = HideBrowserWarning
 
 instance FromJSON (Key a)
 instance ToJSON (Key a) where
