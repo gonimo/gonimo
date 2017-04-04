@@ -587,9 +587,10 @@ span.device-self {
     top: 50%;
     left: 50%;
     transform: translate(-50%,-50%);
+    width: 70%;
     background-color: rgba(255,0,0,0.8);
     z-index: 10;
-	  font-size:large;
+	  font-size:x-large;
 	  font-weight:500;
 }
 
