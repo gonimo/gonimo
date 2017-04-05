@@ -243,39 +243,38 @@ enableAutoStartCheckbox baby' =
 
 setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
                    => App.Loaded t -> Baby t -> m (Event t Text)
-setBabyNameForm loaded baby' = --mdo
-  -- (clicked, nameAdded) <- do
-  elClass "div" "welcome-form baby-form" $ mdo
-    elClass "span" "baby-form" $ text "Adjust camera for"
+setBabyNameForm loaded baby' = do
+  (nameAddRequest, selectedName) <-
+    elClass "div" "welcome-form baby-form" $ mdo
+      elClass "span" "baby-form" $ text "Adjust camera for"
 
-    clicked <-
-      makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
-        dynText $ baby'^.name
-        text " "
-        elClass "span" "caret" blank
+      clicked <-
+        makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
+          dynText $ baby'^.name
+          text " "
+          elClass "span" "caret" blank
 
-    nameAdded <-
-      editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn plus baby-form") blank)
-      (text "Add new baby name ...")
-      (constDyn "")
-    -- pure (clicked', nameAdded')
+      nameAddRequest <-
+        makeClickable $ elAttr' "div" (addBtnAttrs "input-btn plus baby-form") blank
+      -- pure (clicked', nameAdded')
 
-    let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
-    droppedDown <- holdDyn False $ leftmost [ openClose
-                                            , const False <$> selectedName
-                                            ]
-    let
-      droppedDownClass :: Dynamic t Text
-      droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
-    let
-      dropDownClass :: Dynamic t Text
-      dropDownClass = pure "dropDown-container " <> droppedDownClass
+      let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
+      droppedDown <- holdDyn False $ leftmost [ openClose
+                                              , const False <$> selectedName
+                                              ]
+      let
+        droppedDownClass :: Dynamic t Text
+        droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
+      let
+        dropDownClass :: Dynamic t Text
+        dropDownClass = pure "dropDown-container " <> droppedDownClass
 
-    selectedName <-
-      elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)
-    pure $ leftmost [ nameAdded
-                    , selectedName
-                    ]
+      selectedName <-
+        elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)
+      pure (nameAddRequest, selectedName)
+  -- Necessary for stacking order with volumemeter:
+  nameAdded <- editStringEl (pure nameAddRequest) (text "Add new baby name ...") (constDyn "")
+  pure $ leftmost [ selectedName, nameAdded ]
 
 renderBabySelectors :: forall m t. (HasWebView m, MonadWidget t m)
                     => Dynamic t [Text] -> m (Event t Text)
