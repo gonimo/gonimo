@@ -112,14 +112,16 @@ uiStart loaded deviceList  baby' = do
                           )
     showAutostartInfo False = pure ()
     showAutostartInfo True = dismissibleOverlay "info-overlay" 7
-                             $ text "Baby monitor will be started automatically when you load the app the next time."
+                             $ text "Baby monitor will start automatically, when you load the app next time."
 
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
   elClass "div" "container" $ mdo
     displayScreenOnWarning baby'
-    dayNight <- holdDyn "night" $ tag toggledDayNight dayNightClicked
+    autoStartOn <- sample $ current (baby'^.autoStartEnabled)
+    let dayNightStart = if autoStartOn then "night" else "day"
+    dayNight <- holdDyn dayNightStart $ tag toggledDayNight dayNightClicked
     let
       toggledDayNight :: Behavior t Text
       toggledDayNight = (\c -> if c == "day" then "night" else "day") <$> current dayNight
