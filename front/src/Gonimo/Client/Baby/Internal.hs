@@ -138,8 +138,7 @@ baby config = mdo
                                ]
   performEvent_ $ writeLastBabyName <$> updated babyName
 
-  (volEvent, triggerVolumeEvent) <- newTriggerEvent
-  performEvent_ $ flip getVolumeInfo (liftIO . triggerVolumeEvent) <$> updated mediaStream'
+  volEvent <- getVolumeLevel mediaStream' sockEnabled
 
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
@@ -243,3 +242,23 @@ writeLastBabyName :: MonadJSM m => Text -> m ()
 writeLastBabyName lastBabyName = do
   storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
   GStorage.setItem storage GStorage.lastBabyName lastBabyName
+
+
+getVolumeLevel :: forall m t. (MonadWidget t m, HasWebView m)
+                  => Dynamic t MediaStream  -> Dynamic t Gonimo.DeviceType -> m (Event t Double)
+getVolumeLevel mediaStream' sockEnabled = do
+    (volEvent, triggerVolumeEvent) <- newTriggerEvent
+    let updateVolInfoEv = updated $ zipDyn sockEnabled mediaStream'
+
+    newCleanupEv <- performEvent $ getVolInfo triggerVolumeEvent <$> updateVolInfoEv
+    mCleanup <- holdDyn Nothing $ newCleanupEv
+    let doCleanup = push (\_ -> sample $ current mCleanup) (updated mCleanup)
+    performEvent_ $ doCleanup
+
+    pure volEvent
+  where
+    getVolInfo :: forall m1. (MonadJSM m1)
+                  => (Double -> IO ()) -> (Gonimo.DeviceType, MediaStream) -> m1 (Maybe (m1 ()))
+    getVolInfo triggerVolumeEvent (Gonimo.NoBaby, stream') = Just <$> getVolumeInfo stream' (liftIO . triggerVolumeEvent)
+    getVolInfo _ (_, _) = pure Nothing
+

@@ -181,11 +181,14 @@ jsVolumeMeter stream canvas = liftJSM $ do
   pure ()
 
 
-getVolumeInfo :: (MonadJSM m) => MediaStream -> (Double -> JS.JSM ()) -> m ()
+getVolumeInfo :: (MonadJSM m) => MediaStream -> (Double -> JS.JSM ()) -> m (m ())
 getVolumeInfo stream callBack = liftJSM $ do
   jsGetVolumeInfo <- JS.eval . T.unlines $
     [ "(function (stream, getSample) {"
     , "    if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}"
+    , "    if (typeof gonimoCounter == 'undefined') {gonimoCounter = 0;}"
+    , "    else { gonimoCounter ++;}"
+    , "    var counter = gonimoCounter;"
     , "    var ctx = gonimoAudioContext;"
     , "    var source = ctx.createMediaStreamSource(stream);"
     , "    var script = ctx.createScriptProcessor(2048, 1, 1);"
@@ -199,11 +202,16 @@ getVolumeInfo stream callBack = liftJSM $ do
     , "    }"
     , "    var timer = setInterval(reportAndReset, 100);"
     , ""
-    , "    var cleanup = function () {"
+    , "    var cleanupDone = false;"
+    , "    function cleanup () {"
+    , "        console.log('in cleanup, counter: ' + counter.toString());"
+    , "      if(!cleanupDone) {"
+    , "        console.log('Stopped getVolumeInfo');"
     , "        source.disconnect();"
     , "        script.disconnect();"
     , "        clearInterval(timer);"
-    , "        cleanup = function () {}"
+    , "        cleanupDone = true;"
+    , "      }"
     , "    }"
     , "    var audioTracks = stream.getAudioTracks();"
     , "    var u = 0;"
@@ -220,14 +228,15 @@ getVolumeInfo stream callBack = liftJSM $ do
     , "        var instant = Math.sqrt(sum / input.length);"
     , "        currentMax = instant > currentMax ? instant : currentMax;"
     , "    }"
+    , "    return cleanup;"
     , "})"
     ]
   jsCallBack <- JS.function $ \ _ _ [jsVolumeLevel] -> do
       volumeLevel <- fromMaybe 0 <$> JS.fromJSVal jsVolumeLevel
       callBack volumeLevel
 
-  _ <- JS.call jsGetVolumeInfo JS.obj (stream, jsCallBack)
-  pure ()
+  jsCleanup <- JS.call jsGetVolumeInfo JS.obj (stream, jsCallBack)
+  pure . liftJSM . void $ JS.call jsCleanup JS.obj ([] :: [JSVal])
 
 
 oyd :: (MonadJSM m) => Text -> MediaStream -> m (Text -> m ())
