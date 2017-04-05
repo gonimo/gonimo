@@ -18,14 +18,43 @@ import Data.Maybe (listToMaybe)
 import Control.Lens
 import GHCJS.DOM.Types (MediaStream, liftJSM, MonadJSM)
 import qualified Language.Javascript.JSaddle                       as JS
-import Gonimo.Client.Util (registerTriggerFullScreen)
 import Data.Time.Clock
+import Gonimo.Client.Prelude
+
+
+renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
+renderVolumemeter volEvent = do
+    elClass "div" "volumemeter" $ do
+      volDyn <- holdDyn 0 $ (*1.4) <$> volEvent
+      traverse_ (renderVolBarItem volDyn) [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+  where
+    renderVolBarItem :: Dynamic t Double -> Double -> m ()
+    renderVolBarItem currentVolume minVal = do
+      let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
+      elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
+
+dismissibleOverlay :: forall m t. ( PerformEvent t m, MonadFix m, TriggerEvent t m, MonadHold t m
+                                  , MonadIO (Performable m), MonadIO m, DomBuilder t m
+                                  , PostBuild t m
+                                  )
+                      => Text -> NominalDiffTime -> m () -> m ()
+dismissibleOverlay className dismissedAfter content = mdo
+    dismissedEv <- delayed dismissedAfter
+    dismissed <- holdDyn False $ const True <$> leftmost [dismissedEv, clicked]
+    let shown = not <$> dismissed
+    evClicked <-  dyn $ displayOverlay <$> shown
+    clicked <- switchPromptly never evClicked
+    pure ()
+  where
+    displayOverlay False = pure never
+    displayOverlay True = makeClickable . elClass' "div" ("dismissible-overlay " <> className) $ content
 
 enterPressed :: Reflex t => Event t Int -> Event t ()
 enterPressed = push (\key -> pure $ if key == 13
                                     then Just ()
                                     else Nothing
                     )
+
 addBtnAttrs :: Text -> Map Text Text
 addBtnAttrs className = "class" =: className <> "type" =: "button" <> "role" =: "button"
 

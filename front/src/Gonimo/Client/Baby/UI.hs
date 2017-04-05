@@ -21,7 +21,6 @@ import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.ConfirmationButton  (addConfirmation)
-import           Gonimo.Client.Prelude
 import           Gonimo.Client.Util
 
 data BabyScreen = ScreenStart | ScreenRunning
@@ -31,7 +30,7 @@ ui :: forall m t. (HasWebView m, MonadWidget t m)
 ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
-                           , _configEnableAutoStart = ui'^.uiEnableAutoStart
+                           , _configEnableAutoStart = leftmost [ui'^.uiEnableAutoStart, disableAutostart]
                            , _configResponse = appConfig^.App.server.webSocket_recv
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = startMonitor
@@ -45,7 +44,14 @@ ui appConfig loaded deviceList = mdo
 
     uiDyn <- widgetHold (uiStart loaded deviceList baby') (renderCenter baby' <$> screenSelected)
 
-    liftIO $ when doAutoStart $ triggerAutoStart ()
+    disableAutostart <-
+      if doAutoStart
+      then do
+        disabled <- autoStartActiveMessage
+        liftIO $ triggerAutoStart ()
+        pure $ const False <$> disabled
+      else
+        pure never
 
     let startMonitor = leftmost [ ui'^.uiStartMonitor
                                 , autoStartEv
@@ -78,6 +84,9 @@ uiStart loaded deviceList  baby' = do
     elClass "div" "container" $ do
       elClass "div" "baby" $ mdo
         navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
+
+        _ <- widgetHold (pure ()) $ showAutostartInfo <$> updated (baby'^.autoStartEnabled)
+  
         newBabyName <-
           setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
@@ -101,6 +110,9 @@ uiStart loaded deviceList  baby' = do
         mediaVideo stream ( "autoplay" =: "true"
                           <> "muted" =: "true"
                           )
+    showAutostartInfo False = pure ()
+    showAutostartInfo True = dismissibleOverlay "info-overlay" 7
+                             $ text "Baby monitor will be started automatically when you load the app the next time."
 
 uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
             => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
@@ -283,35 +295,32 @@ renderBabySelectors names =
     elClass "div" "family-select" $
       switchPromptly never =<< (dyn $ renderSelectors <$> names)
 
--- copy & paste for now. mimimimi ....
-renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
-renderVolumemeter volEvent = do
-    elClass "div" "volumemeter" $ do
-      volDyn <- holdDyn 0 volEvent
-      traverse_ (renderVolBarItem volDyn) [0, 0.1 .. 0.9]
-  where
-    renderVolBarItem :: Dynamic t Double -> Double -> m ()
-    renderVolBarItem currentVolume minVal = do
-      let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
-      elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
-
 displayScreenOnWarning :: forall m t. (HasWebView m, MonadWidget t m)
             => Baby t -> m ()
 displayScreenOnWarning baby' = mdo
-  isMobile <- getBrowserProperty "mobile"
-  isTablet <- getBrowserProperty "tablet"
-  let haveVideo = baby'^.cameraEnabled
-  let needWarning = (&& (isMobile || isTablet)) <$> haveVideo
+    isMobile <- getBrowserProperty "mobile"
+    isTablet <- getBrowserProperty "tablet"
+    let haveVideo = baby'^.cameraEnabled
+    let needWarning = (&& (isMobile || isTablet)) <$> haveVideo
 
-  dismissedEv <- delayed 10 -- Hide after 10 seconds
-  dismissed <- holdDyn False $ const True <$> leftmost [dismissedEv, clicked]
-  let shown = (&&) <$> needWarning <*> (not <$> dismissed)
-  evClicked <-  dyn $ displayWarning <$> shown
-  clicked <- switchPromptly never evClicked
-  pure ()
+    _ <- dyn $ displayWarning <$> needWarning
+    pure ()
+
   where
-    displayWarning False = pure never
-    displayWarning True = makeClickable . elClass' "div" "keep-screen-on-warning" $ do
-      text "For video to work, please don't switch off the screen."
+    displayWarning False = pure ()
+    displayWarning True = dismissibleOverlay "warning-overlay"  10 $ do
+      text "For video to work, please don't switch off the screen!"
       el "br" blank
       text "Alternatively, if all you need is audio, please disable the camera."
+
+autoStartActiveMessage :: forall m t. (HasWebView m, MonadWidget t m) => m (Event t ())
+autoStartActiveMessage = do
+  (disableEv, triggerDisable) <- newTriggerEvent
+  dismissibleOverlay "info-overlay" 2 $ do
+    text "Autostart active ..."
+    el "br" blank
+    el "br" blank
+    clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "Disable"
+    performEvent_ $ const (liftIO $ triggerDisable ())  <$> clicked
+  pure disableEv
+

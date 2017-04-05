@@ -170,17 +170,6 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
     --                            || chan^.videoReceivingState == StateUnreliable
 
 
-renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
-renderVolumemeter volEvent = do
-    elClass "div" "volumemeter" $ do
-      volDyn <- holdDyn 0 volEvent
-      traverse_ (renderVolBarItem volDyn) [0, 0.1 .. 0.9]
-  where
-    renderVolBarItem :: Dynamic t Double -> Double -> m ()
-    renderVolBarItem currentVolume minVal = do
-      let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
-      elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
-
 leaveConfirmation :: DomBuilder t m => m ()
 leaveConfirmation = do
     el "h3" $ text "Really stop parent station?"

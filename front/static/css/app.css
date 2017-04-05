@@ -1208,13 +1208,20 @@ canvas {
     cursor: pointer;
 }
 
-.keep-screen-on-warning {
+.warning-overlay {
+    background-color: rgba(255,0,0,0.8);
+}
+
+.info-overlay {
+    background-color: rgba(230,202,212,0.8);
+}
+
+.dismissible-overlay {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%,-50%);
     width: 70%;
-    background-color: rgba(255,0,0,0.8);
     z-index: 10;
 	  font-size:x-large;
 	  font-weight:500;
