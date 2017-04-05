@@ -90,7 +90,7 @@ uiStart loaded deviceList  baby' = do
         newBabyName <-
           setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
-        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Start"
+        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "START"
         renderVolumemeter $ baby'^.volumeLevel
         elClass "div" "stream-menu" $ do
           selectCamera <- cameraSelect baby'
@@ -151,9 +151,9 @@ uiRunning loaded deviceList baby' =
         dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
         stopClicked <- elClass "div" "stream-menu" $
           addConfirmation leaveConfirmation
-          =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "Stop")
+          =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "STOP")
         -- stopClicked <- addConfirmation leaveConfirmation
-        --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Stop")
+        --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "STOP")
 
         let ui'' = UI { _uiGoHome = navBar^.NavBar.homeClicked
                       , _uiStartMonitor = never
@@ -321,7 +321,7 @@ autoStartActiveMessage = do
     text "Autostart active ..."
     el "br" blank
     el "br" blank
-    clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "Disable"
+    clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "DISABLE"
     performEvent_ $ const (liftIO $ triggerDisable ())  <$> clicked
   pure disableEv
 

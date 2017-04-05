@@ -108,7 +108,7 @@ manageUi _ loaded deviceList connections' = do
                    (fmap worstState <$> connections'^.C.channelMap)
                    (Set.fromList . Map.keys <$> openStreams)
       inviteRequested <- elClass "div" "footer" $
-            makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
+            makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " ADD DEVICE"
 
       pure (navBar', devicesUI, inviteRequested)
 
@@ -127,7 +127,7 @@ viewUi _ loaded deviceList connections = do
     let closedEvEv  = leftmost <$> closedsEvEv
     closedEv <- switchPromptly never closedEvEv
     stopAllClicked <- elClass "div" "stream-menu" $
-        makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "Stop All"
+        makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "STOP ALL"
     pure $ C.VideoView navBar' closedEv stopAllClicked
 
 renderFakeVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m ())
@@ -210,5 +210,5 @@ unreliableAlert = do
       el "br" blank
       el "br" blank
 
-      okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Ok"
+      okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "OK"
       pure $ okClicked

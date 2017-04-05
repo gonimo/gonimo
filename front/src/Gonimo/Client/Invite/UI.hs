@@ -51,7 +51,7 @@ ui loaded config = mdo
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
 
     el "br" blank
-    doneClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Done"
+    doneClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "DONE"
     el "br" blank
 
     recreateClicked <- el "div" $ do

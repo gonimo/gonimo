@@ -134,13 +134,13 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
                   <> (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
                 nameChanged <- editStringEl ( makeClickable
                                               . elAttr' "span" (addBtnAttrs "edit")
-                                              $ text "Rename"
+                                              $ text "RENAME"
                                             )
                               (text "Change device name to ...")
                               (API.deviceInfoName <$> devInfo)
                 removeRequested <- confirmationEl ( makeClickable
                                                     . elAttr' "span" (addBtnAttrs "delete")
-                                                    $ text "Remove"
+                                                    $ text "REMOVE"
                                                   )
                                    (removeConfirmationText isSelf devName)
                 pure (nameChanged, removeRequested)

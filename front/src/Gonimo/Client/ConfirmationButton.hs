@@ -57,6 +57,6 @@ confirmationBox confirmationText = do
       el "br" blank
       el "br" blank
 
-      yesClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "Ok"
+      yesClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "OK"
       pure $ leftmost [ const No <$> noClicked, const Yes <$> yesClicked ]
 

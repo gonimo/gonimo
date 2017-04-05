@@ -96,7 +96,7 @@ ui appConfig loaded familyGotCreated = do
 
     roleSelected <- roleSelector
     inviteRequested <- elClass "div" "footer" $
-          makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " Add Device"
+          makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " ADD DEVICE"
 
 
     pure $ UI { _uiSelectFamily = familySelected
