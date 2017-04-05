@@ -298,20 +298,21 @@ renderVolumemeter volEvent = do
 
 displayScreenOnWarning :: forall m t. (HasWebView m, MonadWidget t m)
             => Baby t -> m ()
-displayScreenOnWarning baby' = do
+displayScreenOnWarning baby' = mdo
   isMobile <- getBrowserProperty "mobile"
   isTablet <- getBrowserProperty "tablet"
   let haveVideo = baby'^.cameraEnabled
   let needWarning = (&& (isMobile || isTablet)) <$> haveVideo
 
   dismissedEv <- delayed 10 -- Hide after 10 seconds
-  dismissed <- holdDyn False $ const True <$> dismissedEv
+  dismissed <- holdDyn False $ const True <$> leftmost [dismissedEv, clicked]
   let shown = (&&) <$> needWarning <*> (not <$> dismissed)
-  _ <- dyn $ displayWarning <$> shown
+  evClicked <-  dyn $ displayWarning <$> shown
+  clicked <- switchPromptly never evClicked
   pure ()
   where
-    displayWarning False = pure ()
-    displayWarning True = elClass "div" "keep-screen-on-warning" $ do
+    displayWarning False = pure never
+    displayWarning True = makeClickable . elClass' "div" "keep-screen-on-warning" $ do
       text "For video to work, please don't switch off the screen."
       el "br" blank
       text "Alternatively, if all you need is audio, please disable the camera."
