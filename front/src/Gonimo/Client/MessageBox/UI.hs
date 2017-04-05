@@ -5,29 +5,15 @@
 module Gonimo.Client.MessageBox.UI where
 
 import Reflex.Dom.Core
-import Control.Monad
 import Control.Lens
 import Data.Monoid
 import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId, InvitationId)
-import qualified Gonimo.Db.Entities as Db
 import Gonimo.Client.MessageBox.Internal
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Fix (MonadFix)
-import Data.Maybe (maybe, fromMaybe)
-import qualified Data.Text.Encoding as T
-import Network.HTTP.Types (urlEncode)
-import Gonimo.Types (InvitationDelivery(..))
-import qualified Gonimo.Types as Client
 import qualified Gonimo.SocketAPI as API
-import qualified Gonimo.SocketAPI.Types as API
 import Gonimo.Client.Reflex.Dom
-import Gonimo.SocketAPI.Types (InvitationInfo(..))
-import Control.Monad.Trans.Maybe (runMaybeT)
-import Control.Monad.Trans.Class (lift)
 import Gonimo.SocketAPI.Types (InvitationReply(..))
-import Gonimo.Types (Secret)
-import Data.Time.Clock
 import Gonimo.Server.Error (ServerError(..))
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)

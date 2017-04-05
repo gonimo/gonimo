@@ -5,7 +5,6 @@
 module Gonimo.Client.Baby.UI where
 
 import           Control.Lens
-import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid

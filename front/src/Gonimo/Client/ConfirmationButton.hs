@@ -8,7 +8,6 @@ import Data.Map (Map)
 import Data.Text (Text)
 import Control.Monad.Fix (MonadFix)
 import Gonimo.Client.Reflex.Dom
-import Data.Monoid
 
 type ConfirmationConstraint t m = (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m)
 

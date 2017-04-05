@@ -24,7 +24,6 @@ import qualified Gonimo.SocketAPI               as API
 import qualified Gonimo.Client.Storage             as GStorage
 import qualified Gonimo.Client.Storage.Keys        as GStorage
 import qualified GHCJS.DOM                         as DOM
-import qualified GHCJS.DOM.Navigator               as Navigator
 import qualified GHCJS.DOM.Window                  as Window
 import qualified Language.Javascript.JSaddle                       as JS
 import           Gonimo.Client.Prelude
