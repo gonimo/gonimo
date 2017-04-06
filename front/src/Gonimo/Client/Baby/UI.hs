@@ -257,6 +257,7 @@ setBabyNameForm loaded baby' = do
   (nameAddRequest, selectedName) <-
     elClass "div" "welcome-form baby-form" $ mdo
       elClass "span" "baby-form" $ text "Adjust camera for"
+      elClass "span" "baby-text" $ text "BABY"
 
       clicked <-
         makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
