@@ -1260,3 +1260,34 @@ canvas {
 	  font-size:x-large;
 	  font-weight:500;
 }
+.switch{
+	width:35px; 
+	display:flex; 
+	align-items:center;
+}
+.switch-out{
+	height:15px; 
+	width:30px; 
+	background:rgba(200,200,200,0.5); 
+	border-radius:10px; 
+	position:absolute;
+}
+.switch-in{
+	height:20px; 
+	width:20px; 
+	background:rgba(50,50,50,0.5); 
+	border-radius:50%; 
+	position:relative; 
+	right:5px;
+}
+.switch.active > .switch-out{
+	background:rgba(230,202,212,0.5);
+}
+.switch.active > .switch-in{
+	background:rgba(230,202,212,0.8);
+	right:0px;
+	left:15px;
+}
+.autostart::before{
+	content:"AUTOSTART";
+}
