@@ -26,12 +26,13 @@ renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Doub
 renderVolumemeter volEvent = do
     elClass "div" "volumemeter" $ do
       volDyn <- holdDyn 0 $ (*1.4) <$> volEvent
-      traverse_ (renderVolBarItem volDyn) [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+      traverse_ (renderVolBarItem volDyn) [0.001, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
   where
     renderVolBarItem :: Dynamic t Double -> Double -> m ()
     renderVolBarItem currentVolume minVal = do
       let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
-      elDynClass "div" ( pure "volBarItem " <> isActive) $ blank
+      let highVolume = if minVal > 0.6 then "high-volume " else ""
+      elDynClass "div" ( pure "volBarItem " <> pure highVolume <> isActive) $ blank
 
 dismissibleOverlay :: forall m t. ( PerformEvent t m, MonadFix m, TriggerEvent t m, MonadHold t m
                                   , MonadIO (Performable m), MonadIO m, DomBuilder t m
