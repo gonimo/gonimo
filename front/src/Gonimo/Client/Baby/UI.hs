@@ -244,12 +244,12 @@ enableCameraCheckbox' :: forall m t. (HasWebView m, MonadWidget t m)
 enableCameraCheckbox' baby' videoDevices' =
   case videoDevices' of
     [] -> pure never -- No need to enable the camera when there is none!
-    _  -> myCheckBox (addBtnAttrs "cam-on ") (baby'^.cameraEnabled) $ text "\xf03d"
+    _  -> myCheckBox  ("class" =: "cam-on ") (baby'^.cameraEnabled) $ text "\xf03d"
 
 enableAutoStartCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Bool)
 enableAutoStartCheckbox baby' =
-    myCheckBox (addBtnAttrs "autostart ") (baby'^.autoStartEnabled) $ text "AUTOSTART"
+    myCheckBox ("class" =: "autostart ") (baby'^.autoStartEnabled) $ text "AUTOSTART"
 
 setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
                    => App.Loaded t -> Baby t -> m (Event t Text)
