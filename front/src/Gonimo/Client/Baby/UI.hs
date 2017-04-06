@@ -154,10 +154,18 @@ uiRunning loaded deviceList baby' =
           =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "STOP")
         -- stopClicked <- addConfirmation leaveConfirmation
         --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "STOP")
+        let handleStop f = push (\_ -> do
+                                  autoStartOn' <- sample $ current (baby'^.autoStartEnabled)
+                                  if f autoStartOn'
+                                  then pure $ Nothing
+                                  else pure $ Just ()
+                                ) stopClicked
+        let stopGoHome = handleStop id
+        let stopGoBack = handleStop not
 
-        let ui'' = UI { _uiGoHome = navBar^.NavBar.homeClicked
+        let ui'' = UI { _uiGoHome = leftmost [navBar^.NavBar.homeClicked, stopGoHome]
                       , _uiStartMonitor = never
-                      , _uiStopMonitor = leftmost [navBar^.NavBar.backClicked, stopClicked]
+                      , _uiStopMonitor = leftmost [navBar^.NavBar.backClicked, stopGoBack]
                       , _uiEnableCamera = never
                       , _uiEnableAutoStart = never
                       , _uiSelectCamera = never
