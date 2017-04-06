@@ -57,8 +57,8 @@ ui loaded config = mdo
     recreateClicked <- el "div" $ do
       copyClipboardScript
       divClass "mail-form link" $ do
-          clicked <- refreshLinkButton
           showLinkInput invitationLink
+          clicked <- refreshLinkButton
           copyClicked <- copyButton
           pure [const SentRefresh <$> clicked, const SentCopy <$> copyClicked]
     let reCreateEvents = recreateClicked <> invButtons

@@ -236,7 +236,7 @@ h3{
 
 .input-btn{
 	float:right;
-	font-size:xx-large;
+	font-size:x-large;
 	font-weight:900;
 	border:solid 3px #CDA5B4;
 	width:20%;
@@ -309,6 +309,7 @@ h3{
 
 .input-btn.check, .input-btn.mail{
 	  border:solid 4px #CDA5B4;
+    font-size: xx-large;
 }
 .input-btn.check::after{
 	  color:#CDA5B4;
