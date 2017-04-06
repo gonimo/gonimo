@@ -250,6 +250,7 @@ h3{
 	float:left;
 	width:10%;
 	height:2em;
+  border-right: none;
 }
 
 .input-btn.input-btn-right{
@@ -311,13 +312,8 @@ h3{
 }
 
 .input-btn.check, .input-btn.mail{
-<<<<<<< HEAD
-	border:solid 4px #CDA5B4;
+	border:solid 3px #CDA5B4;
 	font-size: x-large;
-=======
-	  border:solid 4px #CDA5B4;
-    font-size: xx-large;
->>>>>>> origin/master
 }
 .input-btn.check::after{
 	color:#CDA5B4;
@@ -541,6 +537,8 @@ span.device-self {
 	display:flex;
 	align-items:center;
 	flex-wrap:wrap;
+  background-color: white;
+  transition: background 0.25s ease-in;
 }
 
 .device.device-self {
@@ -610,8 +608,10 @@ span.device-self {
 	display:none;
 }
 .info{
+  max-height: 0;
+  transition: max-height 0.15s ease-out;
 	width:100%;
-	display:none;
+  overflow: hidden;
 }
 .info > .last-seen{
 	display:block;
@@ -630,10 +630,12 @@ span.device-self {
 	padding:0px 3px;
 }
 .device.selected > .info{
-	display:block;
+  max-height: 500px;
+  transition: max-height 0.25s ease-in;
 }
 .device.selected {
     background: rgb(240,240,240);
+    transition: background 0.25s ease-in;
 }
 
 .footer {
@@ -953,20 +955,6 @@ input.volume::-ms-thumb{
 }
 .cam-on {
 	font-family:FontAwesome;
-<<<<<<< HEAD
-	content:"\f00d";
-	color:red;
-}
-.cam-on::before{
-	font-family:FontAwesome;
-	content:"\f03d";
-	padding-right:10px;
-}
-.cam-on.active > span::after, .autostart.active > span::after{
-	content:"\f00c";
-	color:green;
-=======
->>>>>>> origin/master
 }
 .baby {
   position: absolute;
@@ -1080,7 +1068,8 @@ input.volume::-ms-thumb{
 	color:black;
 }
 .input-btn.baby-form{
-	border:solid 2px black;
+  border: none;
+	border-left:solid 2px black;
 }
 .baby-form > select{
 	border-top:solid 1px black;
@@ -1128,7 +1117,7 @@ span.baby-form{
     }
 }
 
-@media (max-height: 400px) {
+@media (max-height: 420px) {
     .baby > .volumemeter {
         display: none;
     }
@@ -1293,9 +1282,10 @@ canvas {
 }
 
 .switch{
-	width:35px; 
+	width:35px;
 	display:flex; 
 	align-items:center;
+  margin-left: 15px;
 }
 .switch-out{
 	height:15px; 
@@ -1322,10 +1312,15 @@ canvas {
 	right:0px;
 	left:15px;
 }
-<<<<<<< HEAD
-.autostart::before{
-	content:"AUTOSTART";
-	padding-right:10px;
+
+.baby-text {
+    display: block;
+	  color:rgb(110,110,110);
+    font-size: larger;
+    letter-spacing: 0.2em;
 }
-=======
->>>>>>> origin/master
+
+.baby-form > .family-select {
+    border-top: solid 1px black;
+    margin-bottom: 0;
+}
