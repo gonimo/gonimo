@@ -70,7 +70,7 @@ makeClickable item = do
 myCheckBox :: (DomBuilder t m, PostBuild t m) => Map Text Text -> Dynamic t Bool -> m () -> m (Event t Bool)
 myCheckBox attrs checked inner = do
   let markedStr active = if active then "active " else ""
-  clicked <- makeClickable $ elAttr' "div" attrs $ do
+  clicked <- makeClickable $ elAttr' "div" (attrs <> "role" =: "button") $ do
     inner
     elDynClass "div" (pure "switch " <> fmap markedStr checked) $ do
       elClass "div" "switch-out" blank
