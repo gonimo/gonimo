@@ -1271,23 +1271,22 @@ canvas {
 	background:rgba(200,200,200,0.5); 
 	border-radius:10px; 
 	position:absolute;
+	transition: all 0.5s linear;
 }
 .switch-in{
 	height:20px; 
 	width:20px; 
-	background:rgba(50,50,50,0.5); 
+	background:rgb(102,102,102); 
 	border-radius:50%; 
 	position:relative; 
 	right:5px;
+	transition: all 0.5s linear;
 }
 .switch.active > .switch-out{
 	background:rgba(230,202,212,0.5);
 }
 .switch.active > .switch-in{
-	background:rgba(230,202,212,0.8);
+	background:rgb(230,202,212);
 	right:0px;
 	left:15px;
-}
-.autostart::before{
-	content:"AUTOSTART";
 }
