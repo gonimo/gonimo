@@ -261,15 +261,15 @@ h3{
 .input-btn-grp {
 	  float:right;
 	  font-size:xx-large;
-	  width:7em;
+	  width:5.6em;
 	  text-align:center;
-	  margin-left:-7em;
+	  margin-left:-5.6em;
 	  background:white;
 }
 
 .input-btn-grp > * {
-    margin-left: 3%;
-    margin-right: 3%;
+    margin-left: 2%;
+    margin-right: 2%;
     float: left;
     line-height: 1.8em;
     box-sizing: content-box;
@@ -300,8 +300,8 @@ h3{
 	  width:auto;
     border-left: solid 1px rgb(200,200,200);
     border-right: solid 1px rgb(200,200,200);
-    padding-left: 5%;
-    padding-right: 5%;
+    padding-left: 3%;
+    padding-right: 3%;
 }
 .input-btn-grp>.minus::after {
 	font-family:FontAwesome;
