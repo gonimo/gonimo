@@ -238,7 +238,7 @@ h3{
 	float:right;
 	font-size:xx-large;
 	font-weight:900;
-	border-left:solid 2px black;
+	border:solid 4px #CDA5B4;
 	width:20%;
 	text-align:center;
 	margin-left:-20%;
@@ -247,15 +247,14 @@ h3{
 
 .input-btn.input-btn-left{
 	  float:left;
-	  border-left:none;
-	  border-right:solid 2px black;
 	  width:10%;
-	  margin-left:-10%;
+	  height:2em;
 }
 
 .input-btn.input-btn-right{
 	  width:10%;
 	  margin-left:-20%;
+	  height:2em;
 }
 
 .input-btn-grp {
@@ -336,6 +335,7 @@ h3{
 	color:rgb(110,110,110);
 	float:left;
 	outline:1px solid #CDA5B4;
+	height:2em;
 }
 .mail-input:focus{
 	outline:1px solid #CDA5B4;
@@ -351,6 +351,7 @@ h3{
 		float:none !important;
 		margin-left:0% !important;
 		width:100% !important;
+		height:2em;
 	}
 }
 
@@ -361,6 +362,7 @@ h3{
 }
 .mail-input.link{
 	color:rgb(200,200,200);
+	height:2em;
 }
 .input-btn.link::after{
 	font-family:FontAwesome;
