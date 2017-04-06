@@ -927,18 +927,8 @@ input.volume::-ms-thumb{
 	height:25px;
 	width:25px;
 }
-.cam-on > span::after, .autostart > span::after{
+.cam-on {
 	font-family:FontAwesome;
-	content:"\f00d";
-	color:red;
-}
-.cam-on::before{
-	font-family:FontAwesome;
-	content:"\f03d";
-}
-.cam-on.active > span::after, .autostart.active > span::after{
-	content:"\f00c";
-	color:green;
 }
 .baby {
   position: absolute;
@@ -1260,6 +1250,7 @@ canvas {
 	  font-size:x-large;
 	  font-weight:500;
 }
+
 .switch{
 	width:35px; 
 	display:flex; 
@@ -1289,7 +1280,4 @@ canvas {
 	background:rgb(230,202,212);
 	right:0px;
 	left:15px;
-}
-.autostart::before{
-	content:"AUTOSTART";
 }
