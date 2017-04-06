@@ -852,6 +852,10 @@ span.device-self {
     background-color: white;
 }
 
+.volBarItem.volBarItemActive.high-volume {
+    background-color: #CDA5B4;
+}
+
 .stop{
 	float:right;
 	color:black;
