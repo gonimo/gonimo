@@ -33,4 +33,4 @@ addFullScreenBtnAttrs className
   = "class" =: className
   <> "type" =: "button"
   <> "role" =: "button"
-  <> "onClick" =: "(function() {if (screenfull.enabled) {screenfull.request();}})()"
+  <> "onClick" =: "(function() {if (screenfull.enabled && !(bowser.mobile || bowser.tablet)) {screenfull.request();}})()"
