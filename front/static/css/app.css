@@ -267,8 +267,10 @@ h3{
 }
 
 .input-btn-grp > * {
-    margin-left: 2%;
-    margin-right: 2%;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 2%;
+    padding-right: 2%;
     float: left;
     line-height: 1.8em;
     box-sizing: content-box;
