@@ -68,13 +68,12 @@ makeClickable item = do
 
 myCheckBox :: (DomBuilder t m, PostBuild t m) => Map Text Text -> Dynamic t Bool -> m () -> m (Event t Bool)
 myCheckBox attrs checked inner = do
-  let markedStr active = if active then "active switch " else "switch "
-  let markedAttr = ("class" =:) . markedStr <$> checked
-  let allAttrs = zipDynWith (Map.unionWith (<>)) markedAttr (pure attrs)
-  clicked <- makeClickable $ elDynAttr' "div" allAttrs $ do
+  let markedStr active = if active then "active " else ""
+  clicked <- makeClickable $ elAttr' "div" attrs $ do
     inner
-    elClass "div" "switch-out" blank
-    elClass "div" "switch-in" blank
+    elDynClass "div" (pure "switch " <> fmap markedStr checked) $ do
+      elClass "div" "switch-out" blank
+      elClass "div" "switch-in" blank
   pure $ pushAlwaysCheap (\() -> not <$> (sample $ current checked)) clicked
 
 tabBar :: forall t m k. (MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m, Ord k)
