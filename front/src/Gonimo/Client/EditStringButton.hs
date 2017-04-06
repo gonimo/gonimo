@@ -36,8 +36,6 @@ editStringBox editStringText val = do
     elClass "div" "container" $ do
       cancelClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
       el "h1" editStringText
-      el "br" blank
-      el "br" blank
 
       el "h3" $ text "EDIT NAME"
       elClass "div" "welcome-form" $ do
