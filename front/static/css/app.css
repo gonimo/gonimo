@@ -238,7 +238,7 @@ h3{
 	float:right;
 	font-size:xx-large;
 	font-weight:900;
-	border:solid 4px #CDA5B4;
+	border:solid 3px #CDA5B4;
 	width:20%;
 	text-align:center;
 	margin-left:-20%;
@@ -332,6 +332,7 @@ h3{
 	padding:5px 0px;
 	border:none;
 	font-size:x-large;
+	font-family:Raleway-Regular;
 	color:rgb(110,110,110);
 	float:left;
 	outline:1px solid #CDA5B4;
