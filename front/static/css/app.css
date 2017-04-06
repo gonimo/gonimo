@@ -36,10 +36,10 @@ html, body {
 body{
 	text-align:center;
 	font-size: 14px;
-  line-height: 1.42857143;
-  color: #333;
+	line-height: 1.42857143;
+	color: #333;
 	margin:0;
-  background-color: rgba(0,0,0,0);
+	background-color: rgba(0,0,0,0);
 }
 #app {
     height: 100%;
@@ -64,11 +64,11 @@ a:hover, a:focus{
 }
 
 .container{
-  position: relative;
+	position: relative;
 	margin-right: auto;
 	margin-left: auto;
-  padding-left: 0px;
-  padding-right: 0px;
+	padding-left: 0px;
+	padding-right: 0px;
 	height:100%;
 }
 
@@ -212,10 +212,10 @@ h3{
 }
 
 .start-welcome-img {
-  background-image: url("/pix/gonimo-Welt-animation_460x460px.gif");
-  background-size: 100% 100%;
-  width: 460px;
-  height: 460px;
+	background-image: url("/pix/gonimo-Welt-animation_460x460px.gif");
+	background-size: 100% 100%;
+	width: 460px;
+	height: 460px;
 }
 
 @media(max-width:460px) and (min-width:345px) {
@@ -243,27 +243,28 @@ h3{
 	text-align:center;
 	margin-left:-20%;
 	background:white;
+	height:2em;
 }
 
 .input-btn.input-btn-left{
-	  float:left;
-	  width:10%;
-	  height:2em;
+	float:left;
+	width:10%;
+	height:2em;
 }
 
 .input-btn.input-btn-right{
-	  width:10%;
-	  margin-left:-20%;
-	  height:2em;
+	width:10%;
+	margin-left:-20%;
+	height:2em;
 }
 
 .input-btn-grp {
-	  float:right;
-	  font-size:xx-large;
-	  width:5.6em;
-	  text-align:center;
-	  margin-left:-5.6em;
-	  background:white;
+	float:right;
+	font-size:xx-large;
+	width:5.6em;
+	text-align:center;
+	margin-left:-5.6em;
+	background:white;
 }
 
 .input-btn-grp > * {
@@ -275,10 +276,10 @@ h3{
     line-height: 1.8em;
     box-sizing: content-box;
     color: rgb(102,102,102);
-	  font-size:xx-large;
-	  font-weight:900;
-	  text-align:center;
-	  background:white;
+	font-size:xx-large;
+	font-weight:900;
+	text-align:center;
+	background:white;
 }
 
 .plus::after {
@@ -287,7 +288,7 @@ h3{
 }
 .input-btn-grp>.plus{
     float: right;
-	  width:auto;
+	width:auto;
     color: black;
     padding-left: 10%;
     padding-right: 10%;
@@ -298,7 +299,7 @@ h3{
     line-height: 1.8em;
 }
 .input-btn-grp>.minus{
-	  width:auto;
+	width:auto;
     border-left: solid 1px rgb(200,200,200);
     border-right: solid 1px rgb(200,200,200);
     padding-left: 3%;
@@ -310,11 +311,16 @@ h3{
 }
 
 .input-btn.check, .input-btn.mail{
+<<<<<<< HEAD
+	border:solid 4px #CDA5B4;
+	font-size: x-large;
+=======
 	  border:solid 4px #CDA5B4;
     font-size: xx-large;
+>>>>>>> origin/master
 }
 .input-btn.check::after{
-	  color:#CDA5B4;
+	color:#CDA5B4;
 	font-family:FontAwesome;
 	content:"\f00c";
 }
@@ -324,7 +330,6 @@ h3{
 	width:75%;
 	border-right:none;
 	border-left:none;
-	border:solid 1px rgb(50,50,50);
 	margin-bottom:50px;
 	text-align:left;
 }
@@ -357,6 +362,14 @@ h3{
 		width:100% !important;
 		height:2em;
 	}
+	.input-btn.input-btn-left{
+	  width:50%;
+	  margin:0%;
+	}
+	.input-btn.input-btn-right{
+	  width:50%;
+	  margin:0%:
+	}
 }
 
 .mail-form.link{
@@ -375,10 +388,10 @@ h3{
 	border:none;
 }
 .input-btn.recreate::after{
-	  font-family:FontAwesome;
-	  color:#CDA5B4;
+	font-family:FontAwesome;
+	color:#CDA5B4;
     content: "\f021";
-	  border:none;
+	border:none;
 }
 .input-btn.mail::after{
 	color:#CDA5B4;
@@ -388,7 +401,7 @@ h3{
 .family-select{
 	width:100%;
 	padding:5px 0px;
-  border-style: none;
+	border-style: none;
 	font-family: Raleway-Light;
 	font-size:x-large;
 	font-weight:500;
@@ -410,13 +423,13 @@ h3{
 .input-btn-grp>.edit{
 	width:auto;
 	border:none;
-  color:black;
+	color:black;
 }
 
 .btn-box{
 	display:flex;
 	justify-content:center;
-  flex-wrap: wrap;
+	flex-wrap: wrap;
 }
 .btn-parent{
 	border:solid 4px rgb(50,50,50);
@@ -428,8 +441,8 @@ h3{
 	margin:2%;
 }
 .btn-baby{
-	  border:solid 4px #CDA5B4;
-	  color:#CDA5B4;
+	border:solid 4px #CDA5B4;
+	color:#CDA5B4;
 	font-size:x-large;
 	width:33%;
 	display:inline-block;
@@ -457,12 +470,12 @@ h3{
 	content:"\f00d";
 }
 .menu{
-  top: 0px;
-  left: 0px;
-  right: 0px;
-  position: absolute;
-  height: 60px;
-  z-index: 1;
+	top: 0px;
+	left: 0px;
+	right: 0px;
+	position: absolute;
+	height: 60px;
+	z-index: 1;
 	width:100%;
 	background:rgb(230,202,212);
 	overflow:hidden;
@@ -512,7 +525,7 @@ h3{
 	font-family:Raleway-bold;
 	padding:2px 2.5%;
 	border-left:solid 1px black;
-  color: black;
+	color: black;
 }
 span.device-self {
 	  /* color:rgb(230,202,212); */
@@ -570,14 +583,14 @@ span.device-self {
 	float:right;
 }
 .buttons > div{
-	  border:solid 2px #CDA5B4;
+	border:solid 2px #CDA5B4;
 	display:none;
 }
 .stream, .disconnect{
 	margin-top:5px;
 }
 .buttons > .disconnect {
-	  border-color:black;
+	border-color:black;
 }
 .disconnect{
 	color:black;
@@ -585,7 +598,7 @@ span.device-self {
 }
 .device.active > .status > div {
 	background:rgb(230,202,212);
-  border-color: #CDA5B4;
+	border-color: #CDA5B4;
 }
 .device.isBaby > .buttons > .connect{
 	display:block;
@@ -644,21 +657,21 @@ span.device-self {
 	content:"\f067";
 }
 .parent{
-  position: absolute;
-  top: 0px;
-  bottom: 0px;
-  right: 0px;
-  left: 0px;
+	position: absolute;
+	top: 0px;
+	bottom: 0px;
+	right: 0px;
+	left: 0px;
 	background-color:black;
-  padding-top: 60px;
-  padding-bottom: 50px;
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: stretch;
+	padding-top: 60px;
+	padding-bottom: 50px;
+	height: 100%;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: stretch;
 }
 
 @media (max-height: 500px) {
@@ -731,35 +744,35 @@ span.device-self {
 .invite-button > a {
     height: 100%;
     width: 100%;
-	  background-size: 80% 80%;
-	  background-repeat: no-repeat;
+	background-size: 80% 80%;
+	background-repeat: no-repeat;
     background-position: 50% 50%;
     display: inline-block;
 }
 
 .invite-button.whatsapp > a {
-	  background-image: url("/pix/whatsapp.svg");
+	background-image: url("/pix/whatsapp.svg");
 }
 
 .invite-button.telegram > a {
-	  background-image: url("/pix/telegram.svg");
-	  background-size: 100% 100%;
+	background-image: url("/pix/telegram.svg");
+	background-size: 100% 100%;
 }
 
 .stream-baby {
-  position: relative;
-  overflow-x: hidden;
-  overflow-y: hidden;
+	position: relative;
+	overflow-x: hidden;
+	overflow-y: hidden;
 }
 
 .parent > .stream-baby {
 	min-width:50%;
-  width: auto;
+	width: auto;
 	max-width:100%;
 	min-height:40%;
-  height: auto;
-  max-height: 100%;
-  flex-grow: 1;
+	height: auto;
+	max-height: 100%;
+	flex-grow: 1;
 }
 
 .stream-baby.justAudio {
@@ -925,6 +938,7 @@ input.volume::-ms-thumb{
 	top:50%;
 	transform:translateY(-50%);
 	margin-right:1.5%;
+	display:flex;
 }
 .cam-switch{
 	float:right;
@@ -939,6 +953,20 @@ input.volume::-ms-thumb{
 }
 .cam-on {
 	font-family:FontAwesome;
+<<<<<<< HEAD
+	content:"\f00d";
+	color:red;
+}
+.cam-on::before{
+	font-family:FontAwesome;
+	content:"\f03d";
+	padding-right:10px;
+}
+.cam-on.active > span::after, .autostart.active > span::after{
+	content:"\f00c";
+	color:green;
+=======
+>>>>>>> origin/master
 }
 .baby {
   position: absolute;
@@ -1037,19 +1065,22 @@ input.volume::-ms-thumb{
 }
 
 .welcome-form.baby-form{
-  position: absolute;
-  top: 60px;
-  left: 0px;
-  right: 0px;
+	position: absolute;
+	top: 60px;
+	left: 0px;
+	right: 0px;
 	margin-bottom:0;
 	text-align:center;
 	background:rgba(255,255,255,0.9);
 	border:none;
-  z-index: 1;
+	z-index: 1;
 }
 .baby-form, .baby-form > select, .input-btn.edit.baby-form, .input-btn.plus.baby-form{
 	background-color:transparent;
 	color:black;
+}
+.input-btn.baby-form{
+	border:solid 2px black;
 }
 .baby-form > select{
 	border-top:solid 1px black;
@@ -1257,8 +1288,8 @@ canvas {
     transform: translate(-50%,-50%);
     width: 70%;
     z-index: 10;
-	  font-size:x-large;
-	  font-weight:500;
+	font-size:x-large;
+	font-weight:500;
 }
 
 .switch{
@@ -1291,3 +1322,10 @@ canvas {
 	right:0px;
 	left:15px;
 }
+<<<<<<< HEAD
+.autostart::before{
+	content:"AUTOSTART";
+	padding-right:10px;
+}
+=======
+>>>>>>> origin/master
