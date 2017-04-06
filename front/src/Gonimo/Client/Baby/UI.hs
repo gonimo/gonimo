@@ -20,8 +20,9 @@ import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.Client.EditStringButton    (editStringEl)
-import           Gonimo.Client.ConfirmationButton  (addConfirmation)
+import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
 import           Gonimo.Client.Util
+import qualified Data.Map.Strict as Map
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -144,15 +145,16 @@ uiRunning loaded deviceList baby' =
 
         navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
 
+        let needConfirmation = not . Map.null <$> baby'^.socket^.Socket.channels
         navBar <- NavBar.NavBar
-                  <$> addConfirmation leaveConfirmation (navBar'^.NavBar.backClicked)
-                  <*> addConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked)
+                  <$> mayAddConfirmation leaveConfirmation (navBar'^.NavBar.backClicked) needConfirmation
+                  <*> mayAddConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked) needConfirmation
 
         dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
         stopClicked <- elClass "div" "stream-menu" $
-          addConfirmation leaveConfirmation
+          flip (mayAddConfirmation leaveConfirmation) needConfirmation
           =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "STOP")
-        -- stopClicked <- addConfirmation leaveConfirmation
+        -- stopClicked <- flip (mayAddConfirmation leaveConfirmation) needConfirmation
         --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "STOP")
         let handleStop f = push (\_ -> do
                                   autoStartOn' <- sample $ current (baby'^.autoStartEnabled)
@@ -242,12 +244,12 @@ enableCameraCheckbox' :: forall m t. (HasWebView m, MonadWidget t m)
 enableCameraCheckbox' baby' videoDevices' =
   case videoDevices' of
     [] -> pure never -- No need to enable the camera when there is none!
-    _  -> myCheckBox (addBtnAttrs "cam-on ") (baby'^.cameraEnabled) $ el "span" blank
+    _  -> myCheckBox (addBtnAttrs "cam-on ") (baby'^.cameraEnabled) $ blank
 
 enableAutoStartCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
                 => Baby t -> m (Event t Bool)
 enableAutoStartCheckbox baby' =
-    myCheckBox (addBtnAttrs "autostart ") (baby'^.autoStartEnabled) . el "span" $ text "Autostart"
+    myCheckBox (addBtnAttrs "autostart ") (baby'^.autoStartEnabled) $ blank
 
 setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
                    => App.Loaded t -> Baby t -> m (Event t Text)
