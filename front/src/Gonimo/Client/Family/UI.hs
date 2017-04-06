@@ -4,8 +4,6 @@
 module Gonimo.Client.Family.UI where
 
 import           Control.Lens
-import           Data.Map                         (Map)
-import           Data.Maybe                       (fromMaybe)
 import           Data.Monoid
 import           Control.Applicative
 import           Data.Text                        (Text)
@@ -136,22 +134,21 @@ familyChooser family' = mdo
         makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
           elClass "i" "fa fa-fw fa-users" blank
           text " "
-          dynText $ zipDynWith getFamilyName (family'^.definiteSelected) (family'^.definiteFamilies)
-          text " "
-          elClass "span" "caret" blank
+          dynText cFamilyName
 
-      (clickedAdd', clickedLeave') <-
+      (nameChanged', clicked2, clickedLeave', clickedAdd') <-
         elClass "div" "input-btn-grp" $ do
-          let mkMyButton t = makeClickable $ elAttr' "div" (addBtnAttrs t) blank
-          let mkLeaveBtn = confirmationEl (makeClickable $ elAttr' "div" (addBtnAttrs "minus") blank)
+          nameChanged' <-
+            editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "edit") blank)
+            (text "Change your family name to ...")
+            cFamilyName
+          clickedLeave' <- confirmationEl (makeClickable $ elAttr' "div" (addBtnAttrs "minus") blank)
                              (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
-          (,) <$> mkMyButton "plus" <*> mkLeaveBtn
+          clicked2 <- makeClickable $ elAttr' "div" (addBtnAttrs "mycaret") $ elClass "span" "fa fa-caret-down" blank
+          clickedAdd' <- makeClickable $ elAttr' "div" (addBtnAttrs "plus") blank
+          pure (nameChanged', clicked2, clickedLeave', clickedAdd')
 
-      nameChanged' <-
-        editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "input-btn edit") blank)
-        (text "Change your family name to ...")
-        cFamilyName
-      pure (clicked', clickedAdd', clickedLeave', nameChanged')
+      pure (leftmost [clicked', clicked2], clickedAdd', clickedLeave', nameChanged')
 
   let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
   droppedDown <- holdDyn False $ leftmost [ openClose
@@ -167,10 +164,6 @@ familyChooser family' = mdo
   selectedId :: Event t FamilyId <- elDynClass "div" dropDownClass $
     renderFamilySelectors family'
   pure (selectedId, clickedAdd, clickedLeave, nameChanged)
-  where
-    getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
-    getFamilyName famId families'
-      = fromMaybe "" $ families'^?at famId._Just.to (Gonimo.familyName . Db.familyName)
 
 renderFamilySelectors :: forall m t. (HasWebView m, MonadWidget t m)
                     => DefiniteFamily t -> m (Event t FamilyId)

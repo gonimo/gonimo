@@ -258,33 +258,56 @@ h3{
 	  margin-left:-20%;
 }
 
-.input-btn-grp{
+.input-btn-grp {
 	  float:right;
 	  font-size:xx-large;
-	  border-left:solid 2px black;
-	  width:20%;
+	  width:7em;
 	  text-align:center;
-	  margin-left:-20%;
+	  margin-left:-7em;
 	  background:white;
 }
-.input-btn.plus::after, .input-btn-grp>.plus::after{
+
+.input-btn-grp > * {
+    margin-left: 3%;
+    margin-right: 3%;
+    float: left;
+    line-height: 1.8em;
+    box-sizing: content-box;
+    color: rgb(102,102,102);
+	  font-size:xx-large;
+	  font-weight:900;
+	  text-align:center;
+	  background:white;
+}
+
+.plus::after {
 	font-family:FontAwesome;
 	content:"\f067";
 }
 .input-btn-grp>.plus{
-    float: left;
-	  width:auto;
-    margin-left: 4%;
-}
-.input-btn-grp>.minus{
     float: right;
 	  width:auto;
-    margin-right: 4%;
+    color: black;
+    padding-left: 10%;
+    padding-right: 10%;
+    margin-left: 0;
+    margin-right: 0;
+    border-left: solid 2px black;
+    height: 1.8em;
+    line-height: 1.8em;
 }
-.input-btn.minus::after, .input-btn-grp,.minus::after{
+.input-btn-grp>.minus{
+	  width:auto;
+    border-left: solid 1px rgb(200,200,200);
+    border-right: solid 1px rgb(200,200,200);
+    padding-left: 5%;
+    padding-right: 5%;
+}
+.input-btn-grp>.minus::after {
 	font-family:FontAwesome;
 	content:"\f00d";
 }
+
 .input-btn.check, .input-btn.mail{
 	  border:solid 4px #CDA5B4;
 }
@@ -378,12 +401,12 @@ h3{
     display: block;
 }
 
-.input-btn.edit{
-	float:left;
-	width:10%;
-	margin-left:-30%;
+.input-btn-grp>.edit{
+	width:auto;
 	border:none;
+  color:black;
 }
+
 .btn-box{
 	display:flex;
 	justify-content:center;
@@ -415,7 +438,7 @@ h3{
 .btn-baby > span, .btn-parent > span{
 	display:block;
 }
-.input-btn.edit::after{
+.input-btn-grp>.edit::after{
 	font-family:FontAwesome;
 	content:"\f044";
 }
