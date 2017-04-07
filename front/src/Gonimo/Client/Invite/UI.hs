@@ -55,6 +55,7 @@ ui loaded config = mdo
 
     recreateClicked <- el "div" $ do
       copyClipboardScript
+      el "h3" $ text "INVITATION LINK"
       divClass "mail-form link" $ do
           showLinkInput invitationLink
           clicked <- refreshLinkButton
