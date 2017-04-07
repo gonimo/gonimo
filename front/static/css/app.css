@@ -731,7 +731,7 @@ span.device-self {
     }
     .parent.single-video > .stream-baby > .volumemeter {
         bottom: calc(5% + 50px);
-        top: calc(10% + 60px);
+        top: calc(10% + 60px + 25px);
     }
     .parent.single-video > .stream-menu {
         display: block;
@@ -875,7 +875,7 @@ span.device-self {
     position: absolute;
     right: 5%;
     bottom: 5%;
-    top: 10%;
+    top: calc(10% + 25px);
     max-height: 70%;
     overflow-y: hidden;
 }
