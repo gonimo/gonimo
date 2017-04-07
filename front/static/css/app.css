@@ -103,8 +103,8 @@ a:hover, a:focus{
     }
     .welcome-form > .input-btn-grp {
         font-size: x-large !important;
-        width: 5.76em !important;
-	      margin-left:-5.76em !important;
+        width: 5.77em !important;
+	      margin-left:-5.77em !important;
     }
 }
 @media(max-width:768px){
