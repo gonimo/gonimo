@@ -20,6 +20,7 @@ import GHCJS.DOM.Types (MediaStream, liftJSM, MonadJSM)
 import qualified Language.Javascript.JSaddle                       as JS
 import Data.Time.Clock
 import Gonimo.Client.Prelude
+import Gonimo.Client.Util
 
 
 renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
@@ -127,7 +128,7 @@ mediaVideo stream attrs = do
     JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
     _ <- JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])
     -- Does not seem to work properly right now ... :-(
-    -- registerTriggerFullScreen rawElement
+    registerTriggerFullScreen rawElement
     pure ()
 
 -- mediaVideo :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace

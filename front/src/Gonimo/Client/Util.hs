@@ -473,6 +473,7 @@ registerTriggerFullScreen element' = liftJSM $ do
     , "               screenfull.request();"
     , "             }"
     , "             else"
+    , "               screenfull.exit();"
     , "               screenfull.request(el);"
     , "    }"
     , "  })"
