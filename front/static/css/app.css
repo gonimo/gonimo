@@ -78,30 +78,46 @@ a:hover, a:focus{
 }
 
 @media(min-width:768px){
-.container, .stream-menu{
-	width:750px;
+    .container, .stream-menu{
+    width:750px;
+    }
+    .lang-img{
+    width:50%;
+    }
+    .welcome-input{
+    letter-spacing:0.05em;
+    }
 }
-.lang-img{
-	width:50%;
+@media(min-width: 700px) {
+    .family-select{
+        text-align:center;
+    }
 }
-.welcome-input{
-	letter-spacing:0.05em;
-}
-.family-select{
-	text-align:center;
-}
+@media(max-width: 420px) {
+    .fa.fa-fw.fa-users {
+        display: none;
+    }
+    .family-select {
+        padding-left: 0.3em !important;
+        font-size: x-large !important;
+    }
+    .welcome-form > .input-btn-grp {
+        font-size: x-large !important;
+        width: 5.75em !important;
+	      margin-left:-5.75em !important;
+    }
 }
 @media(max-width:768px){
     .lang-img{
-    width:95%;
+        width:95%;
     }
 }
 @media(min-width:992px){
     .container, .stream-menu{
-    width:970px;
+        width:970px;
     }
     .welcome-input{
-    letter-spacing:0.15em;
+        letter-spacing:0.15em;
     }      
 }
 @media(min-width:1200px){
@@ -128,6 +144,18 @@ h1{
 	margin-top: 20px;
 	margin-bottom: 10px;
 }
+@media (max-height: 570px) {
+    h1 {
+        font-size: 28px;
+        font-weight: 300;
+        margin-top: 10px;
+        margin-bottom: 5px;
+    }
+    h3 {
+        font-size: medium;
+    }
+}
+
 h2{
 	font-family: Raleway-light;
 	text-align:center;
@@ -266,21 +294,21 @@ h3{
 	text-align:center;
 	margin-left:-5.6em;
 	background:white;
+  font-size:xx-large;
+  font-weight:900;
+  text-align:center;
 }
 
 .input-btn-grp > * {
     margin-left: 0;
     margin-right: 0;
-    padding-left: 2%;
-    padding-right: 2%;
+    padding-left: 4%;
+    padding-right: 4%;
     float: left;
     line-height: 1.8em;
     box-sizing: content-box;
     color: rgb(102,102,102);
-	font-size:xx-large;
-	font-weight:900;
-	text-align:center;
-	background:white;
+    background:white;
 }
 
 .plus::after {
@@ -1067,6 +1095,11 @@ input.volume::-ms-thumb{
 	background-color:transparent;
 	color:black;
 }
+
+.input-btn.plus.baby-form {
+    height: auto;
+    font-size: xx-large;
+}
 .input-btn.baby-form{
   border: none;
 	border-left:solid 2px black;
@@ -1077,7 +1110,7 @@ input.volume::-ms-thumb{
 span.baby-form{
 	display:inline-block;
 	color:black;
-	font-size:xx-large;
+	font-size:x-large;
 	margin:2%;
 }
 
@@ -1316,7 +1349,7 @@ canvas {
 .baby-text {
     display: block;
 	  color:rgb(110,110,110);
-    font-size: larger;
+    font-size: medium;
     letter-spacing: 0.2em;
 }
 
