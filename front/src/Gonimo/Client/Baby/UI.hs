@@ -263,7 +263,7 @@ setBabyNameForm loaded baby' = do
         makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
           dynText $ baby'^.name
           text " "
-          elClass "span" "caret" blank
+          elClass "span" "baby-caret fa fa-caret-down" blank
 
       nameAddRequest <-
         makeClickable $ elAttr' "div" (addBtnAttrs "input-btn plus baby-form") blank
