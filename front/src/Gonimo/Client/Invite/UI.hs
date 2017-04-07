@@ -21,6 +21,7 @@ import qualified Gonimo.SocketAPI.Types as API
 import Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.App.Types as App
 import           GHCJS.DOM.Types (MonadJSM)
+import           Gonimo.Client.Util
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadIO (Performable m), PerformEvent t m)
       => App.Loaded t -> Config t -> m (Invite t)
@@ -43,16 +44,14 @@ ui loaded config = mdo
 
     confirmationBox $ leftmost sentEvents
     invButtons <- elClass "div" "invite-buttons" $ do
-      whatsAppClicked <- inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
-      tgClicked <- inviteButton "telegram" "tg://msg?text=" escapedLink
+      isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
+      let onMobile mEv = if isMobile then mEv else pure never
+      whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
+      tgClicked <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
       pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
 
     el "h3" $ text "EMAIL"
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
-
-    el "br" blank
-    doneClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "DONE"
-    el "br" blank
 
     recreateClicked <- el "div" $ do
       copyClipboardScript
@@ -62,6 +61,10 @@ ui loaded config = mdo
           copyClicked <- copyButton
           pure [const SentRefresh <$> clicked, const SentCopy <$> copyClicked]
     let reCreateEvents = recreateClicked <> invButtons
+
+    el "br" blank
+    doneClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "DONE"
+
     pure $ invite'' & uiGoBack .~ backClicked
                     & uiDone .~ doneClicked
   where

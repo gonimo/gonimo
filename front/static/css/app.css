@@ -151,6 +151,10 @@ h1{
         margin-top: 10px;
         margin-bottom: 5px;
     }
+    h2 {
+        font-size: 20px;
+        font-weight: 100;
+    }
     h3 {
         font-size: medium;
     }
@@ -354,7 +358,7 @@ h3{
 	width:75%;
 	border-right:none;
 	border-left:none;
-	margin-bottom:50px;
+	margin-bottom:20px;
 	text-align:left;
 }
 .mail-input{
@@ -398,7 +402,7 @@ h3{
 
 .mail-form.link{
 	border:solid 1px grey;
-	margin-top:5%;
+	margin-top:1%;
 	
 }
 .mail-input.link{
