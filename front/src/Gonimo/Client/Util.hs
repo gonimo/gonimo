@@ -47,13 +47,13 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     "    var source = ctx.createMediaStreamSource(stream);\n" <>
     "    var compressor = ctx.createDynamicsCompressor();" <>
     "    var gainNode = ctx.createGain();\n" <>
-    "    compressor.threshold.value = -50;" <>
+    "    compressor.threshold.value = -30;" <>
     "    compressor.knee.value = 25;" <>
     "    compressor.ratio.value = 16;" <>
     "    compressor.reduction.value = -20; // is irrelevant" <>
     "    compressor.attack.value = 0.005;" <>
     "    compressor.release.value = 0.3;" <>
-    "    gainNode.gain.value = 200;\n" <>
+    "    gainNode.gain.value = 35;\n" <>
     "    source.connect(compressor);\n" <>
     "    compressor.connect(gainNode);\n" <>
     "    var destNode = ctx.createMediaStreamDestination();\n" <>
@@ -494,3 +494,7 @@ registerTriggerFullScreen element' = liftJSM $ do
 
 getBrowserProperty :: forall m. MonadJSM m => Text -> m Bool
 getBrowserProperty property = liftJSM $ fromMaybe False <$> (JS.fromJSVal =<< JS.eval ("bowser." <> property))
+
+
+requestFullScreenScript :: Text
+requestFullScreenScript = "(function() {if (screenfull.enabled && (bowser.mobile || bowser.tablet)) {screenfull.request();}})()"

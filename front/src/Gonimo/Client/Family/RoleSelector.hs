@@ -9,6 +9,7 @@ import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Prelude
 import           Data.Map (Map)
+import           Gonimo.Client.Util
 
 
 
@@ -33,4 +34,4 @@ addFullScreenBtnAttrs className
   = "class" =: className
   <> "type" =: "button"
   <> "role" =: "button"
-  <> "onClick" =: "(function() {if (screenfull.enabled && (bowser.mobile || bowser.tablet)) {screenfull.request();}})()"
+  <> "onClick" =: requestFullScreenScript
