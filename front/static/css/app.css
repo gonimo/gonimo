@@ -101,13 +101,13 @@ a:hover, a:focus{
         padding-left: 0.3em !important;
         font-size: large !important;
     }
-    .welcome-form > .input-btn-grp {
-        font-size: x-large !important;
-        width: 5.77em !important;
-	      margin-left:-5.77em !important;
+    .input-btn-grp > * {
+        line-height: 1.5em !important;
     }
-    .welcome-form > .input-btn.plus {
-        font-size: x-large !important;
+    .input-btn.plus {
+        line-height: 1.5em !important;
+        width: 2em !important;
+        margin-left: -2em !important;
     }
 }
 @media(max-width:768px){
@@ -298,24 +298,23 @@ h3{
 
 .input-btn-grp {
 	float:right;
-	font-size:xx-large;
-	width:5.61em;
+	font-size: x-large;
+	width:6.2em;
 	text-align:center;
-	margin-left:-5.61em;
+	margin-left:-6.2em;
 	background:white;
-  font-size:xx-large;
-  font-weight:900;
+  /* font-size:xx-large; */
+  font-weight:100;
   text-align:center;
 }
 
 .input-btn-grp > * {
     margin-left: 0;
     margin-right: 0;
-    padding-left: 4%;
-    padding-right: 4%;
     float: left;
-    line-height: 1.8em;
-    box-sizing: content-box;
+    width: 1.4em;
+    line-height: 2em;
+    box-sizing: border-box;
     color: rgb(102,102,102);
     background:white;
 }
@@ -326,22 +325,17 @@ h3{
 }
 .input-btn-grp>.plus{
     float: right;
-	width:auto;
     color: black;
-    padding-left: 10%;
-    padding-right: 10%;
+    width: 2em;
     margin-left: 0;
     margin-right: 0;
     border-left: solid 2px black;
-    height: 1.8em;
-    line-height: 1.8em;
 }
 .input-btn-grp>.minus{
-	width:auto;
     border-left: solid 1px rgb(200,200,200);
     border-right: solid 1px rgb(200,200,200);
-    padding-left: 3%;
-    padding-right: 3%;
+    padding-left: 0.2em;
+    padding-right: 0.2em;
 }
 .input-btn-grp>.minus::after {
 	font-family:FontAwesome;
@@ -387,6 +381,8 @@ h3{
 		border:none !important;
 	}
 	.mail-input{
+    width: calc(100% - 2px);
+    transform: translateX(1px);
 		float:none !important;
 	}
 	.input-btn.mail{
@@ -452,7 +448,6 @@ h3{
 }
 
 .input-btn-grp>.edit{
-	width:auto;
 	border:none;
 	color:black;
 }
@@ -1109,11 +1104,16 @@ input.volume::-ms-thumb{
     border: none;
     border-left: solid 2px;
     line-height: 2em;
+    font-size: x-large;
+    font-weight: 100;
+    width: 4em;
+    margin-left: -4em;
+    height: unset;
+    line-height: 2em;
 }
 
 .input-btn.plus.baby-form {
     height: auto;
-    font-size: xx-large;
 }
 .input-btn.baby-form{
   border: none;
