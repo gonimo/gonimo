@@ -127,8 +127,8 @@ ui appConfig loaded familyGotCreated = do
 familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
                  => DefiniteFamily t -> m (Event t FamilyId, Event t (), Event t (), Event t Text)
 familyChooser family' = mdo
-  (clicked, clickedAdd, clickedLeave, nameChanged) <- do
-    let cFamilyName = currentFamilyName family'
+  let cFamilyName = currentFamilyName family'
+  (clicked, clickedAdd, clickedLeave, nameChangeReq) <- do
     elClass "div" "welcome-form" $ do
       clicked' <-
         makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
@@ -136,20 +136,21 @@ familyChooser family' = mdo
           text " "
           dynText cFamilyName
 
-      (nameChanged', clicked2, clickedLeave', clickedAdd') <-
+      (nameChangeReq', clicked2, clickedLeave', clickedAdd') <-
         elClass "div" "input-btn-grp" $ do
-          nameChanged' <-
-            editStringEl (makeClickable $ elAttr' "div" (addBtnAttrs "edit") blank)
-            (text "Change your family name to ...")
-            cFamilyName
+          nameChangeReq' <-
+            makeClickable $ elAttr' "div" (addBtnAttrs "edit") blank
           clickedLeave' <- confirmationEl (makeClickable $ elAttr' "div" (addBtnAttrs "minus") blank)
                              (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
           clicked2 <- makeClickable $ elAttr' "div" (addBtnAttrs "mycaret") $ elClass "span" "fa fa-caret-down" blank
           clickedAdd' <- makeClickable $ elAttr' "div" (addBtnAttrs "plus") blank
-          pure (nameChanged', clicked2, clickedLeave', clickedAdd')
+          pure (nameChangeReq', clicked2, clickedLeave', clickedAdd')
 
-      pure (leftmost [clicked', clicked2], clickedAdd', clickedLeave', nameChanged')
-
+      pure (leftmost [clicked', clicked2], clickedAdd', clickedLeave', nameChangeReq')
+  nameChanged <-
+    editStringEl (pure nameChangeReq)
+      (text "Change your family name to ...")
+      cFamilyName
   let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
   droppedDown <- holdDyn False $ leftmost [ openClose
                                           , const False <$> selectedId
