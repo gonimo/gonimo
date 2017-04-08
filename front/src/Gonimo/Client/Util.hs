@@ -45,9 +45,17 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     "    if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
     "    var ctx = gonimoAudioContext;\n" <>
     "    var source = ctx.createMediaStreamSource(stream);\n" <>
+    "    var compressor = ctx.createDynamicsCompressor();" <>
     "    var gainNode = ctx.createGain();\n" <>
-    "    gainNode.gain.value = 10;\n" <>
-    "    source.connect(gainNode);\n" <>
+    "    compressor.threshold.value = -50;" <>
+    "    compressor.knee.value = 25;" <>
+    "    compressor.ratio.value = 16;" <>
+    "    compressor.reduction.value = -20; // is irrelevant" <>
+    "    compressor.attack.value = 0.005;" <>
+    "    compressor.release.value = 0.3;" <>
+    "    gainNode.gain.value = 200;\n" <>
+    "    source.connect(compressor);\n" <>
+    "    compressor.connect(gainNode);\n" <>
     "    var destNode = ctx.createMediaStreamDestination();\n" <>
     "    gainNode.connect(destNode);\n" <>
     "    var outStream = destNode.stream;\n" <>
