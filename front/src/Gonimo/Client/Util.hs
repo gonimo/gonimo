@@ -54,7 +54,7 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     "    compressor.reduction.value = -20; // is irrelevant" <>
     "    compressor.attack.value = 0.005;" <>
     "    compressor.release.value = 0.3;" <>
-    "    gainNode.gain.value = 35;\n" <>
+    "    gainNode.gain.value = 80;\n" <>
     "    source.connect(compressor);\n" <>
     "    compressor.connect(gainNode);\n" <>
     "    var destNode = ctx.createMediaStreamDestination();\n" <>
