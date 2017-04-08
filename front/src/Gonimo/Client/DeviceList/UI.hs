@@ -33,6 +33,7 @@ import           Gonimo.Client.DeviceList.Internal
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.Reflex.Dom          (makeClickable, addBtnAttrs)
 import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..))
+import Gonimo.Client.Util
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -122,8 +123,8 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
               elClass "span" "dev-loc" $ dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do
-                conC <- makeClickable . elAttr' "div" (addBtnAttrs "connect") $ text "Connect"
-                streamC <- makeClickable . elAttr' "div" (addBtnAttrs "stream") $ text "Stream"
+                conC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "connect") $ text "Connect"
+                streamC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "stream") $ text "Stream"
                 let disconnectOnBroken = fmap (\cStatus -> if cStatus == Just StateBroken then "disconnect connectionBroken " else "disconnect ")  mConnStatus
                 discC <- makeClickable . elDynAttr' "div" (addBtnAttrs <$> disconnectOnBroken) $ text "Disconnect"
                 pure (conC, streamC, discC)

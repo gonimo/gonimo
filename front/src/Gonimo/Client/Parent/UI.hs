@@ -7,7 +7,6 @@ module Gonimo.Client.Parent.UI where
 import           Control.Lens
 import           Data.Foldable
 import           Data.Monoid
-import           GHCJS.DOM.Types                  (MediaStream)
 import qualified Gonimo.Client.DeviceList         as DeviceList
 import           Reflex.Dom.Core
 
@@ -24,9 +23,7 @@ import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server             (webSocket_recv)
 import           Gonimo.Client.Util               (volumeMeter)
 import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
-                                                   audioReceivingState,
-                                                   videoReceivingState,
-                                                   Channel, worstState )
+                                                   Channel, worstState)
 import           Gonimo.Db.Entities        (DeviceId)
 import           Gonimo.Client.Prelude
 import qualified GHCJS.DOM.MediaStream          as MediaStream

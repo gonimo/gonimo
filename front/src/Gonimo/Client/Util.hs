@@ -20,6 +20,7 @@ import GHCJS.DOM.Types                   (AudioContext(..), nullableToMaybe)
 import Gonimo.Client.Prelude
 import Reflex.Dom.Core
 import qualified Data.Text as T
+import Data.Map.Strict (Map)
 
 getGonimoAudioContext :: MonadJSM m => m AudioContext
 getGonimoAudioContext = liftJSM $ do
@@ -474,7 +475,7 @@ registerTriggerFullScreen element' = liftJSM $ do
   jsRegister <- JS.eval . T.unlines $
     [ "(function(el) {"
     , "try {"
-    , "  el.addEventListener('click', function () {"
+    , "  el.addEventListener('dblclick', function () {"
     , "    if (screenfull.enabled) {"
     , "            if(screenfull.element == el) {"
     , "               screenfull.exit(el);"
@@ -498,3 +499,10 @@ getBrowserProperty property = liftJSM $ fromMaybe False <$> (JS.fromJSVal =<< JS
 
 requestFullScreenScript :: Text
 requestFullScreenScript = "(function() {if (screenfull.enabled && (bowser.mobile || bowser.tablet)) {screenfull.request();}})()"
+
+addFullScreenBtnAttrs :: Text -> Map Text Text
+addFullScreenBtnAttrs className
+  = "class" =: className
+  <> "type" =: "button"
+  <> "role" =: "button"
+  <> "onClick" =: requestFullScreenScript

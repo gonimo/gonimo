@@ -28,10 +28,3 @@ roleSelector = do
     pure $ leftmost [ const RoleBaby <$> babyClicked
                     , const RoleParent <$> parentClicked
                     ]
-
-addFullScreenBtnAttrs :: Text -> Map Text Text
-addFullScreenBtnAttrs className
-  = "class" =: className
-  <> "type" =: "button"
-  <> "role" =: "button"
-  <> "onClick" =: requestFullScreenScript
