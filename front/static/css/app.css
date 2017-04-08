@@ -99,12 +99,15 @@ a:hover, a:focus{
     }
     .family-select {
         padding-left: 0.3em !important;
-        font-size: x-large !important;
+        font-size: large !important;
     }
     .welcome-form > .input-btn-grp {
         font-size: x-large !important;
         width: 5.77em !important;
 	      margin-left:-5.77em !important;
+    }
+    .welcome-form > .input-btn.plus {
+        font-size: x-large !important;
     }
 }
 @media(max-width:768px){
@@ -1100,6 +1103,12 @@ input.volume::-ms-thumb{
 .baby-form, .baby-form > select, .input-btn.edit.baby-form, .input-btn.plus.baby-form{
 	background-color:transparent;
 	color:black;
+}
+
+.input-btn.plus {
+    border: none;
+    border-left: solid 2px;
+    line-height: 2em;
 }
 
 .input-btn.plus.baby-form {

@@ -42,7 +42,7 @@ uiStart = do
     elClass "div" "welcome-form" $ do
       inputFieldClicked <-
         makeClickable
-        $ elAttr' "input" ( "class" =: "welcome-input" <> "readonly" =: "true" <> "type" =: "text"
+        $ elAttr' "input" ( "class" =: "family-select" <> "readonly" =: "true" <> "type" =: "text"
                             <> "placeholder" =: "Press >+<, I know you want to!"
                           ) blank
 
