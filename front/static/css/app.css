@@ -267,6 +267,8 @@ h3{
 }
 
 .input-btn{
+  position: relative;
+  /* z-index: 1; */
 	float:right;
 	font-size:x-large;
 	font-weight:900;
