@@ -1299,6 +1299,15 @@ canvas {
 /* Stolen from bootstrap: */
 [role=button] {
     cursor: pointer;
+    -moz-user-select: none;
+
+    -webkit-user-select: none;
+
+    -ms-user-select:none;
+
+    user-select:none;
+
+    -o-user-select:none;
 }
 
 .warning-overlay {
