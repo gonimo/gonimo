@@ -166,7 +166,7 @@ getConnectionsInState state = any isChanInState . Map.elems
 handleVolume :: (Reflex t, MonadJSM m) => ((DeviceId, Double) -> IO ()) -> Event t (DeviceId, Double) -> DeviceId -> MediaStream -> m (StreamData t)
 handleVolume triggerVolumeEvent volEvent key stream' = do
   boosted <- boostMediaStreamVolume stream'
-  void $ getVolumeInfo stream' (liftIO . triggerVolumeEvent . (key,))
+  void $ getVolumeInfo boosted (liftIO . triggerVolumeEvent . (key,))
   let ourVolEvent = snd <$> ffilter (\(k, _) -> k == key) volEvent
   pure $ StreamData boosted ourVolEvent
 
