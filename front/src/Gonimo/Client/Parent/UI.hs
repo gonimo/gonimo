@@ -179,7 +179,7 @@ handleUnreliableAlert connections' = mdo
 
   let
     renderAlert False = dismissibleOverlay "success-overlay " 4 $ text "Connection is reliable!"
-    renderAlert True = dismissibleOverlay "warning-overlay " 4 $ do
+    renderAlert True = dismissibleOverlay "warning-overlay " 6 $ do
       text "Connection unreliable!"
       el "br" blank
       text "Might break unnoticed (no alert)!"
