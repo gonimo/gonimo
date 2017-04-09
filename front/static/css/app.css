@@ -823,6 +823,7 @@ span.device-self {
     z-index: 4;
 }
 
+
 .stream-baby video {
     /* Make video to at least 100% wide and tall */
     min-width: 100%;
@@ -1280,6 +1281,37 @@ canvas {
 @keyframes brokenConnectionAnim {
     from { border-color: rgb(255, 0, 0);}
     to { border-color: rgb(255, 255, 255);}
+}
+@keyframes brokenConnectionAnimOpacity {
+    from { opacity: 0.1; }
+    to { opacity: 0.9; }
+}
+
+.stream-baby > .broken-overlay {
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    z-index: 3;
+    display: none;
+    background-color: rgb(255,0,0);
+    animation-name: brokenConnectionAnimOpacity;
+    animation-duration: 1.804s;
+    animation-iteration-count: infinite;
+}
+
+.stream-baby.connectionBroken > .broken-overlay {
+    display: block;
+}
+
+.broken-overlay > .broken-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    font-weight: 500;
 }
 
 .connectionBroken {

@@ -144,6 +144,8 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
       hasVideo <- not . null <$> MediaStream.getVideoTracks stream
       let hasBackground = if hasVideo then "" else "justAudio "
       elDynClass "div" (dynConnectionClass key <> pure "stream-baby " <> pure hasBackground) $ do
+        elClass "div" "broken-overlay" $ do
+          elClass "div" "broken-message" $ text "Connection Lost!"
         elClass "div" "stream-baby-heading" $ do
           elClass "div" "stream-baby-name" $ do
             el "h1" $ dynText ((^. at key._Just._Baby) <$> deviceList^.DeviceList.onlineDevices)
