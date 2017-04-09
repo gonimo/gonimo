@@ -1271,6 +1271,12 @@ canvas {
     border-width: 4px;
 }
 
+.connectionReliable {
+    border: solid;
+    border-color: rgb(0,160, 0);
+    border-width: 2px;
+}
+
 @keyframes brokenConnectionAnim {
     from { border-color: rgb(255, 0, 0);}
     to { border-color: rgb(255, 255, 255);}
@@ -1325,6 +1331,9 @@ canvas {
 
 .info-overlay {
     background-color: rgba(230,202,212,0.8);
+}
+.success-overlay {
+    background-color: rgba(0,255,0,0.8);
 }
 
 .dismissible-overlay {

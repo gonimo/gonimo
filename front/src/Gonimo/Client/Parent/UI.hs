@@ -160,7 +160,8 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
     connectionClass key chanMap = case chanMap ^? at key . _Just . to worstState of
                                Just StateUnreliable -> "connectionUnreliable "
                                Just StateBroken -> "connectionBroken "
-                               _           -> ""
+                               -- Just StateReceiving -> "connectionReliable "
+                               _ -> ""
 
     -- isUnreliable Nothing = False
     -- isUnreliable (Just chan) = chan^.audioReceivingState == StateUnreliable
@@ -174,16 +175,18 @@ leaveConfirmation = do
 
 handleUnreliableAlert :: forall t m. MonadWidget t m => C.Connections t -> m ()
 handleUnreliableAlert connections' = mdo
-  gotUnreliable <- headE . ffilter id . updated $ connections'^.C.unreliableConnections
+  let gotUnreliable = updated $ connections'^.C.unreliableConnections
 
   let
-    renderAlert False = pure never
-    renderAlert True = unreliableAlert
-
-  clickedDyn <- widgetHold (pure never) $ renderAlert <$> leftmost [gotUnreliable, const False <$> clicked]
-  let clicked = switchPromptlyDyn clickedDyn
+    renderAlert False = dismissibleOverlay "success-overlay " 3 $ text "Connection reliable"
+    renderAlert True = dismissibleOverlay "warning-overlay " 4 $ do
+      text "Connection unreliable!"
+      el "br" blank
+      text "Might break unnoticed (no alert)!"
+  _ <- widgetHold (pure ()) $ renderAlert <$> gotUnreliable
   pure ()
 
+-- Old currently no longer used:
 unreliableAlert :: forall t m. MonadWidget t m => m (Event t ())
 unreliableAlert = do
   elClass "div" "fullScreenOverlay" $ do
