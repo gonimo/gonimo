@@ -1333,7 +1333,7 @@ canvas {
     background-color: rgba(230,202,212,0.8);
 }
 .success-overlay {
-    background-color: rgba(0,255,0,0.8);
+    background-color: rgba(0,200,0,0.8);
 }
 
 .dismissible-overlay {

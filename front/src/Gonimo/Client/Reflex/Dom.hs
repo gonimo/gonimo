@@ -49,7 +49,8 @@ dismissibleOverlay className dismissedAfter content = mdo
     pure ()
   where
     displayOverlay False = pure never
-    displayOverlay True = makeClickable . elClass' "div" ("dismissible-overlay " <> className) $ content
+    displayOverlay True = makeClickable . elAttr' "div" ( "class" =: ("dismissible-overlay " <> className)
+                                                        <> "role" =: "button") $ content
 
 enterPressed :: Reflex t => Event t Int -> Event t ()
 enterPressed = push (\key -> pure $ if key == 13
