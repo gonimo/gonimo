@@ -156,7 +156,9 @@ emailWidget :: forall t m. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace, P
   -> m (Event t [API.ServerRequest])
 emailWidget res invData = mdo
     (infoBox', req) <- elClass "div" "mail-form" $ do
-      addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "class" =: "mail-input")
+      addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: ".."
+                                                                       <> "class" =: "mail-input"
+                                                                   )
                                    , _textInputConfig_inputType = "email"
                                    }
       let addr = addrInput^.textInput_value
