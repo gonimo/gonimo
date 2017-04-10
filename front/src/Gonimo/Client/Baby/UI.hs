@@ -338,7 +338,7 @@ displayScreenOnWarning baby' = mdo
   where
     displayWarning False = pure ()
     displayWarning True = dismissibleOverlay "warning-overlay"  10 $ do
-      text "For video to work, please don't switch off the screen!"
+      text "For video to work, please do not switch off the screen!"
       el "br" blank
       text "Alternatively, if all you need is audio, please disable the camera."
 
@@ -349,7 +349,7 @@ autoStartActiveMessage = do
     text "Autostart active ..."
     el "br" blank
     el "br" blank
-    clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "DISABLE"
+    clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text $ i18n Disable
     performEvent_ $ const (liftIO $ triggerDisable ())  <$> clicked
   pure disableEv
 
