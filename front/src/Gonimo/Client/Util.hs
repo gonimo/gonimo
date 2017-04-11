@@ -498,7 +498,7 @@ getBrowserProperty property = liftJSM $ fromMaybe False <$> (JS.fromJSVal =<< JS
 
 
 requestFullScreenScript :: Text
-requestFullScreenScript = "(function() {if (screenfull.enabled && (bowser.mobile || bowser.tablet)) {screenfull.request();}})()"
+requestFullScreenScript = "(function() {if (screenfull.enabled && (bowser.mobile || bowser.tablet) && !bowser.firefox gs) {screenfull.request();}})()"
 
 addFullScreenBtnAttrs :: Text -> Map Text Text
 addFullScreenBtnAttrs className
