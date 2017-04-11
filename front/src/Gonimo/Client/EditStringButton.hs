@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
-module Gonimo.Client.EditStringButton (editStringButton, editStringEl) where
+module Gonimo.Client.EditStringButton (editStringButton, editStringEl, editDeviceName, editFamilyName) where
 
 import Reflex.Dom.Core
 import Control.Lens
@@ -13,6 +13,14 @@ import Gonimo.Client.Reflex.Dom
 import GHCJS.DOM.Types (MonadJSM)
 
 type EditStringConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM m, MonadJSM (Performable m), PerformEvent t m)
+
+editFamilyName :: forall t m. EditStringConstraint t m
+                      => m (Event t ()) -> Dynamic t Text -> m (Event t Text)
+editFamilyName someButton val = editStringEl someButton (text "Change family name to ...") val
+
+editDeviceName :: forall t m. EditStringConstraint t m
+                      => m (Event t ()) -> Dynamic t Text -> m (Event t Text)
+editDeviceName someButton val = editStringEl someButton (text "Change device name to ...") val
 
 editStringButton :: forall t m. EditStringConstraint t m
                       => Map Text Text -> m () -> m () -> Dynamic t Text -> m (Event t Text)

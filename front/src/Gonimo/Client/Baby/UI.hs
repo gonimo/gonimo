@@ -70,6 +70,7 @@ ui appConfig loaded deviceList = mdo
                           ) <$> ui'^.uiGoHome
     let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
                           , App._request = baby'^.socket.Socket.request <> baby'^.request
+                                           <> ui'^.uiRequest
                           }
     pure $ App.Screen { App._screenApp = babyApp
                       , App._screenGoHome = ui'^.uiGoHome
@@ -104,6 +105,7 @@ uiStart loaded deviceList  baby' = do
                     , _uiEnableAutoStart = autoStart
                     , _uiSelectCamera = selectCamera
                     , _uiSetBabyName = newBabyName
+                    , _uiRequest = navBar^.NavBar.request
                     }
   where
     renderVideo stream
@@ -149,6 +151,7 @@ uiRunning loaded deviceList baby' =
         navBar <- NavBar.NavBar
                   <$> mayAddConfirmation leaveConfirmation (navBar'^.NavBar.backClicked) needConfirmation
                   <*> mayAddConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked) needConfirmation
+                  <*> pure (navBar'^.NavBar.request)
 
         dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
         stopClicked <- elClass "div" "stream-menu" $
@@ -172,6 +175,7 @@ uiRunning loaded deviceList baby' =
                       , _uiEnableAutoStart = never
                       , _uiSelectCamera = never
                       , _uiSetBabyName = never
+                      , _uiRequest = navBar^.NavBar.request
                       }
         pure (ui'', dayNightClicked')
     pure ui'

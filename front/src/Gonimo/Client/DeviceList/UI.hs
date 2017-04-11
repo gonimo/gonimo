@@ -30,7 +30,7 @@ import           Reflex.Dom.Core
 import qualified Gonimo.Client.App.Types           as App
 import           Gonimo.Client.ConfirmationButton  (confirmationEl)
 import           Gonimo.Client.DeviceList.Internal
-import           Gonimo.Client.EditStringButton    (editStringEl)
+import           Gonimo.Client.EditStringButton    (editDeviceName)
 import           Gonimo.Client.Reflex.Dom          (makeClickable, addBtnAttrs)
 import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..))
 import Gonimo.Client.Util
@@ -134,11 +134,10 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
                 elClass "span" "last-seen" . dynText
                   $ pure "Last Seen: "
                   <> (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
-                nameChanged <- editStringEl ( makeClickable
+                nameChanged <- editDeviceName ( makeClickable
                                               . elAttr' "span" (addBtnAttrs "edit")
                                               $ text "RENAME"
                                             )
-                              (text "Change device name to ...")
                               (API.deviceInfoName <$> devInfo)
                 removeRequested <- confirmationEl ( makeClickable
                                                     . elAttr' "span" (addBtnAttrs "delete")

@@ -9,6 +9,8 @@ import Reflex.Dom.Core
 import Control.Lens
 import qualified Gonimo.Client.App.Types as App
 import qualified Gonimo.Client.DeviceList.Internal as DeviceList
+import Data.Text (Text)
+import qualified Gonimo.SocketAPI as API
 
 data Config t
   = Config { _configLoaded :: App.Loaded t
@@ -18,6 +20,7 @@ data Config t
 data NavBar t
   = NavBar { _backClicked :: Event t ()
            , _homeClicked :: Event t ()
+           , _request :: Event t [API.ServerRequest]
            }
 
 

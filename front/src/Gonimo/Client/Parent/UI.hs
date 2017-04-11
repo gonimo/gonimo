@@ -84,7 +84,11 @@ ui appConfig loaded deviceList = mdo
 
   emptySubs <- holdDyn mempty never
   let parentApp = App.App { App._subscriptions = emptySubs
-                          , App._request = connections'^.C.request <> devicesUI^.DeviceList.uiRequest <> invite^.Invite.request
+                          , App._request = connections'^.C.request
+                                           <> devicesUI^.DeviceList.uiRequest
+                                           <> invite^.Invite.request
+                                           <> navBar^.NavBar.request
+                                           <> viewUI^.C.videoViewNavBar.NavBar.request
                           }
   pure $ App.Screen { App._screenApp = parentApp
                     , App._screenGoHome = leftmost [ navBar^.NavBar.backClicked
@@ -101,6 +105,8 @@ manageUi _ loaded deviceList connections' = do
       navBar' <- NavBar.NavBar
                  <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.backClicked) (not . Map.null <$> openStreams)
                  <*> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . Map.null <$> openStreams)
+                 <*> pure (navBar^.NavBar.request)
+
       devicesUI <- DeviceList.ui loaded deviceList
                    (fmap worstState <$> connections'^.C.channelMap)
                    (Set.fromList . Map.keys <$> openStreams)
@@ -119,6 +125,8 @@ viewUi _ loaded deviceList connections = do
 
     navBar' <- NavBar.NavBar (navBar^.NavBar.backClicked)
               <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
+              <*> pure (navBar^.NavBar.request)
+
     _ <- dyn $ renderFakeVideos connections
     closedsEvEv <- dyn $ renderVideos deviceList connections
     let closedEvEv  = leftmost <$> closedsEvEv

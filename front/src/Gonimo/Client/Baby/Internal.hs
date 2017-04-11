@@ -61,6 +61,7 @@ data UI t
        , _uiEnableAutoStart :: Event t Bool
        , _uiSelectCamera  :: Event t Text
        , _uiSetBabyName :: Event t Text
+       , _uiRequest :: Event t [API.ServerRequest]
        }
 
 makeLenses ''Config
@@ -76,6 +77,7 @@ uiSwitchPromptly ev
        <*> switchPromptly never (_uiEnableAutoStart <$> ev)
        <*> switchPromptly never (_uiSelectCamera <$> ev)
        <*> switchPromptly never (_uiSetBabyName <$> ev)
+       <*> switchPromptly never (_uiRequest <$> ev)
 
 uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
 uiSwitchPromptlyDyn ev
@@ -86,6 +88,7 @@ uiSwitchPromptlyDyn ev
        ( switchPromptlyDyn (_uiEnableAutoStart <$> ev) )
        ( switchPromptlyDyn (_uiSelectCamera <$> ev) )
        ( switchPromptlyDyn (_uiSetBabyName <$> ev) )
+       ( switchPromptlyDyn (_uiRequest <$> ev) )
 
 baby :: forall m t. (MonadWidget t m, HasWebView m)
         => Config t -> m (Baby t)

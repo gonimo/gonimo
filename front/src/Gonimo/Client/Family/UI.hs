@@ -17,7 +17,7 @@ import           Reflex.Dom.Core
 import qualified Gonimo.Client.App.Types          as App
 import qualified Gonimo.Client.Auth               as Auth
 import           Gonimo.Client.ConfirmationButton (confirmationEl)
-import           Gonimo.Client.EditStringButton   (editStringEl)
+import           Gonimo.Client.EditStringButton   (editFamilyName)
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Reflex.Dom
@@ -147,10 +147,7 @@ familyChooser family' = mdo
           pure (nameChangeReq', clicked2, clickedLeave', clickedAdd')
 
       pure (leftmost [clicked', clicked2], clickedAdd', clickedLeave', nameChangeReq')
-  nameChanged <-
-    editStringEl (pure nameChangeReq)
-      (text "Change your family name to ...")
-      cFamilyName
+  nameChanged <- editFamilyName (pure nameChangeReq) cFamilyName
   let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
   droppedDown <- holdDyn False $ leftmost [ openClose
                                           , const False <$> selectedId
