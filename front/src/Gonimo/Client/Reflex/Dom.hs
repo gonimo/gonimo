@@ -72,12 +72,13 @@ makeClickable item = do
 myCheckBox :: (DomBuilder t m, PostBuild t m) => Map Text Text -> Dynamic t Bool -> m () -> m (Event t Bool)
 myCheckBox attrs checked inner = do
   let markedStr active = if active then "active " else ""
-  clicked <- makeClickable $ elAttr' "div" (attrs <> "role" =: "button") $ do
+  (e, _) <- elAttr' "div" (attrs <> "role" =: "button") $ do
     inner
     elDynClass "div" (pure "switch " <> fmap markedStr checked) $ do
       elClass "div" "switch-out" blank
       elClass "div" "switch-in" blank
-  pure $ pushAlwaysCheap (\() -> not <$> (sample $ current checked)) clicked
+  let pressed = domEvent Mouseup e
+  pure $ pushAlwaysCheap (\_ -> not <$> (sample $ current checked)) pressed
 
 tabBar :: forall t m k. (MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m, Ord k)
           => Text -> Text -> Map k (Dynamic t Text -> m (Event t ())) -> m (Demux t (Maybe k))
