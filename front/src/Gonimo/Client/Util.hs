@@ -43,6 +43,7 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
   boostJS <- eval $
     ("" :: Text) <>
     "(function(stream) {\n" <>
+    "  try {\n" <>
     "    if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
     "    var ctx = gonimoAudioContext;\n" <>
     "    var source = ctx.createMediaStreamSource(stream);\n" <>
@@ -67,6 +68,10 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     -- "    document.getElementById('myvideo').srcObject = outStream;" <>
     "    return outStream;\n" <>
     -- "    return stream;\n" <>
+    "  } catch(e) {\n" <>
+    "     console.log('Caught exception in boost volume: ' + e.toString());\n" <>
+    "     return stream;\n" <>
+    "  }" <>
     "})"
   rawStream <- JS.call boostJS JS.obj [JS.toJSVal stream]
   pure $ MediaStream rawStream
@@ -194,6 +199,7 @@ getVolumeInfo :: (MonadJSM m) => MediaStream -> (Double -> JS.JSM ()) -> m (m ()
 getVolumeInfo stream callBack = liftJSM $ do
   jsGetVolumeInfo <- JS.eval . T.unlines $
     [ "(function (stream, getSample) {"
+    , "    try {"
     , "    if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}"
     , "    if (typeof gonimoCounter == 'undefined') {gonimoCounter = 0;}"
     , "    else { gonimoCounter ++;}"
@@ -238,6 +244,10 @@ getVolumeInfo stream callBack = liftJSM $ do
     , "        currentMax = instant > currentMax ? instant : currentMax;"
     , "    }"
     , "    return cleanup;"
+    , "    } catch(e) {"
+    , "        console.log('Catched exception e: ' + e.toString());"
+    , "        return function () {};"
+    , "    }"
     , "})"
     ]
   jsCallBack <- JS.function $ \ _ _ [jsVolumeLevel] -> do
@@ -248,6 +258,7 @@ getVolumeInfo stream callBack = liftJSM $ do
   pure . liftJSM . void $ JS.call jsCleanup JS.obj ([] :: [JSVal])
 
 
+-- | TODO: We should check for a stream with no audio track here too!
 oyd :: (MonadJSM m) => Text -> MediaStream -> m (Text -> m ())
 oyd babyName stream = liftJSM $ do
   jsOYD <- JS.eval . T.unlines $
