@@ -260,8 +260,6 @@ familyEditName :: forall m t. (HasWebView m, MonadWidget t m)
 familyEditName loaded reactivated' = do
     reactivated <- delay 0.2 reactivated' -- necessary because focus isn't triggered otherwise
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
-    el "br" blank
-    el "br" blank
 
     el "h1" $ text "Create New Family"
     elClass "div" "welcome-form" $ do
