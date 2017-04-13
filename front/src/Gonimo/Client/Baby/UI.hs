@@ -356,6 +356,7 @@ autoStartActiveMessage = do
 showPermissionError :: forall m t. (HasWebView m, MonadWidget t m) => Either UserMediaException MediaStream ->  m (Event t (), Event t ())
 showPermissionError (Right _) = pure (never, never)
 showPermissionError (Left _) = elClass "div" "fullScreenOverlay" $ do
+    el "script" $ text "screenfull.exit();" -- Leave fullscreen so user sees the address bar.
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
     el "h1" $ text "Error - so sad!"
     el "h2" $ text "Cannot access your camera or microphone!"
@@ -368,9 +369,9 @@ showPermissionError (Left _) = elClass "div" "fullScreenOverlay" $ do
     when isChrome $ do
       if isMobile
         then text "Please click on the lock symbol in the browser address bar for accessing the settings."
-        else text "Please click on the camera symbol in the browser address bar for accessing the settings."
+        else text "Please click on the lock or the camera symbol in the browser address bar for accessing the settings."
     el "br" blank
     el "br" blank
-    retry <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "TRY AGAIN"
+    retry <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "btn-lang") $ text "TRY AGAIN"
     pure (backClicked, retry)
 
