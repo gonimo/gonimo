@@ -3,11 +3,6 @@
 module Gonimo.DOM.Window.Internal where
 
 
-import           Control.Concurrent.MVar                           (newEmptyMVar,
-                                                                    putMVar,
-                                                                    takeMVar)
-import           Control.Monad                                     (void)
-import           GHCJS.DOM.Types                                   (fromJSValUnchecked)
 import           Language.Javascript.JSaddle                       (JSVal,
                                                                     MonadJSM,
                                                                     eval, fun,
