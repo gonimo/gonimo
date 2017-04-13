@@ -15,6 +15,7 @@ import qualified Data.Set                          as Set
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
+import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException(..))
 
 import           GHCJS.DOM.Types                   (MediaStream, liftJSM, MonadJSM)
 import qualified GHCJS.DOM.MediaStream             as MediaStream
@@ -30,7 +31,7 @@ data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
             , _configAuthData :: Dynamic t API.AuthData
             , _configEnabled :: Dynamic t DeviceType
-            , _configMediaStream :: Dynamic t MediaStream
+            , _configMediaStream :: Dynamic t (Either UserMediaException MediaStream)
             }
 
 data Socket t
@@ -54,12 +55,12 @@ socket config = mdo
     gatedResponse = gate (current $ isEnabled) (config^.configResponse)
 
   -- Close connection when stream gets muted for some reason - so user can't take a still for live video.
-  (streamMuted, triggerStreamMuted) <- newTriggerEvent
-  cStream <- sample . current $ config^.configMediaStream
-  handleMutedTracks (triggerStreamMuted Channels.AllChannels) cStream
-  performEvent_
-    $ handleMutedTracks (triggerStreamMuted Channels.AllChannels)
-      <$> updated (config^.configMediaStream)
+  -- (streamMuted, triggerStreamMuted) <- newTriggerEvent
+  -- cStream <- sample . current $ config^.configMediaStream
+  -- handleMutedTracks (triggerStreamMuted Channels.AllChannels) cStream
+  -- performEvent_
+  --   $ handleMutedTracks (triggerStreamMuted Channels.AllChannels)
+  --     <$> updated (config^.configMediaStream)
 
   let
     newChannelReq = push (\res -> do
@@ -76,9 +77,10 @@ socket config = mdo
   let
     channelsConfig = Channels.Config { Channels._configResponse = gatedResponse
                                      , Channels._configOurId = API.deviceId <$> config^.configAuthData
-                                     , Channels._configBroadcastStream = Just <$> config^.configMediaStream
+                                     , Channels._configBroadcastStream = either (const Nothing) Just <$> config^.configMediaStream
                                      , Channels._configCreateChannel = newChannelReq
-                                     , Channels._configCloseChannel = leftmost [ closeEvent, streamMuted ]
+                                     -- , Channels._configCloseChannel = leftmost [ closeEvent, streamMuted ]
+                                     , Channels._configCloseChannel = leftmost [ closeEvent ]
                                      }
   channels' <- Channels.channels channelsConfig
 

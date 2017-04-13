@@ -23,11 +23,14 @@ import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
 import qualified Gonimo.Db.Entities         as Db
 
-import           GHCJS.DOM.Types                   (MediaStream, MonadJSM)
+import           GHCJS.DOM.Types                   (MediaStream, MonadJSM, Dictionary)
+import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException(..))
 import           Gonimo.DOM.Navigator.MediaDevices
 import qualified Gonimo.Client.Baby.Socket         as Socket
 import qualified Gonimo.Types                      as Gonimo
 import           Gonimo.Client.Util                (oyd, getVolumeInfo)
+import           Control.Exception                 (try)
+import qualified Language.Javascript.JSaddle.Monad as JS
 
 data Config t
   = Config  { _configSelectCamera :: Event t Text
@@ -39,6 +42,7 @@ data Config t
             , _configStopMonitor  :: Event t ()
             , _configSetBabyName :: Event t Text
             , _configSelectedFamily :: Dynamic t Db.FamilyId
+            , _configGetUserMedia :: Event t () -- Get a new media stream, usefull for error handling.
             }
 
 data Baby t
@@ -46,7 +50,7 @@ data Baby t
          , _selectedCamera :: Dynamic t (Maybe Text)
          , _cameraEnabled :: Dynamic t Bool
          , _autoStartEnabled :: Dynamic t Bool
-         , _mediaStream :: Dynamic t MediaStream
+         , _mediaStream :: Dynamic t (Either UserMediaException MediaStream)
          , _socket :: Socket.Socket t
          , _name :: Dynamic t Text
          , _request :: Event t [API.ServerRequest]
@@ -96,7 +100,7 @@ baby config = mdo
   badInit <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!
   initDevices <- enumerateDevices
   -- Get devicelist whenever stream changes - if only audio is requested the first time - the list will be empty.
-  gotDevices <- performEvent $ const enumerateDevices <$> gotNewStream
+  gotDevices <- performEvent $ const enumerateDevices <$> gotNewValidStream
   devices <- uniqDyn <$> holdDyn initDevices gotDevices
   let
     videoDevices' :: Dynamic t [MediaDeviceInfo]
@@ -108,10 +112,13 @@ baby config = mdo
                   <$> enabled <*> selected
 
   gotNewStream <- performEvent $ uncurry (getConstrainedMediaStream mediaStream')
-                  <$> attach (current videoDevices') (updated mSelected)
+                  <$> leftmost [ attach (current videoDevices') (updated mSelected)
+                               , attach (current videoDevices') (tag (current mSelected) $ config^.configGetUserMedia)
+                               ]
+  let gotNewValidStream = fmapMaybeCheap (^?_Right) gotNewStream
   -- WARNING: Don't do that- -inifinte MonadFix loop will down on you!
   -- cSelected <- sample $ current selected
-  mediaStream' <- holdDyn badInit gotNewStream
+  mediaStream' :: Dynamic t (Either UserMediaException MediaStream) <- holdDyn badInit gotNewStream
 
   sockEnabled <- holdDyn Gonimo.NoBaby
                  $ leftmost [ Gonimo.Baby <$> tag (current babyName) (config^.configStartMonitor)
@@ -124,7 +131,7 @@ baby config = mdo
                                            , Socket._configMediaStream = mediaStream'
                                            }
   -- OYD integration, if enabled by user. (Currently a hidden feature, use has to set local storage object 'OYD')
-  setOYDBabyNameEv <- performEvent $ uncurry oyd <$> attach (current babyName) gotNewStream
+  setOYDBabyNameEv <- performEvent $ uncurry oyd <$> attach (current babyName) gotNewValidStream
   setOYDBabyNameBeh <- hold (const (pure ())) setOYDBabyNameEv
   performEvent_ $ attachWith ($) setOYDBabyNameBeh (updated babyName)
 
@@ -141,7 +148,7 @@ baby config = mdo
                                ]
   performEvent_ $ writeLastBabyName <$> updated babyName
 
-  volEvent <- getVolumeLevel mediaStream' sockEnabled
+  volEvent <- flip getVolumeLevel sockEnabled $ fmap (^?_Right) mediaStream'
 
   pure $ Baby { _videoDevices = videoDevices'
               , _selectedCamera = selected
@@ -201,24 +208,24 @@ getMediaDeviceByLabel label infos =
   in
     headMay withLabel
 
-getInitialMediaStream :: forall m. MonadJSM m => m MediaStream
+getInitialMediaStream :: forall m. MonadJSM m => m (Either UserMediaException MediaStream)
 getInitialMediaStream = do
   navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
   constr <- makeSimpleUserMediaDictionary True False
-  Navigator.getUserMedia navigator $ Just constr
+  getUserMedia' navigator $ Just constr
 
 getConstrainedMediaStream :: forall m t. (MonadJSM m, Reflex t, MonadSample t m)
-                         => Dynamic t MediaStream -> [MediaDeviceInfo] -> Maybe Text -> m MediaStream
+                         => Dynamic t (Either UserMediaException MediaStream) -> [MediaDeviceInfo] -> Maybe Text -> m (Either UserMediaException MediaStream)
 getConstrainedMediaStream mediaStreams infos mLabel = do
   oldStream <- sample $ current mediaStreams
-  stopMediaStream oldStream
+  either (const $ pure ()) stopMediaStream $ oldStream
   let mInfo = flip getMediaDeviceByLabel infos =<< mLabel
   navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
   constr <- case (mInfo, mLabel) of
     (_, Nothing)        -> makeSimpleUserMediaDictionary True False
     (Nothing, Just _)   -> makeSimpleUserMediaDictionary True True
     (Just info, Just _) -> makeDictionaryFromVideoInfo info
-  Navigator.getUserMedia navigator $ Just constr
+  getUserMedia' navigator $ Just constr
 
 
 stopMediaStream :: forall m. MonadJSM m => MediaStream -> m ()
@@ -248,10 +255,10 @@ writeLastBabyName lastBabyName = do
 
 
 getVolumeLevel :: forall m t. (MonadWidget t m, HasWebView m)
-                  => Dynamic t MediaStream  -> Dynamic t Gonimo.DeviceType -> m (Event t Double)
+                  => Dynamic t (Maybe MediaStream)  -> Dynamic t Gonimo.DeviceType -> m (Event t Double)
 getVolumeLevel mediaStream' sockEnabled = do
     (volEvent, triggerVolumeEvent) <- newTriggerEvent
-    let updateVolInfoEv = updated $ zipDyn sockEnabled mediaStream'
+    let updateVolInfoEv = updated . fmap sequence $ zipDyn sockEnabled mediaStream'
 
     newCleanupEv <- performEvent $ getVolInfo triggerVolumeEvent <$> updateVolInfoEv
     mCleanup <- holdDyn Nothing $ newCleanupEv
@@ -261,7 +268,13 @@ getVolumeLevel mediaStream' sockEnabled = do
     pure volEvent
   where
     getVolInfo :: forall m1. (MonadJSM m1)
-                  => (Double -> IO ()) -> (Gonimo.DeviceType, MediaStream) -> m1 (Maybe (m1 ()))
-    getVolInfo triggerVolumeEvent (Gonimo.NoBaby, stream') = Just <$> getVolumeInfo stream' (liftIO . triggerVolumeEvent)
-    getVolInfo _ (_, _) = pure Nothing
+                  => (Double -> IO ()) -> Maybe (Gonimo.DeviceType, MediaStream) -> m1 (Maybe (m1 ()))
+    getVolInfo _ Nothing = pure Nothing
+    getVolInfo triggerVolumeEvent (Just (Gonimo.NoBaby, stream')) = Just <$> getVolumeInfo stream' (liftIO . triggerVolumeEvent)
+    getVolInfo _ _ = pure Nothing
 
+
+getUserMedia' :: (MonadIO m, MonadJSM m) => Navigator.Navigator -> Maybe Dictionary -> m (Either UserMediaException MediaStream)
+getUserMedia' nav md = do
+  jsm <- JS.askJSM
+  liftIO . try $ JS.runJSM (Navigator.getUserMedia nav md) jsm

@@ -23,6 +23,10 @@ import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
 import           Gonimo.Client.Util
 import qualified Data.Map.Strict as Map
+import           Data.Foldable
+import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException(..))
+import           GHCJS.DOM.Types                   (MediaStream)
+import           Control.Monad
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -38,6 +42,7 @@ ui appConfig loaded deviceList = mdo
                            , _configStopMonitor  = leftmost [ui'^.uiGoHome, ui'^.uiStopMonitor]
                            , _configSetBabyName = ui'^.uiSetBabyName
                            , _configSelectedFamily = loaded^.App.selectedFamily
+                           , _configGetUserMedia = errorNewStream
                            }
 
     (autoStartEv, triggerAutoStart) <- newTriggerEvent
@@ -60,20 +65,25 @@ ui appConfig loaded deviceList = mdo
 
     let ui' = uiSwitchPromptlyDyn uiDyn
 
+    errorNewStreamEv <-
+      dyn $ showPermissionError <$> baby'^.mediaStream
+    errorNewStream <- switchPromptly never $ snd <$> errorNewStreamEv
+    errorGoHome <- switchPromptly never $ fst <$> errorNewStreamEv
+
     let screenSelected = leftmost [ const ScreenStart <$> ui'^.uiStopMonitor
                                   , const ScreenRunning <$> startMonitor
                                   ]
 
     performEvent_ $ const (do
                               cStream <- sample $ current (baby'^.mediaStream)
-                              stopMediaStream cStream
+                              traverse_ stopMediaStream cStream
                           ) <$> ui'^.uiGoHome
     let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
                           , App._request = baby'^.socket.Socket.request <> baby'^.request
                                            <> ui'^.uiRequest
                           }
     pure $ App.Screen { App._screenApp = babyApp
-                      , App._screenGoHome = ui'^.uiGoHome
+                      , App._screenGoHome = leftmost [ui'^.uiGoHome, errorGoHome]
                       }
   where
     renderCenter baby' ScreenStart = uiStart loaded deviceList baby'
@@ -108,7 +118,8 @@ uiStart loaded deviceList  baby' = do
                     , _uiRequest = navBar^.NavBar.request
                     }
   where
-    renderVideo stream
+    renderVideo (Left _) = pure ()
+    renderVideo (Right stream)
       = elClass "div" "stream-baby" $
         mediaVideo stream ( "autoplay" =: "true"
                           <> "muted" =: "true"
@@ -180,7 +191,8 @@ uiRunning loaded deviceList baby' =
         pure (ui'', dayNightClicked')
     pure ui'
   where
-    noSleep stream
+    noSleep (Left _) = pure ()
+    noSleep (Right stream)
       = mediaVideo stream ( "style" =: "display:none"
                             <> "autoplay" =: "true"
                             <> "muted" =: "true"
@@ -339,4 +351,26 @@ autoStartActiveMessage = do
     clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "DISABLE"
     performEvent_ $ const (liftIO $ triggerDisable ())  <$> clicked
   pure disableEv
+
+
+showPermissionError :: forall m t. (HasWebView m, MonadWidget t m) => Either UserMediaException MediaStream ->  m (Event t (), Event t ())
+showPermissionError (Right _) = pure (never, never)
+showPermissionError (Left _) = elClass "div" "fullScreenOverlay" $ do
+    backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
+    el "h1" $ text "Error - so sad!"
+    el "h2" $ text "Cannot access your camera or microphone!"
+    el "br" blank
+    text "Obviously those are needed for a baby monitor. Please check your browser settings whether gonimo is allowed access!"
+    el "br" blank
+    el "br" blank
+    isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
+    isChrome <- getBrowserProperty "blink"
+    when isChrome $ do
+      if isMobile
+        then text "Please click on the lock symbol in the browser address bar for accessing the settings."
+        else text "Please click on the camera symbol in the browser address bar for accessing the settings."
+    el "br" blank
+    el "br" blank
+    retry <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "TRY AGAIN"
+    pure (backClicked, retry)
 
