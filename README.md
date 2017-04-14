@@ -4,7 +4,7 @@ This is the sourcecode of gonimo, the web based baby monitor. It is currently a
 bit complicated to get this to build, you need the jsaddle branch of
 reflex-platform, but this is the easy part - you also need to update some
 dependencies manually. I hope I can make this easier soon, in the meantime if
-you'd liked to contribute, but can not please file an issue (or comment on an
+you'd liked to contribute, but can not, please file an issue (or comment on an
 already existing issue) - this way I know there would be interest and this will
 become a higher priority! Thank you!
 
