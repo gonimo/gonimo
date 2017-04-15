@@ -16,7 +16,8 @@ import Gonimo.Types (AuthToken, Secret, DeviceType)
 
 type MessageId = Int
 data ServerRequest
-  = ReqAuthenticate !AuthToken
+  = ReqPing -- We can't rely on WebSocket ping control messages, because the client can't see them!
+  | ReqAuthenticate !AuthToken
 
   | ReqMakeDevice !(Maybe Text)
   | ReqGetDeviceInfo !DeviceId
@@ -49,8 +50,8 @@ data ServerRequest
 -- | Constructors starting with "Res" are responses to requests.
 --   Constructors starting with Event happen without any request.
 data ServerResponse
-  = ResAuthenticated
-
+  = ResPong
+  | ResAuthenticated
   | ResMadeDevice !Client.AuthData
   | ResGotDeviceInfo !DeviceId !Client.DeviceInfo
   | ResSetDeviceType !DeviceId
