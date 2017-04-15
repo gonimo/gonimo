@@ -134,6 +134,7 @@ serveWebSocket authRef conn = do
 handleServerRequest :: forall m. (MonadReader AuthDataRef m, MonadServer m)
                        => (Message -> IO ()) -> Subscriber.Client -> ServerRequest -> m ServerResponse
 handleServerRequest receiver sub req = errorToResponse $ case req of
+    ReqPing                 -> pure ResPong
     ReqAuthenticate token   -> authenticate receiver sub token
     ReqMakeDevice userAgent -> ResMadeDevice <$> createDeviceR userAgent
     _                       -> do
@@ -151,6 +152,7 @@ handleServerRequest receiver sub req = errorToResponse $ case req of
 
 handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
 handleAuthServerRequest sub req = case req of
+  ReqPing                              -> error "ReqPing should have been handled already!"
   ReqAuthenticate _                    -> error "ReqAuthenticate should have been handled already!"
   ReqMakeDevice _                      -> error "ReqMakeDevice should have been handled already!"
   ReqGetDeviceInfo deviceId            -> ResGotDeviceInfo deviceId <$> getDeviceInfoR deviceId

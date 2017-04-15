@@ -9,10 +9,10 @@ import qualified Gonimo.Client.App        as App
 import qualified Gonimo.Client.Auth       as Auth
 import qualified Gonimo.Client.Config     as Config
 import           Gonimo.Client.Server     (webSocketConfig_send, webSocket_open,
-                                           webSocket_recv)
+                                           webSocket_recv, webSocketConfig_reconnect)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
-import           Reflex.Dom.Core               hiding (webSocketConfig_send)
+import           Reflex.Dom.Core               hiding (webSocketConfig_send, webSocketConfig_reconnect)
 
 import Language.Javascript.JSaddle.Warp (run)
 

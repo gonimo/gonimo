@@ -104,6 +104,9 @@ library
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Reflex
                     , Gonimo.Client.Reflex.Dom
+                    , Gonimo.Client.Reflex.Dom.WebSocket
+                    , Gonimo.Client.Reflex.Dom.WebSocket.Foreign
+                    , Gonimo.Client.Reflex.Dom.WebSocket.Utils
                     , Gonimo.Client.App
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
