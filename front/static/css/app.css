@@ -381,8 +381,8 @@ h3{
 		border:none !important;
 	}
 	.mail-input{
-    width: calc(100% - 2px);
-    transform: translateX(1px);
+		width: calc(100% - 2px);
+		transform: translateX(1px);
 		float:none !important;
 	}
 	.input-btn.mail{
@@ -392,12 +392,18 @@ h3{
 		height:2em;
 	}
 	.input-btn.input-btn-left{
-	  width:50%;
-	  margin:0%;
+		width:50%;
+		margin:0%;
 	}
 	.input-btn.input-btn-right{
-	  width:50%;
-	  margin:0%:
+		width:50%;
+		margin:0%:
+	}
+	.input-btn.check{
+		width:100%;
+	}
+	.welcome-input{
+		text-align:left !important;
 	}
 }
 
@@ -1412,15 +1418,80 @@ canvas {
 	right:0px;
 	left:15px;
 }
-
 .baby-text {
     display: block;
 	  color:rgb(110,110,110);
     font-size: medium;
     letter-spacing: 0.2em;
 }
-
 .baby-form > .family-select {
     border-top: solid 1px black;
     margin-bottom: 0;
+}
+.notification.overlay{
+	width:100%;
+	height:100%;
+	position:fixed;
+	bottom:0;
+	left:0;
+	background:rgba(0,0,0,0.6);
+	text-align:center;
+}
+.notification.box{
+	width:80%;
+	height:60%;
+	background:white;
+	display:inline-block;
+	margin-top:5%;
+}
+.notification.header{
+	font-family:Raleway-Medium;
+	font-size:xx-large;
+	margin:5%;
+	color:black;
+	text-transform:uppercase;
+}
+.notification.text{
+	font-family:Raleway-Regular;
+	font-size:x-large;
+	color:#5C5D5F;
+	max-width:75%;
+	display:inline-block;
+}
+.notification.btn-box{
+	display:block;
+	margin:2% 0%;
+	width:100%;
+	position:relative;
+	margin-top:5%;
+}
+.notification.left-btn{
+	font-family:Raleway-Regular;
+	font-size:x-large;
+	text-transform:uppercase;
+	color:#CDA4B4;
+	border:solid 3px #CDA4B4;
+	width:45%;
+	display:inline-block;
+	padding:2.5% 0%;
+}
+.notification.right-btn{
+	font-family:Raleway-Regular;
+	font-size:x-large;
+	text-transform:uppercase;
+	color:#5C5D5F;
+	border:solid 3px #5C5D5F;
+	width:45%;
+	display:inline-block;
+	padding:2.5% 0%;
+}
+.notification.single-btn{
+	font-family:Raleway-Regular;
+	font-size:x-large;
+	text-transform:uppercase;
+	color:#CDA4B4;
+	border:solid 3px #CDA4B4;
+	width:95%;
+	display:inline-block;
+	padding:2.5% 0%;
 }
