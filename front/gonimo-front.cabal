@@ -39,7 +39,7 @@ library
       cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
       ghc-options:   -Wall -fwarn-tabs -O0 -debug
   else
-      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -fno-warn-orphans -O2
+      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -O2
       ghcjs-options: -dedupe
       cpp-options:   -DGHCJS_BROWSER
 

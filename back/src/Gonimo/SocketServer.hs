@@ -56,7 +56,8 @@ serve :: (forall a m. MonadIO m => LoggingT m a -> m a) -> Config -> Wai.Applica
 serve runLoggingT config = do
   let handleWSConnection pending = do
         connection <- WS.acceptRequest pending
-        WS.forkPingThread connection 28
+        -- Don't use this - it cannot be handled by the client, which we need for proper connection management
+        -- WS.forkPingThread connection 28
         noAuthRef <- newIORef Nothing
         runServer runLoggingT config $ serveWebSocket noAuthRef connection
   let

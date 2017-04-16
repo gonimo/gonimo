@@ -37,6 +37,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Gonimo.Client.Reflex.Dom.WebSocket where
 
@@ -50,7 +51,6 @@ import Reflex.PostBuild.Class
 import Reflex.TriggerEvent.Class
 
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Exception (SomeException)
 import Control.Lens
 import Control.Monad hiding (forM, forM_, mapM, mapM_, sequence)
@@ -64,6 +64,7 @@ import Data.Text
 import GHCJS.DOM.Types (runJSM, askJSM, MonadJSM, liftJSM, JSM)
 import qualified Language.Javascript.JSaddle.Monad as JS (catch)
 
+-- TODO: Use config from stock reflex-dom if we don't need any changes ...
 data WebSocketConfig t a
    = WebSocketConfig { _webSocketConfig_send :: Event t [a]
                      , _webSocketConfig_close :: Event t (Word, Text)
@@ -101,15 +102,13 @@ webSocket' url config onRawMessage = do
   wv <- fmap unJSContextSingleton askJSContext
   (eRecv, onMessage) <- newTriggerEvent
   currentSocketRef <- liftIO $ newIORef Nothing
-  (eOpen, triggerEOpen) <- newTriggerEventWithOnComplete
+  (eOpen, triggerEOpen) <- newTriggerEvent
   (eError, triggerEError) <- newTriggerEvent
   (eClose, triggerEClose) <- newTriggerEvent
-  isOpen       <- liftIO newEmptyMVar
-  let onOpen = triggerEOpen () $ liftIO $ void $ tryPutMVar isOpen ()
+  let onOpen = triggerEOpen ()
       onError = triggerEError ()
       onClose args = do
         liftIO $ triggerEClose args
-        _ <- liftIO $ tryTakeMVar isOpen
         liftIO $ writeIORef currentSocketRef Nothing
         when (_webSocketConfig_reconnect config) $ do
           liftIO $ threadDelay 3500000
@@ -133,7 +132,11 @@ webSocket' url config onRawMessage = do
     mws <- liftIO $ readIORef currentSocketRef
     case mws of
       Nothing -> return ()
-      Just ws -> closeWebSocket ws (fromIntegral code) reason
+      Just ws -> closeWebSocket ws (fromIntegral code) reason `JS.catch` (\(e :: SomeException) -> do
+                                                                             liftIO $ putStrLn "Exception during close: "
+                                                                             liftIO $ print e
+                                                                             -- onClose (False, 1000, "Exception during close!")
+                                                                         )
 
   return $ RawWebSocket eRecv eOpen eError eClose
 
