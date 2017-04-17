@@ -146,7 +146,7 @@ checkBrowser = do
     -- hideWarning <- readHideBrowserWarning
     let hideWarning = False
 
-    let warnMessage = if isiOs
+    let warnMessage = if isiOS
                       then do
                         el "h1" $ text "Apple does not like us yet!"
                         el "br" blank
