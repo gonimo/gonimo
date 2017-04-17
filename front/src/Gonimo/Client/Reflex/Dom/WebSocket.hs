@@ -93,6 +93,7 @@ instance (IsWebSocketMessage a, IsWebSocketMessage b) => IsWebSocketMessage (Eit
   webSocketSend jws (Left a) = webSocketSend jws a
   webSocketSend jws (Right a) = webSocketSend jws a
 
+-- Currently all this fork does is not to queue messages and send them again on re-connect, as this does not work anyway. (Auth data would need to be sent first.)
 
 webSocket :: (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, IsWebSocketMessage a) => Text -> WebSocketConfig t a -> m (WebSocket t)
 webSocket url config = webSocket' url config onBSMessage
@@ -105,9 +106,12 @@ webSocket' url config onRawMessage = do
   (eOpen, triggerEOpen) <- newTriggerEvent
   (eError, triggerEError) <- newTriggerEvent
   (eClose, triggerEClose) <- newTriggerEvent
-  let onOpen = triggerEOpen ()
+  let onOpen = do
+        liftIO $ putStrLn "Opening ..."
+        triggerEOpen ()
       onError = triggerEError ()
       onClose args = do
+        liftIO $ putStrLn "Closing ..."
         liftIO $ triggerEClose args
         liftIO $ writeIORef currentSocketRef Nothing
         when (_webSocketConfig_reconnect config) $ do
