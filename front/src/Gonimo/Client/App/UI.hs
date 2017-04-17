@@ -146,11 +146,28 @@ checkBrowser = do
     -- hideWarning <- readHideBrowserWarning
     let hideWarning = False
 
-    let warnMessage = if isiOS
-                      then "Unfortunately Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology. Also Apple restricts all other browsers on iOS to the same technology Safari supports, so on iOS not even Chrome will work."
+    let warnMessage = if isiOs
+                      then do
+                        el "h1" $ text "Apple does not like us yet!"
+                        el "br" blank
+                        el "h2" $ text "Gonimo might not work as expected"
+                        el "br" blank
+                        text "Unfortunately Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology."
+                        el "br" blank
+                        text "Also Apple restricts all other browsers on iOS to the same technology as Safari, so on iOS not even Chrome will work!"
+                        el "br" blank
+                        text "Fortunately Apple has made some progress lately and it seems that Safari will support Gonimo soon! You can follow us on "
+                        elAttr "a" ("class" =: "link" <> "href" =: "https://facebook.com/mygonimo")
+                          $ text "Facebook"
+                        text ": We will post on our page, when iOS support is ready!"
                       else if not isBlink
-                           then "Unfortunately the only fully supported browser currently is Chrome. This is especially true on mobile, here even if Firefox works for you - beware that the connection-loss alert will not be played when your device's screen is switched off!"
-                           else "All fine!"
+                           then do
+                            el "h1" $ text "Unsupported browser!"
+                            el "br" blank
+                            el "h2" $ text "Gonimo might not work as expected"
+                            el "br" blank
+                            text "Unfortunately the only fully supported browser currently is Chrome. This is especially true on mobile, here even if Firefox works for you - beware that the connection-loss alert will not be played when your device's screen is switched off!"
+                           else text "All fine!"
     let warningRequired = not hideWarning && (isiOS || not isBlink)
     if warningRequired
       then do
@@ -169,11 +186,7 @@ checkBrowser = do
     displayWarning' msg = do
       elClass "div" "fullScreenOverlay" $ do
         elClass "div" "container" $ do
-          el "h1" $ text "Unsupported browser or device!"
-          el "br" blank
-          el "h2" $ text "Gonimo might not work as expected"
-          el "br" blank
-          text msg
+          msg
           el "br" blank
           el "br" blank
           makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "OK"
