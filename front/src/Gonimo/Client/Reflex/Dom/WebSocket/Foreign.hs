@@ -63,6 +63,9 @@ instance IsWebSocketMessage Text where
 closeWebSocket :: JSWebSocket -> Word -> Text -> JSM ()
 closeWebSocket (JSWebSocket ws) = GD.close ws
 
+webSocketGetReadyState :: JSWebSocket -> JSM Word
+webSocketGetReadyState (JSWebSocket ws) = GD.getReadyState ws
+
 newWebSocket
   :: a
   -> Text -- url

@@ -119,7 +119,11 @@ webSocket' url config onRawMessage = do
         mws <- liftIO $ readIORef currentSocketRef
         case mws of
           Nothing -> liftIO $ putStrLn "Tried to send data but there is no open connection!"
-          Just ws -> liftJSM $ webSocketSend ws payload `JS.catch` (\(_ :: SomeException) -> liftIO $ putStrLn "Exception when sending!")
+          Just ws -> do
+            readyState <- liftJSM $ webSocketGetReadyState ws
+            if readyState == 1
+            then liftJSM $ webSocketSend ws payload `JS.catch` (\(_ :: SomeException) -> liftIO $ putStrLn "Exception when sending!")
+            else liftIO $ putStrLn "Tried to send data but connection is not ready!"
 
       start = do
         ws <- newWebSocket wv url (onRawMessage >=> liftIO . onMessage) (liftIO onOpen) (liftIO onError) onClose
