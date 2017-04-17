@@ -50,8 +50,16 @@ a{
 	color:unset;
 }
 a:hover, a:focus{
-	text-decoration:none;
-	color:unset;
+	text-decoration:unset;
+	color: unset;
+}
+a.link{
+    color: #CDA5B4;
+    font-weight: 500;
+}
+a.link:hover, a.link:focus{
+	  text-decoration:none;
+	  color:blue;
 }
 *[type="button"]:active {
     /* box-shadow: 10px 10px 5px #888888 inset; */
