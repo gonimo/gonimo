@@ -120,7 +120,10 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
             selectedClick <- makeClickable
               . elAttr' "div" ("class" =: "name" <> "role" =: "button") $ do
               let devNameClass = if isSelf then "device-self dev-name" else "dev-name"
-              elClass "span" devNameClass $ dynText (API.deviceInfoName <$> devInfo)
+              elClass "span" devNameClass $ do
+                dynText (API.deviceInfoName <$> devInfo)
+                text " "
+                text (if isSelf then "(me)" else "")
               elClass "span" "dev-loc" $ dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do
