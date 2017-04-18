@@ -1444,6 +1444,7 @@ canvas {
 	left:0;
 	background:rgba(0,0,0,0.6);
 	text-align:center;
+  z-index: 15;
 }
 .notification.box{
 	width:80%;
@@ -1454,14 +1455,14 @@ canvas {
 }
 .notification.header{
 	font-family:Raleway-Medium;
-	font-size:xx-large;
+	font-size:x-large;
 	margin:5%;
 	color:black;
 	text-transform:uppercase;
 }
 .notification.text{
 	font-family:Raleway-Regular;
-	font-size:x-large;
+	font-size:large;
 	color:#5C5D5F;
 	max-width:75%;
 	display:inline-block;

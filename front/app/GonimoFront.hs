@@ -9,7 +9,7 @@ import qualified Gonimo.Client.App        as App
 import qualified Gonimo.Client.Auth       as Auth
 import qualified Gonimo.Client.Config     as Config
 import           Gonimo.Client.Server     (webSocketConfig_send, webSocket_open,
-                                           webSocket_recv, webSocketConfig_reconnect)
+                                           webSocket_recv, webSocketConfig_reconnect, webSocket_close)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
 import           Reflex.Dom.Core               hiding (webSocketConfig_send, webSocketConfig_reconnect)
@@ -29,6 +29,7 @@ app = mdo
 
   let authConfig = Auth.Config { Auth._configResponse = server^.webSocket_recv
                                , Auth._configServerOpen = server^.webSocket_open
+                               , Auth._configServerClose = const () <$> server^.webSocket_close
                                }
   auth <- Auth.auth authConfig
 

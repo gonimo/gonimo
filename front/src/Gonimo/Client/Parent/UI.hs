@@ -59,6 +59,10 @@ ui appConfig loaded deviceList = mdo
                                                              ]
   let showInviteView = const "isInviteView" <$> inviteRequested
 
+  let showBroken = fmap not $ (||) <$> connections'^.C.brokenConnections <*> appConfig^.App.auth.Auth.isOnline
+
+  _ <- dyn $ Auth.connectionLossScreen' <$> showBroken
+
   selectedView <- holdDyn "isParentManage" $ leftmost [showParentView, showParentManage, showInviteView]
 
   (navBar, devicesUI, inviteRequested) <-

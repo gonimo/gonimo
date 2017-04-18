@@ -19,6 +19,8 @@ import GHCJS.DOM.Storage (Storage)
 import Data.Text (Text)
 import Safe (headMay)
 import           GHCJS.DOM.Types (MonadJSM)
+import qualified Data.Text as T
+import Data.Time.Clock
 
 import Control.Monad.IO.Class
 import Data.Maybe (isNothing, catMaybes)
@@ -28,12 +30,14 @@ import Data.Maybe (isNothing, catMaybes)
 data Config t
   = Config { _configResponse :: Event t API.ServerResponse
            , _configServerOpen :: Event t ()
+           , _configServerClose :: Event t ()
            }
 
 data Auth t
   = Auth { _request :: Event t [ API.ServerRequest ]
          , _authData :: Dynamic t (Maybe API.AuthData)
-         , _authenticated :: Event t ()
+         , _authenticated :: Event t () -- TODO: Now redundant, because of isOnline.
+         , _isOnline :: Dynamic t Bool
          }
 
 makeLenses ''Config
@@ -52,6 +56,9 @@ auth config = do
             API.ResAuthenticated -> Just ()
             _                    -> Nothing
       push handleAuthenticated $ config^.configResponse
+  isOnline' <- holdDyn False $ leftmost [ const False <$> config^.configServerClose
+                                        , const True <$> authenticated'
+                                        ]
 
   pure $ Auth { _request = mconcat
                                . map (fmap (:[]))
@@ -60,6 +67,7 @@ auth config = do
                                  ]
               , _authData = authDataDyn
               , _authenticated = authenticated'
+              , _isOnline = isOnline'
               }
 
 makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)
@@ -124,3 +132,32 @@ getUserAgentString = do
   navigator <- Window.getNavigatorUnsafe window
   Navigator.getUserAgent navigator
 
+
+connectionLossScreen :: forall m t. (HasWebView m, MonadWidget t m)
+  => Auth t -> m ()
+connectionLossScreen auth' = do
+  _ <- dyn $ connectionLossScreen' . not <$> auth'^.isOnline
+  pure ()
+
+connectionLossScreen' :: forall m t. (HasWebView m, MonadWidget t m)
+  => Bool -> m ()
+connectionLossScreen' isBroken = case isBroken of
+  False -> pure ()
+  True  -> elClass "div" "notification overlay" $ do
+    elClass "div" "notification box" $ do
+      elClass "div" "notification-header" $ do
+        el "h1" $ text "No Internet Connection?"
+      elClass "div" "notification text" $ do
+        text "Reconnecting "
+        dynText =<< loadingDots
+        el "br" blank
+        elClass "div" "welcome-container" $
+          elClass "div" "start-welcome-img" $ blank
+
+loadingDots :: forall m t. (HasWebView m, MonadWidget t m) => m (Dynamic t Text)
+loadingDots = do
+  now <- liftIO $ getCurrentTime
+  tick <- tickLossy 1 now
+  tickCount :: Dynamic t Int <- count tick
+  let dotCount = mod <$> tickCount <*> pure 8
+  pure $ T.replicate <$> dotCount <*> pure "."

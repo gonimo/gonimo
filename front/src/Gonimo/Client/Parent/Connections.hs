@@ -45,6 +45,7 @@ data Connections t
                 , _origStreams :: Dynamic t (Map DeviceId MediaStream) -- neccessary to work around a bug in Chrome.
                 , _streams :: Dynamic t (Map DeviceId (StreamData t))
                 , _unreliableConnections :: Dynamic t Bool
+                , _brokenConnections :: Dynamic t Bool
                 }
 
 
@@ -107,6 +108,7 @@ connections config = mdo
                      , _origStreams = streams'
                      , _streams = boostedStreams
                      , _unreliableConnections = areThereUnreliableConnections channels'
+                     , _brokenConnections = areThereBrokenConnections channels'
                      }
   where
     kickSecret :: forall v. Map (DeviceId, Secret) v -> Map DeviceId v
@@ -146,6 +148,9 @@ playAlarmOnBrokenConnection channels' = mdo
       = if onOff
         then AudioNode.start sound 0 0 1000 -- 0 for duration does not work on Chrome at least! fs
         else AudioNode.stop  sound 0
+
+areThereBrokenConnections :: Reflex t => Channels.Channels t -> Dynamic t Bool
+areThereBrokenConnections = uniqDyn . fmap getAnyBrokenConnections . (^.Channels.channelMap)
 
 areThereUnreliableConnections :: Reflex t => Channels.Channels t -> Dynamic t Bool
 areThereUnreliableConnections = uniqDyn . fmap getAnyUnreliableConnections . (^.Channels.channelMap)
