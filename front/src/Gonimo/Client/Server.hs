@@ -22,14 +22,12 @@ import Data.Time.Clock
 import Control.Monad.Fix
 import Data.Monoid
 import Control.Monad.IO.Class
+import Gonimo.Constants
 
 type ServerConfig t = WebSocketConfig t ServerRequest
 
 
 type Server t = RawWebSocket t ServerResponse
-
-maxResponseTime :: NominalDiffTime
-maxResponseTime = 7
 
 -- Generate our own lenses, because simle lenses are not good enough!
 makeLenses ''WebSocketConfig
@@ -64,11 +62,11 @@ handlePingPong :: forall t m. ( MonadFix m, MonadHold t m, MonadJSM m, MonadJSM 
                   => Event t [ServerRequest] -> Server t -> m (Event t [ServerRequest], Event t (Word, Text))
 handlePingPong inRequest server' = do
   now <- liftIO $ getCurrentTime
-  tick <- tickLossy 30 now
+  tick <- tickLossy webSocketPingInterval now
   let req = const [ReqPing] <$> tick
   let outRequest = req <> inRequest
   responseCount :: Dynamic t Int <- count $ server'^.webSocket_recv
-  watchDog <- delay maxResponseTime $ pushAlways (\_ -> sample $ current responseCount) outRequest
+  watchDog <- delay webSocketMaxRoundTrip $ pushAlways (\_ -> sample $ current responseCount) outRequest
   let killConn = push (\oldCount -> do
                           newCount <- sample $ current responseCount
                           if newCount > oldCount
