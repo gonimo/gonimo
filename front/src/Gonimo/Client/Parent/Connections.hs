@@ -85,7 +85,10 @@ connections config = mdo
                                     pure $ (devId',) <$> cSecrets^.at devId'
                                 ) devId
     closeEvent = leftmost [ const Channels.AllChannels <$> config^.configDisconnectAll
-                          , Channels.OnlyChannel <$> getChannelsKey (config^.configDisconnectBaby)
+                          , Channels.OnlyChannel <$> getChannelsKey (leftmost [ config^.configDisconnectBaby
+                                                                              , config^.configConnectBaby
+                                                                              ]
+                                                                    )
                           ]
   let
     channelsConfig = Channels.Config { Channels._configResponse = config^.configResponse
