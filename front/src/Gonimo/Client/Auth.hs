@@ -144,7 +144,7 @@ connectionLossScreen' :: forall m t. (HasWebView m, MonadWidget t m)
 connectionLossScreen' isBroken = case isBroken of
   False -> pure ()
   True  -> elClass "div" "notification overlay" $ do
-    elClass "div" "notification box" $ do
+    elClass "div" "notification box connection-lost" $ do
       elClass "div" "notification-header" $ do
         el "h1" $ text "No Internet Connection?"
       elClass "div" "notification text" $ do

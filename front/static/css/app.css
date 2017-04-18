@@ -1504,3 +1504,7 @@ canvas {
 	display:inline-block;
 	padding:2.5% 0%;
 }
+
+.notification.box.connection-lost {
+    height: 90%;
+}

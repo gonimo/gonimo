@@ -80,6 +80,7 @@ runLoaded config family = do
   let onReady dynAuthFamilies =
         fromMaybeDyn
           (do
+              Auth.connectionLossScreen $ config^.auth
               startUI <- Family.uiStart
               let subs = constDyn Set.empty
               pure (App subs never, startUI)
@@ -128,8 +129,13 @@ loadedUI config loaded familyCreated = mdo
     renderCenter :: DeviceList.DeviceList t -> Bool -> Maybe Family.GonimoRole -> m (Screen t, Family.UI t)
     renderCenter deviceList familyCreated' mRole =
       case mRole of
-          Nothing -> (def,) <$> Family.ui config loaded familyCreated'
-          Just Family.RoleBaby -> (, def) <$> Baby.ui config loaded deviceList
+          Nothing -> do
+            Auth.connectionLossScreen $ config^.auth
+            (def,) <$> Family.ui config loaded familyCreated'
+          Just Family.RoleBaby -> do
+            Auth.connectionLossScreen $ config^.auth
+            (, def) <$> Baby.ui config loaded deviceList
+          -- Parent renders connection loss screen itself. (Should not be rendered when there is an alarm.)
           Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList
 
     getInitialRole = do
