@@ -1,2 +1,8 @@
 #!/usr/bin/env bash
-./workOnGhc.sh --run "$*"
+if [[ -f ./workOnGhc.sh ]]
+then
+    workOn=./workOnGhc.sh
+else
+    workOn=./workOn.sh
+fi
+${workOn} --run "$*"

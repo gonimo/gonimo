@@ -49,6 +49,8 @@ import qualified Network.Wai                      as Wai
 import qualified Network.Wai.Handler.WebSockets   as Wai
 import qualified Network.WebSockets               as WS
 import           Data.Maybe
+import           Control.Concurrent
+import           Gonimo.Constants
 
 type AuthDataRef = IORef (Maybe AuthData)
 
@@ -71,10 +73,12 @@ serve runLoggingT config = do
 
 serveWebSocket :: AuthDataRef -> WS.Connection -> Server ()
 serveWebSocket authRef conn = do
+    msgCounter <- liftIO $ newIORef 0
     sub <- configSubscriber <$> ask
     client <- atomically $ Subscriber.makeClient sub
     let
-      work = race_ (Subscriber.runMonitor client respondToRequest) (forever handleIncoming)
+      work = race_ (liftIO $ watchDog msgCounter)
+                   (race_ (Subscriber.runMonitor client respondToRequest) (forever handleIncoming))
       cleanup = do
         Subscriber.cleanup client
         fmap (fromMaybe ()) . runMaybeT $ do
@@ -83,6 +87,7 @@ serveWebSocket authRef conn = do
 
       handleIncoming = do
         raw <- liftIO $ WS.receiveDataMessage conn
+        liftIO $ modifyIORef' msgCounter (+1)
         let bs = case raw of
                   WS.Binary bs' -> bs'
                   WS.Text bs' -> bs'
@@ -214,3 +219,10 @@ makeAuthData token = runDb $ do
   where
     getByAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.getBy
     getAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.get
+
+watchDog :: IORef Int -> IO ()
+watchDog msgCount = forever $ do
+  currentCount <- readIORef msgCount
+  threadDelay $ (ceiling serverWatchDogTime) * 1000000
+  nextCount <- readIORef msgCount
+  when (nextCount == currentCount) $ throwIO $ WS.CloseRequest 1000 "Connection timed out (server)"
