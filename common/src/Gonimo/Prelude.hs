@@ -10,6 +10,7 @@ module Gonimo.Prelude ( MaybeT(..)
                       , module Applicative
                       , module Monad
                       , Text
+                      , module Constants
                       ) where
 
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -22,3 +23,4 @@ import Data.Text (Text)
 import Data.Monoid as Monoid
 import Control.Applicative as Applicative
 import Control.Monad as Monad
+import Gonimo.Constants as Constants
