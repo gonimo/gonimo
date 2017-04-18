@@ -1,3 +1,4 @@
+-- TODO: Get rid of this module! Move everything to Gonimo.Constants
 module Utils.Constants where
 
 type Microseconds = Int
