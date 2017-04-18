@@ -44,7 +44,9 @@ import GHCJS.Foreign (JSType(..), jsTypeOf)
 import Language.Javascript.JSaddle.Helper (mutableArrayBufferFromJSVal)
 import Language.Javascript.JSaddle.Types (ghcjsPure)
 
-data JSWebSocket = JSWebSocket { unWebSocket :: WebSocket }
+data JSWebSocket = JSWebSocket { unWebSocket :: WebSocket
+                               , releaseHandlers :: JSM ()
+                               }
 
 class IsWebSocketMessage a where
   webSocketSend :: JSWebSocket -> a -> JSM ()
@@ -52,19 +54,26 @@ class IsWebSocketMessage a where
 -- Use binary websocket communication for ByteString
 -- Note: Binary websockets may not work correctly in IE 11 and below
 instance IsWebSocketMessage ByteString where
-  webSocketSend (JSWebSocket ws) bs = do
+  webSocketSend (JSWebSocket ws _) bs = do
     ab <- bsToArrayBuffer bs
     GD.send ws $ Just ab
 
 -- Use plaintext websocket communication for Text, and String
 instance IsWebSocketMessage Text where
-  webSocketSend (JSWebSocket ws) = GD.sendString ws . T.unpack
+  webSocketSend (JSWebSocket ws _) = GD.sendString ws . T.unpack
 
 closeWebSocket :: JSWebSocket -> Word -> Text -> JSM ()
-closeWebSocket (JSWebSocket ws) = GD.close ws
+closeWebSocket (JSWebSocket ws _) = GD.close ws
+
+-- Close but before disconnect all event handlers - so user can call onClose handlers himself
+-- and be done with this connection immediately!
+closeWebSocketBrutally :: JSWebSocket -> Word -> Text -> JSM ()
+closeWebSocketBrutally (JSWebSocket ws releaseAll) code msg = do
+  releaseAll
+  GD.close ws code msg
 
 webSocketGetReadyState :: JSWebSocket -> JSM Word
-webSocketGetReadyState (JSWebSocket ws) = GD.getReadyState ws
+webSocketGetReadyState (JSWebSocket ws _) = GD.getReadyState ws
 
 newWebSocket
   :: a
@@ -77,15 +86,15 @@ newWebSocket
 newWebSocket _ url onMessage onOpen onError onClose = do
   ws <- GD.newWebSocket url (Just [] :: Maybe [Text])
   GD.setBinaryType ws "arraybuffer"
-  _ <- on ws GD.open $ liftJSM onOpen
-  _ <- on ws GD.error $ liftJSM onError
-  _ <- on ws GD.closeEvent $ do
+  releaseClose <- on ws GD.open $ liftJSM onOpen
+  releaseOnError <- on ws GD.error $ liftJSM onError
+  releaseOnClose <- on ws GD.closeEvent $ do
     e <- ask
     wasClean <- getWasClean e
     code <- getCode e
     reason <- getReason e
     liftJSM $ onClose (wasClean, code, reason)
-  _ <- on ws GD.message $ do
+  releaseOnMessage <- on ws GD.message $ do
     e <- ask
     d <- getData e
     liftJSM $ ghcjsPure (jsTypeOf d) >>= \case
@@ -93,7 +102,11 @@ newWebSocket _ url onMessage onOpen onError onClose = do
       _ -> do
         ab <- mutableArrayBufferFromJSVal d
         bsFromMutableArrayBuffer ab >>= onMessage . Left
-  return $ JSWebSocket ws
+  return $ JSWebSocket ws $ do
+    releaseClose
+    releaseOnError
+    releaseOnClose
+    releaseOnMessage
 
 onBSMessage :: Either ByteString JSVal -> JSM ByteString
 onBSMessage = either return (\v -> encodeUtf8 <$> fromJSValUnchecked v)

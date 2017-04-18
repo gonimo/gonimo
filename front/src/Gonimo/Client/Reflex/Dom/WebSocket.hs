@@ -93,8 +93,12 @@ instance (IsWebSocketMessage a, IsWebSocketMessage b) => IsWebSocketMessage (Eit
   webSocketSend jws (Left a) = webSocketSend jws a
   webSocketSend jws (Right a) = webSocketSend jws a
 
--- Currently all this fork does is not to queue messages and send them again on re-connect, as this does not work anyway. (Auth data would need to be sent first.)
-
+-- Differences from stock reflex-dom websocket:
+--  - no queue, if connection is not ready - simply drop messages
+--  - close, does close brutally. We don't wait for the close event, but simply
+--    unregister all event listeners and trigger _webSocket_close immediately.
+--    This is becausce TCP takes too long for our application to consider a
+--    connection dead.
 webSocket :: (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, IsWebSocketMessage a) => Text -> WebSocketConfig t a -> m (WebSocket t)
 webSocket url config = webSocket' url config onBSMessage
 
@@ -140,11 +144,13 @@ webSocket' url config onRawMessage = do
     mws <- liftIO $ readIORef currentSocketRef
     case mws of
       Nothing -> return ()
-      Just ws -> closeWebSocket ws (fromIntegral code) reason `JS.catch` (\(e :: SomeException) -> do
+      Just ws -> do
+        closeWebSocketBrutally ws (fromIntegral code) reason `JS.catch` (\(e :: SomeException) -> do
                                                                              liftIO $ putStrLn "Exception during close: "
                                                                              liftIO $ print e
                                                                              -- onClose (False, 1000, "Exception during close!")
                                                                          )
+        onClose (True, 1000, "Connection timed out (by gonimo standards)")
 
   return $ RawWebSocket eRecv eOpen eError eClose
 
