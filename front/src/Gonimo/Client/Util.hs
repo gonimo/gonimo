@@ -245,7 +245,7 @@ getVolumeInfo stream callBack = liftJSM $ do
     , "    }"
     , "    return cleanup;"
     , "    } catch(e) {"
-    , "        console.log('Catched exception e: ' + e.toString());"
+    , "        console.log('Caught exception e: ' + e.toString());"
     , "        return function () {};"
     , "    }"
     , "})"
