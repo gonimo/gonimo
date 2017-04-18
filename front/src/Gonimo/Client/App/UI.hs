@@ -143,11 +143,10 @@ checkBrowser ::forall m t. (HasWebView m, MonadWidget t m) => m ()
 checkBrowser = do
     isiOS <- getBrowserProperty "ios"
     isBlink <- getBrowserProperty "blink"
-    -- hideWarning <- readHideBrowserWarning
-    let hideWarning = False
-
+    isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
+    isFirefox <- getBrowserProperty "gecko"
     let warnMessage = if isiOS
-                      then do
+                      then Just $ do
                         el "h1" $ text "Apple does not like us yet!"
                         el "br" blank
                         el "h2" $ text "Gonimo might not work as expected"
@@ -160,29 +159,42 @@ checkBrowser = do
                         elAttr "a" ("class" =: "link" <> "href" =: "https://facebook.com/mygonimo")
                           $ text "Facebook"
                         text ": We will post on our page, when iOS support is ready!"
-                      else if not isBlink
-                           then do
+                      else if isFirefox && isMobile
+                           then  Just $ do
+                             el "h1" $ text "Mobile Firefox still having issues!"
+                             el "br" blank
+                             el "h2" $ text "Gonimo might not work as expected"
+                             el "br" blank
+                             text "Unfortunately the only fully supported browser currently is Chrome. This is especially true on mobile, here even if Firefox works for you - beware that the connection-loss alert will not be played when your device's screen is switched off!"
+                      else if not isBlink && not isFirefox
+                           then Just $ do
                             el "h1" $ text "Unsupported browser!"
                             el "br" blank
                             el "h2" $ text "Gonimo might not work as expected"
                             el "br" blank
-                            text "Unfortunately the only fully supported browser currently is Chrome. This is especially true on mobile, here even if Firefox works for you - beware that the connection-loss alert will not be played when your device's screen is switched off!"
-                           else text "All fine!"
-    let warningRequired = not hideWarning && (isiOS || not isBlink)
-    if warningRequired
-      then do
-      _ <- displayWarning warnMessage
-      pure ()
-      -- Warn everytime - so user will know when the browser gets supported!
-      -- performEvent_ $ const (writeHideBrowserWarning True) <$> okClicked
-      else
-      pure ()
+                            text "We either never tested gonimo with your browser or it is not supported right now. Please be aware that gonimo might not work properly! If you want the best experience we currently have to recommend Chrome and any non iOS platform. If you'd like to have your browser supported or want to know about the current status, please file an issue on "
+                            elAttr "a" ("class" =: "link" <> "href" =: "https://github.com/gonimo/gonimo/issues")
+                              $ text "github!"
+                            el "br" blank
+                            text "Thank you!"
+
+                           else Nothing
+    case warnMessage of
+      Nothing -> pure ()
+      Just msg -> do
+        _ <- displayWarning msg
+        pure ()
+
+    -- Warn everytime - so user will know when the browser gets supported!
+    -- performEvent_ $ const (writeHideBrowserWarning True) <$> okClicked
   where
+    displayWarning :: m () -> m (Event t ())
     displayWarning msg = mdo
       displayIt <- holdDyn (displayWarning' msg) $ const (pure never) <$> gotAnswer
       gotAnswer <- switchPromptly never =<< dyn displayIt
       pure gotAnswer
 
+    displayWarning' :: m () -> m (Event t ())
     displayWarning' msg = do
       elClass "div" "fullScreenOverlay" $ do
         elClass "div" "container" $ do
