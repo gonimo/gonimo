@@ -21,6 +21,11 @@ import qualified Language.Javascript.JSaddle                       as JS
 import Data.Time.Clock
 import Gonimo.Client.Prelude
 import Gonimo.Client.Util
+import GHCJS.DOM.EventM (on)
+import qualified GHCJS.DOM.MediaStream             as MediaStream
+import           GHCJS.DOM.MediaStreamTrack     (ended)
+import Data.Maybe
+import qualified GHCJS.DOM.Types as DOM
 
 
 renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
@@ -121,16 +126,31 @@ customTabDisplay ulClass activeClass tabItems = do
       clicked <- x $ fmap (\b -> if b then activeClass else "") isSelected
       return $ fmap (const k) clicked
 
-mediaVideo :: (DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace)
+-- foreign import javascript unsafe "$1[\"srcObject\"] = $2;"
+--         setSrcObject :: DOM.Element -> MediaStream -> IO ()
+-- foreign import javascript unsafe "$1.play();"
+--         playVideo :: DOM.Element -> IO ()
+
+mediaVideo :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
+              , MonadJSM (Performable m), PerformEvent t m
+              )
               => MediaStream -> Map Text Text -> m ()
 mediaVideo stream attrs = do
   (videoTag, _) <- elAttr' "video" attrs blank
   let rawElement =  _element_raw videoTag
+  -- liftIO $ setSrcObject rawElement stream
+  -- liftIO $ playVideo rawElement
   liftJSM $ do
     JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
     _ <- JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])
-    -- Does not seem to work properly right now ... :-(
     registerTriggerFullScreen rawElement
+    tracks <- catMaybes <$> MediaStream.getTracks stream
+  -- Cleanup necessary because of DOM node leak in reflex, see: https://bugs.chromium.org/p/chromium/issues/detail?id=255456
+    let registerCleanup track = do
+          _ <- on track ended . liftJSM
+               $ JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ JS.JSNull
+          pure ()
+    traverse_ registerCleanup tracks
     pure ()
 
 -- mediaVideo :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
@@ -155,7 +175,7 @@ mediaVideo stream attrs = do
 toggleAttr :: Reflex t => Text -> Dynamic t Bool -> Map Text Text -> Dynamic t (Map Text Text)
 toggleAttr attr onOff staticAttrs =
   let
-    attrDyn = (\on -> if on then Map.empty else attr =: "true") <$> onOff
+    attrDyn = (\on' -> if on' then Map.empty else attr =: "true") <$> onOff
   in
     pure staticAttrs <> attrDyn
 
