@@ -14,11 +14,12 @@ import Data.Time.Clock
 
 
 webSocketPingInterval :: NominalDiffTime
-webSocketPingInterval = 23
+webSocketPingInterval = 30
 
+-- Could be used for killing connections manually, currently we rely on TCP to do it at some point.
 webSocketMaxRoundTrip :: NominalDiffTime
 webSocketMaxRoundTrip = 7
 
 
 serverWatchDogTime :: NominalDiffTime
-serverWatchDogTime = webSocketPingInterval + webSocketMaxRoundTrip / 2
+serverWatchDogTime = webSocketPingInterval * 2
