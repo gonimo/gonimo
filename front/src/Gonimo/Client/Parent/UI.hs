@@ -192,7 +192,10 @@ handleUnreliableAlert connections' = mdo
   let gotUnreliable = updated $ connections'^.C.unreliableConnections
 
   let
-    renderAlert False = dismissibleOverlay "success-overlay " 4 $ text "Connection is reliable!"
+    renderAlert False = dismissibleOverlay "success-overlay " 4 $ do
+      text "Connection is reliable!"
+      el "br" blank
+      text "(or gone)"
     renderAlert True = dismissibleOverlay "warning-overlay " 6 $ do
       text "Connection unreliable!"
       el "br" blank
