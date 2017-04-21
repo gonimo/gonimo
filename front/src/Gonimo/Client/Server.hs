@@ -37,7 +37,8 @@ server :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Perform
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
                       )
           => Text -> ServerConfig t -> m (Server t)
-server url config = mdo
+server url config = do
+  newReq <- handlePingPong (config^.webSocketConfig_send)
   let config' = config & webSocketConfig_send .~ newReq
   ws <- webSocket url
 #ifdef DEVELOPMENT
@@ -46,7 +47,6 @@ server url config = mdo
         $ config' & webSocketConfig_send . mapped . mapped %~ BL.toStrict . Aeson.encode
 #endif
   let ws' = ws & webSocket_recv . mapped %~ decodeResponse
-  newReq <- handlePingPong (config^.webSocketConfig_send) ws'
   pure ws'
 
 
@@ -69,8 +69,8 @@ decodeResponse = fromMaybe (error "Decoding Server Response Failed!") . Aeson.de
 handlePingPong :: forall t m. ( MonadFix m, MonadHold t m, MonadJSM m, MonadJSM (Performable m)
                               , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
                               )
-                  => Event t [ServerRequest] -> Server t -> m (Event t [ServerRequest])
-handlePingPong inRequest server' = do
+                  => Event t [ServerRequest] -> m (Event t [ServerRequest])
+handlePingPong inRequest = do
   now <- liftIO $ getCurrentTime
   tick <- tickLossy webSocketPingInterval now
   let req = const [ReqPing] <$> tick
