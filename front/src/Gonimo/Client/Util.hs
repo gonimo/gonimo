@@ -400,7 +400,7 @@ getTransmissionInfo conn callBack track = liftJSM $ do
     , ""
     , "        var lastPackets = 0; // seconds"
     , "        var countdown = 0;"
-    , "        var timeout = 3;"
+    , "        var timeout = 4;"
     , "        console.log('ok setting interval .....');"
     , "        var iv = setInterval(function() { return pc.getStats(track).then(function (stats) {"
     , "            try"
