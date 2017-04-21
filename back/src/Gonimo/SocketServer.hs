@@ -49,8 +49,8 @@ import qualified Network.Wai                      as Wai
 import qualified Network.Wai.Handler.WebSockets   as Wai
 import qualified Network.WebSockets               as WS
 import           Data.Maybe
--- import           Control.Concurrent
--- import           Gonimo.Constants
+import           Control.Concurrent
+import           Gonimo.Constants
 
 type AuthDataRef = IORef (Maybe AuthData)
 
@@ -58,8 +58,8 @@ serve :: (forall a m. MonadIO m => LoggingT m a -> m a) -> Config -> Wai.Applica
 serve runLoggingT config = do
   let handleWSConnection pending = do
         connection <- WS.acceptRequest pending
-        -- Don't use this - it cannot be handled by the client, which we need for proper connection management (we use it again for now)
-        WS.forkPingThread connection 28
+        -- Don't use this - the client won't be able to detect dead connections, which is baaad! (Baby station!)
+        -- WS.forkPingThread connection 28
         noAuthRef <- newIORef Nothing
         runServer runLoggingT config $ serveWebSocket noAuthRef connection
   let
@@ -73,13 +73,12 @@ serve runLoggingT config = do
 
 serveWebSocket :: AuthDataRef -> WS.Connection -> Server ()
 serveWebSocket authRef conn = do
-    -- msgCounter <- liftIO $ newIORef 0
+    msgCounter <- liftIO $ newIORef 0
     sub <- configSubscriber <$> ask
     client <- atomically $ Subscriber.makeClient sub
     let
-      -- work = race_ (liftIO $ watchDog msgCounter)
-      --              (race_ (Subscriber.runMonitor client respondToRequest) (forever handleIncoming))
-      work = race_ (Subscriber.runMonitor client respondToRequest) (forever handleIncoming)
+      work = race_ (liftIO $ watchDog msgCounter)
+                   (race_ (Subscriber.runMonitor client respondToRequest) (forever handleIncoming))
       cleanup = do
         Subscriber.cleanup client
         fmap (fromMaybe ()) . runMaybeT $ do
@@ -88,7 +87,7 @@ serveWebSocket authRef conn = do
 
       handleIncoming = do
         raw <- liftIO $ WS.receiveDataMessage conn
-        -- liftIO $ modifyIORef' msgCounter (+1)
+        liftIO $ modifyIORef' msgCounter (+1)
         let bs = case raw of
                   WS.Binary bs' -> bs'
                   WS.Text bs' -> bs'
@@ -221,14 +220,10 @@ makeAuthData token = runDb $ do
     getByAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.getBy
     getAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.get
 
--- Go back to old behaviour for now, simply have server side pings.
--- When have slow connection detection on the client or manual connection
--- handling again this needs to be re-enabled, but properly with a timeout like
--- pingdelay * 2 or something. We need this when the pings are coming from the
--- client to ensure that the connection wil be shut down at some point.
--- watchDog :: IORef Int -> IO ()
--- watchDog msgCount = forever $ do
---   currentCount <- readIORef msgCount
---   threadDelay $ (ceiling serverWatchDogTime) * 1000000
---   nextCount <- readIORef msgCount
---   when (nextCount == currentCount) $ throwIO $ WS.CloseRequest 1000 "Connection timed out (server)"
+-- Clean up dead connections after a sensible delay:
+watchDog :: IORef Int -> IO ()
+watchDog msgCount = forever $ do
+  currentCount <- readIORef msgCount
+  threadDelay $ (ceiling serverWatchDogTime) * 1000000
+  nextCount <- readIORef msgCount
+  when (nextCount == currentCount) $ throwIO $ WS.CloseRequest 1000 "Connection timed out (server)"

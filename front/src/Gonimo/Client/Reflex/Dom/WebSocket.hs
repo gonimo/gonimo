@@ -95,10 +95,6 @@ instance (IsWebSocketMessage a, IsWebSocketMessage b) => IsWebSocketMessage (Eit
 
 -- Differences from stock reflex-dom websocket:
 --  - no queue, if connection is not ready - simply drop messages
---  - close, does close brutally. We don't wait for the close event, but simply
---    unregister all event listeners and trigger _webSocket_close immediately.
---    This is becausce TCP takes too long for our application to consider a
---    connection dead.
 webSocket :: (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, IsWebSocketMessage a) => Text -> WebSocketConfig t a -> m (WebSocket t)
 webSocket url config = webSocket' url config onBSMessage
 
@@ -119,7 +115,7 @@ webSocket' url config onRawMessage = do
         liftIO $ triggerEClose args
         liftIO $ writeIORef currentSocketRef Nothing
         when (_webSocketConfig_reconnect config) $ do
-          liftIO $ threadDelay 3500000
+          liftIO $ threadDelay 2000000
           start
 
       sendPayload :: forall m1. (MonadJSM m1, MonadIO m1) => a -> m1 ()
@@ -145,12 +141,11 @@ webSocket' url config onRawMessage = do
     case mws of
       Nothing -> return ()
       Just ws -> do
-        closeWebSocketBrutally ws (fromIntegral code) reason `JS.catch` (\(e :: SomeException) -> do
+        closeWebSocket ws (fromIntegral code) reason `JS.catch` (\(e :: SomeException) -> do
                                                                              liftIO $ putStrLn "Exception during close: "
                                                                              liftIO $ print e
                                                                              -- onClose (False, 1000, "Exception during close!")
                                                                          )
-        onClose (True, 1000, "Connection timed out (by gonimo standards)")
 
   return $ RawWebSocket eRecv eOpen eError eClose
 
