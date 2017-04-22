@@ -8,7 +8,7 @@ bat,            bats
 bear,           bears
 beetle,         beetles
 bengal tiger,   bengal tigers
-bunny,          bunnys
+bunny,          bunnies
 cat,            cats
 caterpillar,    caterpillars
 cherry,         cherries
