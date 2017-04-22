@@ -38,20 +38,19 @@ uiStart = do
       elClass "div" "start-welcome-img" $ blank
     el "br" blank
 
-    el "h3" $ text "Create a new Family"
+    headingClicked <-
+      makeClickable . el' "h3" $ text "Create a new Family"
     elClass "div" "welcome-form" $ do
       inputFieldClicked <-
         makeClickable
-        $ elAttr' "input" ( "class" =: "family-select" <> "readonly" =: "true" <> "type" =: "text"
-                            <> "placeholder" =: "Press >+<, I know you want to!"
-                          ) blank
+        $ elAttr' "span" ( "class" =: "family-select" ) blank
 
       plusClicked <-
         makeClickable
         $ elAttr' "div" ( "class" =: "input-btn plus" <> "title" =: "Create a family to get started."
                           <> "type" =: "button" <> "role" =: "button"
                         ) blank
-      let userWantsFamily = leftmost [ plusClicked, inputFieldClicked ]
+      let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
       pure $ UI never userWantsFamily never never never never
 
 ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded t -> Bool -> m (UI t)
