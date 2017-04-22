@@ -39,7 +39,9 @@ import           Gonimo.Client.WebRTC.Channel   (ChannelEvent (..),
                                                  ReceivingState(..), Channel(..))
 import qualified Gonimo.Client.WebRTC.Channel   as Channel
 import qualified GHCJS.DOM.MediaStream          as MediaStream
+import           GHCJS.DOM.MediaStreamTrack     (mute)
 import           Gonimo.Client.Util             (getTransmissionInfo)
+import           GHCJS.DOM.EventM (on)
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
 type StreamMap = Map (API.FromId, Secret) MediaStream
@@ -141,6 +143,17 @@ handleConnectionStateUpdate chans chanEv = do
         pure $ at mapKey . _Just %~ over audioReceivingState (makeUnreliable (not . null $ audioTracks))
                                   . over videoReceivingState (makeUnreliable (not . null $ videoTracks))
 
+    let
+      makeBrokenOnMute (mapKey, stream, _) = liftJSM $ do
+        videoTracks <- catMaybes <$> MediaStream.getVideoTracks stream
+        audioTracks <- catMaybes <$> MediaStream.getAudioTracks stream
+        let registerMakeBroken audioVideo track = do
+              _ <- on track mute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ StateBroken)
+              pure ()
+        traverse_ (registerMakeBroken Channel.audioReceivingState) audioTracks
+        traverse_ (registerMakeBroken Channel.videoReceivingState) videoTracks
+
+    performEvent_ $ makeBrokenOnMute <$> newStreamEv
 
     setUnreliable' <- performEvent $ registerGetTransmissionInfo <$> newStreamEv
     setUnreliable <- delay 4 setUnreliable'
