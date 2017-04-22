@@ -359,7 +359,7 @@ showPermissionError (Left _) = elClass "div" "fullScreenOverlay" $ do
     el "script" $ text "screenfull.exit();" -- Leave fullscreen so user sees the address bar.
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
     el "h1" $ text "Error - so sad!"
-    el "h2" $ text "Cannot access your camera or microphone!"
+    el "h2" $ text "Can not access your camera or microphone!"
     el "br" blank
     text "Obviously those are needed for a baby monitor. Please check your browser settings whether gonimo is allowed access!"
     el "br" blank
