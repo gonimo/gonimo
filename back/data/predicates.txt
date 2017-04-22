@@ -1,4 +1,5 @@
 adoring
+applicative
 awesome
 best
 big
@@ -26,6 +27,7 @@ excited
 fabulous
 farting
 flying
+functorial
 funky
 funny
 geometric
@@ -45,6 +47,7 @@ loud
 mathy
 mega
 mini
+monadic
 mumbling
 mutant
 negative
