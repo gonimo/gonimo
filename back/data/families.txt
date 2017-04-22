@@ -21,7 +21,7 @@ dragonfly,      dragonflies
 eggplant,       eggplants
 elephant,       elephants
 fig,            figs
-fish,           fishs
+fish,           fish
 frog,           frogs
 gecko,          geckos
 gorilla,        gorillas
@@ -33,7 +33,7 @@ honeydew,       honeydews
 impala,         impalas
 ita-palm,       ita-palms
 jackfruit,      jackfruit
-jellyfish,      jellyfishs
+jellyfish,      jellyfish
 kitty,          kitties
 kiwi,           kiwis
 kiwi,           kiwis
