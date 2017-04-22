@@ -29,7 +29,10 @@ else
     # echo "(function(global) {" > all.min.js
     # cat all-inner.min.js >> all.min.js
     # echo "})(typeof global !== 'undefined' ? global : this);" >> all.min.js
-    closure-compiler all.js --compilation_level=SIMPLE_OPTIMIZATIONS  > all.min.js
+    # closure-compiler all.js --compilation_level=SIMPLE_OPTIMIZATIONS  > all.min.js
+
+    closure-compiler --compilation_level ADVANCED_OPTIMIZATIONS --externs ./runmain.js --js all.js --js_output_file all.min.js
+
     cat index.html | grep -v rts.js | grep -v lib.js | sed 's/out.js/all.min.js/1' > index-new.html
     rm index.html
     mv index-new.html index.html
