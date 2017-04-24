@@ -1,77 +1,120 @@
+almond,         almonds
 ant,            ants
 apple,          apples
-aunt,           aunts
 avocado,        avocados
 banana,         bananas
-barracuda,      barracudas
 bat,            bats
+bean,           beans
 bear,           bears
 beetle,         beetles
+bell pepper,    bell peppers
 bengal tiger,   bengal tigers
+bumblebee,      bumblebees
 bunny,          bunnies
+butterfly,      butterflies
+carrot,         carrots
+cashew,         cashews
 cat,            cats
 caterpillar,    caterpillars
 cherry,         cherries
+chick,          chicks
+chickpea,       chickpeas
+chimpanzee,     chimpanzees
+chipmunk,       chipmunks
+crocodile,      crocodiles
 cucumber,       cucumbers
-dad,            dads
-dingo,          dingos
+dingo,          dingoes
 dog,            dogs
-dragon-fruit,   dragon-fruit
+dolphin,        dolphins
+donkey,         donkeys
+dragon fruit,   dragon fruit
 dragonfly,      dragonflies
-eggplant,       eggplants
+duck,           ducks
 elephant,       elephants
+fairy,          fairies
 fig,            figs
 fish,           fish
+flamingo,       flamingos
+fox,            foxes
 frog,           frogs
 gecko,          geckos
+giraffe,        giraffes
+gnome,          gnomes
+goat,           goats
 gorilla,        gorillas
+grape,          grapes
 grapefruit,     grapefruit
 grasshopper,    grasshoppers
 grizzly,        grizzlies
-hippopotamus,   hippopotamus
-honeydew,       honeydews
+guinea pig,     guinea pigs
+hamster,        hamsters
+hazelnut,       hazelnuts
+hippo,          hippos
+hyena,          hyenas
 impala,         impalas
-ita-palm,       ita-palms
 jackfruit,      jackfruit
 jellyfish,      jellyfish
+kangaroo,       kangaroos
 kitty,          kitties
 kiwi,           kiwis
-kiwi,           kiwis
+koala,          koalas
 kumquat,        kumquats
+lemon,          lemons
+lemur,          lemurs
 lime,           limes
 lion,           lions
-lizzard,        lizzards
+lizard,         lizards
+lollipop,       lollipops
 mango,          mangos
 melon,          melons
+midget,         midgets
+monkey,         monkeys
+moose,          moose
 mouse,          mice
 nectarine,      nectarines
 newt,           newts
 nightingale,    nightingales
-nurse shark,    nurse sharks
 ocelot,         ocelots
-octopus,        octopus
+octopus,        octopuses
+olive,          olives
+onion,          onions
 orange,         oranges
+orangutan,      orangutans
+ostrich,        ostriches
+owl,            owls
+panda,          pandas
+panther,        panthers
 parrot,         parrots
+pea,            peas
+peach,          peaches
+peacock,        peacocks
+peanut,         peanuts
 pear,           pears
 penguin,        penguins
-puffer fish,    puffer fish
-quince,         quinces
+piglet,         piglets
+polar bear,     polar bears
+potato,         potatoes
+puffin,         puffins
+puppy,          puppies
 quokka,         quokkas
 rabbit,         rabbits
+raisin,         raisins
 raspberry,      raspberries
 red panda,      red pandas
 rhino,          rhinos
 rhubarb,        rhubarbs
 rock hyrax,     rock hyraxes
 scorpion,       scorpions
-sea otter,      sea otters
+sea lion,       sea lions
 sea urchin,     sea urchins
 seahorse,       seahorses
-sealion,        sealions
+seal,           seals
 shark,          sharks
 sheep,          sheep
-silver dollar,  silver dollars
+shrimp,         shrimp
 skunk,          skunks
+sloth,          sloths
+snail,          snails
 sparrow,        sparrows
 spider monkey,  spider monkeys
 spider,         spiders
@@ -79,22 +122,19 @@ sponge,         sponges
 squirrel,       squirrels
 starfruit,      starfruit
 strawberry,     strawberries
-sun bear,       sun bears
-tamarind,       tamarinds
-tarsier,        tarsiers
 teddy,          teddies
-tropicbird,     tropicbirds
+tiger,          tigers
+toad,           toads
+tomato,         tomatoes
 turtle,         turtles
-uglo,           uglos
-urchin,         urchins
+unicorn,        unicorns
 wallaby,        wallabies
+walnut,         walnuts
+walrus,         walruses
 watermelon,     watermelons
 weasel,         weasels
-wildebeest,     wildbeasts
-xylocarpa,      xylocarpas
+wolf,           wolves
+wombat,         wombats
 yak,            yaks
-yantel,         yantels
 zebra,          zebras
 zebu,           zebus
-zorse,          zorses
-zucchini,       zucchinis
