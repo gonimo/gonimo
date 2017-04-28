@@ -53,9 +53,16 @@ data RTCEvent
 data ReceivingState
   = StateNotReceiving
   | StateUnreliable -- We got a stream but did not get any stats for more than a few seconds!
-  | StateReceiving -- All is fine - we are receiving stats!
-  | StateBroken -- Did not receive stream data for longer than 3 seconds!
+  | StateReceiving Int -- All is fine - we are receiving stats, contains number of uninterrupted zero package count updates.
   deriving (Eq, Ord, Show)
+
+-- If StateReceiving counter is equal or above this number a connection can be considered broken (alarm should be triggered)
+considerBrokenCount :: Int
+considerBrokenCount = 4
+
+isStateBroken :: ReceivingState -> Bool
+isStateBroken (StateReceiving n) = n >= considerBrokenCount
+isStateBroken _ = False
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -70,6 +77,8 @@ data Channel t
             , _closeRequested :: Bool -- Signal that a close is requested (don't trigger alarm when connection gets closed)
             , _audioReceivingState :: ReceivingState
             , _videoReceivingState :: ReceivingState
+            , _audioMuted :: Bool
+            , _videoMuted :: Bool
             }
 
 makeLenses ''Config
@@ -89,18 +98,28 @@ channel config = mdo
                  , _closeRequested = False
                  , _audioReceivingState = StateNotReceiving
                  , _videoReceivingState = StateNotReceiving
+                 , _audioMuted = False
+                 , _videoMuted = False
                  }
 
 -- Get the worst state available for a channel.
 worstState :: Channel t -> ReceivingState
-worstState chan = case (chan^.audioReceivingState, chan^.videoReceivingState) of
-                    (_                 , StateBroken)       -> StateBroken
-                    (StateBroken       , _)                 -> StateBroken
-                    (StateUnreliable   , _)                 -> StateUnreliable
-                    (_                 , StateUnreliable)   -> StateUnreliable
-                    (StateNotReceiving , _)                 -> StateNotReceiving
-                    (_                 , StateNotReceiving) -> StateNotReceiving
-                    (StateReceiving    , StateReceiving)    -> StateReceiving
+worstState chan = if badness (chan^.audioReceivingState) > badness (chan^.videoReceivingState)
+                  then chan^.audioReceivingState
+                  else chan^.videoReceivingState
+  where
+    badness :: ReceivingState -> Int
+    badness (StateReceiving n)
+      | n < considerBrokenCount = 0
+      | otherwise = 3
+    badness StateNotReceiving = 1
+    badness StateUnreliable = 2
+
+needsAlert :: Channel t -> Bool
+needsAlert chan = isStateBroken (chan^.audioReceivingState)
+                  || isStateBroken (chan^.videoReceivingState)
+                  || chan^.audioMuted
+                  || chan^.videoMuted
 
 -- Handle RTCPeerConnection close.
 handleRTCClosedEvent :: forall m t. (MonadJSM m) => Config t -> RTCPeerConnection -> m ()

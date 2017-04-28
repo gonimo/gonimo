@@ -159,7 +159,12 @@ areThereUnreliableConnections :: Reflex t => Channels.Channels t -> Dynamic t Bo
 areThereUnreliableConnections = uniqDyn . fmap getAnyUnreliableConnections . (^.Channels.channelMap)
 
 getAnyBrokenConnections :: Channels.ChannelMap t -> Bool
-getAnyBrokenConnections = getConnectionsInState Channel.StateBroken
+getAnyBrokenConnections = any isChanBroken . Map.elems
+  where
+    isChanBroken chan = Channel.isStateBroken (chan^.Channel.audioReceivingState)
+                        || Channel.isStateBroken (chan^.Channel.videoReceivingState)
+                        || chan^.Channel.audioMuted
+                        || chan^.Channel.videoMuted
 
 getAnyUnreliableConnections :: Channels.ChannelMap t -> Bool
 getAnyUnreliableConnections = getConnectionsInState Channel.StateUnreliable

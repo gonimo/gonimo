@@ -28,6 +28,7 @@ import           Gonimo.Db.Entities        (DeviceId)
 import           Gonimo.Client.Prelude
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           Gonimo.Types                   (_Baby)
+import qualified Gonimo.Client.WebRTC.Channel      as Channel
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -112,7 +113,7 @@ manageUi _ loaded deviceList connections' = do
                  <*> pure (navBar^.NavBar.request)
 
       devicesUI <- DeviceList.ui loaded deviceList
-                   (fmap worstState <$> connections'^.C.channelMap)
+                   (connections'^.C.channelMap)
                    (Set.fromList . Map.keys <$> openStreams)
       inviteRequested <- elClass "div" "footer" $
             makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " ADD DEVICE"
@@ -173,8 +174,9 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
     connectionClass :: DeviceId -> Map.Map DeviceId (Channel t) -> Text
     connectionClass key chanMap = case chanMap ^? at key . _Just . to worstState of
                                Just StateUnreliable -> "connectionUnreliable "
-                               Just StateBroken -> "connectionBroken "
-                               -- Just StateReceiving -> "connectionReliable "
+                               Just connState -> if Channel.isStateBroken connState
+                                                 then "connectionBroken "
+                                                 else ""
                                _ -> ""
 
     -- isUnreliable Nothing = False

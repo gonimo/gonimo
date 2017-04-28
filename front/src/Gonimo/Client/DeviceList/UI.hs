@@ -32,19 +32,21 @@ import           Gonimo.Client.ConfirmationButton  (confirmationEl)
 import           Gonimo.Client.DeviceList.Internal
 import           Gonimo.Client.EditStringButton    (editDeviceName)
 import           Gonimo.Client.Reflex.Dom          (makeClickable, addBtnAttrs)
-import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..))
+import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..), Channel)
+import qualified Gonimo.Client.WebRTC.Channel     as Channel
 import Gonimo.Client.Util
+import Data.Maybe
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
-              => App.Loaded t -> DeviceList t -> Dynamic t (Map DeviceId ReceivingState)
+              => App.Loaded t -> DeviceList t -> Dynamic t (Map DeviceId (Channel t))
               -> Dynamic t (Set DeviceId)  -> m (UI t)
-ui loaded deviceList' connState connected = do
+ui loaded deviceList' channels connected = do
     tz <- liftIO $ getCurrentTimeZone
     evUI <- dyn $ renderAccounts tz loaded
             <$> deviceList'^.deviceInfos
             <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
-            <*> pure connState
+            <*> pure channels
             <*> pure connected
             <*> loaded^.App.authData
     uiSwitchPromptly evUI
@@ -54,11 +56,11 @@ renderAccounts :: forall m t. (HasWebView m, MonadWidget t m)
               -> App.Loaded t
               -> NestedDeviceInfos t
               -> Dynamic t (Map DeviceId DeviceType)
-              -> Dynamic t (Map DeviceId ReceivingState)
+              -> Dynamic t (Map DeviceId (Channel t))
               -> Dynamic t (Set DeviceId)
               -> API.AuthData
               -> m (UI t)
-renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = do
+renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
     let
       isSelf (aId, _) = aId == API.accountId authData
       (self, others) = List.partition isSelf . Map.toList $ allInfos
@@ -96,7 +98,9 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
     renderDevice isSelf (devId, devInfo) = mdo
         let
           mDevType = Map.lookup devId <$> onlineStatus
-          mConnStatus = Map.lookup devId <$> connStatus
+          mChannel = Map.lookup devId <$> channels
+          mConnStatus = fmap Channel.worstState <$> mChannel
+          needsAlert  = (fromMaybe False . fmap Channel.needsAlert) <$> mChannel
           devName = API.deviceInfoName <$> devInfo
           isConnected = Set.member devId <$> connected
 
@@ -109,7 +113,7 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
                       , fmap ((\isOnline -> if isOnline then "active " else "") . isJust) mDevType
                       , fmap ((\isBaby -> if isBaby then "isBaby " else "") . isJust . (^?_Just._Baby)) mDevType
                       , fmap (\cStatus -> if cStatus == Just StateUnreliable then "connectionUnreliable " else "") mConnStatus
-                      , fmap (\cStatus -> if cStatus == Just StateBroken then "connectionBroken " else "") mConnStatus
+                      , fmap (\needsAlert' -> if needsAlert' then "connectionBroken " else "") needsAlert
                       -- , fmap (\cStatus -> if cStatus == Just StateReceiving then "connectionReliable " else "") mConnStatus
                       -- , pure (if isSelf then "info " else "")
                       ]
@@ -128,7 +132,7 @@ renderAccounts tz loaded allInfos onlineStatus connStatus connected authData = d
               elClass "div" "buttons" $ do
                 conC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "connect") $ text "Connect"
                 streamC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "stream") $ text "Stream"
-                let disconnectOnBroken = fmap (\cStatus -> if cStatus == Just StateBroken then "disconnect connectionBroken " else "disconnect ")  mConnStatus
+                let disconnectOnBroken = fmap (\needsAlert' -> if needsAlert' then "disconnect connectionBroken " else "disconnect ")  needsAlert
                 discC <- makeClickable . elDynAttr' "div" (addBtnAttrs <$> disconnectOnBroken) $ text "Disconnect"
                 pure (conC, streamC, discC)
             (nameChangeClick, removeClick) <-
