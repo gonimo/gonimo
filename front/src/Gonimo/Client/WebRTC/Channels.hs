@@ -124,11 +124,10 @@ handleMuteUpdate chans chanEv = do
         videoTracks <- catMaybes <$> MediaStream.getVideoTracks stream
         audioTracks <- catMaybes <$> MediaStream.getAudioTracks stream
         let
-
           registerMuteHandlers :: Lens' (Channel t) Bool -> MediaStreamTrack -> JSM ()
           registerMuteHandlers audioVideo track = do
               _ <- on track mute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ True)
-              _ <- on track unmute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ False)
+              -- _ <- on track unmute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ False)
               pure ()
         traverse_ (registerMuteHandlers Channel.audioMuted) audioTracks
         traverse_ (registerMuteHandlers Channel.videoMuted) videoTracks
