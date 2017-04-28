@@ -126,7 +126,7 @@ playAlarmOnBrokenConnection channels' = mdo
       loadAlert :: forall m1. MonadJSM m1 => m1 AudioNode.AudioBufferSourceNode
       loadAlert = loadSound "/sounds/gonimo_alarm_96kb_smoothstart.mp3"
     alarmSound <- loadAlert
-    newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only played once!
+    newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only be played once!
     -- AudioNode.start alarmSound 0 0 1000000 -- 0 for duration does not work on Chrome at least! fs
     let anyConnectionBroken = uniqDyn $ getAnyBrokenConnections <$> channels'^.Channels.channelMap
 
@@ -159,12 +159,7 @@ areThereUnreliableConnections :: Reflex t => Channels.Channels t -> Dynamic t Bo
 areThereUnreliableConnections = uniqDyn . fmap getAnyUnreliableConnections . (^.Channels.channelMap)
 
 getAnyBrokenConnections :: Channels.ChannelMap t -> Bool
-getAnyBrokenConnections = any isChanBroken . Map.elems
-  where
-    isChanBroken chan = Channel.isStateBroken (chan^.Channel.audioReceivingState)
-                        || Channel.isStateBroken (chan^.Channel.videoReceivingState)
-                        || chan^.Channel.audioMuted
-                        || chan^.Channel.videoMuted
+getAnyBrokenConnections = any Channel.needsAlert . Map.elems
 
 getAnyUnreliableConnections :: Channels.ChannelMap t -> Bool
 getAnyUnreliableConnections = getConnectionsInState Channel.StateUnreliable

@@ -172,11 +172,11 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
     dynConnectionClass key = connectionClass key <$> dynChannelMap
 
     connectionClass :: DeviceId -> Map.Map DeviceId (Channel t) -> Text
-    connectionClass key chanMap = case chanMap ^? at key . _Just . to worstState of
+    connectionClass key chanMap
+      = if chanMap ^? at key . _Just . to Channel.needsAlert == Just True
+        then "connectionBroken "
+        else case chanMap ^? at key . _Just . to worstState of
                                Just StateUnreliable -> "connectionUnreliable "
-                               Just connState -> if Channel.isStateBroken connState
-                                                 then "connectionBroken "
-                                                 else ""
                                _ -> ""
 
     -- isUnreliable Nothing = False
