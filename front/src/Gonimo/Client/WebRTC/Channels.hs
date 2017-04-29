@@ -39,7 +39,7 @@ import           Gonimo.Client.WebRTC.Channel   (ChannelEvent (..),
                                                  ReceivingState(..), Channel(..))
 import qualified Gonimo.Client.WebRTC.Channel   as Channel
 import qualified GHCJS.DOM.MediaStream          as MediaStream
-import           GHCJS.DOM.MediaStreamTrack     (mute, unmute)
+import           GHCJS.DOM.MediaStreamTrack     (mute, unmute, getMuted)
 import           Gonimo.Client.Util             (getTransmissionInfo)
 import           GHCJS.DOM.EventM (on)
 
@@ -126,8 +126,10 @@ handleMuteUpdate chans chanEv = do
         let
           registerMuteHandlers :: Lens' (Channel t) Bool -> MediaStreamTrack -> JSM ()
           registerMuteHandlers audioVideo track = do
+              isMuted <- getMuted track
+              liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ isMuted)
               _ <- on track mute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ True)
-              -- _ <- on track unmute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ False)
+              _ <- on track unmute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ False)
               pure ()
         traverse_ (registerMuteHandlers Channel.audioMuted) audioTracks
         traverse_ (registerMuteHandlers Channel.videoMuted) videoTracks
