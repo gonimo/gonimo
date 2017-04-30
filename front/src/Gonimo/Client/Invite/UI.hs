@@ -22,8 +22,12 @@ import Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.App.Types as App
 import           GHCJS.DOM.Types (MonadJSM)
 import           Gonimo.Client.Util
+import qualified GHCJS.DOM.Window as Window
+import qualified GHCJS.DOM.Element as Element
+import qualified GHCJS.DOM.Document as Document
+import           GHCJS.DOM (currentWindowUnchecked, currentDocumentUnchecked)
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadIO (Performable m), PerformEvent t m)
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM (Performable m), MonadIO (Performable m), PerformEvent t m)
       => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
     baseUrl <- getBaseLink
@@ -36,6 +40,10 @@ ui loaded config = mdo
     let invitationLink = maybe "" (makeInvitationLink baseUrl . snd) <$> currentInvitation
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
     let sentEvents = (const SentEmail <$> mailReqs) : reCreateEvents
+
+    linkGotSent <- uniqDyn <$> holdDyn False (const True <$> leftmost sentEvents)
+    performEvent_ $ (const $ Element.scrollIntoView rawDone True) <$> updated linkGotSent
+
 
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
 
@@ -64,7 +72,12 @@ ui loaded config = mdo
     let reCreateEvents = recreateClicked <> invButtons
 
     el "br" blank
-    doneClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "DONE"
+    let doneClass linkGotSent' = if linkGotSent' then "btn-lang next-action" else "btn-lang"
+    (doneBtn, _) <- elDynAttr' "div" (addBtnDynAttrs $ doneClass <$> linkGotSent)
+                   $ text "DONE"
+    el "br" blank
+    let rawDone =  _element_raw doneBtn
+    let doneClicked = domEvent Click doneBtn
 
     pure $ invite'' & uiGoBack .~ backClicked
                     & uiDone .~ doneClicked
@@ -79,7 +92,7 @@ confirmationBox :: forall m t. (DomBuilder t m, MonadIO (Performable m), MonadHo
                    => Event t InvitationSent -> m ()
 confirmationBox sent = do
   let mSent = Just <$> sent
-  closeEvent <- fmap (const Nothing) <$> delay 20 mSent
+  closeEvent <- fmap (const Nothing) <$> delay 2 mSent
   let lifeEvent = leftmost [mSent, closeEvent]
   _ <- widgetHold (pure ()) $ confirmationBox' <$> lifeEvent
   pure ()
@@ -94,12 +107,6 @@ confirmationBox' (Just sendMethod) = do
       SentCopy     -> el "strong" $ text "Copied invitation link to clipboard!"
       SentRefresh  -> el "strong" $ text "New invitation generated!"
       SentEmail    -> el "strong" $ text "Sent email!"
-    el "br" blank
-    el "h1" $ text "Next steps:"
-    elClass "ul" "list-group" $ do
-      elClass "li" "list-group-item" $ text "Open invitation link on another device and press <Accept>"
-      elClass "li" "list-group-item" $ text "Make one device a baby station"
-      elClass "li" "list-group-item" $ text "Make the other device a parent station"
 
 awesomeAddon :: forall m t. (DomBuilder t m) =>  Text -> m ()
 awesomeAddon t =
@@ -155,7 +162,7 @@ emailWidget :: forall t m. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace, P
   => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Db.Invitation))
   -> m (Event t [API.ServerRequest])
 emailWidget res invData = mdo
-    (infoBox', req) <- elClass "div" "mail-form" $ do
+    req <- elClass "div" "mail-form" $ do
       addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: ".."
                                                                        <> "class" =: "mail-input"
                                                                    )
@@ -165,9 +172,9 @@ emailWidget res invData = mdo
       sendClicked <- sendEmailBtn
       let enterPressed' = enterPressed $ addrInput^.textInput_keypress
       let sendRequested = leftmost [sendClicked, enterPressed']
-      let infoBox = widgetHold (pure ()) $ showSuccess <$> leftmost [ invSent, const Nothing <$> sendRequested ]
-      pure $ (infoBox, buildRequest sendRequested (current addr))
-    _ <- infoBox'
+      -- let infoBox = widgetHold (pure ()) $ showSuccess <$> leftmost [ invSent, const Nothing <$> sendRequested ]
+      pure $ buildRequest sendRequested (current addr)
+    -- _ <- infoBox'
     pure req
   where
     buildRequest :: Event t () -> Behavior t Text -> Event t [API.ServerRequest]
@@ -188,10 +195,10 @@ emailWidget res invData = mdo
                                    _ -> Nothing
                    ) res
 
-    showSuccess Nothing = pure ()
-    showSuccess (Just inv) = do
-        elAttr "div" ("class" =: "alert alert-success") $
-          text $ "e-mail successfully sent to: " <> getAddr inv
-      where
-        getAddr (API.SendInvitation _ (EmailInvitation addr)) = addr
-        getAddr _ = "nobody"
+    -- showSuccess Nothing = pure ()
+    -- showSuccess (Just inv) = do
+    --     elAttr "div" ("class" =: "alert alert-success") $
+    --       text $ "e-mail successfully sent to: " <> getAddr inv
+    --   where
+    --     getAddr (API.SendInvitation _ (EmailInvitation addr)) = addr
+    --     getAddr _ = "nobody"

@@ -47,7 +47,7 @@ uiStart = do
 
       plusClicked <-
         makeClickable
-        $ elAttr' "div" ( "class" =: "input-btn plus" <> "title" =: "Create a family to get started."
+        $ elAttr' "div" ( "class" =: "input-btn plus next-action" <> "title" =: "Create a family to get started."
                           <> "type" =: "button" <> "role" =: "button"
                         ) blank
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]

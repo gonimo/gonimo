@@ -66,6 +66,9 @@ enterPressed = push (\key -> pure $ if key == 13
 addBtnAttrs :: Text -> Map Text Text
 addBtnAttrs className = "class" =: className <> "type" =: "button" <> "role" =: "button"
 
+addBtnDynAttrs :: Reflex t => Dynamic t Text -> Dynamic t (Map Text Text)
+addBtnDynAttrs className = fmap ("class" =:) className <> pure ("type" =: "button" <> "role" =: "button")
+
 buttonAttr :: DomBuilder t m => Map Text Text -> m () -> m (Event t ())
 buttonAttr attrs inner = makeClickable $ elAttr' "button" attrs inner
 

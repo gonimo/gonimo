@@ -1508,3 +1508,25 @@ canvas {
 .notification.box.connection-lost {
     height: 90%;
 }
+
+
+.next-action {
+    animation-name: next-action;
+    animation-duration: 2.0s;
+    animation-iteration-count: 10;
+}
+
+@keyframes next-action {
+    /* 0% { opacity: 0.5; } */
+    /* 50% { opacity: 1.0; } */
+    /* 100% { opacity: 0.5; } */
+    0% { background-color: white;
+	       /* color:#CDA5B4; */
+       }
+    50% { background-color: rgba(230,202,212,0.5);
+	       /* color:white; */
+       }
+    100% { background-color: white;
+	       /* color:#CDA5B4; */
+       }
+}

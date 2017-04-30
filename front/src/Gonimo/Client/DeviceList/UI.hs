@@ -130,7 +130,7 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
                 dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do
-                conC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "connect") $ text "Connect"
+                conC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "connect next-action") $ text "Connect"
                 streamC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "stream") $ text "Stream"
                 let disconnectOnBroken = fmap (\needsAlert' -> if needsAlert' then "disconnect connectionBroken " else "disconnect ")  needsAlert
                 discC <- makeClickable . elDynAttr' "div" (addBtnAttrs <$> disconnectOnBroken) $ text "Disconnect"
