@@ -5,6 +5,7 @@ module Gonimo.Client.Invite.UI where
 
 import Reflex.Dom.Core
 import Control.Lens
+import Control.Monad
 import Data.Monoid
 import Data.Text (Text)
 import Gonimo.Db.Entities (InvitationId)
@@ -38,8 +39,13 @@ ui loaded config = mdo
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
     let sentEvents = (const SentEmail <$> mailReqs) : reCreateEvents
 
-    linkGotSent <- uniqDyn <$> holdDyn False (const True <$> leftmost sentEvents)
-    performEvent_ $ (const $ Element.scrollIntoView rawDone True) <$> updated linkGotSent
+    linkGotSent <- uniqDyn <$> holdDyn False (leftmost [ const True <$> leftmost sentEvents
+                                                       , const False <$> leftmost [ doneClicked
+                                                                                  , backClicked
+                                                                                  ]
+                                                       ]
+                                             )
+    performEvent_ $ (\goForIt -> when goForIt $ Element.scrollIntoView rawDone True) <$> updated linkGotSent
 
 
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
