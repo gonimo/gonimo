@@ -22,10 +22,7 @@ import Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.App.Types as App
 import           GHCJS.DOM.Types (MonadJSM)
 import           Gonimo.Client.Util
-import qualified GHCJS.DOM.Window as Window
 import qualified GHCJS.DOM.Element as Element
-import qualified GHCJS.DOM.Document as Document
-import           GHCJS.DOM (currentWindowUnchecked, currentDocumentUnchecked)
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM (Performable m), MonadIO (Performable m), PerformEvent t m)
       => App.Loaded t -> Config t -> m (Invite t)
@@ -161,7 +158,7 @@ emailWidget :: forall t m. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace, P
                            , MonadHold t m)
   => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Db.Invitation))
   -> m (Event t [API.ServerRequest])
-emailWidget res invData = mdo
+emailWidget _ invData = mdo
     req <- elClass "div" "mail-form" $ do
       addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: ".."
                                                                        <> "class" =: "mail-input"
@@ -189,11 +186,11 @@ emailWidget res invData = mdo
 
     sendEmailBtn = makeClickable . elAttr' "div" (addBtnAttrs "input-btn mail") $ blank
 
-    invSent :: Event t (Maybe API.SendInvitation)
-    invSent = push (\r -> pure $ case r of
-                                   API.ResSentInvitation inv -> Just (Just inv)
-                                   _ -> Nothing
-                   ) res
+    -- invSent :: Event t (Maybe API.SendInvitation)
+    -- invSent = push (\r -> pure $ case r of
+    --                                API.ResSentInvitation inv -> Just (Just inv)
+    --                                _ -> Nothing
+    --                ) res
 
     -- showSuccess Nothing = pure ()
     -- showSuccess (Just inv) = do
