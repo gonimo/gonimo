@@ -1513,7 +1513,7 @@ canvas {
 .next-action {
     animation-name: next-action;
     animation-duration: 2.0s;
-    animation-iteration-count: 10;
+    animation-iteration-count: infinite;
 }
 
 @keyframes next-action {
