@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 -- Common imports and definitions for frontend ...
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Gonimo.Client.Prelude ( MonadFix
                              , module GonimoPrelude
                              ) where
