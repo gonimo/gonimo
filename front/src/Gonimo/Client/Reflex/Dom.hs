@@ -25,7 +25,6 @@ import GHCJS.DOM.EventM (on)
 import qualified GHCJS.DOM.MediaStream             as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended)
 import Data.Maybe
-import qualified GHCJS.DOM.Types as DOM
 
 
 renderVolumemeter :: forall m t. (HasWebView m, MonadWidget t m) => Event t Double -> m ()
@@ -146,6 +145,9 @@ mediaVideo stream attrs = do
   liftJSM $ do
     JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
     _ <- JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])
+    when (Map.member "muted" attrs) $ do -- necessary in firefox
+      _ <- JS.toJSVal rawElement JS.<# ("mute" :: Text) $ True
+      pure ()
     registerTriggerFullScreen rawElement
     tracks <- catMaybes <$> MediaStream.getTracks stream
   -- Cleanup necessary because of DOM node leak in reflex, see: https://bugs.chromium.org/p/chromium/issues/detail?id=255456
