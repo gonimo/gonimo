@@ -153,11 +153,11 @@ checkBrowser = do
     isFirefox <- getBrowserProperty "gecko"
     let warnMessage = if isiOS
                       then Just $ do
-                        el "h1" $ text "Apple does not like us yet!"
+                        el "h1" $ text "We are sorry, Apple does not like us yet!"
                         el "br" blank
                         el "h2" $ text "Gonimo might not work as expected"
                         el "br" blank
-                        text "Unfortunately Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology."
+                        text "Unfortunately, Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology."
                         el "br" blank
                         text "Also Apple restricts all other browsers on iOS to the same technology as Safari, so on iOS not even Chrome will work!"
                         el "br" blank
@@ -165,7 +165,7 @@ checkBrowser = do
                         elAttr "a" ("class" =: "link" <> "href" =: "https://facebook.com/mygonimo")
                           $ text "Facebook"
                         text ": We will post on our page, when iOS support is ready!"
-                      else if isFirefox && isMobile
+                      else if isFirefox && isMobile && False
                            then  Just $ do
                              el "h1" $ text "Mobile Firefox still having issues!"
                              el "br" blank
