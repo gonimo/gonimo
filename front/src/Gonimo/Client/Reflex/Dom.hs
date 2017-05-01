@@ -146,7 +146,7 @@ mediaVideo stream attrs = do
     JS.toJSVal rawElement JS.<# ("srcObject" :: Text) $ stream
     _ <- JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])
     when (Map.member "muted" attrs) $ do -- necessary in firefox
-      _ <- JS.toJSVal rawElement JS.<# ("mute" :: Text) $ True
+      _ <- JS.toJSVal rawElement JS.<# ("muted" :: Text) $ True
       pure ()
     registerTriggerFullScreen rawElement
     tracks <- catMaybes <$> MediaStream.getTracks stream
