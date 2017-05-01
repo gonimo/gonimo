@@ -515,6 +515,8 @@ registerTriggerFullScreen element' = liftJSM $ do
 getBrowserProperty :: forall m. MonadJSM m => Text -> m Bool
 getBrowserProperty property = liftJSM $ fromMaybe False <$> (JS.fromJSVal =<< JS.eval ("bowser." <> property))
 
+getBrowserVersion :: forall m. MonadJSM m => m Double
+getBrowserVersion = liftJSM $ fromMaybe 0.0 <$> (JS.fromJSVal =<< JS.eval ("bowser.version" :: Text))
 
 requestFullScreenScript :: Text
 requestFullScreenScript = "(function() {if (screenfull.enabled && (bowser.mobile || bowser.tablet) && !bowser.firefox) {screenfull.request();}})()"

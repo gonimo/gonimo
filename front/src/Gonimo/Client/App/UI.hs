@@ -28,7 +28,7 @@ import qualified GHCJS.DOM.Window                  as Window
 import qualified Language.Javascript.JSaddle                       as JS
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Util (getBrowserProperty)
+import           Gonimo.Client.Util (getBrowserProperty, getBrowserVersion)
 
 
 ui :: forall m t. (HasWebView m, MonadWidget t m)
@@ -149,8 +149,10 @@ checkBrowser ::forall m t. (HasWebView m, MonadWidget t m) => m ()
 checkBrowser = do
     isiOS <- getBrowserProperty "ios"
     isBlink <- getBrowserProperty "blink"
-    isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
+    isChrome <- (||) <$> getBrowserProperty "chrome" <*> getBrowserProperty "chromium"
+    -- isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
     isFirefox <- getBrowserProperty "gecko"
+    browserVersion <- getBrowserVersion
     let warnMessage = if isiOS
                       then Just $ do
                         el "h1" $ text "We are sorry, Apple does not like us yet!"
@@ -165,13 +167,16 @@ checkBrowser = do
                         elAttr "a" ("class" =: "link" <> "href" =: "https://facebook.com/mygonimo")
                           $ text "Facebook"
                         text ": We will post on our page, when iOS support is ready!"
-                      else if isFirefox && isMobile && False
+                      else if (isFirefox && browserVersion < 52.0)
+                              || (isChrome && browserVersion < 55.0)
                            then  Just $ do
-                             el "h1" $ text "Mobile Firefox still having issues!"
+                             el "h1" $ text "Please upgrade your browser!"
                              el "br" blank
-                             el "h2" $ text "Gonimo might not work as expected"
+                             el "h2" $ text "Gonimo might not work as expected!"
                              el "br" blank
-                             text "Unfortunately the only fully supported browser currently is Chrome. This is especially true on mobile, here even if Firefox works for you - beware that the connection-loss alert will not be played when your device's screen is switched off!"
+                             text "Gonimo needs some bleeding edge technology in order to work correctly and browsers get better all the time, so we recommend to download the latest version of your browsers, for the best gonimo experience."
+                             el "br" blank
+                             text " If you can't upgrade, please double check that gonimo is working reliably for you. Especially check that you will hear an alarm whenever the connection is lost (you can test this by, for example, reloading the page at your baby station), especially check that you also hear an alarm when the screen is switched off at the parent station."
                       else if not isBlink && not isFirefox
                            then Just $ do
                             el "h1" $ text "Unsupported browser!"
