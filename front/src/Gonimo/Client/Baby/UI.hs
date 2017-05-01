@@ -104,7 +104,7 @@ uiStart loaded deviceList  baby' = do
         newBabyName <-
           setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
-        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text $ i18n EN_GB Start
+        startClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText Start
         renderVolumemeter $ baby'^.volumeLevel
         elClass "div" "stream-menu" $ do
           selectCamera <- cameraSelect baby'
@@ -128,7 +128,7 @@ uiStart loaded deviceList  baby' = do
                           )
     showAutostartInfo False = pure ()
     showAutostartInfo True = dismissibleOverlay "info-overlay" 7
-                             $ text "Baby monitor will start automatically, when you load the app next time."
+                             $ trText Baby_monitor_will_start_automatically
 
 uiRunning :: forall m t. GonimoM t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
@@ -147,15 +147,15 @@ uiRunning loaded deviceList baby' =
     (ui', dayNightClicked) <-
       elDynClass "div" babyClass $ do
         elClass "div" "good-night" $ do
-          el "h1" $ text $ i18n EN_GB Good_Night
+          el "h1" $ trText Good_Night
           el "h2" $ dynText $ baby'^.name <> pure "!"
         elClass "div" "fill-full-screen" blank
         _ <- dyn $ noSleep <$> baby'^.mediaStream
         let
           leaveConfirmation :: forall m1. GonimoM t m1 => m1 ()
           leaveConfirmation = do
-              el "h3" $ text $ i18n EN_GB Really_stop_baby_monitor
-              el "p" $ text $ i18n EN_GB All_connected_devices_will_be_disconnected 
+              el "h3" $ trText Really_stop_baby_monitor
+              el "p" $ trText All_connected_devices_will_be_disconnected 
 
         navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
 
@@ -168,9 +168,9 @@ uiRunning loaded deviceList baby' =
         dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
         stopClicked <- elClass "div" "stream-menu" $
           flip (mayAddConfirmation leaveConfirmation) needConfirmation
-          =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text $ i18n EN_GB Stop)
+          =<< (makeClickable . elAttr' "div" (addBtnAttrs "stop") $ trText Stop)
         -- stopClicked <- flip (mayAddConfirmation leaveConfirmation) needConfirmation
-        --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text $ i18n EN_GB Stop)
+        --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText Stop)
         let handleStop f = push (\_ -> do
                                   autoStartOn' <- sample $ current (baby'^.autoStartEnabled)
                                   if f autoStartOn'
@@ -263,15 +263,15 @@ enableCameraCheckbox' baby' videoDevices' =
 enableAutoStartCheckbox :: forall m t. GonimoM t m
                 => Baby t -> m (Event t Bool)
 enableAutoStartCheckbox baby' =
-    myCheckBox ("class" =: "autostart ") (baby'^.autoStartEnabled) $ text $ i18n EN_GB Autostart
+    myCheckBox ("class" =: "autostart ") (baby'^.autoStartEnabled) $ trText Autostart
 
 setBabyNameForm :: forall m t. GonimoM t m
                    => App.Loaded t -> Baby t -> m (Event t Text)
 setBabyNameForm loaded baby' = do
   (nameAddRequest, selectedName) <-
     elClass "div" "welcome-form baby-form" $ mdo
-      elClass "span" "baby-form" $ text $ i18n EN_GB Adjust_camera_for
-      elClass "span" "baby-text" $ text "BABY"
+      elClass "span" "baby-form" $ trText Adjust_camera_for
+      elClass "span" "baby-text" $ trText BabyText
 
       clicked <-
         makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
@@ -298,7 +298,7 @@ setBabyNameForm loaded baby' = do
         elDynClass "div" dropDownClass $ renderBabySelectors (App.babyNames loaded)
       pure (nameAddRequest, selectedName)
   -- Necessary for stacking order with volumemeter:
-  nameAdded <- editStringEl (pure nameAddRequest) (text $ i18n EN_GB Add_new_baby_name) (constDyn "")
+  nameAdded <- editStringEl (pure nameAddRequest) (trText Add_new_baby_name) (constDyn "")
   pure $ leftmost [ selectedName, nameAdded ]
 
 renderBabySelectors :: forall m t. GonimoM t m
@@ -335,18 +335,18 @@ displayScreenOnWarning baby' = mdo
   where
     displayWarning False = pure ()
     displayWarning True = dismissibleOverlay "warning-overlay"  10 $ do
-      text "For video to work, please do not switch off the screen!"
+      trText For_video_to_work_please_do_not_switch_off_the_screen
       el "br" blank
-      text "Alternatively, if all you need is audio, please disable the camera."
+      trText Alternatively_if_all_you_need_is_audio_please_disable_the_camera
 
 autoStartActiveMessage :: forall m t. GonimoM t m => m (Event t ())
 autoStartActiveMessage = do
   (disableEv, triggerDisable) <- newTriggerEvent
   dismissibleOverlay "info-overlay" 2 $ do
-    text "Autostart active ..."
+    trText Autostart_active
     el "br" blank
     el "br" blank
-    clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text $ i18n EN_GB Disable
+    clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ trText Disable
     performEvent_ $ const (liftIO $ triggerDisable ())  <$> clicked
   pure disableEv
 
@@ -356,20 +356,20 @@ showPermissionError (Right _) = pure (never, never)
 showPermissionError (Left _) = elClass "div" "fullScreenOverlay" $ do
     el "script" $ text "screenfull.exit();" -- Leave fullscreen so user sees the address bar.
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
-    el "h1" $ text "Error - so sad!"
-    el "h2" $ text "Can not access your camera or microphone!"
+    el "h1" $ trText Error_so_sad
+    el "h2" $ trText Can_not_access_your_camera_or_microphone
     el "br" blank
-    text "Obviously those are needed for a baby monitor. Please check your browser settings whether gonimo is allowed access!"
+    trText Obviously_those_are_needed_for_a_baby_monitor
     el "br" blank
     el "br" blank
     isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
     isChrome <- getBrowserProperty "blink"
     when isChrome $ do
       if isMobile
-        then text "Please click on the lock symbol in the browser address bar for accessing the settings."
-        else text "Please click on the lock or the camera symbol in the browser address bar for accessing the settings."
+        then trText Please_click_on_the_lock_symbol
+        else trText Please_click_on_the_lock_or_the_camera_symbol
     el "br" blank
     el "br" blank
-    retry <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "btn-lang") $ text "TRY AGAIN"
+    retry <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "btn-lang") $ trText Try_Again
     pure (backClicked, retry)
 
