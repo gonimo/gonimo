@@ -116,6 +116,7 @@ library
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
+                    , Gonimo.Client.App.UI.I18N
                     , Gonimo.Client.NavBar.Internal
                     , Gonimo.Client.NavBar.UI
                     , Gonimo.Client.NavBar

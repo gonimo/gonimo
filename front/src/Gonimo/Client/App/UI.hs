@@ -29,6 +29,8 @@ import qualified Language.Javascript.JSaddle                       as JS
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Util (getBrowserProperty, getBrowserVersion)
+import           Gonimo.Client.App.UI.I18N
+import           Gonimo.I18N
 
 
 ui :: forall m t. GonimoM t m
@@ -92,7 +94,7 @@ runLoaded config family = do
           )
           (family^.Family.selectedFamily)
   let notReady = do
-        elClass "div" "container" $ text "Loading, stay tight..."
+        elClass "div" "container" $ trText Loading_stay_tight
         pure never
   dynEvEv <- widgetHold notReady (onReady <$> evReady)
 
@@ -156,39 +158,40 @@ checkBrowser = do
     browserVersion <- getBrowserVersion
     let warnMessage = if isiOS
                       then Just $ do
-                        el "h1" $ text "We are sorry, Apple does not like us yet!"
+                        el "h1" $ trText We_are_sorry_Apple_does_not_like_us_yet 
                         el "br" blank
-                        el "h2" $ text "Gonimo might not work as expected"
+                        el "h2" $ trText Gonimo_might_not_work_as_expected
                         el "br" blank
-                        text "Unfortunately, Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology."
+                        trText Unfortunately_Apple_iOS_devices_cannot_be_supported
                         el "br" blank
-                        text "Also Apple restricts all other browsers on iOS to the same technology as Safari, so on iOS not even Chrome will work!"
+                        trText Also_Apple_restricts_all_other_browsers_on_iOS
                         el "br" blank
-                        text "Fortunately Apple has made some progress lately and it seems that Safari will support Gonimo soon! You can follow us on "
+                        trText Fortunately_Apple_has_made_some_progress
                         elAttr "a" ("class" =: "link" <> "href" =: "https://facebook.com/mygonimo")
                           $ text "Facebook"
-                        text ": We will post on our page, when iOS support is ready!"
+                        trText We_will_post_on_our_page_when_iOS_support_is_ready
                       else if (isFirefox && browserVersion < 52.0)
                               || (isChrome && browserVersion < 55.0)
                            then  Just $ do
-                             el "h1" $ text "Please upgrade your browser!"
+                             el "h1" $ trText Please_upgrade_your_browser
                              el "br" blank
-                             el "h2" $ text "Gonimo might not work as expected!"
+                             el "h2" $ trText Gonimo_might_not_work_as_expected
                              el "br" blank
-                             text "Gonimo needs some bleeding edge technology in order to work correctly and browsers get better all the time, so we recommend to download the latest version of your browsers, for the best gonimo experience."
+                             trText Gonimo_needs_some_cutting_edge_technology
                              el "br" blank
-                             text " If you can't upgrade, please double check that gonimo is working reliably for you. Especially check that you will hear an alarm whenever the connection is lost (you can test this by, for example, reloading the page at your baby station), especially check that you also hear an alarm when the screen is switched off at the parent station."
+                             trText If_you_can't_upgrade
                       else if not isBlink && not isFirefox
                            then Just $ do
-                            el "h1" $ text "Unsupported browser!"
+                            el "h1" $ trText Unsupported_browser
                             el "br" blank
-                            el "h2" $ text "Gonimo might not work as expected"
+                            el "h2" $ trText Gonimo_might_not_work_as_expected
                             el "br" blank
-                            text "We either never tested gonimo with your browser or it is not supported right now. Please be aware that gonimo might not work properly! If you want the best experience we currently have to recommend Chrome and any non iOS platform. If you'd like to have your browser supported or want to know about the current status, please file an issue on "
+                            trText We_either_never_tested_gonimo_with_your_browser
                             elAttr "a" ("class" =: "link" <> "href" =: "https://github.com/gonimo/gonimo/issues")
                               $ text "github!"
                             el "br" blank
-                            text "Thank you!"
+                            trText Thank_you
+                            text "!"
 
                            else Nothing
     case warnMessage of
@@ -213,7 +216,7 @@ checkBrowser = do
           msg
           el "br" blank
           el "br" blank
-          makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "OK"
+          makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
     
 
 readHideBrowserWarning :: JS.MonadJSM m => m Bool
