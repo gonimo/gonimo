@@ -89,6 +89,7 @@ library
                     , Gonimo.Client.Invite.UI.I18N
                     , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.AcceptInvitation
+                    , Gonimo.Client.AcceptInvitation.Internal
                     , Gonimo.Client.AcceptInvitation.UI
                     , Gonimo.Client.AcceptInvitation.UI.I18N
                     , Gonimo.Client.MessageBox
