@@ -31,7 +31,7 @@ import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Util (getBrowserProperty, getBrowserVersion)
 
 
-ui :: forall m t. (HasWebView m, MonadWidget t m)
+ui :: forall m t. GonimoM t m
       => Config t -> m (App t)
 ui config = mdo
   checkBrowser
@@ -52,7 +52,7 @@ ui config = mdo
   let msgSwitchFamily = push (\actions -> case actions of
                                 [MessageBox.SelectFamily fid] -> pure $ Just fid
                                 _ -> pure Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
-                            ) (msgBox ^. MessageBox.action)
+                             ) (msgBox ^. MessageBox.action)
 
   accept <- AcceptInvitation.ui $ AcceptInvitation.fromApp config
   (app, familyUI) <- runLoaded config family
@@ -65,7 +65,7 @@ ui config = mdo
              & subscriptions %~ (<> accept^.AcceptInvitation.subscriptions)
 
 
-runLoaded :: forall m t. (HasWebView m, MonadWidget t m)
+runLoaded :: forall m t. GonimoM t m
       => Config t -> Family.Family t -> m (App t, Family.UI t)
 runLoaded config family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
@@ -83,7 +83,7 @@ runLoaded config family = do
               Auth.connectionLossScreen $ config^.auth
               startUI <- Family.uiStart
               let subs = constDyn Set.empty
-              pure (App subs never, startUI)
+              pure (App subs never never, startUI)
           )
           (\selected -> do
               let loaded = Loaded (fst <$> dynAuthFamilies) (snd <$> dynAuthFamilies) selected
@@ -101,7 +101,7 @@ runLoaded config family = do
       <*> Family.uiSwitchPromptly (snd <$> evEv)
 
 
-loadedUI :: forall m t. (HasWebView m, MonadWidget t m)
+loadedUI :: forall m t. GonimoM t m
       => Config t -> Loaded t -> Bool -> m (App t, Family.UI t)
 loadedUI config loaded familyCreated = mdo
     deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.webSocket_recv
@@ -123,6 +123,7 @@ loadedUI config loaded familyCreated = mdo
     let app = App { _request = deviceList^.DeviceList.request <> screen^.screenApp.request
                               <> familyUI^.Family.uiRequest
                   , _subscriptions = deviceList^.DeviceList.subscriptions <> screen^.screenApp.subscriptions
+                  , _selectLang = never
                   }
     pure (app, familyUI)
   where
@@ -145,7 +146,7 @@ loadedUI config loaded familyCreated = mdo
              else Nothing
 
 
-checkBrowser ::forall m t. (HasWebView m, MonadWidget t m) => m ()
+checkBrowser ::forall m t. GonimoM t m => m ()
 checkBrowser = do
     isiOS <- getBrowserProperty "ios"
     isBlink <- getBrowserProperty "blink"

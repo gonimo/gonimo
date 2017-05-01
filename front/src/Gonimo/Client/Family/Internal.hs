@@ -28,6 +28,7 @@ import Control.Applicative
 import Gonimo.Client.Server (webSocket_recv)
 import Data.Default (Default(..))
 import qualified Gonimo.Types                     as Gonimo
+import Gonimo.Client.Prelude
 
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Client.App.Types as App
@@ -127,7 +128,7 @@ currentFamilyName df =
     in
       zipDynWith getFamilyName (df^.definiteSelected) (df^.definiteFamilies)
 
-family :: forall m t. (MonadWidget t m) => Config t -> m (Family t)
+family :: forall m t. (GonimoM t m) => Config t -> m (Family t)
 family config = do
     (subs, familyIds', families') <- makeFamilies config
     -- We need to use ids here, because we need intermediate information not available in families'
@@ -141,7 +142,7 @@ family config = do
                   , _request = selectReqs <> createReqs <> leaveReqs <> renameReqs
                 }
 
-handleFamilySelect :: forall m t. (HasWebView m, MonadWidget t m)
+handleFamilySelect :: forall m t. GonimoM t m
                       => Config t -> Dynamic t (Maybe [FamilyId])
                       -> m (Event t [ API.ServerRequest ], Dynamic t (Maybe FamilyId))
 handleFamilySelect config familyIds' = mdo
@@ -210,7 +211,7 @@ handleSetName config selectedFamily' = push (\name -> do
                                                   Just fid -> pure $ Just [ API.ReqSetFamilyName fid name ]
                                             ) (config^.configSetName)
 
-makeFamilies :: forall m t. (HasWebView m, MonadWidget t m)
+makeFamilies :: forall m t. GonimoM t m
                 => Config t -> m (SubscriptionsDyn t, Dynamic t (Maybe [FamilyId]), Dynamic t (Maybe FamilyMap))
 makeFamilies config = do
   (subs, fids) <- makeSubscriptions

@@ -94,7 +94,7 @@ uiSwitchPromptlyDyn ev
        ( switchPromptlyDyn (_uiSetBabyName <$> ev) )
        ( switchPromptlyDyn (_uiRequest <$> ev) )
 
-baby :: forall m t. (MonadWidget t m, HasWebView m)
+baby :: forall m t. GonimoM t m
         => Config t -> m (Baby t)
 baby config = mdo
   badInit <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!
@@ -161,8 +161,7 @@ baby config = mdo
               , _volumeLevel = volEvent
               }
 
-handleCameraEnable :: forall m t. (MonadHold t m, MonadJSM (Performable m), MonadJSM m, PerformEvent t m)
-                      => Config t -> m (Dynamic t Bool)
+handleCameraEnable :: forall m t. GonimoM t m => Config t -> m (Dynamic t Bool)
 handleCameraEnable config = do
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
     mLastEnabled <- GStorage.getItem storage GStorage.cameraEnabled
@@ -174,8 +173,7 @@ handleCameraEnable config = do
       $ GStorage.setItem storage GStorage.CameraEnabled <$> updated enabled
     pure enabled
 
-handleCameraSelect :: forall m t. (MonadHold t m, MonadJSM (Performable m), MonadJSM m, PerformEvent t m, TriggerEvent t m)
-                      => Config t -> Dynamic t [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
+handleCameraSelect :: forall m t. GonimoM t m => Config t -> Dynamic t [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
 handleCameraSelect config devices = do
     storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
     mLastCameraLabel <- GStorage.getItem storage GStorage.selectedCamera
@@ -254,7 +252,7 @@ writeLastBabyName lastBabyName = do
   GStorage.setItem storage GStorage.lastBabyName lastBabyName
 
 
-getVolumeLevel :: forall m t. (MonadWidget t m, HasWebView m)
+getVolumeLevel :: forall m t. GonimoM t m
                   => Dynamic t (Maybe MediaStream)  -> Dynamic t Gonimo.DeviceType -> m (Event t Double)
 getVolumeLevel mediaStream' sockEnabled = do
     (volEvent, triggerVolumeEvent) <- newTriggerEvent

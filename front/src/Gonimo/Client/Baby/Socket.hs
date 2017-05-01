@@ -26,6 +26,7 @@ import           Gonimo.Types                      (Secret, DeviceType(..))
 import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
 import           Data.Maybe
 import           GHCJS.DOM.EventM
+import           Gonimo.Client.Prelude
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -46,7 +47,7 @@ makeLenses ''Socket
 
 type ChannelsTransformation t = Map (API.FromId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
-socket :: forall m t. MonadWidget t m => Config t -> m (Socket t)
+socket :: forall m t. GonimoM t m => Config t -> m (Socket t)
 socket config = mdo
   let
     isEnabled = (\dt -> case dt of

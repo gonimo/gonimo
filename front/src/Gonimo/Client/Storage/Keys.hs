@@ -8,6 +8,7 @@ import Gonimo.SocketAPI.Types as API
 import Data.Aeson (FromJSON, ToJSON, toEncoding, genericToEncoding, defaultOptions)
 import Gonimo.Db.Entities (FamilyId)
 import GHC.Generics (Generic)
+import Gonimo.I18N (Locale(..))
 
 data Key a = KeyAuthData
            | CurrentFamily
@@ -16,6 +17,7 @@ data Key a = KeyAuthData
            | LastBabyName
            | AutoStart
            | HideBrowserWarning
+           | UserLocale
 
 deriving instance Generic (Key a)
 
@@ -37,6 +39,9 @@ lastBabyName = LastBabyName
 
 autoStart :: Key Bool
 autoStart = AutoStart
+
+userLocale :: Key Locale
+userLocale = UserLocale
 
 hideBrowserWarning :: Key Bool
 hideBrowserWarning = HideBrowserWarning

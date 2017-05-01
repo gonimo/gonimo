@@ -70,7 +70,7 @@ makeLenses ''Config
 makeLenses ''Channels
 
 
-channels :: forall m t. MonadWidget t m => Config t -> m (Channels t)
+channels :: forall m t. GonimoM t m => Config t -> m (Channels t)
 channels config = mdo
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
   insertChannel <- handleCreateChannel config triggerChannelEvent

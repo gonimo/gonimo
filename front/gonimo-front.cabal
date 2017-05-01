@@ -52,6 +52,7 @@ library
                     , TypeOperators
                     , ScopedTypeVariables
                     , FlexibleContexts
+                    , GADTs
   build-depends:      aeson
                     , base >=4.8 && <4.10
                     , Cabal
@@ -174,7 +175,6 @@ executable gonimo-front
                     , lens
                     , gonimo-common
                     , gonimo-front
-                    -- for gonimo-common:
                     , aeson
                     , attoparsec
                     , base64-bytestring
@@ -191,4 +191,7 @@ executable gonimo-front
                     , reflex-dom-core
                     , jsaddle-warp
                     , jsaddle
+                    , jsaddle-warp
+                    , ghcjs-dom
+                    , mtl
                     

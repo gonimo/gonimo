@@ -13,9 +13,10 @@ import           Data.Monoid
 import           Gonimo.Client.EditStringButton (editDeviceName, editFamilyName)
 import qualified Gonimo.SocketAPI as API
 import qualified Gonimo.SocketAPI.Types as API
+import Gonimo.Client.Prelude
 
 
-navBar :: forall m t. (HasWebView m, MonadWidget t m)
+navBar :: forall m t. GonimoM t m
       => Config t -> m (NavBar t)
 navBar config = do
     let loaded = config^.configLoaded

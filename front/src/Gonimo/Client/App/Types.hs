@@ -16,6 +16,7 @@ import Gonimo.Client.Prelude
 import qualified Gonimo.Types as Gonimo
 import Data.Default
 import qualified Data.Set as Set
+import Gonimo.I18N
 
 data Config t
   = Config { _server :: Server.Server t
@@ -32,6 +33,7 @@ data Loaded t
 data App t
   = App { _subscriptions :: SubscriptionsDyn t
         , _request :: Event t [ API.ServerRequest ]
+        , _selectLang :: Event t Locale
         }
 
 data Screen t
@@ -46,7 +48,7 @@ makeLenses ''Screen
 
 
 instance (Reflex t) => Default (App t) where
-  def = App (constDyn Set.empty) never
+  def = App (constDyn Set.empty) never never
 
 instance (Reflex t) => Default (Screen t) where
   def = Screen def never
@@ -55,6 +57,7 @@ appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev
   = App { _subscriptions = join $ _subscriptions <$> ev
         , _request = switchPromptlyDyn $ _request <$> ev
+        , _selectLang = switchPromptlyDyn $ _selectLang <$> ev
         }
 
 screenSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (Screen t) -> Screen t

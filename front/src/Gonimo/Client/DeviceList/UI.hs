@@ -36,9 +36,10 @@ import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..), Channel)
 import qualified Gonimo.Client.WebRTC.Channel     as Channel
 import Gonimo.Client.Util
 import Data.Maybe
+import Gonimo.Client.Prelude
 
 
-ui :: forall m t. (HasWebView m, MonadWidget t m)
+ui :: forall m t. GonimoM t m
               => App.Loaded t -> DeviceList t -> Dynamic t (Map DeviceId (Channel t))
               -> Dynamic t (Set DeviceId)  -> m (UI t)
 ui loaded deviceList' channels connected = do
@@ -51,7 +52,7 @@ ui loaded deviceList' channels connected = do
             <*> loaded^.App.authData
     uiSwitchPromptly evUI
 
-renderAccounts :: forall m t. (HasWebView m, MonadWidget t m)
+renderAccounts :: forall m t. GonimoM t m
               => TimeZone
               -> App.Loaded t
               -> NestedDeviceInfos t

@@ -2,11 +2,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
 module Gonimo.Client.DeviceList.Internal where
 
 import           Control.Lens
 import           Control.Monad.Fix        (MonadFix)
-import           Data.List                (sort)
 import           Data.Map                 (Map)
 import           Data.Text                 (Text)
 import qualified Data.Map                 as Map
@@ -83,7 +83,7 @@ ownDeviceName auth deviceList' = fmap (fromMaybe "") . runMaybeT $ do
   lift $ API.deviceInfoName <$> deviceInfo
 
 
-deviceList :: forall m t. (HasWebView m, MonadWidget t m) => Config t -> m (DeviceList t)
+deviceList :: forall m t. GonimoM t m => Config t -> m (DeviceList t)
 deviceList config = do
     let
       onlineSub = Set.singleton . API.ReqGetOnlineDevices <$> config^.configFamilyId
@@ -164,7 +164,8 @@ getDeviceInfos :: forall t m. (MonadHold t m, Reflex t, MonadFix m)
                              -> m (Dynamic t (NestedDeviceInfos t))
 getDeviceInfos config deviceIds' = mdo
   let
-    -- buildMapIncremental :: Map AccountId (Dynamic t [DeviceId]) -> Map AccountId (Dynamic t [DeviceId]) -> m (Maybe (NestedDeviceInfos t -> NestedDeviceInfos t))
+    buildMapIncremental :: forall m1. (Monad m1, MonadHold t m1, MonadFix m1)
+                           => Map AccountId (Dynamic t [DeviceId]) -> Map AccountId (Dynamic t [DeviceId]) -> m1 (Maybe (NestedDeviceInfos t -> NestedDeviceInfos t))
     buildMapIncremental oldDevIds newDevIds = do
         let created = Map.difference newDevIds oldDevIds
         let deleted = Map.difference oldDevIds newDevIds
@@ -174,12 +175,13 @@ getDeviceInfos config deviceIds' = mdo
           else pure Nothing
 
   let
-    updates =  push (\newDevIds -> do
-                        oldDevIds <- sample $ current deviceIds'
-                        doUpdate <-  buildMapIncremental oldDevIds newDevIds
-                        oldResult <- sample $ current result
-                        pure $ doUpdate <*> pure oldResult
-                    ) (updated deviceIds')
+    updates :: Event t (Map AccountId (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo))))
+    updates = push (\newDevIds -> do
+                       oldDevIds <- sample $ current deviceIds'
+                       doUpdate <-  buildMapIncremental oldDevIds newDevIds
+                       oldResult <- sample $ current result
+                       pure $ doUpdate <*> pure oldResult
+                   ) (updated deviceIds')
 
   initInput <- sample $ current deviceIds'
   mkInitVal <- buildMapIncremental Map.empty initInput

@@ -22,9 +22,10 @@ import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server             (webSocket_recv)
+import Gonimo.Client.Prelude
 
 
-uiStart :: forall m t. (HasWebView m, MonadWidget t m) => m (UI t)
+uiStart :: forall m t. GonimoM t m => m (UI t)
 uiStart = do
   elClass "div" "container" $ do
     el "h1" $ do
@@ -53,7 +54,7 @@ uiStart = do
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
       pure $ UI never userWantsFamily never never never never
 
-ui :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded t -> Bool -> m (UI t)
+ui :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
@@ -109,7 +110,7 @@ ui appConfig loaded familyGotCreated = do
               }
 
 
--- familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
+-- familyChooser :: forall m t. GonimoM t m
 --                  => DefiniteFamily t -> m (Event t FamilyId)
 -- familyChooser family' = do
 --   initVal <- sample . current $ family'^.definiteSelected
@@ -123,7 +124,7 @@ ui appConfig loaded familyGotCreated = do
 
 
 
-familyChooser :: forall m t. (HasWebView m, MonadWidget t m)
+familyChooser :: forall m t. GonimoM t m
                  => DefiniteFamily t -> m (Event t FamilyId, Event t (), Event t (), Event t Text)
 familyChooser family' = mdo
   let cFamilyName = currentFamilyName family'
@@ -162,12 +163,12 @@ familyChooser family' = mdo
     renderFamilySelectors family'
   pure (selectedId, clickedAdd, clickedLeave, nameChanged)
 
-renderFamilySelectors :: forall m t. (HasWebView m, MonadWidget t m)
+renderFamilySelectors :: forall m t. GonimoM t m
                     => DefiniteFamily t -> m (Event t FamilyId)
 renderFamilySelectors family' = fmap fst <$> selectViewListWithKey (family'^.definiteSelected) (family'^.definiteFamilies) renderFamilySelector
 
 -- Internal helper for familyChooser ...
-renderFamilySelector :: forall m t. (HasWebView m, MonadWidget t m)
+renderFamilySelector :: forall m t. GonimoM t m
                     => FamilyId -> Dynamic t Db.Family -> Dynamic t Bool -> m (Event t ())
 renderFamilySelector _ family' selected' = do
     el "div" $ do
@@ -176,7 +177,7 @@ renderFamilySelector _ family' selected' = do
           $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
-createFamily :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded t -> Bool
+createFamily :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
   let response = appConfig^.App.server.webSocket_recv
@@ -222,7 +223,7 @@ createFamily appConfig loaded familyGotCreated = mdo
   pure (createFamilyEv, reqs)
 
 -- Dialog to configure family when a new one get's created:
-createFamily' :: forall m t. (HasWebView m, MonadWidget t m) => App.Config t -> App.Loaded t
+createFamily' :: forall m t. GonimoM t m => App.Config t -> App.Loaded t
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily' appConfig loaded = mdo
   let showNameEdit = const "isFamilyNameEdit" <$> invite^.Invite.uiGoBack
@@ -254,8 +255,7 @@ createFamily' appConfig loaded = mdo
 
   pure (doneEv, invite^.Invite.request)
 
-familyEditName :: forall m t. (HasWebView m, MonadWidget t m)
-                  => App.Loaded t -> Event t () -> m (Event t (), Event t Text)
+familyEditName :: forall m t. GonimoM t m => App.Loaded t -> Event t () -> m (Event t (), Event t Text)
 familyEditName loaded reactivated' = do
     reactivated <- delay 0.2 reactivated' -- necessary because focus isn't triggered otherwise
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank

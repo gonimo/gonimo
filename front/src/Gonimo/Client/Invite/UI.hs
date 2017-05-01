@@ -12,7 +12,6 @@ import Gonimo.Db.Entities (InvitationId)
 import qualified Gonimo.Db.Entities as Db
 import Gonimo.Client.Invite.Internal
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Fix (MonadFix)
 import Data.Maybe (maybe)
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Types (urlEncode)
@@ -21,14 +20,13 @@ import qualified Gonimo.SocketAPI as API
 import qualified Gonimo.SocketAPI.Types as API
 import Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.App.Types as App
-import           GHCJS.DOM.Types (MonadJSM)
 import           Gonimo.Client.Invite.UI.I18N
 import           Gonimo.Client.Util
 import           Gonimo.I18N
 import qualified GHCJS.DOM.Element as Element
+import Gonimo.Client.Prelude
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM (Performable m), MonadIO (Performable m), PerformEvent t m)
-      => App.Loaded t -> Config t -> m (Invite t)
+ui :: forall m t. GonimoM t m => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
     baseUrl <- getBaseLink
     (createInvEv, makeCreateInvEv) <- newTriggerEvent

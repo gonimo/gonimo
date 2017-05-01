@@ -24,6 +24,7 @@ import Data.Time.Clock
 
 import Control.Monad.IO.Class
 import Data.Maybe (isNothing, catMaybes)
+import Gonimo.Client.Prelude
 
 -- data AuthCommand = AuthCreateDevice
 
@@ -133,13 +134,13 @@ getUserAgentString = do
   Navigator.getUserAgent navigator
 
 
-connectionLossScreen :: forall m t. (HasWebView m, MonadWidget t m)
+connectionLossScreen :: forall m t. GonimoM t m
   => Auth t -> m ()
 connectionLossScreen auth' = do
   _ <- dyn $ connectionLossScreen' . not <$> auth'^.isOnline
   pure ()
 
-connectionLossScreen' :: forall m t. (HasWebView m, MonadWidget t m)
+connectionLossScreen' :: forall m t. GonimoM t m
   => Bool -> m ()
 connectionLossScreen' isBroken = case isBroken of
   False -> pure ()
@@ -154,7 +155,7 @@ connectionLossScreen' isBroken = case isBroken of
         elClass "div" "welcome-container" $
           elClass "div" "start-welcome-img" $ blank
 
-loadingDots :: forall m t. (HasWebView m, MonadWidget t m) => m (Dynamic t Text)
+loadingDots :: forall m t. GonimoM t m => m (Dynamic t Text)
 loadingDots = do
   now <- liftIO $ getCurrentTime
   tick <- tickLossy 1 now

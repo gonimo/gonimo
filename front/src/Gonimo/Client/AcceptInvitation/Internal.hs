@@ -7,7 +7,6 @@ module Gonimo.Client.AcceptInvitation.Internal where
 
 import Reflex.Dom.Core
 import Control.Monad
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Lens
 import Data.Text (Text)
 import Gonimo.Types (Secret)

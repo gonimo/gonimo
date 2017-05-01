@@ -29,11 +29,11 @@ import           GHCJS.DOM.Types                   (MediaStream)
 import           Control.Monad
 import           Gonimo.Client.Baby.UI.I18N
 import           Gonimo.I18N
+import Gonimo.Client.Prelude
 
 data BabyScreen = ScreenStart | ScreenRunning
 
-ui :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
+ui :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
@@ -83,6 +83,7 @@ ui appConfig loaded deviceList = mdo
     let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
                           , App._request = baby'^.socket.Socket.request <> baby'^.request
                                            <> ui'^.uiRequest
+                          , App._selectLang = never
                           }
     pure $ App.Screen { App._screenApp = babyApp
                       , App._screenGoHome = leftmost [ui'^.uiGoHome, errorGoHome]
@@ -91,8 +92,7 @@ ui appConfig loaded deviceList = mdo
     renderCenter baby' ScreenStart = uiStart loaded deviceList baby'
     renderCenter baby' ScreenRunning = uiRunning loaded deviceList baby'
 
-uiStart :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Loaded t -> DeviceList.DeviceList t -> Baby t
+uiStart :: forall m t. GonimoM t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t
             -> m (UI t)
 uiStart loaded deviceList  baby' = do
     elClass "div" "container" $ do
@@ -130,8 +130,7 @@ uiStart loaded deviceList  baby' = do
     showAutostartInfo True = dismissibleOverlay "info-overlay" 7
                              $ text "Baby monitor will start automatically, when you load the app next time."
 
-uiRunning :: forall m t. (HasWebView m, MonadWidget t m)
-            => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
+uiRunning :: forall m t. GonimoM t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
   elClass "div" "container" $ mdo
     displayScreenOnWarning baby'
@@ -153,7 +152,7 @@ uiRunning loaded deviceList baby' =
         elClass "div" "fill-full-screen" blank
         _ <- dyn $ noSleep <$> baby'^.mediaStream
         let
-          leaveConfirmation :: forall m1. (HasWebView m1, MonadWidget t m1) => m1 ()
+          leaveConfirmation :: forall m1. GonimoM t m1 => m1 ()
           leaveConfirmation = do
               el "h3" $ text $ i18n EN_GB Really_stop_baby_monitor
               el "p" $ text $ i18n EN_GB All_connected_devices_will_be_disconnected 
@@ -201,14 +200,12 @@ uiRunning loaded deviceList baby' =
                           )
 
 
-cameraSelect :: forall m t. (HasWebView m, MonadWidget t m)
-                => Baby t -> m (Event t Text)
+cameraSelect :: forall m t. GonimoM t m => Baby t -> m (Event t Text)
 cameraSelect baby' = do
   evEv <- dyn $ cameraSelect' baby' <$> baby'^.videoDevices
   switchPromptly never evEv
 
-cameraSelect' :: forall m t. (HasWebView m, MonadWidget t m)
-                => Baby t -> [MediaDeviceInfo] -> m (Event t Text)
+cameraSelect' :: forall m t. GonimoM t m => Baby t -> [MediaDeviceInfo] -> m (Event t Text)
 cameraSelect' baby' videoDevices' =
   case videoDevices' of
     [] -> pure never
@@ -250,26 +247,25 @@ cameraSelect' baby' videoDevices' =
               dynText $ ffor selectedCameraText (\selected -> if selected == label then " ✔" else "")
         pure $ const label <$> clicked
 
-enableCameraCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
-                => Baby t -> m (Event t Bool)
+enableCameraCheckbox :: forall m t. GonimoM t m => Baby t -> m (Event t Bool)
 enableCameraCheckbox baby' = do
   evEv <- dyn $ enableCameraCheckbox' baby' <$> baby'^.videoDevices
   switchPromptly never evEv
 
 
-enableCameraCheckbox' :: forall m t. (HasWebView m, MonadWidget t m)
+enableCameraCheckbox' :: forall m t. GonimoM t m
                 => Baby t -> [MediaDeviceInfo] -> m (Event t Bool)
 enableCameraCheckbox' baby' videoDevices' =
   case videoDevices' of
     [] -> pure never -- No need to enable the camera when there is none!
     _  -> myCheckBox  ("class" =: "cam-on ") (baby'^.cameraEnabled) $ text "\xf03d"
 
-enableAutoStartCheckbox :: forall m t. (HasWebView m, MonadWidget t m)
+enableAutoStartCheckbox :: forall m t. GonimoM t m
                 => Baby t -> m (Event t Bool)
 enableAutoStartCheckbox baby' =
     myCheckBox ("class" =: "autostart ") (baby'^.autoStartEnabled) $ text $ i18n EN_GB Autostart
 
-setBabyNameForm :: forall m t. (HasWebView m, MonadWidget t m)
+setBabyNameForm :: forall m t. GonimoM t m
                    => App.Loaded t -> Baby t -> m (Event t Text)
 setBabyNameForm loaded baby' = do
   (nameAddRequest, selectedName) <-
@@ -305,7 +301,7 @@ setBabyNameForm loaded baby' = do
   nameAdded <- editStringEl (pure nameAddRequest) (text $ i18n EN_GB Add_new_baby_name) (constDyn "")
   pure $ leftmost [ selectedName, nameAdded ]
 
-renderBabySelectors :: forall m t. (HasWebView m, MonadWidget t m)
+renderBabySelectors :: forall m t. GonimoM t m
                     => Dynamic t [Text] -> m (Event t Text)
 renderBabySelectors names =
   let
@@ -325,7 +321,7 @@ renderBabySelectors names =
     elClass "div" "family-select" $
       switchPromptly never =<< (dyn $ renderSelectors <$> names)
 
-displayScreenOnWarning :: forall m t. (HasWebView m, MonadWidget t m)
+displayScreenOnWarning :: forall m t. GonimoM t m
             => Baby t -> m ()
 displayScreenOnWarning baby' = mdo
     isMobile <- getBrowserProperty "mobile"
@@ -343,7 +339,7 @@ displayScreenOnWarning baby' = mdo
       el "br" blank
       text "Alternatively, if all you need is audio, please disable the camera."
 
-autoStartActiveMessage :: forall m t. (HasWebView m, MonadWidget t m) => m (Event t ())
+autoStartActiveMessage :: forall m t. GonimoM t m => m (Event t ())
 autoStartActiveMessage = do
   (disableEv, triggerDisable) <- newTriggerEvent
   dismissibleOverlay "info-overlay" 2 $ do
@@ -355,7 +351,7 @@ autoStartActiveMessage = do
   pure disableEv
 
 
-showPermissionError :: forall m t. (HasWebView m, MonadWidget t m) => Either UserMediaException MediaStream ->  m (Event t (), Event t ())
+showPermissionError :: forall m t. GonimoM t m => Either UserMediaException MediaStream ->  m (Event t (), Event t ())
 showPermissionError (Right _) = pure (never, never)
 showPermissionError (Left _) = elClass "div" "fullScreenOverlay" $ do
     el "script" $ text "screenfull.exit();" -- Leave fullscreen so user sees the address bar.

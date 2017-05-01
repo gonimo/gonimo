@@ -1,9 +1,11 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GADTs #-}
 -- Common imports and definitions for frontend ...
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Gonimo.Client.Prelude ( MonadFix
                              , module GonimoPrelude
                              , module I18N
+                             , GonimoM
                              ) where
 
 import           Control.Monad.Fix         (MonadFix)
@@ -25,7 +27,11 @@ instance MonadJSM m => MonadJSM (MaybeT m) where
 #endif
 
 
-type GonimoM t m = ( DomBuilder t m
-                   , PostBuild t m
+type GonimoM t m = ( DomBuilder t m , PostBuild t m , TriggerEvent t m
+                   , MonadJSM m, MonadHold t m, MonadFix m
+                   , DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM (Performable m)
+                   , MonadIO (Performable m), PerformEvent t m
+                   , MonadSample t (Performable m)
+                   , HasWebView m
                    , MonadReader (GonimoEnv t) m
                    )

@@ -29,9 +29,10 @@ import           Gonimo.Client.Prelude
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           Gonimo.Types                   (_Baby)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
+import Gonimo.Client.Prelude
 
 
-ui :: forall m t. (HasWebView m, MonadWidget t m)
+ui :: forall m t. GonimoM t m
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
   connections' <- C.connections $ C.Config { C._configResponse = appConfig^.App.server.webSocket_recv
@@ -94,6 +95,7 @@ ui appConfig loaded deviceList = mdo
                                            <> invite^.Invite.request
                                            <> navBar^.NavBar.request
                                            <> viewUI^.C.videoViewNavBar.NavBar.request
+                          , App._selectLang = never
                           }
   pure $ App.Screen { App._screenApp = parentApp
                     , App._screenGoHome = leftmost [ navBar^.NavBar.backClicked
@@ -102,7 +104,7 @@ ui appConfig loaded deviceList = mdo
                                                    ]
                     }
 
-manageUi :: forall m t. (HasWebView m, MonadWidget t m)
+manageUi :: forall m t. GonimoM t m
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
 manageUi _ loaded deviceList connections' = do
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
@@ -120,7 +122,7 @@ manageUi _ loaded deviceList connections' = do
 
       pure (navBar', devicesUI, inviteRequested)
 
-viewUi :: forall m t. (HasWebView m, MonadWidget t m)
+viewUi :: forall m t. GonimoM t m
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (C.VideoView t)
 viewUi _ loaded deviceList connections = do
   let streams = connections^.C.streams
@@ -140,14 +142,14 @@ viewUi _ loaded deviceList connections = do
         makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "STOP ALL"
     pure $ C.VideoView navBar' closedEv stopAllClicked
 
-renderFakeVideos :: forall m t. (HasWebView m, MonadWidget t m) => C.Connections t -> Dynamic t (m ())
+renderFakeVideos :: forall m t. GonimoM t m => C.Connections t -> Dynamic t (m ())
 renderFakeVideos connections =
   let
     renderFake stream = mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;" <> "class" =: "fakeVideo" <> "muted" =: "true")
   in
     traverse_ renderFake . Map.elems <$> connections^.C.origStreams
 
-renderVideos :: forall m t. (HasWebView m, MonadWidget t m) => DeviceList.DeviceList t -> C.Connections t -> Dynamic t (m [Event t DeviceId])
+renderVideos :: forall m t. GonimoM t m => DeviceList.DeviceList t -> C.Connections t -> Dynamic t (m [Event t DeviceId])
 renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> connections'^.C.streams
   where
     dynChannelMap = connections'^.C.channelMap
@@ -189,7 +191,7 @@ leaveConfirmation = do
     el "h3" $ text "Really stop parent station?"
     el "p" $ text "All open streams will be disconnected!"
 
-handleUnreliableAlert :: forall t m. MonadWidget t m => C.Connections t -> m ()
+handleUnreliableAlert :: forall t m. GonimoM t m => C.Connections t -> m ()
 handleUnreliableAlert connections' = mdo
   let gotUnreliable = updated $ connections'^.C.unreliableConnections
 
@@ -206,7 +208,7 @@ handleUnreliableAlert connections' = mdo
   pure ()
 
 -- Old currently no longer used:
-unreliableAlert :: forall t m. MonadWidget t m => m (Event t ())
+unreliableAlert :: forall t m. GonimoM t m => m (Event t ())
 unreliableAlert = do
   elClass "div" "fullScreenOverlay" $ do
     elClass "div" "container" $ do

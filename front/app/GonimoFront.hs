@@ -13,6 +13,19 @@ import           Gonimo.Client.Server     (webSocketConfig_send, webSocket_open,
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
 import           Reflex.Dom.Core               hiding (webSocketConfig_send, webSocketConfig_reconnect)
+import qualified Data.Text as T
+import Data.Text (Text)
+import Gonimo.Client.I18N
+import Gonimo.I18N
+import           GHCJS.DOM.Types (MonadJSM, liftJSM)
+import qualified GHCJS.DOM.Window                  as Window
+import qualified Gonimo.Client.Storage             as GStorage
+import qualified GHCJS.DOM                         as DOM
+import qualified Gonimo.Client.Storage.Keys        as GStorage
+import qualified Language.Javascript.JSaddle as JS
+import Control.Monad.Reader
+import Data.Maybe
+-- import qualified GHCJS.DOM.Types as JS
 
 import Language.Javascript.JSaddle.Warp (run)
 
@@ -44,7 +57,10 @@ app = mdo
                              , App._subscriber = subscriber
                              , App._auth = auth
                              }
-  app <- App.ui appConfig
+  app <- flip runReaderT (GonimoEnv currentLocale) $ App.ui appConfig
+  initLang <- readLocale
+  currentLocale <- holdDyn initLang $ app^.App.selectLang
+  performEvent_ $ writeLocale <$> updated currentLocale
   pure ()
 
 main :: IO ()
@@ -64,3 +80,20 @@ main = run 3709 $ mainWidgetInElementById "app" app
 --   elAttr "meta" ("name" =: "viewport"
 --                  <> "content" =: "width=device-width, initial-scale=1, user-scalable=no"
 --                 ) $ pure ()
+
+localeFromBrowserString :: Text -> Locale
+localeFromBrowserString langStr
+  | T.isPrefixOf "de" langStr = DE_DE
+  | otherwise = EN_GB
+
+readLocale :: MonadJSM m => m Locale
+readLocale = do
+  storage <- liftJSM $ Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  browserLocaleStr <- liftJSM $ fromMaybe "en-US" <$> (JS.fromJSVal =<< JS.eval ("navigator.language" :: Text))
+  let browserLocale = localeFromBrowserString browserLocaleStr
+  fromMaybe browserLocale <$> GStorage.getItem storage GStorage.userLocale
+
+writeLocale :: MonadJSM m => Locale -> m ()
+writeLocale lastBabyName = do
+  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  GStorage.setItem storage GStorage.userLocale lastBabyName
