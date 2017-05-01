@@ -2,7 +2,8 @@
 module Gonimo.Client.Family.UI.I18N where
 
 import           Gonimo.I18N
-
+import           Data.Text (Text)
+import           Data.Monoid ((<>))
 
 data Message = Welcome_to_the
              | Gonimo_World
@@ -10,6 +11,7 @@ data Message = Welcome_to_the
              | Create_New_Family
              | FamilyText
              | Add_Device
+             | Really_leave_family Text
              deriving (Eq, Show)
 
 instance I18N Message where
@@ -25,4 +27,7 @@ instance I18N Message where
           = "FAMILY"
   i18n EN_GB Add_Device
           = " ADD DEVICE"
+  i18n EN_GB (Really_leave_family cFamilyName)
+          = "Really leave family '" <> cFamilyName <> "'?"
   i18n DE_DE msg = i18n EN_GB msg
+

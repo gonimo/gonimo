@@ -143,7 +143,7 @@ familyChooser family' = mdo
           nameChangeReq' <-
             makeClickable $ elAttr' "div" (addBtnAttrs "edit") blank
           clickedLeave' <- confirmationEl (makeClickable $ elAttr' "div" (addBtnAttrs "minus") blank)
-                             (dynText $ pure "Really leave family '" <> cFamilyName <> pure "'?")
+                           $ trDynText (Really_leave_family <$> cFamilyName)
           clicked2 <- makeClickable $ elAttr' "div" (addBtnAttrs "mycaret") $ elClass "span" "fa fa-caret-down" blank
           clickedAdd' <- makeClickable $ elAttr' "div" (addBtnAttrs "plus") blank
           pure (nameChangeReq', clicked2, clickedLeave', clickedAdd')
