@@ -6,10 +6,13 @@ module Gonimo.Client.ConfirmationButton where
 import Reflex.Dom.Core
 import Data.Map (Map)
 import Data.Text (Text)
+import Control.Monad.Reader.Class (MonadReader)
 import Control.Monad.Fix (MonadFix)
 import Gonimo.Client.Reflex.Dom
+import Gonimo.Client.ConfirmationButton.I18N
+import Gonimo.Client.Prelude
 
-type ConfirmationConstraint t m = (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m)
+type ConfirmationConstraint t m = (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, MonadReader (GonimoEnv t) m)
 
 data Confirmed = No | Yes
 
@@ -49,7 +52,7 @@ confirmationBox confirmationText = do
   elClass "div" "fullScreenOverlay" $ do
     elClass "div" "container" $ do
       noClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
-      el "h1" $ text "Are you sure ..."
+      el "h1" $ trText Are_you_sure
       el "br" blank
       el "br" blank
 
@@ -57,6 +60,6 @@ confirmationBox confirmationText = do
       el "br" blank
       el "br" blank
 
-      yesClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "OK"
+      yesClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
       pure $ leftmost [ const No <$> noClicked, const Yes <$> yesClicked ]
 

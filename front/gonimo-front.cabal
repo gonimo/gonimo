@@ -108,6 +108,7 @@ library
                     , Gonimo.Client.DeviceList.Internal
                     , Gonimo.Client.DeviceList.UI
                     , Gonimo.Client.ConfirmationButton
+                    , Gonimo.Client.ConfirmationButton.I18N
                     , Gonimo.Client.EditStringButton
                     , Gonimo.Client.EditStringButton.I18N
                     , Gonimo.Client.I18N
