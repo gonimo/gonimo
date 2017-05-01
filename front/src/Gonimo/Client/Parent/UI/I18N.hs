@@ -63,6 +63,4 @@ instance I18N Message where
           = "For Video connections, have some constant motion in the picture, for example a clock."
   i18n EN_GB OK
           = "OK"
-  i18n
-
   i18n DE_DE msg = i18n EN_GB msg

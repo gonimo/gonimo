@@ -188,7 +188,7 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
     --                            || chan^.videoReceivingState == StateUnreliable
 
 
-leaveConfirmation :: DomBuilder t m => m ()
+leaveConfirmation :: GonimoM t m => m ()
 leaveConfirmation = do
     el "h3" $ trText Really_stop_parent_station
     el "p" $ trText All_open_streams_will_be_disconnected
@@ -199,7 +199,7 @@ handleUnreliableAlert connections' = mdo
 
   let
     renderAlert False = dismissibleOverlay "success-overlay " 4 $ do
-      trText Connection_is_reliabl
+      trText Connection_is_reliable
       el "br" blank
       trText Or_gone
     renderAlert True = dismissibleOverlay "warning-overlay " 6 $ do
