@@ -24,11 +24,11 @@ data Message = Invite_More_Devices
 
 instance I18N Message where
     i18n DE Invite_More_Devices = "Laden Sie weitere Geräte ein"
-    i18n DE Done = "Fertig"
+    i18n DE Done = "FERTIG"
     i18n DE _ = error "not yet implemented"
     
     i18n EN Invite_More_Devices = "Invite more devices"
-    i18n EN Done = "Done"
+    i18n EN Done = "DONE"
     i18n EN Sent_WhatsApp = "Sent with WhatsApp!"
     i18n EN Sent_Telegram = "Sent with Telegram!"
     i18n EN Sent_Copy     = "Copied invitation link to clipboard!"
