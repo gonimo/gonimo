@@ -8,7 +8,6 @@ import           Reflex.Dom.Core
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Prelude
-import           Data.Map (Map)
 import           Gonimo.Client.Util
 
 
