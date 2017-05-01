@@ -104,6 +104,7 @@ library
                     , Gonimo.Client.DeviceList.UI
                     , Gonimo.Client.ConfirmationButton
                     , Gonimo.Client.EditStringButton
+                    , Gonimo.Client.I18N
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Reflex
                     , Gonimo.Client.Reflex.Dom
