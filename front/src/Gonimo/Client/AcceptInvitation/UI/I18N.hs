@@ -13,12 +13,12 @@ data Message = Family_Invitation
              deriving (Show, Eq)
 
 instance I18N Message where
-  i18n EN Family_Invitation = "Family Invitation"
-  i18n EN Family_Name = "Family Name:"
-  i18n EN Inviting_Device = "Inviting Device:"
-  i18n EN Inviting_User = "Inviting User:"
-  i18n EN Decline = "Decline"
-  i18n EN Accept = "Accept"
-  i18n EN This_generous_offer = "this generous offer "
+  i18n EN_GB Family_Invitation = "Family Invitation"
+  i18n EN_GB Family_Name = "Family Name:"
+  i18n EN_GB Inviting_Device = "Inviting Device:"
+  i18n EN_GB Inviting_User = "Inviting User:"
+  i18n EN_GB Decline = "Decline"
+  i18n EN_GB Accept = "Accept"
+  i18n EN_GB This_generous_offer = "this generous offer "
 
   i18n _ _ = error "not yet implemented"

@@ -52,8 +52,8 @@ ui loaded config = mdo
 
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
 
-    el "h1" $ text $ i18n EN Invite_More_Devices
-    el "h2" . dynText $ (i18n EN . To_your_family) <$> App.currentFamilyName loaded
+    el "h1" $ text $ i18n EN_GB Invite_More_Devices
+    el "h2" . dynText $ (i18n EN_GB . To_your_family) <$> App.currentFamilyName loaded
 
     confirmationBox $ leftmost sentEvents
     invButtons <- elClass "div" "invite-buttons" $ do
@@ -79,7 +79,7 @@ ui loaded config = mdo
     el "br" blank
     let doneClass linkGotSent' = if linkGotSent' then "btn-lang next-action" else "btn-lang"
     (doneBtn, _) <- elDynAttr' "div" (addBtnDynAttrs $ doneClass <$> linkGotSent)
-                   $ text $ i18n EN Done
+                   $ text $ i18n EN_GB Done
     el "br" blank
     let rawDone =  _element_raw doneBtn
     let doneClicked = domEvent Click doneBtn
@@ -107,11 +107,11 @@ confirmationBox' Nothing = pure ()
 confirmationBox' (Just sendMethod) = do
   elClass "div" "alert alert-success" $ do
     case sendMethod of
-      SentWhatsApp -> el "strong" $ text $ i18n EN Sent_WhatsApp
-      SentTelegram -> el "strong" $ text $ i18n EN Sent_Telegram
-      SentCopy     -> el "strong" $ text $ i18n EN Sent_Copy
-      SentRefresh  -> el "strong" $ text $ i18n EN Sent_Refresh
-      SentEmail    -> el "strong" $ text $ i18n EN Sent_Email
+      SentWhatsApp -> el "strong" $ text $ i18n EN_GB Sent_WhatsApp
+      SentTelegram -> el "strong" $ text $ i18n EN_GB Sent_Telegram
+      SentCopy     -> el "strong" $ text $ i18n EN_GB Sent_Copy
+      SentRefresh  -> el "strong" $ text $ i18n EN_GB Sent_Refresh
+      SentEmail    -> el "strong" $ text $ i18n EN_GB Sent_Email
 
 awesomeAddon :: forall m t. (DomBuilder t m) =>  Text -> m ()
 awesomeAddon t =
@@ -120,7 +120,7 @@ awesomeAddon t =
 
 copyButton :: forall t m. DomBuilder t m => m (Event t ())
 copyButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-right link" <> "title" =: i18n EN Copy_link_to_clipboard 
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-right link" <> "title" =: i18n EN_GB Copy_link_to_clipboard 
                                     <> "type" =: "button" <> "role" =: "button"
                                     <> "onClick" =: "copyInvitationLink()"
                                   ) $ blank
@@ -128,7 +128,7 @@ copyButton
 
 refreshLinkButton :: forall t m. DomBuilder t m => m (Event t ())
 refreshLinkButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-left recreate" <> "title" =: i18n EN Generate_new_link
+  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-left recreate" <> "title" =: i18n EN_GB Generate_new_link
                    <> "type" =: "button" <> "role" =: "button") $ blank
 
 showLinkInput :: forall t m. (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m ()

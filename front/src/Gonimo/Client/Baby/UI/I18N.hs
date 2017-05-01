@@ -17,17 +17,17 @@ data Message = Start
              deriving (Show, Eq)
 
 instance I18N Message where
-    i18n EN Start      = "START"
-    i18n EN Stop       = "STOP"
-    i18n EN Baby       = "BABY"
-    i18n EN Disable    = "DISABLE"
-    i18n EN Good_Night = "Good Night"
-    i18n EN Really_stop_baby_monitor
+    i18n EN_GB Start      = "START"
+    i18n EN_GB Stop       = "STOP"
+    i18n EN_GB Baby       = "BABY"
+    i18n EN_GB Disable    = "DISABLE"
+    i18n EN_GB Good_Night = "Good Night"
+    i18n EN_GB Really_stop_baby_monitor
                        = "Really stop baby monitor?"
-    i18n EN All_connected_devices_will_be_disconnected
+    i18n EN_GB All_connected_devices_will_be_disconnected
                        = "All connected devices will be disconnected!"
-    i18n EN Standard_Setting = "Standard Setting"
-    i18n EN Autostart = "AUTOSTART"
-    i18n EN Adjust_camera_for = "Adjust camera for"
-    i18n EN Add_new_baby_name = "Add new baby name ..."
+    i18n EN_GB Standard_Setting = "Standard Setting"
+    i18n EN_GB Autostart = "AUTOSTART"
+    i18n EN_GB Adjust_camera_for = "Adjust camera for"
+    i18n EN_GB Add_new_baby_name = "Add new baby name ..."
     i18n _ _ = error "not yet fully implemented"

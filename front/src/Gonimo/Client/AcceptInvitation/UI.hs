@@ -55,29 +55,29 @@ ui' secret invInfo = do
   elClass "div" "fullScreenOverlay" $ do
     elClass "div" "panel panel-info" $ do
       elClass "div" "panel-heading" $
-        el "h1" $ text $ i18n EN Family_Invitation
+        el "h1" $ text $ i18n EN_GB Family_Invitation
       elClass "table" "table" $ do
         el "tbody" $ do
           el "tr" $ do
-            el "td" $ text $ i18n EN Family_Name
+            el "td" $ text $ i18n EN_GB Family_Name
             el "td" $ text (Gonimo.familyName . invitationInfoFamily $ invInfo)
           el "tr" $ do
-            el "td" $ text $ i18n EN Inviting_Device
+            el "td" $ text $ i18n EN_GB Inviting_Device
             el "td" $ text (invitationInfoSendingDevice invInfo)
           flip (maybe (pure ())) (invitationInfoSendingUser invInfo) $ \invUser ->
             el "tr" $ do
-              el "td" $ text $ i18n EN Inviting_User
+              el "td" $ text $ i18n EN_GB Inviting_User
               el "td" $ text invUser
       elClass "div" "panel-body" $ do
         elAttr "div" ( "class" =: "btn-group btn-group-justified"
                     <> "role" =: "group"
                     ) $ do
           declined <- groupedButton "btn-danger" $ do
-            text $ i18n EN Decline
+            text $ i18n EN_GB Decline
             elClass "i" "fa fa-fw fa-times" blank
           accepted <- groupedButton "btn-success" $ do
-            text $ i18n EN Accept
-            elClass "span" "hidden-xs" $ text $ i18n EN This_generous_offer
+            text $ i18n EN_GB Accept
+            elClass "span" "hidden-xs" $ text $ i18n EN_GB This_generous_offer
             elClass "i" "fa fa-fw fa-check" blank
           pure $ mconcat [ makeAnswerInvitation secret . fmap (const InvitationReject) $ declined
                          , makeAnswerInvitation secret . fmap (const InvitationAccept) $ accepted
