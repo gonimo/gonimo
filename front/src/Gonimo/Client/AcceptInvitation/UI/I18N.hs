@@ -21,4 +21,4 @@ instance I18N Message where
   i18n EN_GB Accept = "Accept"
   i18n EN_GB This_generous_offer = "this generous offer "
 
-  i18n _ _ = error "not yet implemented"
+  i18n DE_DE msg = i18n EN_GB msg

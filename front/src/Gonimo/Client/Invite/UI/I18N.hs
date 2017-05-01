@@ -23,10 +23,6 @@ data Message = Invite_More_Devices
 
 
 instance I18N Message where
-    i18n DE_DE Invite_More_Devices = "Laden Sie weitere Geräte ein"
-    i18n DE_DE Done = "FERTIG"
-    i18n DE_DE _ = error "not yet implemented"
-    
     i18n EN_GB Invite_More_Devices = "Invite more devices"
     i18n EN_GB Done = "DONE"
     i18n EN_GB Sent_WhatsApp = "Sent with WhatsApp!"
@@ -43,3 +39,8 @@ instance I18N Message where
     i18n EN_GB Generate_new_link = "Generate new link"
     i18n EN_GB (Email_successfully_sent_to getAddr_inv) = "E-mail successfully sent to: "<>getAddr_inv
     i18n EN_GB Nobody = "Nobody"
+
+    i18n DE_DE Invite_More_Devices = "Laden Sie weitere Geräte ein"
+    i18n DE_DE Done = "FERTIG"
+    i18n DE_DE msg = i18n EN_GB msg
+    

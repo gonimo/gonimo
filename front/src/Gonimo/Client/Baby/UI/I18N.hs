@@ -30,4 +30,4 @@ instance I18N Message where
     i18n EN_GB Autostart = "AUTOSTART"
     i18n EN_GB Adjust_camera_for = "Adjust camera for"
     i18n EN_GB Add_new_baby_name = "Add new baby name ..."
-    i18n _ _ = error "not yet fully implemented"
+    i18n DE_DE msg = i18n EN_GB msg
