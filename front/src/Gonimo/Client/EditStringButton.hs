@@ -9,18 +9,21 @@ import Control.Lens
 import Data.Map (Map)
 import Data.Text (Text)
 import Control.Monad.Fix (MonadFix)
+import Control.Monad.Reader.Class (MonadReader)
 import Gonimo.Client.Reflex.Dom
 import GHCJS.DOM.Types (MonadJSM)
+import Gonimo.Client.Prelude
+import Gonimo.Client.EditStringButton.I18N
 
-type EditStringConstraint t m= (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM m, MonadJSM (Performable m), PerformEvent t m)
+type EditStringConstraint t m = (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM m, MonadJSM (Performable m), PerformEvent t m, MonadReader (GonimoEnv t) m)
 
 editFamilyName :: forall t m. EditStringConstraint t m
                       => m (Event t ()) -> Dynamic t Text -> m (Event t Text)
-editFamilyName someButton val = editStringEl someButton (text "Change family name to ...") val
+editFamilyName someButton val = editStringEl someButton (trText Change_family_name_to) val
 
 editDeviceName :: forall t m. EditStringConstraint t m
                       => m (Event t ()) -> Dynamic t Text -> m (Event t Text)
-editDeviceName someButton val = editStringEl someButton (text "Change device name to ...") val
+editDeviceName someButton val = editStringEl someButton (trText Change_device_name_to) val
 
 editStringButton :: forall t m. EditStringConstraint t m
                       => Map Text Text -> m () -> m () -> Dynamic t Text -> m (Event t Text)
@@ -38,14 +41,15 @@ editStringEl someButton editStringText val = mdo
   pure $ push (pure . id) gotAnswer
 
 
-editStringBox :: forall t m. EditStringConstraint t m => m () -> Dynamic t Text -> m (Event t (Maybe Text))
+editStringBox :: forall t m. EditStringConstraint t m
+              => m () -> Dynamic t Text -> m (Event t (Maybe Text))
 editStringBox editStringText val = do
   elClass "div" "fullScreenOverlay" $
     elClass "div" "container" $ do
       cancelClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
       el "h1" editStringText
 
-      el "h3" $ text "EDIT NAME"
+      el "h3" $ trText Edit_Name
       elClass "div" "welcome-form" $ do
         val' <- sample $ current val
         valEdit <-

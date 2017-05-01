@@ -30,7 +30,6 @@ import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Util (getBrowserProperty, getBrowserVersion)
 import           Gonimo.Client.App.UI.I18N
-import           Gonimo.I18N
 
 
 ui :: forall m t. GonimoM t m

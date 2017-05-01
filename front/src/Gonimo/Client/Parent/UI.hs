@@ -29,7 +29,9 @@ import           Gonimo.Client.Prelude
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           Gonimo.Types                   (_Baby)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
-import Gonimo.Client.Prelude
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Parent.UI.I18N
+
 
 
 ui :: forall m t. GonimoM t m
@@ -118,7 +120,7 @@ manageUi _ loaded deviceList connections' = do
                    (connections'^.C.channelMap)
                    (Set.fromList . Map.keys <$> openStreams)
       inviteRequested <- elClass "div" "footer" $
-            makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " ADD DEVICE"
+            makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ trText Add_Device
 
       pure (navBar', devicesUI, inviteRequested)
 
@@ -139,7 +141,7 @@ viewUi _ loaded deviceList connections = do
     let closedEvEv  = leftmost <$> closedsEvEv
     closedEv <- switchPromptly never closedEvEv
     stopAllClicked <- elClass "div" "stream-menu" $
-        makeClickable . elAttr' "div" (addBtnAttrs "stop") $ text "STOP ALL"
+        makeClickable . elAttr' "div" (addBtnAttrs "stop") $ trText Stop_All
     pure $ C.VideoView navBar' closedEv stopAllClicked
 
 renderFakeVideos :: forall m t. GonimoM t m => C.Connections t -> Dynamic t (m ())
@@ -160,7 +162,7 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
       let hasBackground = if hasVideo then "" else "justAudio "
       elDynClass "div" (dynConnectionClass key <> pure "stream-baby " <> pure hasBackground) $ do
         elClass "div" "broken-overlay" $ do
-          elClass "div" "broken-message" $ text "Connection Lost!"
+          elClass "div" "broken-message" $ trText Connection_Lost
         elClass "div" "stream-baby-heading" $ do
           elClass "div" "stream-baby-name" $ do
             el "h1" $ dynText ((^. at key._Just._Baby) <$> deviceList^.DeviceList.onlineDevices)
@@ -188,8 +190,8 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
 
 leaveConfirmation :: DomBuilder t m => m ()
 leaveConfirmation = do
-    el "h3" $ text "Really stop parent station?"
-    el "p" $ text "All open streams will be disconnected!"
+    el "h3" $ trText Really_stop_parent_station
+    el "p" $ trText All_open_streams_will_be_disconnected
 
 handleUnreliableAlert :: forall t m. GonimoM t m => C.Connections t -> m ()
 handleUnreliableAlert connections' = mdo
@@ -197,13 +199,13 @@ handleUnreliableAlert connections' = mdo
 
   let
     renderAlert False = dismissibleOverlay "success-overlay " 4 $ do
-      text "Connection is reliable!"
+      trText Connection_is_reliabl
       el "br" blank
-      text "(or gone)"
+      trText Or_gone
     renderAlert True = dismissibleOverlay "warning-overlay " 6 $ do
-      text "Connection unreliable!"
+      trText Connection_unreliable
       el "br" blank
-      text "Might break unnoticed (no alert)!"
+      trText Might_break_unnoticed_no_alert
   _ <- widgetHold (pure ()) $ renderAlert <$> gotUnreliable
   pure ()
 
@@ -212,24 +214,24 @@ unreliableAlert :: forall t m. GonimoM t m => m (Event t ())
 unreliableAlert = do
   elClass "div" "fullScreenOverlay" $ do
     elClass "div" "container" $ do
-      el "h1" $ text "Connection probably unreliable!"
+      el "h1" $ trText Connection_probably_unreliable
       el "br" blank
       el "br" blank
-      text "We are sorry, we can not guarantee a reliable connection to your child on this browser!"
+      trText We_are_sorry_we_can_not_guarantee_a_reliable_connection
       el "br" blank
-      text "This is indicated by a red border around the connected device and the video, if you don't see a red border this was a false alert - sorry about that."
+      trText This_is_indicated_by_a_red_border
       el "br" blank
-      text "If you see a red border, this means the connection might break unnoticed at any time - there will be no alarm!"
+      trText If_you_see_a_red_border
       el "br" blank
-      el "h1" $ text "What can I do?"
+      el "h1" $ trText What_can_I_do
       el "ul" $ do
-        el "li" $ text "Use a different browser - currently we recommend Chrome."
-        el "li" $ text "Disconnect/Connect periodically to be sure everything is alright."
-        el "li" $ text "For Audio connections, have some sound at the baby side, e.g. open the window."
-        el "li" $ text "For Video connections, have some constant motion in the picture, for example a clock."
+        el "li" $ trText Use_a_different_browser_currently_we_recommend_Chrome
+        el "li" $ trText Disconnect_Connect_periodically_to_be_sure_everything_is_alright
+        el "li" $ trText For_Audio_connections_have_some_sound_at_the_baby_side_e_g_open_the_window
+        el "li" $ trText For_Video_connections_have_some_constant_motion_in_the_picture_for_example_a_clock
 
       el "br" blank
       el "br" blank
 
-      okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ text "OK"
+      okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
       pure $ okClicked

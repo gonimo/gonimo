@@ -9,14 +9,17 @@ import Control.Lens
 import Data.Monoid
 import Data.Text (Text)
 import Gonimo.Client.MessageBox.Internal
+import Control.Monad.Reader.Class (MonadReader)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Fix (MonadFix)
 import qualified Gonimo.SocketAPI as API
 import Gonimo.Client.Reflex.Dom
 import Gonimo.SocketAPI.Types (InvitationReply(..))
 import Gonimo.Server.Error (ServerError(..))
+import Gonimo.Client.Prelude
+import qualified Gonimo.Client.MessageBox.UI.I18N as I18N
 
-ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m, MonadReader (GonimoEnv t) m)
       => Config t -> m (MessageBox t)
 ui config = do
   actions <- fmap switchPromptlyDyn
@@ -25,47 +28,47 @@ ui config = do
     $ displayMessages <$> config^.configMessage
   pure $ MessageBox actions
 
-displayMessages  :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+displayMessages :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m, MonadReader (GonimoEnv t) m)
       => [Message] -> Maybe (m (Event t [Action]))
 displayMessages msgs = fmap mconcat <$> (sequence <$> traverse displayMessage msgs)
 
 
-displayMessage :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+displayMessage :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m, MonadReader (GonimoEnv t) m)
       => Message -> Maybe (m (Event t [Action]))
 displayMessage msg = fmap (fmap (:[])) <$> case msg of
   ServerResponse res -> displayResponse res
 
-displayResponse :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+displayResponse :: forall m t. (DomBuilder t m, MonadReader (GonimoEnv t) m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
       => API.ServerResponse -> Maybe (m (Event t Action))
 displayResponse msg = case msg of
   API.ResError req err -> displayError req err
   API.ResAnsweredInvitation _ InvitationReject _ -> Just $
     box "Invitation rejected!" "panel-warning" $ do
-      text "The invitation got rejected and is now invalid."
+      trText I18N.The_invitation_got_rejected_and_is_now_invalid
       (never,) <$> delayed 5
   API.ResAnsweredInvitation _ InvitationAccept _ -> Just $
     box "Invitation accepted!" "panel-success" $ do
-      text "Your device is now a family member - make it a baby station!"
+      trText I18N.Your_device_is_now_a_family_member_make_it_a_baby_station
       (never,) <$> delayed 5
   _ -> Nothing
 
-displayError :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
+displayError :: forall m t. (DomBuilder t m, MonadReader (GonimoEnv t) m, PostBuild t m, TriggerEvent t m, MonadIO m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m, MonadIO (Performable m), PerformEvent t m)
       => API.ServerRequest -> ServerError -> Maybe (m (Event t Action))
 displayError req err = case (req, err) of
   (_, AlreadyFamilyMember fid) -> Just $
     box "Already a member of this family!" "panel-warning" $ do
-      text "You are already a member of this family - wanna switch?"
-      switch' <- buttonAttr ("class" =: "btn btn-block") $ text "Switch Family"
+      trText I18N.You_are_already_a_member_of_this_family_wanna_switch
+      switch' <- buttonAttr ("class" =: "btn btn-block") $ trText I18N.Switch_Family
       (const (SelectFamily fid) <$> switch',) <$> delayed 10
   (_, NoSuchInvitation) -> Just $
     box "Invitation not found!" "panel-danger" $ do
-      text "Invitations are only valid once!"
-      elClass "span" "hidden-xs" $ text " (security and stuff, you know ...)"
+      trText I18N.Invitations_are_only_valid_once
+      elClass "span" "hidden-xs" $ trText I18N.Security_and_stuff_you_know
       (never,) <$> delayed 6
   (_, InvitationAlreadyClaimed) -> Just $
     box "Invitation already claimed!" "panel-danger" $ do
-      text "Some other device opened this invitation already!"
-      elClass "span" "hidden-xs" $ text " (security and stuff, you know ...)"
+      trText I18N.Some_other_device_opened_this_invitation_already
+      elClass "span" "hidden-xs" $ trText I18N.Security_and_stuff_you_know
       (never,) <$> delayed 6
   (_,_) -> Nothing
 

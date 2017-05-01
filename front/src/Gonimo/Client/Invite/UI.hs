@@ -61,12 +61,12 @@ ui loaded config = mdo
       tgClicked <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
       pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
 
-    el "h3" $ text "EMAIL"
+    el "h3" $ trText Email
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
 
     recreateClicked <- el "div" $ do
       copyClipboardScript
-      el "h3" $ text "INVITATION LINK"
+      el "h3" $ trText Invitation_Link
       divClass "mail-form link" $ do
           showLinkInput invitationLink
           clicked <- refreshLinkButton

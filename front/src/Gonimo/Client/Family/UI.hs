@@ -23,15 +23,16 @@ import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server             (webSocket_recv)
 import Gonimo.Client.Prelude
+import Gonimo.Client.Family.UI.I18N
 
 
 uiStart :: forall m t. GonimoM t m => m (UI t)
 uiStart = do
   elClass "div" "container" $ do
     el "h1" $ do
-      text "Welcome to the "
+      trText Welcome_to_the
       el "wbr" blank
-      text "Gonimo World!"
+      trText Gonimo_World
     el "br" blank
 
     -- elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.png") $ blank
@@ -40,7 +41,7 @@ uiStart = do
     el "br" blank
 
     headingClicked <-
-      makeClickable . el' "h3" $ text "Create a new Family"
+      makeClickable . el' "h3" $ trText Create_a_new_Family
     elClass "div" "welcome-form" $ do
       inputFieldClicked <-
         makeClickable
@@ -61,15 +62,15 @@ ui appConfig loaded familyGotCreated = do
   elClass "div" "container has-footer" $ mdo
     el "script" $ text "screenfull.exit();"
     el "h1" $ do
-      text "Welcome to the "
+      trText Welcome_to_the
       el "wbr" blank
-      text "Gonimo World!"
+      trText Gonimo_World
     el "br" blank
 
     elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") $ blank
     el "br" blank
 
-    el "h3" $ text "FAMILY"
+    el "h3" $ trText FamilyText
     (familySelected, clickedAdd, clickedLeave, nameChanged) <-
       familyChooser $ DefiniteFamily  (loaded^.App.families) (loaded^.App.selectedFamily)
 
@@ -94,7 +95,7 @@ ui appConfig loaded familyGotCreated = do
 
     roleSelected <- roleSelector
     inviteRequested <- elClass "div" "footer" $
-          makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ text " ADD DEVICE"
+          makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ trText Add_Device
 
 
     pure $ UI { _uiSelectFamily = familySelected
@@ -261,7 +262,7 @@ familyEditName loaded reactivated' = do
     reactivated <- delay 0.2 reactivated' -- necessary because focus isn't triggered otherwise
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
 
-    el "h1" $ text "Create New Family"
+    el "h1" $ trText Create_New_Family
     elClass "div" "welcome-form" $ do
       genName <- sample . current $ App.currentFamilyName loaded
       nameInput <- textInput $ (def :: TextInputConfig t)

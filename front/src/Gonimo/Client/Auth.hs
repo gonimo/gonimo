@@ -25,6 +25,7 @@ import Data.Time.Clock
 import Control.Monad.IO.Class
 import Data.Maybe (isNothing, catMaybes)
 import Gonimo.Client.Prelude
+import Gonimo.Client.Auth.I18N
 
 -- data AuthCommand = AuthCreateDevice
 
@@ -147,9 +148,9 @@ connectionLossScreen' isBroken = case isBroken of
   True  -> elClass "div" "notification overlay" $ do
     elClass "div" "notification box connection-lost" $ do
       elClass "div" "notification-header" $ do
-        el "h1" $ text "No Internet Connection?"
+        el "h1" $ trText No_Internet_Connection
       elClass "div" "notification text" $ do
-        text "Reconnecting "
+        trText Reconnecting
         dynText =<< loadingDots
         el "br" blank
         elClass "div" "welcome-container" $

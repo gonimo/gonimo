@@ -7,6 +7,8 @@ import           Data.Monoid
 
 data Message = Invite_More_Devices
              | Done
+             | Email
+             | Invitation_Link
              | Sent_WhatsApp
              | Sent_Telegram
              | Sent_Copy
@@ -25,6 +27,8 @@ data Message = Invite_More_Devices
 instance I18N Message where
     i18n EN_GB Invite_More_Devices = "Invite more devices"
     i18n EN_GB Done = "DONE"
+    i18n EN_GB Email = "EMAIL"
+    i18n EN_GB Invitation_Link = "INVITATION LINK"
     i18n EN_GB Sent_WhatsApp = "Sent with WhatsApp!"
     i18n EN_GB Sent_Telegram = "Sent with Telegram!"
     i18n EN_GB Sent_Copy     = "Copied invitation link to clipboard!"

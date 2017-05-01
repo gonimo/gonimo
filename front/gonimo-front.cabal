@@ -84,6 +84,7 @@ library
                     , Gonimo.Client.Config
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Auth
+                    , Gonimo.Client.Auth.I18N
                     , Gonimo.Client.Server
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Invite.UI
@@ -95,16 +96,20 @@ library
                     , Gonimo.Client.AcceptInvitation.UI.I18N
                     , Gonimo.Client.MessageBox
                     , Gonimo.Client.MessageBox.UI
+                    , Gonimo.Client.MessageBox.UI.I18N
                     , Gonimo.Client.MessageBox.Internal
                     , Gonimo.Client.Family
                     , Gonimo.Client.Family.Internal
                     , Gonimo.Client.Family.UI
+                    , Gonimo.Client.Family.UI.I18N
                     , Gonimo.Client.Family.RoleSelector
+                    , Gonimo.Client.Family.RoleSelector.I18N
                     , Gonimo.Client.DeviceList
                     , Gonimo.Client.DeviceList.Internal
                     , Gonimo.Client.DeviceList.UI
                     , Gonimo.Client.ConfirmationButton
                     , Gonimo.Client.EditStringButton
+                    , Gonimo.Client.EditStringButton.I18N
                     , Gonimo.Client.I18N
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Reflex
@@ -136,6 +141,7 @@ library
                     , Gonimo.Client.WebRTC.Channels
                     , Gonimo.Client.Parent.Connections
                     , Gonimo.Client.Parent.UI
+                    , Gonimo.Client.Parent.UI.I18N
                     , Gonimo.Client.Parent
 
 

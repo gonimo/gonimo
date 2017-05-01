@@ -16,8 +16,7 @@ import           GHCJS.DOM.Types           (MonadJSM (..), liftJSM)
 #endif
 import           Gonimo.Prelude as GonimoPrelude
 import           Reflex.Dom.Core
-import           Gonimo.Client.I18N as I18N (trText, trDynText)
-import           Gonimo.Client.I18N (GonimoEnv)
+import           Gonimo.Client.I18N as I18N (GonimoEnv, trText, trDynText)
 import Control.Monad.Reader.Class
 
 -- Only needed on GHC, because on GHCJS MonadJSM is MonadIO
