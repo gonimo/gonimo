@@ -50,8 +50,8 @@ ui loaded config = mdo
 
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
 
-    el "h1" $ text $ i18n EN_GB Invite_More_Devices
-    el "h2" . dynText $ (i18n EN_GB . To_your_family) <$> App.currentFamilyName loaded
+    el "h1" $ trText Invite_More_Devices
+    el "h2" . trDynText $ To_your_family <$> App.currentFamilyName loaded
 
     confirmationBox $ leftmost sentEvents
     invButtons <- elClass "div" "invite-buttons" $ do
@@ -77,7 +77,7 @@ ui loaded config = mdo
     el "br" blank
     let doneClass linkGotSent' = if linkGotSent' then "btn-lang next-action" else "btn-lang"
     (doneBtn, _) <- elDynAttr' "div" (addBtnDynAttrs $ doneClass <$> linkGotSent)
-                   $ text $ i18n EN_GB Done
+                   $ trText Done
     el "br" blank
     let rawDone =  _element_raw doneBtn
     let doneClicked = domEvent Click doneBtn
@@ -90,8 +90,7 @@ ui loaded config = mdo
         elAttr "div" (addBtnAttrs $ "invite-button " <> className) $
           makeClickable . elDynAttr' "a" (mkLinkAttrs <$> payload) $ blank
 
-confirmationBox :: forall m t. (DomBuilder t m, MonadIO (Performable m), MonadHold t m
-                               , TriggerEvent t m, PerformEvent t m)
+confirmationBox :: forall m t. GonimoM t m
                    => Event t InvitationSent -> m ()
 confirmationBox sent = do
   let mSent = Just <$> sent
@@ -100,16 +99,16 @@ confirmationBox sent = do
   _ <- widgetHold (pure ()) $ confirmationBox' <$> lifeEvent
   pure ()
 
-confirmationBox' :: forall m t. (DomBuilder t m) => Maybe InvitationSent -> m ()
+confirmationBox' :: forall m t. GonimoM t m => Maybe InvitationSent -> m ()
 confirmationBox' Nothing = pure ()
 confirmationBox' (Just sendMethod) = do
   elClass "div" "alert alert-success" $ do
     case sendMethod of
-      SentWhatsApp -> el "strong" $ text $ i18n EN_GB Sent_WhatsApp
-      SentTelegram -> el "strong" $ text $ i18n EN_GB Sent_Telegram
-      SentCopy     -> el "strong" $ text $ i18n EN_GB Sent_Copy
-      SentRefresh  -> el "strong" $ text $ i18n EN_GB Sent_Refresh
-      SentEmail    -> el "strong" $ text $ i18n EN_GB Sent_Email
+      SentWhatsApp -> el "strong" $ trText Sent_WhatsApp
+      SentTelegram -> el "strong" $ trText Sent_Telegram
+      SentCopy     -> el "strong" $ trText Sent_Copy
+      SentRefresh  -> el "strong" $ trText Sent_Refresh
+      SentEmail    -> el "strong" $ trText Sent_Email
 
 awesomeAddon :: forall m t. (DomBuilder t m) =>  Text -> m ()
 awesomeAddon t =
