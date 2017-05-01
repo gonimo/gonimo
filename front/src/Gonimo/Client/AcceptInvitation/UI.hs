@@ -20,6 +20,8 @@ import qualified Gonimo.Types                            as Gonimo
 import           Reflex.Dom.Core
 import           GHCJS.DOM.Types (MonadJSM)
 import qualified Data.Set                                as Set
+import           Gonimo.Client.AcceptInvitation.UI.I18N
+import           Gonimo.I18N
 
 ui :: forall m t. (DomBuilder t m, PostBuild t m, TriggerEvent t m, MonadJSM m, MonadHold t m, MonadFix m, DomBuilderSpace m ~ GhcjsDomSpace, TriggerEvent t m)
       => Config t -> m (AcceptInvitation t)
@@ -53,33 +55,33 @@ ui' secret invInfo = do
   elClass "div" "fullScreenOverlay" $ do
     elClass "div" "panel panel-info" $ do
       elClass "div" "panel-heading" $
-        el "h1" $ text "Family Invitation"
+        el "h1" $ text $ i18n EN Family_Invitation
       elClass "table" "table" $ do
         el "tbody" $ do
           el "tr" $ do
-            el "td" $ text "Family Name:"
+            el "td" $ text $ i18n EN Family_Name
             el "td" $ text (Gonimo.familyName . invitationInfoFamily $ invInfo)
           el "tr" $ do
-            el "td" $ text "Inviting Device:"
+            el "td" $ text $ i18n EN Inviting_Device
             el "td" $ text (invitationInfoSendingDevice invInfo)
           flip (maybe (pure ())) (invitationInfoSendingUser invInfo) $ \invUser ->
             el "tr" $ do
-              el "td" $ text "Inviting User:"
+              el "td" $ text $ i18n EN Inviting_User
               el "td" $ text invUser
       elClass "div" "panel-body" $ do
         elAttr "div" ( "class" =: "btn-group btn-group-justified"
                     <> "role" =: "group"
                     ) $ do
           declined <- groupedButton "btn-danger" $ do
-            text "Decline "
+            text $ i18n EN Decline
             elClass "i" "fa fa-fw fa-times" blank
           accepted <- groupedButton "btn-success" $ do
-            text "Accept "
-            elClass "span" "hidden-xs" $ text "this generous offer "
+            text $ i18n EN Accept
+            elClass "span" "hidden-xs" $ text $ i18n EN This_generous_offer
             elClass "i" "fa fa-fw fa-check" blank
           pure $ mconcat [ makeAnswerInvitation secret . fmap (const InvitationReject) $ declined
-                        , makeAnswerInvitation secret . fmap (const InvitationAccept) $ accepted
-                        ]
+                         , makeAnswerInvitation secret . fmap (const InvitationAccept) $ accepted
+                         ]
 
 groupedButton :: DomBuilder t m => Text -> m () -> m (Event t ())
 groupedButton className inner = do

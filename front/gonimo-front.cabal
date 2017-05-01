@@ -86,10 +86,11 @@ library
                     , Gonimo.Client.Server
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Invite.UI
+                    , Gonimo.Client.Invite.UI.I18N
                     , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.UI
-                    , Gonimo.Client.AcceptInvitation.Internal
+                    , Gonimo.Client.AcceptInvitation.UI.I18N
                     , Gonimo.Client.MessageBox
                     , Gonimo.Client.MessageBox.UI
                     , Gonimo.Client.MessageBox.Internal
@@ -118,6 +119,7 @@ library
                     , Gonimo.Client.Baby.Internal
                     , Gonimo.Client.Baby.Socket
                     , Gonimo.Client.Baby.UI
+                    , Gonimo.Client.Baby.UI.I18N
                     , Gonimo.Client.Baby
                     , Gonimo.DOM.Navigator.MediaDevices.Types
                     , Gonimo.DOM.Navigator.MediaDevices.Internal
