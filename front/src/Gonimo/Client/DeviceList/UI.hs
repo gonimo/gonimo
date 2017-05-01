@@ -37,6 +37,7 @@ import qualified Gonimo.Client.WebRTC.Channel     as Channel
 import Gonimo.Client.Util
 import Data.Maybe
 import Gonimo.Client.Prelude
+import Gonimo.Client.DeviceList.UI.I18N
 
 
 ui :: forall m t. GonimoM t m
@@ -69,10 +70,11 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
     allUis <- traverse renderAccount $ self <> others
     pure $ uiLeftmost allUis
   where
+    removeConfirmationText :: GonimoM t m => Bool -> Dynamic t Text -> m ()
     removeConfirmationText isUs devName
-      = dynText $ if isUs
-                  then pure "This is you!\nReally leave your current family?"
-                  else pure "Do you really want to remove device '" <> devName <> pure "' from the family?"
+      = trDynText $ if isUs
+                     then pure Really_leave_your_current_family
+                     else Do_you_really_want_to_remove_device <$> devName
     -- Currently pretty dumb, once we have non anonymous accounts render those differently:
     -- Visible group non devices belonging to a single account. Also family removal is per account.
     renderAccount :: (AccountId, Dynamic t (Map DeviceId (Dynamic t (API.DeviceInfo))))
@@ -131,24 +133,24 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
                 dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do
-                conC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "connect next-action") $ text "Connect"
-                streamC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "stream") $ text "Stream"
+                conC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "connect next-action") $ trText Connect
+                streamC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "stream") $ trText Stream
                 let disconnectOnBroken = fmap (\needsAlert' -> if needsAlert' then "disconnect connectionBroken " else "disconnect ")  needsAlert
-                discC <- makeClickable . elDynAttr' "div" (addBtnAttrs <$> disconnectOnBroken) $ text "Disconnect"
+                discC <- makeClickable . elDynAttr' "div" (addBtnAttrs <$> disconnectOnBroken) $ trText Disconnect
                 pure (conC, streamC, discC)
             (nameChangeClick, removeClick) <-
               elClass "div" "info" $ do
-                elClass "span" "last-seen" . dynText
-                  $ pure "Last Seen: "
-                  <> (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
+                elClass "span" "last-seen" . trDynText
+                  $ Last_Seen <$>
+                     (renderLocalTimeString . API.deviceInfoLastAccessed <$> devInfo)
                 nameChanged <- editDeviceName ( makeClickable
                                               . elAttr' "span" (addBtnAttrs "edit")
-                                              $ text "RENAME"
+                                              $ trText Rename
                                             )
                               (API.deviceInfoName <$> devInfo)
                 removeRequested <- confirmationEl ( makeClickable
                                                     . elAttr' "span" (addBtnAttrs "delete")
-                                                    $ text "REMOVE"
+                                                    $ trText Remove
                                                   )
                                    (removeConfirmationText isSelf devName)
                 pure (nameChanged, removeRequested)
