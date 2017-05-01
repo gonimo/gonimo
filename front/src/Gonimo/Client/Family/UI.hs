@@ -52,7 +52,7 @@ uiStart = do
                           <> "type" =: "button" <> "role" =: "button"
                         ) blank
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
-      pure $ UI never userWantsFamily never never never never
+      pure $ UI never userWantsFamily never never never never never
 
 ui :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
@@ -107,6 +107,7 @@ ui appConfig loaded familyGotCreated = do
                                        ]
               , _uiRoleSelected = roleSelected
               , _uiRequest = newFamilyReqs <> invite^.Invite.request
+              , _uiSelectLang = never
               }
 
 
