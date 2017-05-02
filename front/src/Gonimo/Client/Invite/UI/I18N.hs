@@ -35,7 +35,7 @@ instance I18N Message where
     i18n EN_GB Email = "EMAIL"
     i18n DE_DE Email = "EMAIL"
     i18n EN_GB Invitation_Link = "INVITATION LINK"
-    i18n DE_DE Invitation_Link = "Einladungslink"
+    i18n DE_DE Invitation_Link = "EINLADUNGSLINK"
     i18n EN_GB Sent_WhatsApp = "Sent with WhatsApp!"
     i18n DE_DE Sent_WhatsApp = "Mit WhatsApp versendet!"
     i18n EN_GB Sent_Telegram = "Sent with Telegram!"
