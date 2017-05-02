@@ -145,6 +145,7 @@ library
                     , Gonimo.Client.Parent.UI
                     , Gonimo.Client.Parent.UI.I18N
                     , Gonimo.Client.Parent
+                    , Gonimo.Client.I18N.UI
 
 
 

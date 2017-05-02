@@ -1530,3 +1530,25 @@ canvas {
 	       /* color:#CDA5B4; */
        }
 }
+
+.flag-gb {
+    background-image: url("/resources/pix/flags/gb.svg");
+}
+.flag-de {
+    background-image: url("/resources/pix/flags/de.svg");
+}
+
+.flag {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    height: 30px;
+    width: 40px;
+    margin-top: 20px;
+    margin-right: 20px;
+    float: right;
+}
+
+.lang-select {
+    position: relative;
+}

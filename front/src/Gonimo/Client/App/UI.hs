@@ -64,6 +64,7 @@ ui config = mdo
                           )
              & subscriptions %~ (<> family^.Family.subscriptions)
              & subscriptions %~ (<> accept^.AcceptInvitation.subscriptions)
+             & selectLang .~ leftmost [app^.selectLang, familyUI^.Family.uiSelectLang ]
 
 
 runLoaded :: forall m t. GonimoM t m

@@ -24,11 +24,13 @@ import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server             (webSocket_recv)
 import Gonimo.Client.Prelude
 import Gonimo.Client.Family.UI.I18N
+import Gonimo.Client.I18N.UI
 
 
 uiStart :: forall m t. GonimoM t m => m (UI t)
 uiStart = do
   elClass "div" "container" $ do
+    langSelected <- langSelector
     el "h1" $ do
       trText Welcome_to_the
       el "wbr" blank
@@ -53,7 +55,7 @@ uiStart = do
                           <> "type" =: "button" <> "role" =: "button"
                         ) blank
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
-      pure $ UI never userWantsFamily never never never never never
+      pure $ UI never userWantsFamily never never never never langSelected
 
 ui :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
@@ -61,6 +63,7 @@ ui appConfig loaded familyGotCreated = do
     createFamily appConfig loaded familyGotCreated
   elClass "div" "container has-footer" $ mdo
     el "script" $ text "screenfull.exit();"
+    langSelected <- langSelector
     el "h1" $ do
       trText Welcome_to_the
       el "wbr" blank
@@ -108,7 +111,7 @@ ui appConfig loaded familyGotCreated = do
                                        ]
               , _uiRoleSelected = roleSelected
               , _uiRequest = newFamilyReqs <> invite^.Invite.request
-              , _uiSelectLang = never
+              , _uiSelectLang = langSelected
               }
 
 
