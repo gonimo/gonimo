@@ -23,7 +23,7 @@ instance I18N Message where
     i18n EN_GB (Do_you_really_want_to_remove_device devName)
             = "Do you really want to remove device '" <> devName <> "' from the family?"
     i18n DE_DE (Do_you_really_want_to_remove_device devName)
-            = "Willst wirklich das Gerät '" <> devName <> "' aus deiner Familie entfernen?"
+            = "Willst du wirklich das Gerät '" <> devName <> "' aus deiner Familie entfernen?"
     i18n EN_GB Rename
             = "RENAME"
     i18n DE_DE Rename
