@@ -13,6 +13,8 @@ import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Maybe (MaybeT)
 #ifndef __GHCJS__
 import           GHCJS.DOM.Types           (MonadJSM (..), liftJSM)
+#else
+import           GHCJS.DOM.Types           (MonadJSM)
 #endif
 import           Gonimo.Prelude as GonimoPrelude
 import           Reflex.Dom.Core
