@@ -11,7 +11,7 @@ import Data.Text (Text)
 import Gonimo.Db.Entities (InvitationId)
 import qualified Gonimo.Db.Entities as Db
 import Gonimo.Client.Invite.Internal
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (maybe)
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Types (urlEncode)
@@ -25,6 +25,8 @@ import           Gonimo.Client.Util
 import           Gonimo.I18N
 import qualified GHCJS.DOM.Element as Element
 import Gonimo.Client.Prelude
+import Gonimo.Client.I18N
+import Control.Monad.Reader.Class
 
 ui :: forall m t. GonimoM t m => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
@@ -115,18 +117,25 @@ awesomeAddon t =
   elAttr "span" ( "class" =: "input-group-addon") $
     elAttr "i" ("class" =: ("fa " <> t)) blank
 
-copyButton :: forall t m. DomBuilder t m => m (Event t ())
-copyButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-right link" <> "title" =: i18n EN_GB Copy_link_to_clipboard 
-                                    <> "type" =: "button" <> "role" =: "button"
-                                    <> "onClick" =: "copyInvitationLink()"
-                                  ) $ blank
+copyButton :: forall t m. GonimoM t m => m (Event t ())
+copyButton = do
+  loc <- asks _gonimoLocale
+  let title = i18n <$> loc <*> pure Copy_link_to_clipboard
+  let attrs title' = ( "class" =: "input-btn input-btn-right link" <> "title" =: title'
+                       <> "type" =: "button" <> "role" =: "button"
+                       <> "onClick" =: "copyInvitationLink()"
+                     )
+  makeClickable . elDynAttr' "div" (attrs <$> title) $ blank
 
 
-refreshLinkButton :: forall t m. DomBuilder t m => m (Event t ())
-refreshLinkButton
-  = makeClickable . elAttr' "div" ( "class" =: "input-btn input-btn-left recreate" <> "title" =: i18n EN_GB Generate_new_link
-                   <> "type" =: "button" <> "role" =: "button") $ blank
+refreshLinkButton :: forall t m. GonimoM t m => m (Event t ())
+refreshLinkButton = do
+  loc <- asks _gonimoLocale
+  let title = i18n <$> loc <*> pure Generate_new_link
+  let attrs title' = ( "class" =: "input-btn input-btn-left recreate" <> "title" =: title'
+                       <> "type" =: "button" <> "role" =: "button"
+                     )
+  makeClickable . elDynAttr' "div" (attrs <$> title)  $ blank
 
 showLinkInput :: forall t m. (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m ()
 showLinkInput invitationLink =
@@ -159,8 +168,7 @@ copyClipboardScript = el "script" $ text $
     -- <> "   alert(\"invitationLinkUrlInput\");\n"
     <> "};\n"
 
-emailWidget :: forall t m. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace, PostBuild t m
-                           , MonadHold t m)
+emailWidget :: forall t m. GonimoM t m
   => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Db.Invitation))
   -> m (Event t [API.ServerRequest])
 emailWidget _ invData = mdo
@@ -189,7 +197,7 @@ emailWidget _ invData = mdo
       in
         uncurry makeReqs <$> tag invAddr clicked
 
-    sendEmailBtn = makeClickable . elAttr' "div" (addBtnAttrs "input-btn mail") $ blank
+    sendEmailBtn = makeClickable . elAttr' "div" (addBtnAttrs "input-btn mail") $ trText SEND
 
     -- invSent :: Event t (Maybe API.SendInvitation)
     -- invSent = push (\r -> pure $ case r of

@@ -10,8 +10,10 @@ data Message = Baby
 instance I18N Message where
   i18n EN_GB Baby
           = "BABY"
+  i18n DE_DE Baby
+          = "BABY"
   i18n EN_GB Parent
           = "PARENT"
-  i18n DE_DE msg = i18n EN_GB msg
-
+  i18n DE_DE Parent
+          = "ELTERN"
 

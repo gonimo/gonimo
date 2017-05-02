@@ -434,9 +434,8 @@ h3{
     content: "\f021";
 	border:none;
 }
-.input-btn.mail::after{
+.input-btn.mail{
 	color:#CDA5B4;
-	content:"SEND";
 }
 
 .family-select{

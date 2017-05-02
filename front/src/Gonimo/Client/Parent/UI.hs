@@ -210,28 +210,28 @@ handleUnreliableAlert connections' = mdo
   pure ()
 
 -- Old currently no longer used:
-unreliableAlert :: forall t m. GonimoM t m => m (Event t ())
-unreliableAlert = do
-  elClass "div" "fullScreenOverlay" $ do
-    elClass "div" "container" $ do
-      el "h1" $ trText Connection_probably_unreliable
-      el "br" blank
-      el "br" blank
-      trText We_are_sorry_we_can_not_guarantee_a_reliable_connection
-      el "br" blank
-      trText This_is_indicated_by_a_red_border
-      el "br" blank
-      trText If_you_see_a_red_border
-      el "br" blank
-      el "h1" $ trText What_can_I_do
-      el "ul" $ do
-        el "li" $ trText Use_a_different_browser_currently_we_recommend_Chrome
-        el "li" $ trText Disconnect_Connect_periodically_to_be_sure_everything_is_alright
-        el "li" $ trText For_Audio_connections_have_some_sound_at_the_baby_side_e_g_open_the_window
-        el "li" $ trText For_Video_connections_have_some_constant_motion_in_the_picture_for_example_a_clock
+-- unreliableAlert :: forall t m. GonimoM t m => m (Event t ())
+-- unreliableAlert = do
+--   elClass "div" "fullScreenOverlay" $ do
+--     elClass "div" "container" $ do
+--       el "h1" $ trText Connection_probably_unreliable
+--       el "br" blank
+--       el "br" blank
+--       trText We_are_sorry_we_can_not_guarantee_a_reliable_connection
+--       el "br" blank
+--       trText This_is_indicated_by_a_red_border
+--       el "br" blank
+--       trText If_you_see_a_red_border
+--       el "br" blank
+--       el "h1" $ trText What_can_I_do
+--       el "ul" $ do
+--         el "li" $ trText Use_a_different_browser_currently_we_recommend_Chrome
+--         el "li" $ trText Disconnect_Connect_periodically_to_be_sure_everything_is_alright
+--         el "li" $ trText For_Audio_connections_have_some_sound_at_the_baby_side_e_g_open_the_window
+--         el "li" $ trText For_Video_connections_have_some_constant_motion_in_the_picture_for_example_a_clock
 
-      el "br" blank
-      el "br" blank
+--       el "br" blank
+--       el "br" blank
 
-      okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
-      pure $ okClicked
+--       okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
+--       pure $ okClicked

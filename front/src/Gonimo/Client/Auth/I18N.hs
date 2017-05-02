@@ -10,7 +10,9 @@ data Message = No_Internet_Connection
 instance I18N Message where
   i18n EN_GB No_Internet_Connection
           = "No Internet Connection?"
+  i18n DE_DE No_Internet_Connection
+          = "Keine Internetverbindung?"
   i18n EN_GB Reconnecting
           = "Reconnecting "
-
-  i18n DE_DE msg = i18n EN_GB msg
+  i18n DE_DE Reconnecting
+          = "Verbinde "

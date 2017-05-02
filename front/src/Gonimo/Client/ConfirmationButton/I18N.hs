@@ -10,7 +10,10 @@ data Message = Are_you_sure
 instance I18N Message where
     i18n EN_GB Are_you_sure
             = "Are you sure ..."
+    i18n DE_DE Are_you_sure
+            = "Bist du sicher ..."
     i18n EN_GB OK
             = "OK"
-    i18n DE_DE msg = i18n EN_GB msg
+    i18n DE_DE OK
+            = "OK"
 
