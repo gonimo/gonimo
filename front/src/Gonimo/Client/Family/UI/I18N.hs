@@ -9,6 +9,7 @@ data Message = Welcome_to_the
              | Gonimo_World
              | Create_a_new_Family
              | Create_New_Family
+             | Family_name
              | FamilyText
              | Add_Device
              | Really_leave_family Text
@@ -27,6 +28,10 @@ instance I18N Message where
           = "Create a new Family"
   i18n DE_DE Create_a_new_Family
           = "Erstelle eine neue Familie"
+  i18n EN_GB Family_name
+          = "FAMILY NAME"
+  i18n DE_DE Family_name
+          = "FAMILIEN NAME"
   i18n EN_GB Create_New_Family -- do we need this with Create_a_new_Family already existing
           = "Create New Family"
   i18n DE_DE Create_New_Family -- do we need this with Create_a_new_Family already existing

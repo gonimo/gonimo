@@ -268,6 +268,8 @@ familyEditName loaded reactivated' = do
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
 
     el "h1" $ trText Create_New_Family
+
+    el "h3" $ trText Family_name
     elClass "div" "welcome-form" $ do
       genName <- sample . current $ App.currentFamilyName loaded
       nameInput <- textInput $ (def :: TextInputConfig t)
