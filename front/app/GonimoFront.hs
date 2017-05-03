@@ -44,7 +44,7 @@ app = mdo
                                , Auth._configServerOpen = server^.webSocket_open
                                , Auth._configServerClose = const () <$> server^.webSocket_close
                                }
-  auth <- Auth.auth authConfig
+  auth <- Auth.auth currentLocale authConfig
 
   let subscriberConfig
         = Subscriber.Config { Subscriber._configResponse = server^.webSocket_recv

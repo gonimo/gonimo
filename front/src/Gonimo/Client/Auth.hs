@@ -26,6 +26,7 @@ import Control.Monad.IO.Class
 import Data.Maybe (isNothing, catMaybes)
 import Gonimo.Client.Prelude
 import Gonimo.Client.Auth.I18N
+import Gonimo.I18N
 
 -- data AuthCommand = AuthCreateDevice
 
@@ -45,12 +46,12 @@ data Auth t
 makeLenses ''Config
 makeLenses ''Auth
 
-auth :: forall t m. (HasWebView m, MonadWidget t m) => Config t -> m (Auth t)
-auth config = do
+auth :: forall t m. (HasWebView m, MonadWidget t m) => Dynamic t Locale -> Config t -> m (Auth t)
+auth locDyn config = do
   (makeDeviceEvent, authDataDyn) <- makeAuthData config
   let authenticateEvent = authenticate config authDataDyn
   performEvent_
-    $ handleStolenSession <$> config^.configResponse
+    $ handleStolenSession <$> attach (current locDyn) (config^.configResponse)
   let
     authenticated' :: Event t ()
     authenticated' = do
@@ -117,11 +118,13 @@ writeAuthData :: MonadJSM m => Storage -> Maybe API.AuthData -> m ()
 writeAuthData _ Nothing = pure ()
 writeAuthData storage (Just auth') = GStorage.setItem storage GStorage.keyAuthData auth'
 
-handleStolenSession :: MonadJSM m => API.ServerResponse -> m ()
-handleStolenSession API.EventSessionGotStolen = do
+handleStolenSession :: MonadJSM m => (Locale, API.ServerResponse) -> m ()
+handleStolenSession (loc , API.EventSessionGotStolen) = do
   window  <- DOM.currentWindowUnchecked
   location <- Window.getLocationUnsafe window
-  Location.setPathname location ("/stolenSession.html" :: Text)
+  case loc of
+    EN_GB -> Location.setPathname location ("/stolenSession.html" :: Text)
+    DE_DE -> Location.setPathname location ("/stolenSession-de.html" :: Text)
 handleStolenSession _ = pure ()
 
 
