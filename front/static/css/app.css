@@ -255,10 +255,18 @@ h3{
 }
 
 .start-welcome-img {
+  position: relative;
 	background-image: url("/pix/gonimo-Welt-animation_460x460px.gif");
 	background-size: 100% 100%;
 	width: 460px;
 	height: 460px;
+}
+
+.start-welcome-img > .lang-select {
+    position: absolute;
+    top: 300px;
+    left: 50%;
+    transform: translate(-50%,-50%);
 }
 
 @media(max-width:460px) and (min-width:345px) {
@@ -267,6 +275,11 @@ h3{
         width: 255px;
         height: 255px;
     }
+    .start-welcome-img > .lang-select {
+        top: 167px;
+        left: 50%;
+        transform: translate(-50%,-50%);
+    }
 }
 
 @media(max-width:344px) {
@@ -274,6 +287,11 @@ h3{
         /* background-image: url("/pix/gonimo-Welt-animation_230x230px.gif"); */
         width: 150px;
         height: 150px;
+    }
+    .start-welcome-img > .lang-select {
+        top: 99px;
+        left: 50%;
+        transform: translate(-50%,-50%);
     }
 }
 
@@ -1543,11 +1561,24 @@ canvas {
     background-size: contain;
     height: 30px;
     width: 40px;
-    margin-top: 20px;
-    margin-right: 20px;
+    /* margin-top: 20px; */
+    /* margin-right: 20px; */
     float: right;
 }
 
 .lang-select {
     position: relative;
+    box-shadow: 3px 3px 3px #888888;
 }
+
+.world-lang {
+    position: relative;
+}
+.world-lang > .lang-select {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+}
+
+

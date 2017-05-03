@@ -30,7 +30,6 @@ import Gonimo.Client.I18N.UI
 uiStart :: forall m t. GonimoM t m => m (UI t)
 uiStart = do
   elClass "div" "container" $ do
-    langSelected <- langSelector
     el "h1" $ do
       trText Welcome_to_the
       el "wbr" blank
@@ -38,8 +37,10 @@ uiStart = do
     el "br" blank
 
     -- elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.png") $ blank
-    elClass "div" "welcome-container" $
-      elClass "div" "start-welcome-img" $ blank
+    langSelected <-
+      elClass "div" "welcome-container" $
+        elClass "div" "start-welcome-img" $ do
+          langSelector
     el "br" blank
 
     headingClicked <-
@@ -63,15 +64,16 @@ ui appConfig loaded familyGotCreated = do
     createFamily appConfig loaded familyGotCreated
   elClass "div" "container has-footer" $ mdo
     el "script" $ text "screenfull.exit();"
-    langSelected <- langSelector
     el "h1" $ do
       trText Welcome_to_the
       el "wbr" blank
       trText Gonimo_World
     el "br" blank
 
-    elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") $ blank
-    el "br" blank
+    langSelected <- elClass "div" "world-lang" $ do
+      l <- langSelector
+      elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") blank
+      pure l
 
     el "h3" $ trText FamilyText
     (familySelected, clickedAdd, clickedLeave, nameChanged) <-
