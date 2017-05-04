@@ -117,6 +117,9 @@ a.link:hover, a.link:focus{
         width: 2em !important;
         margin-left: -2em !important;
     }
+    .menu-center::after{
+	      content:"" !important;
+    }
 }
 @media(max-width:768px){
     .lang-img{
@@ -568,10 +571,11 @@ h3{
 }
 .menu-center{
 	padding:12px;
-	font-size:x-large;
 	color:black;
-	font-weight:900;
+  font-size: 18px;
+  line-height: 20px;
 }
+
 .menu-center::after{
 	content:"GONIMO";
 }
