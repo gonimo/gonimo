@@ -156,13 +156,11 @@ h1{
 @media (max-height: 570px) {
     h1 {
         font-size: 28px;
-        font-weight: 300;
         margin-top: 10px;
         margin-bottom: 5px;
     }
     h2 {
         font-size: 20px;
-        font-weight: 100;
     }
     h3 {
         font-size: medium;
@@ -173,7 +171,6 @@ h2{
 	font-family: Raleway-light;
 	text-align:center;
 	color:black;
-	font-weight:300;
 	margin-top:unset;
 }
 .lang-img{
@@ -333,7 +330,6 @@ h3{
 	margin-left:-6.2em;
 	background:white;
   /* font-size:xx-large; */
-  font-weight:100;
   text-align:center;
 }
 
@@ -548,7 +544,6 @@ h3{
 .menu-left.back{
 	float:left;
 	font-size:xx-large;
-	font-weight:200;
 	padding:5px;
 }
 .menu-left.back::after{
@@ -559,7 +554,6 @@ h3{
 .menu-left.home{
 	float:left;
 	font-size:xx-large;
-	font-weight:200;
 	padding:5px;
 	border-left:solid 1px black;
 }
@@ -941,8 +935,7 @@ span.device-self {
 	color:black;
 	background-color:white;
 	font-size:large;
-	font-weight:200;
-	letter-spacing:0.2em;
+	letter-spacing:0.1em;
 	padding:5px 10px;
 	position: relative;
 	top: 50%;
@@ -952,8 +945,7 @@ span.device-self {
 div.volume{
 	float:left;
 	font-size:large;
-	font-weight:200;
-	letter-spacing:0.2em;
+	letter-spacing:0.1em;
 	padding:5px 10px;
 	position: relative;
 	top: 50%;
@@ -996,7 +988,6 @@ input.volume::-ms-thumb{
 	float:right;
 	color:white;
 	font-size:medium;
-	font-weight:100;
 	padding:5px;
 	position: relative;
 	top:50%;
@@ -1138,7 +1129,6 @@ input.volume::-ms-thumb{
     border-left: solid 2px;
     line-height: 2em;
     font-size: x-large;
-    font-weight: 100;
     width: 4em;
     margin-left: -4em;
     height: unset;
