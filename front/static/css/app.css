@@ -55,7 +55,6 @@ a:hover, a:focus{
 }
 a.link{
     color: #CDA5B4;
-    font-weight: 500;
 }
 a.link:hover, a.link:focus{
 	  text-decoration:none;
@@ -117,9 +116,6 @@ a.link:hover, a.link:focus{
         width: 2em !important;
         margin-left: -2em !important;
     }
-    .menu-center::after{
-	      content:"" !important;
-    }
 }
 @media(max-width:768px){
     .lang-img{
@@ -153,7 +149,6 @@ h1{
 	text-align:center;
 	color:black;
 	font-size: 36px;
-	font-weight: 500;
 	line-height: 1.1;
 	margin-top: 20px;
 	margin-bottom: 10px;
@@ -298,12 +293,17 @@ h3{
     }
 }
 
+@media(max-width: 300px) {
+    .menu-center::after{
+	      content:"" !important;
+    }
+}
+
 .input-btn{
   position: relative;
   /* z-index: 1; */
 	float:right;
 	font-size:x-large;
-	font-weight:900;
 	border:solid 3px #CDA5B4;
 	width:20%;
 	text-align:center;
@@ -465,7 +465,6 @@ h3{
 	border-style: none;
 	font-family: Raleway-Light;
 	font-size:x-large;
-	font-weight:500;
 	float:left;
 }
 .dropDown.family-select {
@@ -583,7 +582,7 @@ h3{
 	float:right;
 	font-size:large;
 	text-align:left;
-	font-family:Raleway-bold;
+	font-family:Raleway-regular;
 	padding:2px 2.5%;
 	border-left:solid 1px black;
 	color: black;
@@ -633,7 +632,6 @@ span.device-self {
 }
 .name > .dev-name{
 	font-size:x-large;
-	font-weight:800;
 }
 .name > .dev-loc{
 	font-size:large;
@@ -642,7 +640,6 @@ span.device-self {
 .buttons{
 	width:25%;
 	color:#CDA5B4;
-	font-weight:900;
 	float:right;
 }
 .buttons > div{
@@ -715,7 +712,6 @@ span.device-self {
 	background:#E6CAD4;
 	color:black;
 	font-size:x-large;
-	font-weight:800;
 }
 
 .device-add::before{
@@ -1103,7 +1099,6 @@ input.volume::-ms-thumb{
   left: 50%;
   transform: translateX(-50%);
 	font-size:xx-large;
-	font-weight:900;
   height: 1.5em;
   width: 1.5em;
 
@@ -1348,7 +1343,6 @@ canvas {
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 36px;
-    font-weight: 500;
 }
 
 .connectionBroken {
@@ -1413,7 +1407,6 @@ canvas {
     width: 70%;
     z-index: 10;
 	font-size:x-large;
-	font-weight:500;
 }
 
 .switch{
