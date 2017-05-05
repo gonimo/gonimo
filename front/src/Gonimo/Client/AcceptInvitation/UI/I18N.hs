@@ -26,4 +26,4 @@ instance I18N Message where
   i18n EN_GB Accept = "Accept"
   i18n DE_DE Accept = "Akzeptiere"
   i18n EN_GB This_generous_offer = " this generous offer "
-  i18n DE_DE This_generous_offer = " dieses großzügigies Angebot "
+  i18n DE_DE This_generous_offer = " dieses großzügige Angebot "
