@@ -35,11 +35,11 @@ instance I18N Message where
   i18n EN_GB Unfortunately_Apple_iOS_devices_cannot_be_supported
           = "Unfortunately, Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology."
   i18n DE_DE Unfortunately_Apple_iOS_devices_cannot_be_supported
-          = "Bedauerlicherweise, können Apple iOS Geräte von uns noch nicht unterstützt werden, weil Safari die benötigte Technologie nicht beherrscht."
+          = "Bedauerlicherweise, können Apple iOS Geräte von uns noch nicht unterstützt werden, weil Safari die benötigte Technologie nicht unterstützt."
   i18n EN_GB Also_Apple_restricts_all_other_browsers_on_iOS
           = "Also Apple restricts all other browsers on iOS to the same technology as Safari, so on iOS not even Chrome will work!"
   i18n DE_DE Also_Apple_restricts_all_other_browsers_on_iOS
-          = "Apple verlangt leider, dass auch alle anderen Browser die Technologie verwenden, die Safari beherrscht, weshalb auf iOS Geräten Gonimo auch auf Chrome nicht funktioniert."
+          = "Apple verlangt leider, dass auch alle anderen Browser die Technologie verwenden, die Safari benutzt, deshalb funktioniert auf iOS Geräten derzeit auch Chrome nicht."
   i18n EN_GB Fortunately_Apple_has_made_some_progress
           = "Fortunately Apple has made some progress lately and it seems that Safari will support Gonimo soon! You can follow us on "
   i18n DE_DE Fortunately_Apple_has_made_some_progress
@@ -47,7 +47,7 @@ instance I18N Message where
   i18n EN_GB We_will_post_on_our_page_when_iOS_support_is_ready
           = ": We will post on our page, when iOS support is ready!"
   i18n DE_DE We_will_post_on_our_page_when_iOS_support_is_ready
-          = " folgen: Wir werden auf unserer Seite posten, sobald es hier Neuigkeiten gibt!"
+          = " folgen: Wir werden auf unserer Seite posten, sobald es dazu Neuigkeiten gibt!"
   i18n EN_GB Please_upgrade_your_browser
           = "Please, upgrade your browser!"
   i18n DE_DE Please_upgrade_your_browser

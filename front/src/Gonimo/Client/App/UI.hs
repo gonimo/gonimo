@@ -160,8 +160,8 @@ checkBrowser = do
                       then Just $ do
                         el "h1" $ trText We_are_sorry_Apple_does_not_like_us_yet 
                         el "br" blank
-                        el "h2" $ trText Gonimo_might_not_work_as_expected
-                        el "br" blank
+                        -- el "h2" $ trText Gonimo_might_not_work_as_expected
+                        -- el "br" blank
                         trText Unfortunately_Apple_iOS_devices_cannot_be_supported
                         el "br" blank
                         trText Also_Apple_restricts_all_other_browsers_on_iOS
