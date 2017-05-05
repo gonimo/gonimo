@@ -80,13 +80,15 @@ box title panelClass inner = mdo
 box' :: forall m t a. GonimoM t m
       => I18N.Message -> Text -> m (Event t a, Event t ()) -> m (Event t a, Event t ())
 box' title panelClass inner = do
-  elClass "div" ("panel " <> panelClass) $ do
-    closeClicked <- elClass "div" "panel-heading" $
-      elAttr "div" ("style" =: "display: flex; justify-content: space-between;") $ do
-        el "h1" $ trText title
-        closeButton
-    (ev, closeEvent) <- elClass "div" "panel-body" inner
-    pure (ev, leftmost [closeEvent, closeClicked])
+  elClass "div" "notification overlay" $
+    elClass "div" "container" $
+      elClass "div" ("panel " <> panelClass) $ do
+        closeClicked <- elClass "div" "panel-heading" $
+          elAttr "div" ("style" =: "display: flex; justify-content: space-between;") $ do
+            el "h1" $ trText title
+            closeButton
+        (ev, closeEvent) <- elClass "div" "panel-body" inner
+        pure (ev, leftmost [closeEvent, closeClicked])
 
 
 closeButton :: DomBuilder t m => m (Event t ())
