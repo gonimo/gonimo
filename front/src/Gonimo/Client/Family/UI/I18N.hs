@@ -47,5 +47,5 @@ instance I18N Message where
   i18n EN_GB (Really_leave_family cFamilyName)
           = "Really leave family '" <> cFamilyName <> "'?"
   i18n DE_DE (Really_leave_family cFamilyName)
-          = "Wirklich deine Familie '" <> cFamilyName <> "' verlassen?"
+          = "Willst du wirklich die Familie '" <> cFamilyName <> "' verlassen?"
 

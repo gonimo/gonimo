@@ -21,4 +21,4 @@ instance I18N Message where
   i18n EN_GB Edit_Name
           = "EDIT NAME"
   i18n DE_DE Edit_Name
-          = "NAMEN EDITIEREN"
+          = "NAMEN ÄNDERN"

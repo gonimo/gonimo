@@ -23,7 +23,7 @@ instance I18N Message where
   i18n EN_GB Stop_All
           = "STOP ALL"
   i18n DE_DE Stop_All
-          = "STOPPE ALLE"
+          = "STOPPE ALLES"
   i18n EN_GB Connection_Lost
           = "Connection Lost!"
   i18n DE_DE Connection_Lost
@@ -31,7 +31,7 @@ instance I18N Message where
   i18n EN_GB Really_stop_parent_station
           = "Really stop parent station?"
   i18n DE_DE Really_stop_parent_station
-          = "Wirklich die Elternstation beenden?"
+          = "Willst du wirklich die Elternstation beenden?"
   i18n EN_GB All_open_streams_will_be_disconnected
           = "All open streams will be disconnected!"
   i18n DE_DE All_open_streams_will_be_disconnected
@@ -47,11 +47,11 @@ instance I18N Message where
   i18n EN_GB Connection_unreliable
           = "Connection unreliable!"
   i18n DE_DE Connection_unreliable
-          = "Verbindung unzverlässig!"
+          = "Verbindung ist unzuverlässig!"
   i18n EN_GB Might_break_unnoticed_no_alert
           = "Might break unnoticed (no alert)!"
   i18n DE_DE Might_break_unnoticed_no_alert
-          = "Kann unbemerkt abreissen (ohne Alarm)!"
+          = "Sie kann unbemerkt und ohne Alarm abreissen!"
   i18n EN_GB OK
           = "OK"
   i18n DE_DE OK

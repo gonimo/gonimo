@@ -129,7 +129,7 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
               let devNameClass = if isSelf then "device-self dev-name" else "dev-name"
               elClass "span" devNameClass $ dynText (API.deviceInfoName <$> devInfo)
               elClass "span" "dev-loc" $ do
-                text (if isSelf then "that's you" else "")
+                if isSelf then trText Thats_you else blank
                 dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do
