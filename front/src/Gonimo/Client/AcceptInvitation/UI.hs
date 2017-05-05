@@ -52,36 +52,37 @@ ui config = fmap (fromMaybe emptyAcceptInvitation) . runMaybeT $ do
 ui' :: forall m t. GonimoM t m
       => Secret -> InvitationInfo -> m (Event t [API.ServerRequest])
 ui' secret invInfo = do
-  elClass "div" "fullScreenOverlay" $ do
-    elClass "div" "panel panel-info" $ do
-      elClass "div" "panel-heading" $
-        el "h1" $ trText Family_Invitation
-      elClass "table" "table" $ do
-        el "tbody" $ do
-          el "tr" $ do
-            el "td" $ trText Family_Name
-            el "td" $ text (Gonimo.familyName . invitationInfoFamily $ invInfo)
-          el "tr" $ do
-            el "td" $ trText Inviting_Device
-            el "td" $ text (invitationInfoSendingDevice invInfo)
-          flip (maybe (pure ())) (invitationInfoSendingUser invInfo) $ \invUser ->
+  elClass "div" "notification overlay" $ do
+    elClass "div" "container" $
+      elClass "div" "panel panel-info" $ do
+        elClass "div" "panel-heading" $
+          el "h1" $ trText Family_Invitation
+        elClass "table" "table" $ do
+          el "tbody" $ do
             el "tr" $ do
-              el "td" $ trText Inviting_User
-              el "td" $ text invUser
-      elClass "div" "panel-body" $ do
-        elAttr "div" ( "class" =: "btn-group btn-group-justified"
-                    <> "role" =: "group"
-                    ) $ do
-          declined <- groupedButton "btn-danger" $ do
-            trText Decline
-            elClass "i" "fa fa-fw fa-times" blank
-          accepted <- groupedButton "btn-success" $ do
-            trText Accept
-            elClass "span" "hidden-xs" $ trText This_generous_offer
-            elClass "i" "fa fa-fw fa-check" blank
-          pure $ mconcat [ makeAnswerInvitation secret . fmap (const InvitationReject) $ declined
-                         , makeAnswerInvitation secret . fmap (const InvitationAccept) $ accepted
-                         ]
+              el "td" $ trText Family_Name
+              el "td" $ text (Gonimo.familyName . invitationInfoFamily $ invInfo)
+            el "tr" $ do
+              el "td" $ trText Inviting_Device
+              el "td" $ text (invitationInfoSendingDevice invInfo)
+            flip (maybe (pure ())) (invitationInfoSendingUser invInfo) $ \invUser ->
+              el "tr" $ do
+                el "td" $ trText Inviting_User
+                el "td" $ text invUser
+        elClass "div" "panel-body" $ do
+          elAttr "div" ( "class" =: "btn-group btn-group-justified"
+                      <> "role" =: "group"
+                      ) $ do
+            declined <- groupedButton "btn-danger" $ do
+              trText Decline
+              elClass "i" "fa fa-fw fa-times" blank
+            accepted <- groupedButton "btn-success" $ do
+              trText Accept
+              elClass "span" "hidden-xs" $ trText This_generous_offer
+              elClass "i" "fa fa-fw fa-check" blank
+            pure $ mconcat [ makeAnswerInvitation secret . fmap (const InvitationReject) $ declined
+                          , makeAnswerInvitation secret . fmap (const InvitationAccept) $ accepted
+                          ]
 
 groupedButton :: DomBuilder t m => Text -> m () -> m (Event t ())
 groupedButton className inner = do
