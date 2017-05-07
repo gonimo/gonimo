@@ -99,11 +99,21 @@ ui appConfig loaded deviceList = mdo
                                            <> viewUI^.C.videoViewNavBar.NavBar.request
                           , App._selectLang = never
                           }
+
+  let goHomeTrigger = leftmost [ navBar^.NavBar.backClicked
+                               , navBar^.NavBar.homeClicked
+                               , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
+                               ]
+  -- Ensure cleanup!
+  goHomeRequested <- hold False $ const True <$> goHomeTrigger
+  let channelsEmpty = Map.null <$> connections'^.C.channelMap
+  let goHome = fmap (const ()) . ffilter id
+               $ leftmost [ tag (current channelsEmpty) goHomeTrigger
+                          , attachWith (&&) goHomeRequested (updated channelsEmpty)
+                          ]
+
   pure $ App.Screen { App._screenApp = parentApp
-                    , App._screenGoHome = leftmost [ navBar^.NavBar.backClicked
-                                                   , navBar^.NavBar.homeClicked
-                                                   , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
-                                                   ]
+                    , App._screenGoHome = goHome
                     }
 
 manageUi :: forall m t. GonimoM t m
