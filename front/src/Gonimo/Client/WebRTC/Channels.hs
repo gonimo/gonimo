@@ -10,6 +10,7 @@ module Gonimo.Client.WebRTC.Channels where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
+import           Control.Concurrent
 import           Data.Map                       (Map)
 import qualified Data.Map                       as Map
 -- #ifdef __GHCJS__
@@ -128,7 +129,11 @@ handleMuteUpdate chans chanEv = do
           registerMuteHandlers audioVideo track = do
               isMuted <- getMuted track
               liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ isMuted)
-              _ <- on track mute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ True)
+              _ <- on track mute $ do
+                liftIO $ threadDelay 2500000
+                stillMuted <- getMuted track
+                liftIO . when stillMuted $
+                  triggerStatUpdate (at mapKey._Just.audioVideo .~ True)
               _ <- on track unmute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ False)
               pure ()
         traverse_ (registerMuteHandlers Channel.audioMuted) audioTracks
