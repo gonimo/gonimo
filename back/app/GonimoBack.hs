@@ -28,7 +28,6 @@ import qualified Data.Text.Encoding as T
 import           Data.Text (Text)
 import           Network.HTTP.Types.Status
 import           Crypto.Random                 (newGenIO)
-import           Data.IORef
 
 data StartupError
   = NO_GONIMO_FRONTEND_URL
@@ -46,7 +45,7 @@ devMain = do
   flip runSqlPool pool $ runMigration migrateAll
   names <- loadFamilies
   predicates <- loadPredicates
-  generator <- newIORef =<< newGenIO
+  generator <- newTVarIO =<< newGenIO
   let config = Config {
     configPool = pool
   , configMessenger  = messenger
@@ -72,7 +71,7 @@ prodMain = do
   flip runSqlPool pool $ runMigration migrateAll
   names <- loadFamilies
   predicates <- loadPredicates
-  generator <- newIORef =<< newGenIO
+  generator <- newTVarIO =<< newGenIO
   let config = Config {
     configPool = pool
   , configMessenger  = messenger

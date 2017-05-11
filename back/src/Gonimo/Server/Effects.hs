@@ -69,7 +69,7 @@ import qualified Gonimo.Server.NameGenerator   as Gen
 import           Gonimo.SocketAPI (ServerRequest)
 import           Gonimo.Server.Messenger (MessengerVar)
 import           Data.Text (Text)
-import           Data.IORef
+import           Control.Concurrent.STM.TVar (readTVar, writeTVar)
 
 secretLength :: Int
 secretLength = 16
@@ -104,7 +104,7 @@ data Config = Config {
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
 , configFrontendURL :: !Text
-, configRandom      :: !(IORef SystemRandom)
+, configRandom      :: !(TVar SystemRandom)
 }
 
 newtype ServerT m a = ServerT (ReaderT Config m a)
@@ -132,10 +132,15 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
   sendEmail = liftIO . sendMail "localhost"
 #endif
   genRandomBytes l = do
-    randRef <- asks configRandom
-    (r, newGen) <- liftIO $ genBytes l <$> readIORef randRef
-    liftIO $ writeIORef randRef newGen
-    pure r
+      randRef <- asks configRandom
+      genBytesSecure randRef
+    where
+      -- STM necessary so multiple threads won't return the same secret!
+      genBytesSecure randRef = atomically $ do
+        oldGen <- readTVar randRef
+        let (r, newGen) = genBytes l oldGen
+        writeTVar randRef newGen
+        pure r
 
   getCurrentTime = liftIO Clock.getCurrentTime
   runDb trans = do
