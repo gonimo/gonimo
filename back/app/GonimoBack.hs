@@ -27,6 +27,7 @@ import           Safe (readMay)
 import qualified Data.Text.Encoding as T
 import           Data.Text (Text)
 import           Network.HTTP.Types.Status
+import           Crypto.Random                 (newGenIO)
 
 data StartupError
   = NO_GONIMO_FRONTEND_URL
@@ -44,6 +45,7 @@ devMain = do
   flip runSqlPool pool $ runMigration migrateAll
   names <- loadFamilies
   predicates <- loadPredicates
+  generator <- newGenIO
   let config = Config {
     configPool = pool
   , configMessenger  = messenger
@@ -51,6 +53,7 @@ devMain = do
   , configNames      = names
   , configPredicates = predicates
   , configFrontendURL = "http://localhost:8081/index.html"
+  , configRandom = generator
   }
   run 8081 . addDevServer $ serve runGonimoLoggingT config
 
@@ -68,6 +71,7 @@ prodMain = do
   flip runSqlPool pool $ runMigration migrateAll
   names <- loadFamilies
   predicates <- loadPredicates
+  generator <- newGenIO
   let config = Config {
     configPool = pool
   , configMessenger  = messenger
@@ -75,6 +79,7 @@ prodMain = do
   , configNames      = names
   , configPredicates = predicates
   , configFrontendURL = T.pack frontendURL
+  , configRandom = generator
   }
   run port . checkOrigin (T.pack frontendURL) $ serve runGonimoLoggingT config
 

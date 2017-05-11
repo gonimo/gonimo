@@ -58,8 +58,7 @@ import qualified Control.Concurrent.STM          as STM
 #ifndef DEVELOPMENT
 import           Network.Mail.SMTP             (sendMail)
 #endif
-import           Crypto.Random                 (SystemRandom,
-                                                newGenIO)
+import           Crypto.Random                 (SystemRandom)
 import           Crypto.Classes.Exceptions      (genBytes)
 import qualified Data.Time.Clock               as Clock
 import           System.Random                           (getStdRandom)
@@ -104,6 +103,7 @@ data Config = Config {
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
 , configFrontendURL :: !Text
+, configRandom      :: !SystemRandom
 }
 
 newtype ServerT m a = ServerT (ReaderT Config m a)
@@ -130,7 +130,7 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
 #else
   sendEmail = liftIO . sendMail "localhost"
 #endif
-  genRandomBytes l = fst . genBytes l <$> (liftIO newGenIO :: (ServerT m) SystemRandom)
+  genRandomBytes l = fst . genBytes l <$> asks configRandom
   getCurrentTime = liftIO Clock.getCurrentTime
   runDb trans = do
     c <- ask
