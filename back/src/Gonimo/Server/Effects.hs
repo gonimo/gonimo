@@ -69,6 +69,7 @@ import qualified Gonimo.Server.NameGenerator   as Gen
 import           Gonimo.SocketAPI (ServerRequest)
 import           Gonimo.Server.Messenger (MessengerVar)
 import           Data.Text (Text)
+import           Data.IORef
 
 secretLength :: Int
 secretLength = 16
@@ -103,7 +104,7 @@ data Config = Config {
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
 , configFrontendURL :: !Text
-, configRandom      :: !SystemRandom
+, configRandom      :: !(IORef SystemRandom)
 }
 
 newtype ServerT m a = ServerT (ReaderT Config m a)
@@ -130,7 +131,12 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
 #else
   sendEmail = liftIO . sendMail "localhost"
 #endif
-  genRandomBytes l = fst . genBytes l <$> asks configRandom
+  genRandomBytes l = do
+    randRef <- asks configRandom
+    (r, newGen) <- liftIO $ genBytes l <$> readIORef randRef
+    liftIO $ writeIORef randRef newGen
+    pure r
+
   getCurrentTime = liftIO Clock.getCurrentTime
   runDb trans = do
     c <- ask
