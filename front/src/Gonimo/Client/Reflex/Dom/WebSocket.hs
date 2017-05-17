@@ -116,7 +116,7 @@ webSocket' url config onRawMessage = do
         mws <- liftIO $ readIORef currentSocketRef
         case mws of
           Nothing -> liftIO $ putStrLn "Closing non existing websocket?"
-          Just ws -> releaseHandlers ws -- Manually release handlers to prevent openeg gonimo in another tab error - hope that helps!
+          Just ws -> releaseHandlers ws -- Manually release handlers to prevent opened gonimo in another tab error - hope that helps!
         liftIO $ writeIORef currentSocketRef Nothing
         when (_webSocketConfig_reconnect config) $ do
           liftIO $ threadDelay 2000000
