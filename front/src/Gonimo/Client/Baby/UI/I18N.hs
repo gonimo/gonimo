@@ -102,7 +102,7 @@ instance I18N Message where
     i18n EN_GB For_video_to_work_please_do_not_switch_off_the_screen
             = "For video to work, please do not switch off the screen!"
     i18n DE_DE For_video_to_work_please_do_not_switch_off_the_screen
-            = "Damit Video funktioniert, lasse bitte den Bildschirm laufen!"
+            = "Schalte das Display nicht ab, damit die Videoübertragung funktioniert."
     i18n EN_GB Alternatively_if_all_you_need_is_audio_please_disable_the_camera
             = "Alternatively, if all you need is audio, please disable the camera."
     i18n DE_DE Alternatively_if_all_you_need_is_audio_please_disable_the_camera

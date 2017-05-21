@@ -334,7 +334,7 @@ displayScreenOnWarning baby' = mdo
 
   where
     displayWarning False = pure ()
-    displayWarning True = dismissibleOverlay "warning-overlay"  10 $ do
+    displayWarning True = dismissibleOverlay "info-overlay"  10 $ do
       trText For_video_to_work_please_do_not_switch_off_the_screen
       el "br" blank
       trText Alternatively_if_all_you_need_is_audio_please_disable_the_camera
