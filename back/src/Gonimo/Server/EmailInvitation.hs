@@ -58,5 +58,5 @@ makeInvitationEmail baseURL inv addr name = simpleMail' receiver sender "You got
     textContent = invitationText baseURL inv name
     receiver = Address Nothing addr
     sender = if T.isSuffixOf "gonimo.com" addr
-      then Address Nothing "noreply@baby.gonimo.com" -- So we can send emails to ourself. (noreply@gonimo.com gets blocked by easyname)
-      else Address Nothing "noreply@gonimo.com"
+      then Address Nothing "hello@baby.gonimo.com" -- So we can send emails to ourself. (noreply@gonimo.com gets blocked by easyname)
+      else Address Nothing "hello@gonimo.com"
