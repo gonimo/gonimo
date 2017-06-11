@@ -43,6 +43,9 @@ invitationText baseURL _inv (FamilyName _ _n) =
 
     $baseURL?acceptInvitation=$secret
 
+    Please note that this link is only valid once, for security reasons. If you
+    want to invite more than one device you need to send additional invitations.
+
     Sincerely yours,
 
     Gonimo
