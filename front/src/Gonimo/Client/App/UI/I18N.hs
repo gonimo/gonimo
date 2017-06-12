@@ -25,25 +25,25 @@ instance I18N Message where
   i18n DE_DE Loading_stay_tight
           = "Lade, einen Moment bitte ..."
   i18n EN_GB We_are_sorry_Apple_does_not_like_us_yet
-          = "We are sorry, Apple does not like us yet!"
+          = "We are sorry, Apple will start to like us with the coming iOS 11!"
   i18n DE_DE We_are_sorry_Apple_does_not_like_us_yet
-          = "Sorry, aber Apple mag uns noch nicht!"
+          = "Sorry, aber Apple mag uns erst ab iOS 11!"
   i18n EN_GB Gonimo_might_not_work_as_expected
           = "Gonimo might not work as expected"
   i18n DE_DE Gonimo_might_not_work_as_expected
           = "Gonimo könnte nicht wie erwartet funktionieren"
   i18n EN_GB Unfortunately_Apple_iOS_devices_cannot_be_supported
-          = "Unfortunately, Apple iOS devices cannot be supported right now, because Safari does not implement the necessary technology."
+          = "Unfortunately, Apple iOS devices cannot be supported right now, because Safari does not yet implement the necessary technology."
   i18n DE_DE Unfortunately_Apple_iOS_devices_cannot_be_supported
-          = "Bedauerlicherweise, können Apple iOS Geräte von uns noch nicht unterstützt werden, weil Safari die benötigte Technologie nicht unterstützt."
+          = "Bedauerlicherweise, können Apple iOS Geräte von uns noch nicht unterstützt werden, weil Safari die benötigte Technologie noch nicht unterstützt."
   i18n EN_GB Also_Apple_restricts_all_other_browsers_on_iOS
           = "Also Apple restricts all other browsers on iOS to the same technology as Safari, so on iOS not even Chrome will work!"
   i18n DE_DE Also_Apple_restricts_all_other_browsers_on_iOS
           = "Apple verlangt leider, dass auch alle anderen Browser die Technologie verwenden, die Safari benutzt, deshalb funktioniert auf iOS Geräten derzeit auch Chrome nicht."
   i18n EN_GB Fortunately_Apple_has_made_some_progress
-          = "Fortunately Apple has made some progress lately and it seems that Safari will support Gonimo soon! You can follow us on "
+          = "Fortunately Apple has made some progress lately and Gonimo will be supported on iOS 11! You can follow us on "
   i18n DE_DE Fortunately_Apple_has_made_some_progress
-          = "Glücklicherweise macht Apple Fortschritte und es sieht so aus als würde Safari Gonimo bald unterstützen. Du kannst uns auf "
+          = "Glücklicherweise macht Apple Fortschritte und wird Gonimo ab iOS11 unterstützen! Du kannst uns auf "
   i18n EN_GB We_will_post_on_our_page_when_iOS_support_is_ready
           = ": We will post on our page, when iOS support is ready!"
   i18n DE_DE We_will_post_on_our_page_when_iOS_support_is_ready
@@ -55,7 +55,7 @@ instance I18N Message where
   i18n EN_GB Gonimo_needs_some_cutting_edge_technology
           = "Gonimo needs some cutting edge technology in order to work correctly and browsers get better all the time, so we recommend to download the latest version of your browsers, for the best gonimo experience."
   i18n DE_DE Gonimo_needs_some_cutting_edge_technology
-          = "Gonimo wird ermöglicht durch eine noch recht junge Technologie, die in den Browsern laufend verbessert wird. Deshalb empfehlen wir den Browser aktuell zu halten um das Beste aus Gonimo herauszuholen."
+          = "Gonimo wird durch eine noch recht junge Technologie ermöglicht, die in den Browsern laufend verbessert wird. Deshalb empfehlen wir den Browser aktuell zu halten um das Beste aus Gonimo herauszuholen."
   i18n EN_GB If_you_can't_upgrade
           = " If you can't upgrade, please double check that gonimo is working reliably for you. Especially check that you will hear an alarm whenever the connection is lost (you can test this by, for example, reloading the page at your baby station), especially check that you also hear an alarm when the screen is switched off at the parent station."
   i18n DE_DE If_you_can't_upgrade
