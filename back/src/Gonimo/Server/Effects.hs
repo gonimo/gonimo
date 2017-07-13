@@ -139,7 +139,7 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
       genBytesSecure randRef = atomically $ do
         oldGen <- readTVar randRef
         let (r, newGen) = genBytes l oldGen
-        writeTVar randRef newGen
+        writeTVar randRef (seq newGen newGen) -- seq hopefully prevents loop ghc bug. https://ghc.haskell.org/trac/ghc/ticket/13751
         pure r
 
   getCurrentTime = liftIO Clock.getCurrentTime
