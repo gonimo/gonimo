@@ -11,7 +11,6 @@ import Data.Text (Text)
 import qualified Gonimo.Client.App.Types as App
 import qualified Gonimo.SocketAPI as API
 import Gonimo.Db.Entities (FamilyId)
-import Gonimo.Client.Server (webSocket_recv)
 
 invitationQueryParam :: Text
 invitationQueryParam = "messageBox"

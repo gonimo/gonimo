@@ -8,8 +8,6 @@ import           Control.Monad.IO.Class
 import qualified Gonimo.Client.App        as App
 import qualified Gonimo.Client.Auth       as Auth
 import qualified Gonimo.Client.Config     as Config
-import           Gonimo.Client.Server     (webSocketConfig_send, webSocket_open,
-                                           webSocket_recv, webSocketConfig_reconnect, webSocket_close)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
 import           Reflex.Dom.Core               hiding (webSocketConfig_send, webSocketConfig_reconnect)
@@ -36,8 +34,8 @@ app = mdo
                     <> subscriber^.Subscriber.request
                     <> app^.App.request
 
-  let wsConfig = def & webSocketConfig_send .~ serverRequests
-                     & webSocketConfig_reconnect .~ True
+  let wsConfig = def & Server.webSocketConfig_send .~ serverRequests
+                     & Server.webSocketConfig_reconnect .~ True
   server <- Server.server Config.gonimoBackWSURL  wsConfig
 
   let authConfig = Auth.Config { Auth._configResponse = server^.webSocket_recv
@@ -88,12 +86,12 @@ localeFromBrowserString langStr
 
 readLocale :: MonadJSM m => m Locale
 readLocale = do
-  storage <- liftJSM $ Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- liftJSM $ Window.getLocalStorage =<< DOM.currentWindowUnchecked
   browserLocaleStr <- liftJSM $ fromMaybe "en-US" <$> (JS.fromJSVal =<< JS.eval ("navigator.language" :: Text))
   let browserLocale = localeFromBrowserString browserLocaleStr
   fromMaybe browserLocale <$> GStorage.getItem storage GStorage.userLocale
 
 writeLocale :: MonadJSM m => Locale -> m ()
 writeLocale lastBabyName = do
-  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
   GStorage.setItem storage GStorage.userLocale lastBabyName

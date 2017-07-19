@@ -17,7 +17,6 @@ import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.Baby.Socket         as Socket
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server              (webSocket_recv)
 import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.Client.EditStringButton    (editStringEl)
 import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)

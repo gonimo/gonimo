@@ -25,7 +25,6 @@ import Safe (headMay)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Control.Applicative
-import Gonimo.Client.Server (webSocket_recv)
 import Data.Default (Default(..))
 import qualified Gonimo.Types                     as Gonimo
 import Gonimo.Client.Prelude
@@ -150,7 +149,7 @@ handleFamilySelect :: forall m t. GonimoM t m
                       => Config t -> Dynamic t (Maybe [FamilyId])
                       -> m (Event t [ API.ServerRequest ], Dynamic t (Maybe FamilyId))
 handleFamilySelect config familyIds' = mdo
-    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     loadedFamilyId <- GStorage.getItem storage GStorage.currentFamily
     performEvent_
       $ traverse_ (GStorage.setItem storage GStorage.currentFamily) <$> updated selected

@@ -17,7 +17,6 @@ import           Gonimo.Client.App.Types
 import qualified Gonimo.Client.Auth             as Auth
 import qualified Gonimo.Client.Family           as Family
 import qualified Gonimo.Client.MessageBox       as MessageBox
-import           Gonimo.Client.Server           (webSocket_recv)
 import qualified Gonimo.Client.Baby             as Baby
 import qualified Gonimo.Client.Parent           as Parent
 import qualified Gonimo.SocketAPI               as API
@@ -93,10 +92,10 @@ runLoaded config family = do
               loadedUI config loaded familyCreated
           )
           (family^.Family.selectedFamily)
-  let notReady = do
+  let notReady' = do
         elClass "div" "container" $ trText Loading_stay_tight
         pure never
-  dynEvEv <- widgetHold notReady (onReady <$> evReady)
+  dynEvEv <- widgetHold notReady' (onReady <$> evReady)
 
   let evEv = switchPromptlyDyn dynEvEv -- Flatten Dynamic Event Event
   (,) <$> appSwitchPromptly (fst <$> evEv)
@@ -221,10 +220,10 @@ checkBrowser = do
 
 readHideBrowserWarning :: JS.MonadJSM m => m Bool
 readHideBrowserWarning = do
-  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
   fromMaybe False <$> GStorage.getItem storage GStorage.hideBrowserWarning
 
 writeHideBrowserWarning :: JS.MonadJSM m => Bool -> m ()
 writeHideBrowserWarning hideBrowserWarning = do
-  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
   GStorage.setItem storage GStorage.hideBrowserWarning hideBrowserWarning

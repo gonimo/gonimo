@@ -1,6 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GADTs #-}
@@ -9,40 +10,44 @@ module Gonimo.Client.WebRTC.Channels where
 
 import Gonimo.Client.Prelude
 
-import           Control.Lens
 import           Control.Concurrent
-import           Data.Map                       (Map)
-import qualified Data.Map                       as Map
--- #ifdef __GHCJS__
-import           GHCJS.DOM.RTCPeerConnection    as RTCPeerConnection hiding (newRTCPeerConnection)
--- #else
+import           Control.Lens
+import           Data.Map                      (Map)
+import qualified Data.Map                      as Map
+-- Workaround until issue https://github.com/ghcjs/jsaddle-dom/issues/3 is resolved:
+#ifdef __GHCJS__
+import           GHCJS.DOM.RTCPeerConnection   as RTCPeerConnection hiding (newRTCPeerConnection)
+#else
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
--- -- import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection (addStream)
--- #endif
-import           Gonimo.Db.Entities             (DeviceId)
-import qualified Gonimo.SocketAPI               as API
-import qualified Gonimo.SocketAPI.Types         as API
-import           Gonimo.Types                   (Secret)
+import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection
+#endif
+import           Gonimo.Db.Entities            (DeviceId)
+import qualified Gonimo.SocketAPI              as API
+import qualified Gonimo.SocketAPI.Types        as API
+import           Gonimo.Types                  (Secret)
 import           Reflex.Dom.Core
 
-import           GHCJS.DOM.Types                (MediaStream, MonadJSM, MediaStreamTrack)
+import           GHCJS.DOM.Types               (MediaStream, MediaStreamTrack,
+                                                MonadJSM, RTCIceCandidate(..), RTCIceCandidateInit(..))
 
 import           Data.Maybe
-import           Debug.Trace                    (trace)
-import           Gonimo.Client.WebRTC.Message
-import           Language.Javascript.JSaddle    (liftJSM, JSM)
+import           Debug.Trace                   (trace)
+import qualified Gonimo.SocketAPI.Translations as API
+import           Language.Javascript.JSaddle   (JSM, liftJSM)
 
-import           Gonimo.Client.Reflex           (buildDynMap)
-import           Gonimo.Client.WebRTC.Channel   (ChannelEvent (..),
-                                                 CloseEvent (..), RTCEvent (..),
-                                                 closeRequested, rtcConnection, theirStream,
-                                                 audioReceivingState, videoReceivingState,
-                                                 ReceivingState(..), Channel(..))
-import qualified Gonimo.Client.WebRTC.Channel   as Channel
-import qualified GHCJS.DOM.MediaStream          as MediaStream
-import           GHCJS.DOM.MediaStreamTrack     (mute, unmute, getMuted)
-import           Gonimo.Client.Util             (getTransmissionInfo)
-import           GHCJS.DOM.EventM (on)
+import           GHCJS.DOM.EventM              (on)
+import qualified GHCJS.DOM.MediaStream         as MediaStream
+import           GHCJS.DOM.MediaStreamTrack    (getMuted, mute, unmute)
+import           Gonimo.Client.Reflex          (buildDynMap)
+import           Gonimo.Client.Util            (getTransmissionInfo)
+import           Gonimo.Client.WebRTC.Channel  (Channel (..), ChannelEvent (..),
+                                                CloseEvent (..), RTCEvent (..),
+                                                ReceivingState (..),
+                                                audioReceivingState,
+                                                closeRequested, rtcConnection,
+                                                theirStream,
+                                                videoReceivingState)
+import qualified Gonimo.Client.WebRTC.Channel  as Channel
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
 type StreamMap = Map (API.FromId, Secret) MediaStream
@@ -122,19 +127,19 @@ handleMuteUpdate chans chanEv = do
       handleMute :: forall m1. (MonadIO m1, MonadJSM m1)
                     =>  ((DeviceId, Secret), MediaStream, RTCPeerConnection) -> m1 ()
       handleMute (mapKey, stream, _) = liftJSM $ do
-        videoTracks <- catMaybes <$> MediaStream.getVideoTracks stream
-        audioTracks <- catMaybes <$> MediaStream.getAudioTracks stream
+        videoTracks <- MediaStream.getVideoTracks stream
+        audioTracks <- MediaStream.getAudioTracks stream
         let
           registerMuteHandlers :: Lens' (Channel t) Bool -> MediaStreamTrack -> JSM ()
-          registerMuteHandlers audioVideo track = do
-              isMuted <- getMuted track
+          registerMuteHandlers audioVideo track' = do
+              isMuted <- getMuted track'
               liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ isMuted)
-              _ <- on track mute $ do
+              _ <- on track' mute $ do
                 liftIO $ threadDelay 2500000
-                stillMuted <- getMuted track
+                stillMuted <- getMuted track'
                 liftIO . when stillMuted $
                   triggerStatUpdate (at mapKey._Just.audioVideo .~ True)
-              _ <- on track unmute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ False)
+              _ <- on track' unmute . liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ False)
               pure ()
         traverse_ (registerMuteHandlers Channel.audioMuted) audioTracks
         traverse_ (registerMuteHandlers Channel.videoMuted) videoTracks
@@ -157,8 +162,8 @@ handleConnectionStateUpdate chans chanEv = do
 
     let
       registerGetTransmissionInfo (mapKey, stream, conn) = do
-        videoTracks <- catMaybes <$> MediaStream.getVideoTracks stream
-        audioTracks <- catMaybes <$> MediaStream.getAudioTracks stream
+        videoTracks <- MediaStream.getVideoTracks stream
+        audioTracks <- MediaStream.getAudioTracks stream
 
         let
           sendStats :: forall m1. (MonadJSM m1)
@@ -228,7 +233,7 @@ handleBroadcastStream config channels' = do
         let newChans = Map.elems $ Map.difference upChans oldChans
         let connections = (^.rtcConnection) <$> newChans
         cStream <- MaybeT . sample . current $ config^.configBroadcastStream
-        pure $ traverse_ (flip addStream (Just cStream)) connections
+        pure $ traverse_ (flip addStream cStream) connections
 
     performEvent_ $ push initializeNewChans (updated channels')
 
@@ -241,8 +246,8 @@ handleBroadcastStream config channels' = do
         let oldStreams = maybeToList mOldStream
         let newStreams = maybeToList mNewStream
         pure $ do
-          sequence_ $ removeStream <$> connections <*> map Just oldStreams
-          sequence_ $ addStream <$> connections <*> map Just newStreams
+          sequence_ $ removeStream <$> connections <*> oldStreams
+          sequence_ $ addStream <$> connections <*> newStreams
       
     performEvent_ $ pushAlways replaceStreams (updated $ config^.configBroadcastStream)
 
@@ -351,22 +356,22 @@ handleMessages config chans = do
 
                         resMesg <- case msg of
                           API.MsgSessionDescriptionOffer description -> do
-                            setRemoteDescription connection =<< toJSSessionDescription description
+                            setRemoteDescription connection =<< API.mToFrontend description
                             rawAnswer <- liftJSM $ createAnswer connection Nothing
                             liftJSM $ setLocalDescription connection rawAnswer
                             -- setDesc <- liftJSM $ JS.eval ("(function(conn,desc) {conn.setLocalDescription(desc);})" :: Text)
                             -- liftJSM $ JS.call setDesc JS.obj (connection, rawAnswer)
 
-                            answer <- fromJSSessionDescription rawAnswer
+                            answer <- API.mFromFrontend rawAnswer
                             pure $ API.MsgSessionDescriptionAnswer answer
                           API.MsgSessionDescriptionAnswer description -> do
-                            setRemoteDescription connection =<< toJSSessionDescription description
+                            setRemoteDescription connection =<< API.mToFrontend description
                             -- rawDescription <- toJSSessionDescription description
                             -- setDesc <- liftJSM $ JS.eval ("(function(conn,desc) {conn.setRemoteDescription(desc);})" :: Text)
                             -- liftJSM $ JS.call setDesc JS.obj (connection, rawDescription)
                             mzero
                           API.MsgIceCandidate candidate -> do
-                            addIceCandidate connection =<< toJSIceCandidate candidate
+                            addIceCandidate connection =<< API.mToFrontend candidate
                             mzero
                           API.MsgCloseConnection  -> do
                             Channel.safeClose connection
@@ -392,12 +397,16 @@ handleRTCEvents ourId chans chanEv = do
                                     RTCEventNegotiationNeeded -> liftJSM $ do
                                       jsOffer <- createOffer conn Nothing
                                       setLocalDescription conn jsOffer
-                                      offer <- fromJSSessionDescription jsOffer
+                                      offer <- API.mFromFrontend jsOffer
                                       pure $ API.MsgSessionDescriptionOffer offer
                                     RTCEventIceCandidate candidate
-                                      -> liftJSM $ API.MsgIceCandidate <$> fromJSIceCandidate candidate
+                                      -> liftJSM $ API.MsgIceCandidate <$> API.mFromFrontend (rtcIceCandidateToInit candidate)
                                     _            -> mzero
                          cOurId <- lift $ sample ourId
                          pure $ [API.ReqSendMessage cOurId toId secret' msg]
                    ) chanEv
   push (pure . id) <$> performEvent actions
+
+
+rtcIceCandidateToInit :: RTCIceCandidate -> RTCIceCandidateInit
+rtcIceCandidateToInit (RTCIceCandidate cand) = RTCIceCandidateInit cand

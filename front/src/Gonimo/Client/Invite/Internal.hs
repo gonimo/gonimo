@@ -18,6 +18,7 @@ import qualified Gonimo.SocketAPI as API
 import qualified GHCJS.DOM.Location as Location
 import GHCJS.DOM.Types (ToJSVal, toJSVal, FromJSVal, fromJSVal, JSVal, MonadJSM)
 import qualified GHCJS.DOM.Window as Window
+import qualified GHCJS.DOM.Document as Document
 import qualified GHCJS.DOM as DOM
 import Control.Monad.Trans.Maybe
 import Data.Maybe (fromMaybe)
@@ -85,8 +86,8 @@ invite config = mdo
 
 getBaseLink :: (MonadJSM m) => m Text
 getBaseLink = do
-  window  <- DOM.currentWindowUnchecked
-  location <- Window.getLocationUnsafe window
+  doc  <- DOM.currentDocumentUnchecked
+  location <- Document.getLocationUnsafe doc
   protocol <- Location.getProtocol location
   host <- Location.getHost location
   pathName <- Location.getPathname location

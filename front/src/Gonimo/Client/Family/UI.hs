@@ -21,7 +21,6 @@ import           Gonimo.Client.EditStringButton   (editFamilyName)
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server             (webSocket_recv)
 import Gonimo.Client.Prelude
 import Gonimo.Client.Family.UI.I18N
 import Gonimo.Client.I18N.UI

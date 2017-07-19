@@ -16,7 +16,7 @@ import           GHCJS.DOM.Enums                (MediaStreamTrackState(..))
 import           GHCJS.DOM.RTCIceCandidate
 import           GHCJS.DOM.RTCIceCandidateEvent as IceEvent
 -- #ifdef __GHCJS__
-import           GHCJS.DOM.RTCPeerConnection    as RTCPeerConnection hiding (newRTCPeerConnection)
+import           GHCJS.DOM.RTCPeerConnection    as RTCPeerConnection
 -- #else
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
 -- -- import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection (addStream)
@@ -35,6 +35,7 @@ import           Gonimo.DOM.Window              (newRTCPeerConnection)
 import           Data.Maybe
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
+import           GHCJS.DOM.Enums (RTCIceConnectionState(..))
 import           Language.Javascript.JSaddle    (liftJSM, (<#))
 import qualified Language.Javascript.JSaddle    as JS
 import           Safe                           (fromJustNote)
@@ -128,8 +129,8 @@ handleRTCClosedEvent config conn = liftJSM $ do
     triggerCloseEv = config^.configTriggerChannelEvent
                      $ ChannelEvent (config^.configTheirId, config^.configSecret) RTCEventConnectionClosed
   listener <- newListener $ do
-    state :: Text <- liftJSM $ getIceConnectionState conn
-    if state == "closed"
+    state <- liftJSM $ getIceConnectionState conn
+    if state == RTCIceConnectionStateClosed
       then liftIO $ triggerCloseEv
       else pure ()
   addListener conn iceConnectionStateChange listener False
@@ -149,7 +150,7 @@ handleReceivedStream config conn = liftJSM $ do
     mStream <- liftJSM $ JS.fromJSVal rawStream
     let stream = fromJustNote "event had no valid MediaStream!" mStream
 
-    tracks <- catMaybes <$> MediaStream.getTracks stream
+    tracks <- MediaStream.getTracks stream
     let sendStreamEnded = do
           cStates <- traverse getReadyState tracks
           liftIO . when (all (== MediaStreamTrackStateEnded) cStates) $
@@ -182,8 +183,8 @@ handleIceCandidate config conn = liftJSM $ do
                         . RTCEventIceCandidate
   listener <- newListener $ do
     e <- ask
-    mCandidate <- IceEvent.getCandidate e
-    liftIO $ traverse_ triggerRTCEvent mCandidate
+    candidate <- IceEvent.getCandidate e
+    liftIO $ triggerRTCEvent candidate
   addListener conn iceCandidate listener False
 
 makeGonimoRTCConnection :: MonadJSM m => m RTCPeerConnection

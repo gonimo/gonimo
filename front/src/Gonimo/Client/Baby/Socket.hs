@@ -24,9 +24,7 @@ import qualified Gonimo.Client.WebRTC.Channels     as Channels
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret, DeviceType(..))
 import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
-import           Data.Maybe
 import           GHCJS.DOM.EventM
-import           Gonimo.Client.Prelude
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -96,7 +94,7 @@ socket config = mdo
 
 handleMutedTracks :: MonadJSM m => IO () -> MediaStream -> m ()
 handleMutedTracks triggerClose stream = do
-  tracks <- catMaybes <$> MediaStream.getTracks stream
+  tracks <- MediaStream.getTracks stream
   closeListener <- liftJSM . newListener $ liftIO triggerClose
   let addCloseListener (event', track) = liftJSM $ addListener track event' closeListener False
   traverse_ addCloseListener $ (,) <$> [mute] <*> tracks -- Previously also ended

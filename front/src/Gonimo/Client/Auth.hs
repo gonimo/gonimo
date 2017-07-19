@@ -13,7 +13,9 @@ import qualified GHCJS.DOM as DOM
 import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM.Window as Window
+import qualified GHCJS.DOM.Document as Document
 import qualified GHCJS.DOM.Navigator as Navigator
+import qualified GHCJS.DOM.NavigatorID as Navigator
 import qualified GHCJS.DOM.Location as Location
 import GHCJS.DOM.Storage (Storage)
 import Data.Text (Text)
@@ -76,7 +78,7 @@ auth locDyn config = do
 makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)
   => Config t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
 makeAuthData config = do
-    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     userAgentString <- getUserAgentString
 
     initial <- loadAuthData storage
@@ -120,8 +122,8 @@ writeAuthData storage (Just auth') = GStorage.setItem storage GStorage.keyAuthDa
 
 handleStolenSession :: MonadJSM m => (Locale, API.ServerResponse) -> m ()
 handleStolenSession (loc , API.EventSessionGotStolen) = do
-  window  <- DOM.currentWindowUnchecked
-  location <- Window.getLocationUnsafe window
+  doc  <- DOM.currentDocumentUnchecked
+  location <- Document.getLocationUnsafe doc
   case loc of
     EN_GB -> Location.setPathname location ("/stolenSession.html" :: Text)
     DE_DE -> Location.setPathname location ("/stolenSession-de.html" :: Text)
@@ -134,7 +136,7 @@ loadAuthData storage = GStorage.getItem storage GStorage.keyAuthData
 getUserAgentString :: MonadJSM m => m Text
 getUserAgentString = do
   window  <- DOM.currentWindowUnchecked
-  navigator <- Window.getNavigatorUnsafe window
+  navigator <- Window.getNavigator window
   Navigator.getUserAgent navigator
 
 

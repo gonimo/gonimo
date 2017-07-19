@@ -10,26 +10,28 @@ module Gonimo.Client.Baby.Internal where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
-import           Data.Maybe (catMaybes)
+import           Data.Maybe                        (catMaybes)
 import qualified GHCJS.DOM                         as DOM
-import qualified GHCJS.DOM.Navigator               as Navigator
-import qualified GHCJS.DOM.Window                  as Window
 import qualified GHCJS.DOM.MediaStream             as MediaStream
 import qualified GHCJS.DOM.MediaStreamTrack        as MediaStreamTrack
+import qualified GHCJS.DOM.Navigator               as Navigator
+import qualified GHCJS.DOM.Window                  as Window
 import qualified Gonimo.Client.Storage             as GStorage
 import qualified Gonimo.Client.Storage.Keys        as GStorage
+import qualified Gonimo.Db.Entities                as Db
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
-import qualified Gonimo.Db.Entities         as Db
 
-import           GHCJS.DOM.Types                   (MediaStream, MonadJSM, Dictionary)
-import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException(..))
-import           Gonimo.DOM.Navigator.MediaDevices
-import qualified Gonimo.Client.Baby.Socket         as Socket
-import qualified Gonimo.Types                      as Gonimo
-import           Gonimo.Client.Util                (oyd, getVolumeInfo)
 import           Control.Exception                 (try)
+import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException (..))
+import           GHCJS.DOM.Types                   (Dictionary, MediaStream,
+                                                    MonadJSM, MediaStreamConstraints(..))
+import qualified GHCJS.DOM.MediaDevices            as MediaDevices
+import qualified Gonimo.Client.Baby.Socket         as Socket
+import           Gonimo.Client.Util                (getVolumeInfo, oyd)
+import           Gonimo.DOM.Navigator.MediaDevices
+import qualified Gonimo.Types                      as Gonimo
 import qualified Language.Javascript.JSaddle.Monad as JS
 
 data Config t
@@ -163,7 +165,7 @@ baby config = mdo
 
 handleCameraEnable :: forall m t. GonimoM t m => Config t -> m (Dynamic t Bool)
 handleCameraEnable config = do
-    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     mLastEnabled <- GStorage.getItem storage GStorage.cameraEnabled
 
     let initVal = fromMaybe True $ mLastEnabled
@@ -175,7 +177,7 @@ handleCameraEnable config = do
 
 handleCameraSelect :: forall m t. GonimoM t m => Config t -> Dynamic t [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
 handleCameraSelect config devices = do
-    storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+    storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     mLastCameraLabel <- GStorage.getItem storage GStorage.selectedCamera
 
     let
@@ -208,8 +210,8 @@ getMediaDeviceByLabel label infos =
 
 getInitialMediaStream :: forall m. MonadJSM m => m (Either UserMediaException MediaStream)
 getInitialMediaStream = do
-  navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
-  constr <- makeSimpleUserMediaDictionary True False
+  navigator <- Window.getNavigator =<< DOM.currentWindowUnchecked
+  constr <- makeSimpleMediaStreamConstraints True False
   getUserMedia' navigator $ Just constr
 
 getConstrainedMediaStream :: forall m t. (MonadJSM m, Reflex t, MonadSample t m)
@@ -218,37 +220,37 @@ getConstrainedMediaStream mediaStreams infos mLabel = do
   oldStream <- sample $ current mediaStreams
   either (const $ pure ()) stopMediaStream $ oldStream
   let mInfo = flip getMediaDeviceByLabel infos =<< mLabel
-  navigator <- Window.getNavigatorUnsafe =<< DOM.currentWindowUnchecked
+  navigator <- Window.getNavigator =<< DOM.currentWindowUnchecked
   constr <- case (mInfo, mLabel) of
-    (_, Nothing)        -> makeSimpleUserMediaDictionary True False
-    (Nothing, Just _)   -> makeSimpleUserMediaDictionary True True
-    (Just info, Just _) -> makeDictionaryFromVideoInfo info
+    (_, Nothing)        -> makeSimpleMediaStreamConstraints True False
+    (Nothing, Just _)   -> makeSimpleMediaStreamConstraints True True
+    (Just info, Just _) -> makeConstraintsFromVideoInfo info
   getUserMedia' navigator $ Just constr
 
 
 stopMediaStream :: forall m. MonadJSM m => MediaStream -> m ()
 stopMediaStream stream = do
-  tracks <- catMaybes <$> MediaStream.getTracks stream
+  tracks <- MediaStream.getTracks stream
   traverse_ MediaStreamTrack.stop tracks
 
 readAutoStart :: MonadJSM m => m Bool
 readAutoStart = do
-  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
   fromMaybe False <$> GStorage.getItem storage GStorage.autoStart
 
 writeAutoStart :: MonadJSM m => Bool -> m ()
 writeAutoStart haveAutoStart = do
-  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
   GStorage.setItem storage GStorage.autoStart haveAutoStart
 
 readLastBabyName :: MonadJSM m => m Text
 readLastBabyName = do
-  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
   fromMaybe "baby" <$> GStorage.getItem storage GStorage.lastBabyName
 
 writeLastBabyName :: MonadJSM m => Text -> m ()
 writeLastBabyName lastBabyName = do
-  storage <- Window.getLocalStorageUnsafe =<< DOM.currentWindowUnchecked
+  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
   GStorage.setItem storage GStorage.lastBabyName lastBabyName
 
 
@@ -272,7 +274,8 @@ getVolumeLevel mediaStream' sockEnabled = do
     getVolInfo _ _ = pure Nothing
 
 
-getUserMedia' :: (MonadIO m, MonadJSM m) => Navigator.Navigator -> Maybe Dictionary -> m (Either UserMediaException MediaStream)
+getUserMedia' :: (MonadIO m, MonadJSM m) => Navigator.Navigator -> Maybe MediaStreamConstraints -> m (Either UserMediaException MediaStream)
 getUserMedia' nav md = do
+  mediaDevices <- Navigator.getMediaDevices nav
   jsm <- JS.askJSM
-  liftIO . try $ JS.runJSM (Navigator.getUserMedia nav md) jsm
+  liftIO . try $ JS.runJSM (MediaDevices.getUserMedia mediaDevices md) jsm

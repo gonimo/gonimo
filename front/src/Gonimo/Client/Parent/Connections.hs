@@ -146,8 +146,8 @@ playAlarmOnBrokenConnection channels' = mdo
 
     startStopSound (sound, onOff)
       = if onOff
-        then AudioNode.start sound 0 0 1000 -- 0 for duration does not work on Chrome at least! fs
-        else AudioNode.stop  sound 0
+        then AudioNode.start sound (Just 0) (Just 0) (Just 1000) -- 0 for duration does not work on Chrome at least! fs
+        else AudioNode.stop  sound (Just 0)
 
 areThereBrokenConnections :: Reflex t => Channels.Channels t -> Dynamic t Bool
 areThereBrokenConnections = uniqDyn . fmap getAnyBrokenConnections . (^.Channels.channelMap)

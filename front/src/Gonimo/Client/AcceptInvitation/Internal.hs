@@ -26,7 +26,6 @@ import Gonimo.Client.Subscriber (SubscriptionsDyn)
 
 import qualified Gonimo.Client.App.Types as App
 import qualified Gonimo.Client.Auth as Auth
-import Gonimo.Client.Server (webSocket_recv)
 import           GHCJS.DOM.Types (MonadJSM, liftJSM)
 import qualified Data.Set                                as Set
 
@@ -55,7 +54,7 @@ fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
 getInvitationSecret :: forall m. (MonadPlus m, MonadJSM m) => m Secret
 getInvitationSecret = do
     window  <- DOM.currentWindowUnchecked
-    location <- Window.getLocationUnsafe window
+    location <- Window.getLocation window
     queryString <- Location.getSearch location
     let secretString =
           let
@@ -69,11 +68,11 @@ getInvitationSecret = do
 clearInvitationFromURL :: forall m. (MonadJSM m) => m ()
 clearInvitationFromURL = do
     window  <- DOM.currentWindowUnchecked
-    location <- Window.getLocationUnsafe window
-    history <- Window.getHistoryUnsafe window
+    location <- Window.getLocation window
+    history <- Window.getHistory window
     href <- Location.getHref location
     emptyJSVal <- liftJSM $ toJSVal T.empty
-    History.pushState history emptyJSVal ("gonimo" :: Text) (T.takeWhile (/='?') href)
+    History.pushState history emptyJSVal ("gonimo" :: Text) (Just $ T.takeWhile (/='?') href)
 
 makeAnswerInvitation :: forall t. (Reflex t) => Secret -> Event t InvitationReply -> Event t [API.ServerRequest]
 makeAnswerInvitation secret reply

@@ -20,7 +20,6 @@ import qualified Gonimo.Client.Invite             as Invite
 import qualified Gonimo.Client.NavBar             as NavBar
 import qualified Gonimo.Client.Parent.Connections as C
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server             (webSocket_recv)
 import           Gonimo.Client.Util               (volumeMeter)
 import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
                                                    Channel, worstState)

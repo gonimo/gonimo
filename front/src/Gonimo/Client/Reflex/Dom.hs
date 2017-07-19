@@ -56,7 +56,7 @@ dismissibleOverlay className dismissedAfter content = mdo
     displayOverlay True = makeClickable . elAttr' "div" ( "class" =: ("dismissible-overlay " <> className)
                                                         <> "role" =: "button") $ content
 
-enterPressed :: Reflex t => Event t Int -> Event t ()
+enterPressed :: Reflex t => Event t Word -> Event t ()
 enterPressed = push (\key -> pure $ if key == 13
                                     then Just ()
                                     else Nothing
@@ -149,7 +149,7 @@ mediaVideo stream attrs = do
       _ <- JS.toJSVal rawElement JS.<# ("muted" :: Text) $ True
       pure ()
     registerTriggerFullScreen rawElement
-    tracks <- catMaybes <$> MediaStream.getTracks stream
+    tracks <- MediaStream.getTracks stream
   -- Cleanup necessary because of DOM node leak in reflex, see: https://bugs.chromium.org/p/chromium/issues/detail?id=255456
     let registerCleanup track = do
           _ <- on track ended . liftJSM

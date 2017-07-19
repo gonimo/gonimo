@@ -75,8 +75,15 @@ type ToId = DeviceId
 
 data SessionDescription
   = SessionDescription { _sdp :: Text
-                       , _type_ :: Text
+                       , _type_ :: RTCSdpType
                        } deriving (Generic, Eq, Ord, Show)
+
+-- Identical to the one in GHCJS.DOM.JSFFI.Generated.Enums, duplicated for avoiding dependency on ghcjs-dom in gonimo-common. (Translation function is necessary.)
+data RTCSdpType = RTCSdpTypeOffer
+                | RTCSdpTypePranswer
+                | RTCSdpTypeAnswer
+                | RTCSdpTypeRollback
+                deriving (Show, Read, Eq, Ord, Generic)
 
 data IceCandidate
   = IceCandidate { _sdpMLineIndex :: Maybe Int
@@ -92,6 +99,10 @@ data Message
 
 instance FromJSON SessionDescription
 instance ToJSON SessionDescription where
+  toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON RTCSdpType
+instance ToJSON RTCSdpType where
   toEncoding = genericToEncoding defaultOptions
 
 instance FromJSON IceCandidate

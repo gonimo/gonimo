@@ -11,7 +11,7 @@ import Control.Lens
 import qualified Data.Aeson as Aeson
 import GHCJS.DOM.Types (MonadJSM)
 import qualified Data.ByteString.Lazy as BL
-import Gonimo.Client.Reflex.Dom.WebSocket (WebSocketConfig(..), RawWebSocket(..), webSocket)
+import Reflex.Dom.WebSocket (WebSocketConfig(..), RawWebSocket(..), webSocket)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 #ifdef DEVELOPMENT
