@@ -16,7 +16,7 @@ import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
 -- Workaround until issue https://github.com/ghcjs/jsaddle-dom/issues/3 is resolved:
 #ifdef __GHCJS__
-import           GHCJS.DOM.RTCPeerConnection   as RTCPeerConnection hiding (newRTCPeerConnection)
+import           GHCJS.DOM.RTCPeerConnection   as RTCPeerConnection
 #else
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
 import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection
