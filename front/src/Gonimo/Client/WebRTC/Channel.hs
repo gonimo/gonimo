@@ -184,7 +184,13 @@ handleIceCandidate config conn = liftJSM $ do
   listener <- newListener $ do
     e <- ask
     candidate <- IceEvent.getCandidate e
-    liftIO $ triggerRTCEvent candidate
+    -- Needed, until https://github.com/ghcjs/ghcjs-dom/issues/73 gets fixed:
+    -- We should also check again whether we should send a null candidate to the other party.
+    -- Spec says yes, as far as I remember but implementation crashed last time.
+    case candidate of
+      RTCIceCandidate jsVal -> do
+        unless (JS.isNull jsVal) $
+          liftIO $ triggerRTCEvent candidate
   addListener conn iceCandidate listener False
 
 makeGonimoRTCConnection :: MonadJSM m => m RTCPeerConnection
