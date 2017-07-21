@@ -158,7 +158,7 @@ handleReceivedStream config conn = liftJSM $ do
 
     endedListener <- lift . newListener $ sendStreamEnded
 
-    let addEndedListener (event', track) = liftJSM $ addListener track event' endedListener False
+    let addEndedListener (event', track') = liftJSM $ addListener track' event' endedListener False
     traverse_ addEndedListener $ (ended,) <$> tracks
     sendStreamEnded
 
