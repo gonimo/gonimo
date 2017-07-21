@@ -7,22 +7,48 @@ var connect = function() {
     var wsaddress =  "ws://localhost:3709/";
 
     var ws = new WebSocket(wsaddress);
+    var syncKey = "";
 
     ws.onopen = function(e) {
          var jsaddle_values = new Map();
+        var jsaddle_free = new Map();
         jsaddle_values.set(0, null);
         jsaddle_values.set(1, undefined);
         jsaddle_values.set(2, false);
         jsaddle_values.set(3, true);
         jsaddle_values.set(4, window);
         var jsaddle_index = 100;
+        var expectedBatch = 1;
+        var lastResults = [0, {}];
+        var inCallback = 0;
+
+        var inXhrSend = false;
 
         ws.onmessage = function(e) {
+            if(inXhrSend) return;
             var batch = JSON.parse(e.data);
+            if(typeof batch === "string") {
+                syncKey = batch;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'http://localhost:3709/reload/'+syncKey, true);
+                xhr.onreadystatechange = function() {
+                    if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200)
+                        setTimeout(function(){window.location.reload();}, 500);
+                };
+                xhr.send();
+                return;
+            }
 
-     var processBatch = function(timestamp) {
-        var results = [];
-        try {
+   var runBatch = function(firstBatch, initialSyncDepth) {
+    var processBatch = function(timestamp) {
+      var batch = firstBatch;
+      var results = [];
+      inCallback++;
+      try {
+        syncDepth = initialSyncDepth || 0;
+        for(;;){
+          if(batch[2] === expectedBatch) {
+            expectedBatch++;
             var nCommandsLength = batch[0].length;
             for (var nCommand = 0; nCommand != nCommandsLength; nCommand++) {
                 var cmd = batch[0][nCommand];
@@ -30,7 +56,15 @@ var connect = function() {
                     var d = cmd.Left;
                     switch (d.tag) {
                             case "FreeRef":
-                                jsaddle_values.delete(d.contents);
+                                var refsToFree = jsaddle_free.get(d.contents[0]) || [];
+                                refsToFree.push(d.contents[1]);
+                                jsaddle_free.set(d.contents[0], refsToFree);
+                                break;
+                            case "FreeRefs":
+                                var refsToFree = jsaddle_free.get(d.contents) || [];
+                                for(var nRef = 0; nRef != refsToFree.length; nRef++)
+                                    jsaddle_values.delete(refsToFree[nRef]);
+                                jsaddle_free.delete(d.contents);
                                 break;
                             case "SetPropertyByName":
                                 jsaddle_values.get(d.contents[0])[d.contents[1]]=jsaddle_values.get(d.contents[2]);
@@ -62,10 +96,12 @@ var connect = function() {
                                 var n = d.contents;
                                 jsaddle_values.set(n, {});
                                 break;
-                            case "NewCallback":
+                            case "NewAsyncCallback":
                                 (function() {
                                     var nFunction = d.contents;
-                                    jsaddle_values.set(nFunction, function() {
+                                    var func = function() {
+                                        var nFunctionInFunc = ++jsaddle_index;
+                                        jsaddle_values.set(nFunctionInFunc, func);
                                         var nThis = ++jsaddle_index;
                                         jsaddle_values.set(nThis, this);
                                         var args = [];
@@ -74,8 +110,40 @@ var connect = function() {
                                             jsaddle_values.set(nArg, arguments[i]);
                                             args[i] = nArg;
                                         }
-                                        ws.send(JSON.stringify({"tag": "Callback", "contents": [nFunction, nThis, args]}));
-                                    })})();
+                                        ws.send(JSON.stringify({"tag": "Callback", "contents": [lastResults[0], lastResults[1], nFunction, nFunctionInFunc, nThis, args]}));
+                                    };
+                                    jsaddle_values.set(nFunction, func);
+                                })();
+                                break;
+                            case "NewSyncCallback":
+                                (function() {
+                                    var nFunction = d.contents;
+                                    var func = function() {
+                                        var nFunctionInFunc = ++jsaddle_index;
+                                        jsaddle_values.set(nFunctionInFunc, func);
+                                        var nThis = ++jsaddle_index;
+                                        jsaddle_values.set(nThis, this);
+                                        var args = [];
+                                        for (var i = 0; i != arguments.length; i++) {
+                                            var nArg = ++jsaddle_index;
+                                            jsaddle_values.set(nArg, arguments[i]);
+                                            args[i] = nArg;
+                                        }
+                                        if(inCallback > 0) {
+                                          ws.send(JSON.stringify({"tag": "Callback", "contents": [lastResults[0], lastResults[1], nFunction, nFunctionInFunc, nThis, args]}));
+                                        } else {
+                                          runBatch((function(){
+                       inXhrSend = true;
+                       var xhr = new XMLHttpRequest();
+                       xhr.open('POST', 'http://localhost:3709/sync/'+syncKey, false);
+                       xhr.setRequestHeader("Content-type", "application/json");
+                       xhr.send(JSON.stringify({"tag": "Callback", "contents": [lastResults[0], lastResults[1], nFunction, nFunctionInFunc, nThis, args]}));
+                       inXhrSend = false;
+                       return JSON.parse(xhr.response);})(), 1);
+                                        }
+                                    };
+                                    jsaddle_values.set(nFunction, func);
+                                })();
                                 break;
                             case "CallAsFunction":
                                 var n = d.contents[3];
@@ -118,8 +186,14 @@ var connect = function() {
                                 jsaddle_values.set(n, d.contents[0].map(function(v){return jsaddle_values.get(v);}));
                                 break;
                             case "SyncWithAnimationFrame":
-                                var n = d.contents[0];
+                                var n = d.contents;
                                 jsaddle_values.set(n, timestamp);
+                                break;
+                            case "StartSyncBlock":
+                                syncDepth++;
+                                break;
+                            case "EndSyncBlock":
+                                syncDepth--;
                                 break;
                             default:
                                 ws.send(JSON.stringify({"tag": "ProtocolError", "contents": e.data}));
@@ -183,20 +257,65 @@ var connect = function() {
                         }
                 }
             }
-            ws.send(JSON.stringify({"tag": "Success", "contents": results}));
+            if(syncDepth <= 0) {
+              lastResults = [batch[2], {"tag": "Success", "contents": results}];
+              ws.send(JSON.stringify({"tag": "BatchResults", "contents": [lastResults[0], lastResults[1]]}));
+              break;
+            } else {
+              lastResults = [batch[2], {"tag": "Success", "contents": results}];
+              batch = (function(){
+                       inXhrSend = true;
+                       var xhr = new XMLHttpRequest();
+                       xhr.open('POST', 'http://localhost:3709/sync/'+syncKey, false);
+                       xhr.setRequestHeader("Content-type", "application/json");
+                       xhr.send(JSON.stringify({"tag": "BatchResults", "contents": [lastResults[0], lastResults[1]]}));
+                       inXhrSend = false;
+                       return JSON.parse(xhr.response);})();
+              results = [];
+            }
+          } else {
+            if(syncDepth <= 0) {
+              break;
+            } else {
+              if(batch[2] === expectedBatch - 1) {
+                batch = (function(){
+                       inXhrSend = true;
+                       var xhr = new XMLHttpRequest();
+                       xhr.open('POST', 'http://localhost:3709/sync/'+syncKey, false);
+                       xhr.setRequestHeader("Content-type", "application/json");
+                       xhr.send(JSON.stringify({"tag": "BatchResults", "contents": [lastResults[0], lastResults[1]]}));
+                       inXhrSend = false;
+                       return JSON.parse(xhr.response);})();
+              } else {
+                batch = (function(){
+                       inXhrSend = true;
+                       var xhr = new XMLHttpRequest();
+                       xhr.open('POST', 'http://localhost:3709/sync/'+syncKey, false);
+                       xhr.setRequestHeader("Content-type", "application/json");
+                       xhr.send(JSON.stringify({"tag": "Duplicate", "contents": [batch[2], expectedBatch]}));
+                       inXhrSend = false;
+                       return JSON.parse(xhr.response);})();
+              }
+              results = [];
+            }
+          }
         }
-        catch (err) {
-            var n = ++jsaddle_index;
-            jsaddle_values.set(n, err);
-            ws.send(JSON.stringify({"tag": "Failure", "contents": [results,n]}));
-        }
+      }
+      catch (err) {
+        var n = ++jsaddle_index;
+        jsaddle_values.set(n, err);
+        ws.send(JSON.stringify({"tag": "BatchResults", "contents": [batch[2], {"tag": "Failure", "contents": [results, n]}]}));
+      }
+      inCallback--;
     };
-    if(batch[1]) {
+    if(batch[1] && (initialSyncDepth || 0) === 0) {
         window.requestAnimationFrame(processBatch);
     }
     else {
         processBatch(window.performance ? window.performance.now() : null);
     }
+  };
+  runBatch(batch);
         };
     };
     ws.onerror = function() {
