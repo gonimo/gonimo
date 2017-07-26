@@ -41,9 +41,12 @@ else
     # cat: /nix/store/xd86f3a56w1xilnc66lra6f6spl6dx15-gonimo-front-0.1/bin/gonimo-front.jsexe/all.js: No such file or directory
     # during deployment.)
     # rm rts.js lib.js out.js all.js manifest.webapp out.stats # closure-externs.js all-inner.min.js
+    touch rts.js lib.js out.js all.js manifest.webapp out.stats
     popd
 fi
 gonimo-deploy md5sum ${distPath}
+# Necessary, see above:
+touch rts.js lib.js out.js all.js manifest.webapp out.stats
 #../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
 # Fix up index.html:
 pushd ${distPath}
