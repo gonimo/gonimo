@@ -36,8 +36,11 @@ else
     cat index.html | grep -v rts.js | grep -v lib.js | sed 's/out.js/all.min.js/1' > index-new.html
     rm index.html
     mv index-new.html index.html
-    #cleanup:
-    rm rts.js lib.js out.js all.js manifest.webapp out.stats # closure-externs.js all-inner.min.js
+    # cleanup (don't do it, because otherwise we get: Creating package registration file:
+    # /nix/store/xd86f3a56w1xilnc66lra6f6spl6dx15-gonimo-front-0.1/lib/ghcjs-0.2.0/package.conf.d/gonimo-front-0.1.conf
+    # cat: /nix/store/xd86f3a56w1xilnc66lra6f6spl6dx15-gonimo-front-0.1/bin/gonimo-front.jsexe/all.js: No such file or directory
+    # during deployment.)
+    # rm rts.js lib.js out.js all.js manifest.webapp out.stats # closure-externs.js all-inner.min.js
     popd
 fi
 gonimo-deploy md5sum ${distPath}
