@@ -45,11 +45,11 @@ else
     popd
 fi
 gonimo-deploy md5sum ${distPath}
-# Necessary, see above:
-touch rts.js lib.js out.js all.js manifest.webapp out.stats
 #../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
 # Fix up index.html:
 pushd ${distPath}
+# Necessary, see above:
+touch rts.js lib.js out.js all.js manifest.webapp
 ln index-*.html index.html
 if [[ ${dev} == "dev" ]]
 then
