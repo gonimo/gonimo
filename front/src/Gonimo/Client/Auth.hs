@@ -14,18 +14,15 @@ import qualified Gonimo.Client.Storage as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified GHCJS.DOM.Window as Window
 import qualified GHCJS.DOM.Document as Document
-import qualified GHCJS.DOM.Navigator as Navigator
 import qualified GHCJS.DOM.NavigatorID as Navigator
 import qualified GHCJS.DOM.Location as Location
 import GHCJS.DOM.Storage (Storage)
 import Data.Text (Text)
-import Safe (headMay)
 import           GHCJS.DOM.Types (MonadJSM)
 import qualified Data.Text as T
 import Data.Time.Clock
 
 import Control.Monad.IO.Class
-import Data.Maybe (isNothing, catMaybes)
 import Gonimo.Client.Prelude
 import Gonimo.Client.Auth.I18N
 import Gonimo.I18N
@@ -105,14 +102,13 @@ makeAuthData config = do
 
 
 authenticate :: forall t. Reflex t => Config t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
-authenticate config authDataDyn=
+authenticate config authDataDyn =
   let
-    authDataList = catMaybes
-                   <$> (mconcat . map (fmap (:[])))
-                   [ tag (current authDataDyn) $ config^.configServerOpen
-                   , updated authDataDyn
-                   ]
-    authData' = push (pure . headMay) authDataList
+    authDataList = leftmost
+                    [ tag (current authDataDyn) $ config^.configServerOpen
+                    , updated authDataDyn
+                    ]
+    authData' = push pure authDataList
   in
     API.ReqAuthenticate . API.authToken <$> authData'
 
