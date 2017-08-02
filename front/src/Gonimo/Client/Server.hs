@@ -29,7 +29,7 @@ type ServerConfig t = WebSocketConfig t ServerRequest
 
 type Server t = RawWebSocket t ServerResponse
 
--- Generate our own lenses, because simle lenses are not good enough!
+-- Generate our own lenses, because simple lenses are not good enough!
 makeLenses ''WebSocketConfig
 makeLenses ''RawWebSocket
 
@@ -37,9 +37,10 @@ server :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Perform
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
                       )
           => Text -> ServerConfig t -> m (Server t)
-server url config = do
-  newReq <- handlePingPong (config^.webSocketConfig_send)
+server url config = mdo
+  (newReq, killConn) <- handlePingPong (config^.webSocketConfig_send) (ws'^.webSocket_recv)
   let config' = config & webSocketConfig_send .~ newReq
+                       & webSocketConfig_close .~ (const (4000, "Server did not respond.") <$> killConn)
   ws <- webSocket url
 #ifdef DEVELOPMENT
         $ config' & webSocketConfig_send . mapped . mapped %~ T.decodeUtf8 . BL.toStrict . Aeson.encode
@@ -69,20 +70,16 @@ decodeResponse = fromMaybe (error "Decoding Server Response Failed!") . Aeson.de
 handlePingPong :: forall t m. ( MonadFix m, MonadHold t m, MonadJSM m, MonadJSM (Performable m)
                               , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
                               )
-                  => Event t [ServerRequest] -> m (Event t [ServerRequest])
-handlePingPong inRequest = do
+                  => Event t [ServerRequest] -> Event t ServerResponse -> m (Event t [ServerRequest], Event t ())
+handlePingPong inRequest inResponse = do
   now <- liftIO $ getCurrentTime
   tick <- tickLossy webSocketPingInterval now
   let req = const [ReqPing] <$> tick
+  killValue <- hold Nothing $ leftmost [ const Nothing <$> inResponse
+                                       , const (Just ()) <$> tick
+                                       ]
+  -- If killValue is (Just ()) on a tick event - then we need to kill the
+  -- connection. (Server needed more than webSocketPingInterval for a response.)
+  let killConn = push (const $ sample killValue) tick
   let outRequest = req <> inRequest
-  -- This is not such a good idea, killing the connection makes gonimo unusable on slow links instead of just slow, let's see how far we can get with plain TCP and ping pong to detect a broken link:
-  -- Later on we could use a similar response time measurement to detect slow links and inform the user that a slow connection was detected and that gonimo might not work as expected.
-  -- responseCount :: Dynamic t Int <- count $ server'^.webSocket_recv
-  -- watchDog <- delay webSocketMaxRoundTrip $ pushAlways (\_ -> sample $ current responseCount) outRequest
-  -- let killConn = push (\oldCount -> do
-  --                         newCount <- sample $ current responseCount
-  --                         if newCount > oldCount
-  --                           then pure Nothing
-  --                           else pure $ Just (1000, "Connection timed out - you got 7 seconds to respond!")
-  --                     ) watchDog
-  pure outRequest
+  pure (outRequest, killConn)
