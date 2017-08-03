@@ -27,11 +27,20 @@ import Gonimo.Constants
 type ServerConfig t = WebSocketConfig t ServerRequest
 
 
-type Server t = RawWebSocket t ServerResponse
+data Server t
+  = Server { _socket :: RawWebSocket t ServerResponse
+           -- After 30 seconds we attempt to close the connection, unfortunately
+           -- it can take a significant amount of time until it really gets
+           -- closed, but we would like to inform the user about the problem
+           -- sooner. Therefore we provide the closeRequested event here:
+           , _closeRequested :: Event t ()
+           }
 
+makeLenses ''Server
 -- Generate our own lenses, because simple lenses are not good enough!
 makeLenses ''WebSocketConfig
 makeLenses ''RawWebSocket
+
 
 server :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
@@ -48,7 +57,7 @@ server url config = mdo
         $ config' & webSocketConfig_send . mapped . mapped %~ BL.toStrict . Aeson.encode
 #endif
   let ws' = ws & webSocket_recv . mapped %~ decodeResponse
-  pure ws'
+  pure $ Server ws' killConn
 
 
 

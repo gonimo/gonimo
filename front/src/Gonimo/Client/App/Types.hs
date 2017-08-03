@@ -17,9 +17,11 @@ import qualified Gonimo.Types as Gonimo
 import Data.Default
 import qualified Data.Set as Set
 import Gonimo.I18N
+import Reflex.Dom.WebSocket (RawWebSocket(..))
+import Gonimo.SocketAPI (ServerResponse)
 
 data Config t
-  = Config { _server :: Server.Server t
+  = Config { _server :: RawWebSocket t ServerResponse
            , _auth :: Auth.Auth t
            , _subscriber :: Subscriber.Subscriber t
            }

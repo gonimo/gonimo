@@ -33,6 +33,7 @@ data Config t
   = Config { _configResponse :: Event t API.ServerResponse
            , _configServerOpen :: Event t ()
            , _configServerClose :: Event t ()
+           , _configServerCloseRequested :: Event t ()
            }
 
 data Auth t
@@ -59,6 +60,7 @@ auth locDyn config = do
             _                    -> Nothing
       push handleAuthenticated $ config^.configResponse
   isOnline' <- holdDyn False $ leftmost [ const False <$> config^.configServerClose
+                                        , const False <$> config^.configServerCloseRequested
                                         , const True <$> authenticated'
                                         ]
 

@@ -38,20 +38,21 @@ app = mdo
                      & Server.webSocketConfig_reconnect .~ True
   server <- Server.server Config.gonimoBackWSURL  wsConfig
 
-  let authConfig = Auth.Config { Auth._configResponse = server^.webSocket_recv
-                               , Auth._configServerOpen = server^.webSocket_open
-                               , Auth._configServerClose = const () <$> server^.webSocket_close
+  let authConfig = Auth.Config { Auth._configResponse = server^.Server.socket.webSocket_recv
+                               , Auth._configServerOpen = server^.Server.socket.webSocket_open
+                               , Auth._configServerClose = const () <$> server^.Server.socket.webSocket_close
+                               , Auth._configServerCloseRequested = server^.Server.closeRequested
                                }
   auth <- Auth.auth currentLocale authConfig
 
   let subscriberConfig
-        = Subscriber.Config { Subscriber._configResponse = server^.webSocket_recv
+        = Subscriber.Config { Subscriber._configResponse = server^.Server.socket.webSocket_recv
                             , Subscriber._configSubscriptions = app^.App.subscriptions
                             , Subscriber._configAuthenticated = auth^.Auth.authenticated
                             }
   subscriber <- Subscriber.subscriber subscriberConfig
 
-  let appConfig = App.Config { App._server = server
+  let appConfig = App.Config { App._server = server^.Server.socket
                              , App._subscriber = subscriber
                              , App._auth = auth
                              }
