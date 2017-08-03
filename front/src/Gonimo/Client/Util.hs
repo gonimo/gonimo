@@ -104,11 +104,12 @@ loadSound url = do
 
     "  if (typeof gonimoDecodedAlert == 'undefined') {\n" <>
     "      var request = new XMLHttpRequest();\n" <>
-    "      request.open('GET', url, true);\n" <>
     "      request.responseType = 'arraybuffer';\n" <>
     "      request.onerror = function () {\n" <>
-    "          request.open('GET', url, true); // Try again!\n" <>
-    "          request.responseType = 'arraybuffer';\n" <>
+    "          setTimeout(function() {\n" <>
+    "            request.open('GET', url, true); // Try again!\n" <>
+    "            request.responseType = 'arraybuffer';\n" <>
+    "          }, 1000);" <>
     "      }\n" <>
     "      // Decode asynchronously\n" <>
     "      request.onload = function() {\n" <>
@@ -117,6 +118,7 @@ loadSound url = do
     "            request.responseType = 'arraybuffer';\n" <>
     "            return;\n" <>
     "        }\n" <>
+    "      request.open('GET', url, true);\n" <>
 
     "        if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
     "        var ctx = gonimoAudioContext;\n" <>
