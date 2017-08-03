@@ -109,6 +109,7 @@ loadSound url = do
     "          setTimeout(function() {\n" <>
     "            request.open('GET', url, true); // Try again!\n" <>
     "            request.responseType = 'arraybuffer';\n" <>
+    "            request.send();\n" <>
     "          }, 1000);" <>
     "      }\n" <>
     "      // Decode asynchronously\n" <>
@@ -118,7 +119,6 @@ loadSound url = do
     "            request.responseType = 'arraybuffer';\n" <>
     "            return;\n" <>
     "        }\n" <>
-    "      request.open('GET', url, true);\n" <>
 
     "        if (typeof gonimoAudioContext == 'undefined') {gonimoAudioContext = new AudioContext();}\n" <>
     "        var ctx = gonimoAudioContext;\n" <>
@@ -127,6 +127,7 @@ loadSound url = do
     "            success(makeMyAudio());\n" <>
     "        }, function(e) { console.log ('Error:' +  e.message); error(e);});\n" <>
     "    };\n" <>
+    "    request.open('GET', url, true);\n" <>
     "    request.send();\n" <>
     "  }\n" <>
     "  else {\n" <>
