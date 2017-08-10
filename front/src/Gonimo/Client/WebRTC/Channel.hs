@@ -186,7 +186,7 @@ handleIceCandidate config conn = liftJSM $ do
     candidate <- IceEvent.getCandidate e
     -- Needed, until https://github.com/ghcjs/ghcjs-dom/issues/73 gets fixed:
     -- We should also check again whether we should send a null candidate to the other party.
-    -- Spec says yes, as far as I remember but implementation crashed last time.
+    -- Spec says yes, as far as I remember, but implementation crashed last time.
     case candidate of
       RTCIceCandidate jsVal -> do
         unless (JS.isNull jsVal) $
