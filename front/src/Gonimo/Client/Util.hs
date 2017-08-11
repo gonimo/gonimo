@@ -66,6 +66,16 @@ boostMediaStreamVolume stream = liftJSM $ do -- Copy pasta from gonimo-front (Pu
     "        outStream.addTrack(videoTracks[i]);\n" <>
     "    }\n" <>
     -- "    document.getElementById('myvideo').srcObject = outStream;" <>
+    "    function stopBoosted() {" <>
+    "      var boostedTracks = outStream.getTracks();" <>
+    "      for(var i = 0; i< boostedTracks.length; i++) {" <>
+    "        boostedTracks[i].stop();" <>
+    "      }" <>
+    "    }" <>
+    "    var origTracks = stream.getTracks();" <>
+    "    for (var i=0; i < origTracks.length; i++) {" <>
+    "      origTracks[i].addEventListener('ended', stopBoosted);" <>
+    "    }" <>
     "    return outStream;\n" <>
     -- "    return stream;\n" <>
     "  } catch(e) {\n" <>
