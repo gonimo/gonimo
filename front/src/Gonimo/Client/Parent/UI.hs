@@ -177,9 +177,7 @@ renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> con
             el "h1" $ dynText ((^. at key._Just._Baby) <$> deviceList^.DeviceList.onlineDevices)
         mediaVideo stream ("autoplay" =: "true")
         closeClicked <- makeClickable $ elAttr' "div" (addBtnAttrs "btn-close-x") blank
-        if True
-          then renderVolumemeter volEvent
-          else volumeMeter stream
+        renderVolumemeter volEvent
         pure $ const key <$> closeClicked
 
     dynConnectionClass key = connectionClass key <$> dynChannelMap
