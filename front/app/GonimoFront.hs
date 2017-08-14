@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecursiveDo, ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP #-}
 
 import           Control.Lens
 import           Data.Monoid
@@ -23,6 +24,17 @@ import qualified Gonimo.Client.Storage.Keys        as GStorage
 import qualified Language.Javascript.JSaddle as JS
 import Control.Monad.Reader
 import Data.Maybe
+#ifndef ghcjs_HOST_OS
+import Network.Wai.Handler.Warp
+       (defaultSettings, setTimeout, setPort, runSettings)
+import Network.WebSockets (defaultConnectionOptions)
+
+import Language.Javascript.JSaddle.Types (JSM)
+import Language.Javascript.JSaddle.Run (syncPoint)
+import Language.Javascript.JSaddle.WebSockets
+import           Network.Wai.Middleware.Static
+#endif
+
 -- import qualified GHCJS.DOM.Types as JS
 
 import Language.Javascript.JSaddle.Warp (run)
@@ -64,8 +76,20 @@ app = mdo
 
 main :: IO ()
 -- main = run 3709 $ mainWidget app
-main = run 3709 $ mainWidgetInElementById "app" app
+main = gonimoRun 3709 $ mainWidgetInElementById "app" app
 
+
+#ifdef ghcjs_HOST_OS
+gonimoRun :: Int -> IO () -> IO ()
+gonimoRun _port = id
+#else
+gonimoRun :: Int -> JSM () -> IO ()
+gonimoRun port f =
+    runSettings (setPort port (setTimeout 3600 defaultSettings)) =<<
+        jsaddleOr defaultConnectionOptions (f >> syncPoint) gonimoApp
+  where
+    gonimoApp = staticPolicy (addBase "devRoot" <|> addSlash) jsaddleApp
+#endif
 
 -- headTag :: forall x. Widget x ()
 -- headTag = do

@@ -38,6 +38,7 @@ import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
 import           GHCJS.DOM.Enums (RTCIceConnectionState(..))
 import           Language.Javascript.JSaddle    (liftJSM, (<#))
 import qualified Language.Javascript.JSaddle    as JS
+import qualified Language.Javascript.JSaddle.Types    as JS
 import           Safe                           (fromJustNote)
 
 data CloseEvent = CloseRequested | CloseConnectionLoss
@@ -189,7 +190,8 @@ handleIceCandidate config conn = liftJSM $ do
     -- Spec says yes, as far as I remember, but implementation crashed last time.
     case candidate of
       RTCIceCandidate jsVal -> do
-        unless (JS.isNull jsVal) $
+        candidateIsNull <- liftJSM $ JS.ghcjsPure $ JS.isNull jsVal
+        unless candidateIsNull $
           liftIO $ triggerRTCEvent candidate
   addListener conn iceCandidate listener False
 

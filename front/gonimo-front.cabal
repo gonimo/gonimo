@@ -204,4 +204,8 @@ executable gonimo-front
                     , jsaddle-warp
                     , ghcjs-dom
                     , mtl
+  if !impl(ghcjs)
+    build-depends: warp
+                 , websockets
+                 , wai-middleware-static
                     
