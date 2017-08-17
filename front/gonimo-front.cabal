@@ -201,7 +201,6 @@ executable gonimo-front
                     , reflex-dom-core
                     , jsaddle-warp
                     , jsaddle
-                    , jsaddle-warp
                     , ghcjs-dom
                     , mtl
   if !impl(ghcjs)
