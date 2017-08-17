@@ -29,11 +29,13 @@ import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types               (MediaStream, MediaStreamTrack,
                                                 MonadJSM, RTCIceCandidate(..), RTCIceCandidateInit(..))
+import qualified GHCJS.DOM.Types               as JS
 
 import           Data.Maybe
 import           Debug.Trace                   (trace)
 import qualified Gonimo.SocketAPI.Translations as API
 import           Language.Javascript.JSaddle   (JSM, liftJSM)
+import qualified Language.Javascript.JSaddle   as JS
 
 import           GHCJS.DOM.EventM              (on)
 import qualified GHCJS.DOM.MediaStream         as MediaStream
@@ -384,29 +386,52 @@ handleMessages config chans = do
   push (pure . id) <$> performEvent actions
 
 -- handles RTCPeerConnection events and produces messages to be sent to the other party.
-handleRTCEvents :: ( PerformEvent t m, Reflex t, MonadSample t (Performable m)
+handleRTCEvents :: forall t m. ( PerformEvent t m, Reflex t, MonadSample t (Performable m)
                    , MonadJSM (Performable m), MonadIO (Performable m)
                    ) => Behavior t DeviceId -> ChannelsBehavior t -> Event t ChannelEvent -> m (Event t [API.ServerRequest])
 handleRTCEvents ourId chans chanEv = do
   let
+    actions :: Event t (Performable m (Maybe [API.ServerRequest]))
     actions = fmap (\(ChannelEvent key@(toId, secret') rtcEv) -> do
                        cChans <- sample chans
-                       runMaybeT $ do
+                       cOurId <- sample ourId
+                       handlePromiseRejected . runMaybeT $ do
                          conn <- MaybeT . pure $ cChans^?at key._Just.rtcConnection
-                         msg <- case rtcEv of
-                                    RTCEventNegotiationNeeded -> liftJSM $ do
+                         msg :: API.Message <- case rtcEv of
+                                    RTCEventNegotiationNeeded -> do
                                       jsOffer <- createOffer conn Nothing
                                       setLocalDescription conn jsOffer
                                       offer <- API.mFromFrontend jsOffer
                                       pure $ API.MsgSessionDescriptionOffer offer
                                     RTCEventIceCandidate candidate
-                                      -> liftJSM $ API.MsgIceCandidate <$> API.mFromFrontend (rtcIceCandidateToInit candidate)
+                                      -> API.MsgIceCandidate <$> API.mFromFrontend (rtcIceCandidateToInit candidate)
                                     _            -> mzero
-                         cOurId <- lift $ sample ourId
                          pure $ [API.ReqSendMessage cOurId toId secret' msg]
                    ) chanEv
   push (pure . id) <$> performEvent actions
 
 
+handlePromiseRejected :: forall m a. MonadJSM m => JSM (Maybe a) -> m (Maybe a)
+handlePromiseRejected action = liftJSM $ action `JS.catch` handleException
+  where
+    -- TODO: Properly print JS exception:
+    handleException :: JS.PromiseRejected -> JSM (Maybe a)
+    handleException _ = do
+      liftIO $ putStrLn "Handled rejected promise"
+      pure Nothing
+
 rtcIceCandidateToInit :: RTCIceCandidate -> RTCIceCandidateInit
 rtcIceCandidateToInit (RTCIceCandidate cand) = RTCIceCandidateInit cand
+
+
+-- handlePromiseRejectedT :: forall a. JSM a -> MaybeT JSM a
+-- handlePromiseRejectedT = MaybeT . handlePromiseRejected
+
+-- handlePromiseRejected :: forall a. JSM a -> JSM (Maybe a)
+-- handlePromiseRejected action = fmap Just action `JS.catch` handleException
+--   where
+--     -- TODO: Properly print JS exception:
+--     handleException :: JS.PromiseRejected -> JSM (Maybe a)
+--     handleException e = do
+--       putStrLn "Handled rejected promise"
+--       pure Nothing
