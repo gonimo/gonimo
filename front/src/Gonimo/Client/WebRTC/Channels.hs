@@ -357,28 +357,29 @@ handleMessages config chans = do
                         chan <- MaybeT . pure $ cChans^.at (fromId, secret')
                         let connection = chan^.rtcConnection
 
-                        resMesg <- case msg of
-                          API.MsgSessionDescriptionOffer description -> do
-                            setRemoteDescription connection =<< API.mToFrontend description
-                            rawAnswer <- liftJSM $ createAnswer connection Nothing
-                            liftJSM $ setLocalDescription connection rawAnswer
-                            -- setDesc <- liftJSM $ JS.eval ("(function(conn,desc) {conn.setLocalDescription(desc);})" :: Text)
-                            -- liftJSM $ JS.call setDesc JS.obj (connection, rawAnswer)
+                        resMesg <- handleRejectedWithClose connection
+                          $ case msg of
+                              API.MsgSessionDescriptionOffer description -> do
+                                setRemoteDescription connection =<< API.mToFrontend description
+                                rawAnswer <- createAnswer connection Nothing
+                                liftJSM $ setLocalDescription connection rawAnswer
+                                -- setDesc <- liftJSM $ JS.eval ("(function(conn,desc) {conn.setLocalDescription(desc);})" :: Text)
+                                -- liftJSM $ JS.call setDesc JS.obj (connection, rawAnswer)
 
-                            answer <- API.mFromFrontend rawAnswer
-                            pure $ API.MsgSessionDescriptionAnswer answer
-                          API.MsgSessionDescriptionAnswer description -> do
-                            setRemoteDescription connection =<< API.mToFrontend description
-                            -- rawDescription <- toJSSessionDescription description
-                            -- setDesc <- liftJSM $ JS.eval ("(function(conn,desc) {conn.setRemoteDescription(desc);})" :: Text)
-                            -- liftJSM $ JS.call setDesc JS.obj (connection, rawDescription)
-                            mzero
-                          API.MsgIceCandidate candidate -> do
-                            addIceCandidate connection =<< API.mToFrontend candidate
-                            mzero
-                          API.MsgCloseConnection  -> do
-                            Channel.safeClose connection
-                            mzero
+                                answer <- API.mFromFrontend rawAnswer
+                                pure $ API.MsgSessionDescriptionAnswer answer
+                              API.MsgSessionDescriptionAnswer description -> do
+                                setRemoteDescription connection =<< API.mToFrontend description
+                                -- rawDescription <- toJSSessionDescription description
+                                -- setDesc <- liftJSM $ JS.eval ("(function(conn,desc) {conn.setRemoteDescription(desc);})" :: Text)
+                                -- liftJSM $ JS.call setDesc JS.obj (connection, rawDescription)
+                                mzero
+                              API.MsgIceCandidate candidate -> do
+                                addIceCandidate connection =<< API.mToFrontend candidate
+                                mzero
+                              API.MsgCloseConnection  -> do
+                                Channel.safeClose connection
+                                mzero
                         ourId' <- lift $ sample (current $ config^.configOurId)
                         pure $ [API.ReqSendMessage ourId' fromId secret' resMesg]
                     ) response'
@@ -396,26 +397,33 @@ handleRTCEvents ourId chans chanEv = do
     actions = fmap (\(ChannelEvent key@(toId, secret') rtcEv) -> do
                        cChans <- sample chans
                        cOurId <- sample ourId
-                       -- Close connection on error ...
-                       let onError = do
-                             let mConn = cChans^?at key._Just.rtcConnection
-                             traverse_ Channel.safeClose mConn
-                             pure $ Just [API.ReqSendMessage cOurId toId secret' API.MsgCloseConnection]
 
-                       fromPromiseM onError . runMaybeT $ do
+                       runMaybeT $ do
                          conn <- MaybeT . pure $ cChans^?at key._Just.rtcConnection
-                         msg :: API.Message <- case rtcEv of
-                                    RTCEventNegotiationNeeded -> do
-                                      jsOffer <- createOffer conn Nothing
-                                      setLocalDescription conn jsOffer
-                                      offer <- API.mFromFrontend jsOffer
-                                      pure $ API.MsgSessionDescriptionOffer offer
-                                    RTCEventIceCandidate candidate
-                                      -> API.MsgIceCandidate <$> API.mFromFrontend (rtcIceCandidateToInit candidate)
-                                    _            -> mzero
+
+                         msg <- handleRejectedWithClose conn
+                           $ case rtcEv of
+                                RTCEventNegotiationNeeded -> do
+                                  jsOffer <- createOffer conn Nothing
+                                  setLocalDescription conn jsOffer
+                                  offer <- API.mFromFrontend jsOffer
+                                  pure $ API.MsgSessionDescriptionOffer offer
+                                RTCEventIceCandidate candidate
+                                  -> API.MsgIceCandidate <$> API.mFromFrontend (rtcIceCandidateToInit candidate)
+                                _            -> mzero
                          pure $ [API.ReqSendMessage cOurId toId secret' msg]
                    ) chanEv
   push (pure . id) <$> performEvent actions
+
+
+-- | Specialized promise handling for `handleRTCEvents` and `handleMessages`
+handleRejectedWithClose :: forall m. MonadJSM m => RTCPeerConnection -> MaybeT JSM API.Message -> MaybeT m API.Message
+handleRejectedWithClose conn = MaybeT . fromPromiseM onError . runMaybeT
+  where
+    onError = do
+      Channel.safeClose conn
+      pure $ Just API.MsgCloseConnection
+
 
 -- | Like `fromPromiseM` but if you have a pure value to return on error
 -- instead of an action.
