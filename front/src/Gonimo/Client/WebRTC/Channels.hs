@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Gonimo.Client.WebRTC.Channels where
 
@@ -395,7 +396,13 @@ handleRTCEvents ourId chans chanEv = do
     actions = fmap (\(ChannelEvent key@(toId, secret') rtcEv) -> do
                        cChans <- sample chans
                        cOurId <- sample ourId
-                       handlePromiseRejected . runMaybeT $ do
+                       -- Close connection on error ...
+                       let onError = do
+                             let mConn = cChans^?at key._Just.rtcConnection
+                             traverse_ Channel.safeClose mConn
+                             pure $ Just [API.ReqSendMessage cOurId toId secret' API.MsgCloseConnection]
+
+                       fromPromiseM onError . runMaybeT $ do
                          conn <- MaybeT . pure $ cChans^?at key._Just.rtcConnection
                          msg :: API.Message <- case rtcEv of
                                     RTCEventNegotiationNeeded -> do
@@ -410,15 +417,25 @@ handleRTCEvents ourId chans chanEv = do
                    ) chanEv
   push (pure . id) <$> performEvent actions
 
+-- | Like `fromPromiseM` but if you have a pure value to return on error
+-- instead of an action.
+fromPromise :: forall m a. MonadJSM m => a -> JSM a -> m a
+fromPromise onException = fromPromiseM (pure onException)
 
-handlePromiseRejected :: forall m a. MonadJSM m => JSM (Maybe a) -> m (Maybe a)
-handlePromiseRejected action = liftJSM $ action `JS.catch` handleException
+-- | Run a computation which is a promise catching the rejected case.
+-- The second parameter is expected to be a promise, if it gets rejected by
+-- means of `PromiseRejected` being thrown then it is catched, the exception is
+-- printed to the console and the first parameter gets evaluated.
+fromPromiseM :: forall m a. MonadJSM m => JSM a -> JSM a -> m a
+fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
   where
     -- TODO: Properly print JS exception:
-    handleException :: JS.PromiseRejected -> JSM (Maybe a)
-    handleException _ = do
-      liftIO $ putStrLn "Handled rejected promise"
-      pure Nothing
+    handleException :: JS.PromiseRejected -> JSM a
+    handleException (JS.PromiseRejected e) = do
+      stackTrace <- JS.fromJSVal =<< JS.getProp "stack" =<< JS.makeObject e
+      liftIO $ putStrLn $ fromMaybe "JS.PromiseRejected is not a JS-Error Object"
+                                    stackTrace
+      onException
 
 rtcIceCandidateToInit :: RTCIceCandidate -> RTCIceCandidateInit
 rtcIceCandidateToInit (RTCIceCandidate cand) = RTCIceCandidateInit cand
