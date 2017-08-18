@@ -67,6 +67,7 @@ ui appConfig loaded deviceList = mdo
   _ <- dyn $ Auth.connectionLossScreen' <$> showBroken
 
   selectedView <- holdDyn "isParentManage" $ leftmost [showParentView, showParentManage, showInviteView]
+  let parentViewShown = (== "isParentView") <$> selectedView
 
   (navBar, devicesUI, inviteRequested) <-
     elDynClass "div" (pure "container has-footer parentManage " <> selectedView) $ do
@@ -74,7 +75,7 @@ ui appConfig loaded deviceList = mdo
 
   viewUI <-
     elDynClass "div" (pure "container parentView " <> selectedView) $ do
-      viewUi appConfig loaded deviceList connections'
+      viewUi appConfig loaded deviceList connections' parentViewShown
 
   invite <-
     elDynClass "div" (pure "container inviteView " <> selectedView) $ do
@@ -134,8 +135,9 @@ manageUi _ loaded deviceList connections' = do
       pure (navBar', devicesUI, inviteRequested)
 
 viewUi :: forall m t. GonimoM t m
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (C.VideoView t)
-viewUi _ loaded deviceList connections = do
+            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t
+            -> Dynamic t Bool -> m (C.VideoView t)
+viewUi _ loaded deviceList connections isShown = do
   let streams = connections^.C.streams
   let singleVideoClass = (\streams' -> if Map.size streams' == 1 then "single-video " else "") <$> streams
   elDynClass "div" (pure "parent " <> singleVideoClass) $ do
@@ -146,7 +148,7 @@ viewUi _ loaded deviceList connections = do
               <*> pure (navBar^.NavBar.request)
 
     _ <- dyn $ renderFakeVideos connections
-    closedsEvEv <- dyn $ renderVideos deviceList connections
+    closedsEvEv <- dyn $ renderVideos deviceList connections isShown
     let closedEvEv  = leftmost <$> closedsEvEv
     closedEv <- switchPromptly never closedEvEv
     stopAllClicked <- elClass "div" "stream-menu" $
@@ -160,10 +162,33 @@ renderFakeVideos connections =
   in
     traverse_ renderFake . Map.elems <$> connections^.C.origStreams
 
-renderVideos :: forall m t. GonimoM t m => DeviceList.DeviceList t -> C.Connections t -> Dynamic t (m [Event t DeviceId])
-renderVideos deviceList connections' = traverse renderVideo . Map.toList <$> connections'^.C.streams
+renderVideos :: forall m t. GonimoM t m => DeviceList.DeviceList t -> C.Connections t
+             -> Dynamic t Bool -> Dynamic t (m [Event t DeviceId])
+renderVideos deviceList connections' isShown =
+    uncurry renderVideosOrNone <$> shownStreams
   where
+    shownStreams = (,) <$> isShown <*> streamsList
+    streamsList = Map.toList <$> connections'^.C.streams
+
     dynChannelMap = connections'^.C.channelMap
+
+    renderVideosOrNone :: Bool -> [(DeviceId, C.StreamData t)] -> m [Event t DeviceId]
+    renderVideosOrNone False _ = pure []
+    renderVideosOrNone _ [] = do
+        let maxLoadingTime = 7 -- Seven seconds seems plenty ...
+        errorEv <- delayed maxLoadingTime
+        showError <- holdDyn False $ const True <$> errorEv
+        _ <- dyn $ renderLoadingOrError <$> showError
+        pure []
+    renderVideosOrNone _ xs = traverse renderVideo xs
+
+    renderLoadingOrError :: Bool -> m ()
+    renderLoadingOrError False
+      = elClass "div" "dismissible-overlay info-overlay"
+        $ trText Loading_your_stream
+    renderLoadingOrError True
+      = elClass "div" "dismissible-overlay warning-overlay"
+        $ trText Connectivity_issues
 
     renderVideo :: (DeviceId, C.StreamData t) -> m (Event t DeviceId)
     renderVideo (key, C.StreamData stream volEvent) = do

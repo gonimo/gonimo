@@ -13,6 +13,8 @@ data Message = Add_Device
              | Connection_unreliable
              | Might_break_unnoticed_no_alert
              | OK
+             | Loading_your_stream
+             | Connectivity_issues
              deriving (Eq, Show)
 
 instance I18N Message where
@@ -56,3 +58,11 @@ instance I18N Message where
           = "OK"
   i18n DE_DE OK
           = "OK"
+  i18n EN_GB Loading_your_stream
+          = "Loading your stream ..."
+  i18n DE_DE Loading_your_stream
+          = "Lade den Stream ..."
+  i18n EN_GB Connectivity_issues
+          = "Connectivity issues? Please press back and try again."
+  i18n DE_DE Connectivity_issues
+          = "Verbindungsprobleme? Bitte drücke den Pfeil zurück und versuche es nochmal."
