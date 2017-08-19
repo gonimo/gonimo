@@ -23,12 +23,12 @@ import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
 import           Gonimo.Client.Util
 import qualified Data.Map.Strict as Map
 import           Data.Foldable
-import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException(..))
 import           GHCJS.DOM.Types                   (MediaStream)
 import           Control.Monad
 import           Gonimo.Client.Baby.UI.I18N
 import           Gonimo.I18N
 import Gonimo.Client.Prelude
+import qualified GHCJS.DOM.Types                   as JS
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -350,7 +350,7 @@ autoStartActiveMessage = do
   pure disableEv
 
 
-showPermissionError :: forall m t. GonimoM t m => Either UserMediaException MediaStream ->  m (Event t (), Event t ())
+showPermissionError :: forall m t. GonimoM t m => Either JS.PromiseRejected MediaStream ->  m (Event t (), Event t ())
 showPermissionError (Right _) = pure (never, never)
 showPermissionError (Left _) = elClass "div" "fullScreenOverlay" $ do
     el "script" $ text "screenfull.exit();" -- Leave fullscreen so user sees the address bar.

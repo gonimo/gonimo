@@ -15,7 +15,6 @@ import qualified Data.Set                          as Set
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
-import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException(..))
 
 import           GHCJS.DOM.Types                   (MediaStream, liftJSM, MonadJSM)
 import qualified GHCJS.DOM.MediaStream             as MediaStream
@@ -25,12 +24,13 @@ import           Gonimo.Client.WebRTC.Channel      (Channel)
 import           Gonimo.Types                      (Secret, DeviceType(..))
 import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
 import           GHCJS.DOM.EventM
+import qualified GHCJS.DOM.Types                   as JS
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
             , _configAuthData :: Dynamic t API.AuthData
             , _configEnabled :: Dynamic t DeviceType
-            , _configMediaStream :: Dynamic t (Either UserMediaException MediaStream)
+            , _configMediaStream :: Dynamic t (Either JS.PromiseRejected MediaStream)
             }
 
 data Socket t

@@ -24,9 +24,9 @@ import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
 
 import           Control.Exception                 (try)
-import           GHCJS.DOM.NavigatorUserMediaError (UserMediaException (..))
 import           GHCJS.DOM.Types                   (Dictionary, MediaStream,
                                                     MonadJSM, MediaStreamConstraints(..))
+import qualified GHCJS.DOM.Types                   as JS hiding (askJSM, runJSM)
 import qualified GHCJS.DOM.MediaDevices            as MediaDevices
 import qualified Gonimo.Client.Baby.Socket         as Socket
 import           Gonimo.Client.Util                (getVolumeInfo, oyd)
@@ -52,7 +52,7 @@ data Baby t
          , _selectedCamera :: Dynamic t (Maybe Text)
          , _cameraEnabled :: Dynamic t Bool
          , _autoStartEnabled :: Dynamic t Bool
-         , _mediaStream :: Dynamic t (Either UserMediaException MediaStream)
+         , _mediaStream :: Dynamic t (Either JS.PromiseRejected MediaStream)
          , _socket :: Socket.Socket t
          , _name :: Dynamic t Text
          , _request :: Event t [API.ServerRequest]
@@ -120,7 +120,7 @@ baby config = mdo
   let gotNewValidStream = fmapMaybeCheap (^?_Right) gotNewStream
   -- WARNING: Don't do that- -inifinte MonadFix loop will down on you!
   -- cSelected <- sample $ current selected
-  mediaStream' :: Dynamic t (Either UserMediaException MediaStream) <- holdDyn badInit gotNewStream
+  mediaStream' :: Dynamic t (Either JS.PromiseRejected MediaStream) <- holdDyn badInit gotNewStream
 
   sockEnabled <- holdDyn Gonimo.NoBaby
                  $ leftmost [ Gonimo.Baby <$> tag (current babyName) (config^.configStartMonitor)
@@ -208,14 +208,14 @@ getMediaDeviceByLabel label infos =
   in
     headMay withLabel
 
-getInitialMediaStream :: forall m. MonadJSM m => m (Either UserMediaException MediaStream)
+getInitialMediaStream :: forall m. MonadJSM m => m (Either JS.PromiseRejected MediaStream)
 getInitialMediaStream = do
   navigator <- Window.getNavigator =<< DOM.currentWindowUnchecked
   constr <- makeSimpleMediaStreamConstraints True False
   getUserMedia' navigator $ Just constr
 
 getConstrainedMediaStream :: forall m t. (MonadJSM m, Reflex t, MonadSample t m)
-                         => Dynamic t (Either UserMediaException MediaStream) -> [MediaDeviceInfo] -> Maybe Text -> m (Either UserMediaException MediaStream)
+                         => Dynamic t (Either JS.PromiseRejected MediaStream) -> [MediaDeviceInfo] -> Maybe Text -> m (Either JS.PromiseRejected MediaStream)
 getConstrainedMediaStream mediaStreams infos mLabel = do
   oldStream <- sample $ current mediaStreams
   either (const $ pure ()) stopMediaStream $ oldStream
@@ -279,7 +279,7 @@ getVolumeLevel mediaStream' sockEnabled = do
     getVolInfo _ _ = pure Nothing
 
 
-getUserMedia' :: (MonadIO m, MonadJSM m) => Navigator.Navigator -> Maybe MediaStreamConstraints -> m (Either UserMediaException MediaStream)
+getUserMedia' :: (MonadIO m, MonadJSM m) => Navigator.Navigator -> Maybe MediaStreamConstraints -> m (Either JS.PromiseRejected MediaStream)
 getUserMedia' nav md = do
   mediaDevices <- Navigator.getMediaDevices nav
   jsm <- JS.askJSM
