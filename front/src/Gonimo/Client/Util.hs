@@ -540,3 +540,8 @@ addFullScreenBtnAttrs className
   <> "type" =: "button"
   <> "role" =: "button"
   <> "onClick" =: requestFullScreenScript
+
+showJSException :: forall m. MonadJSM m => JSVal -> m Text
+showJSException e = liftJSM $ do
+  stackTrace <- JS.fromJSVal =<< JS.getProp "stack" =<< JS.makeObject e
+  pure $ fromMaybe "JS.PromiseRejected is not a JS-Error Object" stackTrace

@@ -42,7 +42,7 @@ import           GHCJS.DOM.EventM              (on)
 import qualified GHCJS.DOM.MediaStream         as MediaStream
 import           GHCJS.DOM.MediaStreamTrack    (getMuted, mute, unmute)
 import           Gonimo.Client.Reflex          (buildDynMap)
-import           Gonimo.Client.Util            (getTransmissionInfo)
+import           Gonimo.Client.Util            (getTransmissionInfo, showJSException)
 import           Gonimo.Client.WebRTC.Channel  (Channel (..), ChannelEvent (..),
                                                 CloseEvent (..), RTCEvent (..),
                                                 ReceivingState (..),
@@ -51,6 +51,7 @@ import           Gonimo.Client.WebRTC.Channel  (Channel (..), ChannelEvent (..),
                                                 theirStream,
                                                 videoReceivingState)
 import qualified Gonimo.Client.WebRTC.Channel  as Channel
+import qualified Data.Text.IO as T
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
 type StreamMap = Map (API.FromId, Secret) MediaStream
@@ -440,9 +441,7 @@ fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
     -- TODO: Properly print JS exception:
     handleException :: JS.PromiseRejected -> JSM a
     handleException (JS.PromiseRejected e) = do
-      stackTrace <- JS.fromJSVal =<< JS.getProp "stack" =<< JS.makeObject e
-      liftIO $ putStrLn $ fromMaybe "JS.PromiseRejected is not a JS-Error Object"
-                                    stackTrace
+      liftIO . T.putStrLn =<< showJSException e
       onException
 
 rtcIceCandidateToInit :: RTCIceCandidate -> RTCIceCandidateInit
