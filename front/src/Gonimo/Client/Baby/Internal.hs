@@ -228,10 +228,15 @@ getConstrainedMediaStream mediaStreams infos mLabel = do
   getUserMedia' navigator $ Just constr
 
 
+-- TODO: Check whether MediaStreamTrack.stop can throw and catch exceptions.
+-- Depends on: https://github.com/ghcjs/ghcjs-dom/issues/78
 stopMediaStream :: forall m. MonadJSM m => MediaStream -> m ()
 stopMediaStream stream = do
-  tracks <- MediaStream.getTracks stream
-  traverse_ MediaStreamTrack.stop tracks
+    tracks <- MediaStream.getTracks stream
+    traverse_ MediaStreamTrack.stop tracks
+  -- where
+  --   stopOrDoNothing action = action `JS.catch` handleException
+  --   handleException :: SomeException
 
 readAutoStart :: MonadJSM m => m Bool
 readAutoStart = do
