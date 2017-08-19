@@ -18,6 +18,8 @@ import           Gonimo.DOM.Navigator.MediaDevices.Types
 import           Control.Lens                                ((^.))
 
 import           Control.Monad.IO.Class                      (MonadIO (..))
+import           Gonimo.Client.Util            (showJSException)
+import qualified Data.Text.IO as T
 
 
 
@@ -29,11 +31,14 @@ enumerateDevices = do
     -- enumPromise <- jsMediaDevices # "enumerateDevices" $ []
     let enumPromise = eval "navigator.mediaDevices.enumerateDevices()"
     _ <- liftJSM ( enumPromise # "then" $ [ fun $ \_ _ [devices] -> do
-                                        liftIO $ putMVar devicesVar devices
-                                    ]
+                                              liftIO $ putMVar devicesVar (Just devices)
+                                          , fun $ \_ _ [e] -> do
+                                              liftIO . T.putStrLn =<< showJSException e
+                                              liftIO $ putMVar devicesVar Nothing
+                                          ]
             )
-    raw <- liftIO $ takeMVar devicesVar
-    rawList :: [JSVal] <- liftJSM $ fromJSValUnchecked raw
+    mRaw <- liftIO $ takeMVar devicesVar
+    rawList :: [JSVal] <- maybe (pure []) (liftJSM . fromJSValUnchecked) mRaw
     traverse toMediaDeviceInfo rawList
   where
     toMediaDeviceInfo :: (MonadJSM m, MonadIO m) => JSVal -> m MediaDeviceInfo
