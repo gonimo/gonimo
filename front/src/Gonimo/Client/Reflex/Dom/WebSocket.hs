@@ -64,39 +64,126 @@ import Data.Text
 import GHCJS.DOM.Types (runJSM, askJSM, MonadJSM, liftJSM, JSM)
 import qualified Language.Javascript.JSaddle.Monad as JS (catch)
 
--- TODO: Use config from stock reflex-dom if we don't need any changes ...
-data WebSocketConfig t a
-   = WebSocketConfig { _webSocketConfig_send :: Event t [a]
-                     , _webSocketConfig_close :: Event t (Word, Text)
-                     , _webSocketConfig_reconnect :: Bool
-                     }
+import Gonimo.Client.Util
 
-instance Reflex t => Default (WebSocketConfig t a) where
-  def = WebSocketConfig never never True
 
-type WebSocket t = RawWebSocket t ByteString
+data CloseParams
+  = CloseParams {
+                  -- | Parameter for the JS close method.
+                  -- See: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket#close()
+                  _closeCode :: Word
+                  -- | Parameter for the JS close method.
+                  -- See: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket#close()
+                , _closeReason :: Text
+                }
 
-data RawWebSocket t a
-   = RawWebSocket { _webSocket_recv :: Event t a
-                  , _webSocket_open :: Event t ()
-                  , _webSocket_error :: Event t () -- eror event does not carry any data and is always
-                                                   -- followed by termination of the connection
-                                                   -- for details see the close event
-                  , _webSocket_close :: Event t ( Bool -- wasClean
-                                                , Word -- code
-                                                , Text -- reason
-                                                )
-                  }
+data Config t
+   = Config { _config_send :: Event t [Text]
+            , _config_close :: Event t CloseParams
+            , _config_reconnect :: Bool
+              -- | Timeout in seconds we wait for the JavaScript WebSocket connection
+              -- to send it's close event, before we disconnect all event handlers and trigger
+              -- '_webSocket_close' ourselves. Pass 'Nothing' if you want to
+              -- wait indefinitely for the JS implementation.
+            , _config_closeTimeout :: Maybe Word
+            }
 
--- This can be used to send either binary or text messages for the same websocket connection
-instance (IsWebSocketMessage a, IsWebSocketMessage b) => IsWebSocketMessage (Either a b) where
-  webSocketSend jws (Left a) = webSocketSend jws a
-  webSocketSend jws (Right a) = webSocketSend jws a
+data WebSocket t
+   = WebSocket { _receive :: Event t Text
+               , _open :: Event t ()
+               -- | error event does not carry any data and is always
+               -- followed by termination of the connection
+               -- for details see the close event
+               , _error :: Event t ()
+               , _close :: Event t ( Bool -- ^ wasClean
+                                   , CloseParams
+                                   )
+               , _cleanup :: Dynamic t (JS.JSM ())
+               }
+
+
+data Environment t
+  = Environment { _config :: WebSocketConfig t
+                , _webSocket :: WebSocket t
+                }
+
+makeLenses ''Config
+makeLenses ''WebSocket
+makeLenses ''Environment
+
+
+instance Default CloseParams where
+  def = CloseParams { _closeCode = 1000
+                    , _closeReason = T.empty
+                    }
+
+
+instance Reflex t => Default (WebSocketconfig t a) where
+  def = WebSocketconfig { _webSocketConfig_send = never
+                        , _webSocketConfig_close = never
+                        , _webSocketConfig_reconnect = True
+                        }
+
 
 -- Differences from stock reflex-dom websocket:
 --  - no queue, if connection is not ready - simply drop messages
-webSocket :: (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, IsWebSocketMessage a) => Text -> WebSocketConfig t a -> m (WebSocket t)
-webSocket url config = webSocket' url config onBSMessage
+webSocket :: (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m) => Text -> Config t -> m (WebSocket t)
+webSocket url config = do
+    forceRenew <- delay (config^.config_close) (config^.config_close)
+
+    (jsCloseEvent, triggerJSClose) <- newTriggerEvent
+
+    releaseOnClose <- on ws WS.closeEvent $ do
+      e <- ask
+      wasClean <- getWasClean e
+      code <- getCode e
+      reason <- getReason e
+      liftJSM $ triggerJSClose (wasClean, CloseParams code reason)
+
+    -- fromJS () catches any exception and logs it to the console ...
+    performEvent_ $ fromJS () . uncurry JS.sendString <$> attach (current ws) (config^.config_send)
+
+    -- User exposed close event:
+    let close' = leftmost [ (False, ) <$> forceRenew
+                          , jsCloseEvent
+                          ]
+    let makeNew = snd <$> close
+    ws <- provideWebSocket makeNew
+
+    let result = WebSocket { _close = close'
+                          , _cleanup = do
+                              releaseOnClose
+                          }
+    pure result
+  where
+    onFailedSend :: JS.JSException -> JSM ()
+    onFailedSend (JS.JSException e) = do
+      T.putStrLn $ showJSException e
+      
+
+-- | Provide a websocket and create new one upon request,
+-- cleaning up the old one. If the connection needs to be closed the provided code and reason are used.
+provideWebSocket :: MonadReader (Environment t) m => Event t CloseParams -> m (Dynamic t WS.WebSocket)
+provideWebSocket makeNew = mdo
+    wsInit <- newWebSocket url []
+    cleanup' <- view (webSocket . cleanup)
+
+    let makeNew' = pushAlways (\closeParams -> do
+                                  ws <- sample $ current conn
+                                  pure (ws, closeParams)
+                              ) makeNew
+
+    newWs <- performEvent $ renew cleanup' <$> makeNew'
+    conn <- holdDyn wsInit newWS
+    pure conn
+  where
+    renew cleanup' (ws, ps) = do
+      state <- WS.getReadyState ws
+      unless (state == WS.CLOSING || state == WS.CLOSED)
+        $ WS.close ws (ps^.closeCode) (ps^.closeReason)
+      cleanup'
+      newWebSocket url []
+
 
 webSocket' :: forall m t a b. (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, IsWebSocketMessage a) => Text -> WebSocketConfig t a -> (Either ByteString JSVal -> JSM b) -> m (RawWebSocket t b)
 webSocket' url config onRawMessage = do
