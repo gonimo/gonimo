@@ -42,7 +42,7 @@ import           GHCJS.DOM.EventM              (on)
 import qualified GHCJS.DOM.MediaStream         as MediaStream
 import           GHCJS.DOM.MediaStreamTrack    (getMuted, mute, unmute)
 import           Gonimo.Client.Reflex          (buildDynMap)
-import           Gonimo.Client.Util            (getTransmissionInfo, showJSException)
+import           Gonimo.Client.Util            (getTransmissionInfo, showJSException, fromPromiseM)
 import           Gonimo.Client.WebRTC.Channel  (Channel (..), ChannelEvent (..),
                                                 CloseEvent (..), RTCEvent (..),
                                                 ReceivingState (..),
@@ -296,7 +296,9 @@ closeRTCConnections chans userClose = do
                          let connections = case ev of
                                              AllChannels -> over mapped (^._2.rtcConnection) cChans
                                              OnlyChannel key -> maybeToList $ cChansMap^?at key._Just.rtcConnection
-                         pure . Just $ traverse_ Channel.safeClose connections
+                         pure . Just $ do
+                           traverse_ RTCPeerConnection.close connections
+                           traverse_ RTCPeerConnection.close connections
                      ) delayClose
   performEvent_ doClose
 
@@ -379,7 +381,8 @@ handleMessages config chans = do
                                 addIceCandidate connection =<< API.mToFrontend candidate
                                 mzero
                               API.MsgCloseConnection  -> do
-                                Channel.safeClose connection
+                                RTCPeerConnection.close connection
+                                RTCPeerConnection.close connection
                                 mzero
                         ourId' <- lift $ sample (current $ config^.configOurId)
                         pure $ [API.ReqSendMessage ourId' fromId secret' resMesg]
@@ -422,27 +425,9 @@ handleRejectedWithClose :: forall m. MonadJSM m => RTCPeerConnection -> MaybeT J
 handleRejectedWithClose conn = MaybeT . fromPromiseM onError . runMaybeT
   where
     onError = do
-      Channel.safeClose conn
+      RTCPeerConnection.close conn
       pure $ Just API.MsgCloseConnection
 
-
--- | Like `fromPromiseM` but if you have a pure value to return on error
--- instead of an action.
-fromPromise :: forall m a. MonadJSM m => a -> JSM a -> m a
-fromPromise onException = fromPromiseM (pure onException)
-
--- | Run a computation which is a promise catching the rejected case.
--- The second parameter is expected to be a promise, if it gets rejected by
--- means of `PromiseRejected` being thrown then it is catched, the exception is
--- printed to the console and the first parameter gets evaluated.
-fromPromiseM :: forall m a. MonadJSM m => JSM a -> JSM a -> m a
-fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
-  where
-    -- TODO: Properly print JS exception:
-    handleException :: JS.PromiseRejected -> JSM a
-    handleException (JS.PromiseRejected e) = do
-      liftIO . T.putStrLn =<< showJSException e
-      onException
 
 rtcIceCandidateToInit :: RTCIceCandidate -> RTCIceCandidateInit
 rtcIceCandidateToInit (RTCIceCandidate cand) = RTCIceCandidateInit cand
