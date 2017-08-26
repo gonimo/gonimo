@@ -589,15 +589,15 @@ fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
       liftIO . T.putStrLn =<< showJSException e
       onException
 
--- | Like fromJSM but for a pure default value.
-fromJS :: forall m a. MonadJSM m => a -> JS.JSM a -> m a
-fromJS onException = fromJSM (pure onException)
+-- | Like fromJSFuncM but for a pure default value.
+fromJSFunc :: forall m a. MonadJSM m => a -> JS.JSM a -> m a
+fromJSFunc onException = fromJSFuncM (pure onException)
 
 -- | Run a JS function catching JSException.
 -- If an exception occurs it gets printed to the console and the 'onException'
 -- parameter gets evaluatedas result.
-fromJSM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
-fromJSM onException action = liftJSM $ action `JS.catch` handleException
+fromJSFuncM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
+fromJSFuncM onException action = liftJSM $ action `JS.catch` handleException
   where
     handleException :: JS.JSException -> JS.JSM a
     handleException (JS.JSException e) = do
