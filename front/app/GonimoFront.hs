@@ -37,8 +37,6 @@ import           Network.Wai.Middleware.Static
 
 -- import qualified GHCJS.DOM.Types as JS
 
-import Language.Javascript.JSaddle.Warp (run)
-
 app :: forall x. Widget x ()
 app = mdo
   liftIO $ putStrLn "Loaded - yeah!"
