@@ -12,7 +12,7 @@ import           Control.Monad.Fix         (MonadFix)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Maybe (MaybeT)
 #ifndef __GHCJS__
-import           GHCJS.DOM.Types           (MonadJSM (..), liftJSM)
+import           GHCJS.DOM.Types           (MonadJSM (..))
 #else
 import           GHCJS.DOM.Types           (MonadJSM)
 #endif
