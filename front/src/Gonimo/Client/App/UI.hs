@@ -11,24 +11,26 @@ import qualified Gonimo.Client.DeviceList       as DeviceList
 import           Gonimo.Client.Reflex
 import           Reflex.Dom.Core
 
+import qualified GHCJS.DOM                      as DOM
+import qualified GHCJS.DOM.Window               as Window
 import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import           Gonimo.Client.App.Internal
 import           Gonimo.Client.App.Types
+import           Gonimo.Client.App.UI.I18N
 import qualified Gonimo.Client.Auth             as Auth
+import qualified Gonimo.Client.Baby             as Baby
 import qualified Gonimo.Client.Family           as Family
 import qualified Gonimo.Client.MessageBox       as MessageBox
-import qualified Gonimo.Client.Baby             as Baby
 import qualified Gonimo.Client.Parent           as Parent
-import qualified Gonimo.SocketAPI               as API
-import qualified Gonimo.Client.Storage             as GStorage
-import qualified Gonimo.Client.Storage.Keys        as GStorage
-import qualified GHCJS.DOM                         as DOM
-import qualified GHCJS.DOM.Window                  as Window
-import qualified Language.Javascript.JSaddle                       as JS
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Util (getBrowserProperty, getBrowserVersion)
-import           Gonimo.Client.App.UI.I18N
+import           Gonimo.Client.Server
+import qualified Gonimo.Client.Storage          as GStorage
+import qualified Gonimo.Client.Storage.Keys     as GStorage
+import           Gonimo.Client.Util             (getBrowserProperty,
+                                                 getBrowserVersion)
+import qualified Gonimo.SocketAPI               as API
+import qualified Language.Javascript.JSaddle    as JS
 
 
 ui :: forall m t. GonimoM t m
@@ -76,7 +78,7 @@ runLoaded config family = do
                                             case res of
                                               API.ResCreatedFamily _ -> pure $ Just True
                                               _ -> pure Nothing
-                                        ) (config^.server.webSocket_recv)
+                                        ) (config^.server.response)
 
   let onReady dynAuthFamilies =
         fromMaybeDyn
@@ -105,7 +107,7 @@ runLoaded config family = do
 loadedUI :: forall m t. GonimoM t m
       => Config t -> Loaded t -> Bool -> m (App t, Family.UI t)
 loadedUI config loaded familyCreated = mdo
-    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.webSocket_recv
+    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.response
                                                             , DeviceList._configAuthData = config^.auth.Auth.authData
                                                             , DeviceList._configFamilyId = loaded^.selectedFamily
                                                             }

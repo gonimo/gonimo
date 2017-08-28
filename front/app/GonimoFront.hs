@@ -4,36 +4,39 @@
 {-# LANGUAGE CPP #-}
 
 import           Control.Lens
-import           Data.Monoid
 import           Control.Monad.IO.Class
-import qualified Gonimo.Client.App        as App
-import qualified Gonimo.Client.Auth       as Auth
-import qualified Gonimo.Client.Config     as Config
-import qualified Gonimo.Client.Server     as Server
-import qualified Gonimo.Client.Subscriber as Subscriber
-import           Reflex.Dom.Core               hiding (webSocketConfig_send, webSocketConfig_reconnect)
-import qualified Data.Text as T
-import Data.Text (Text)
-import Gonimo.Client.I18N
-import Gonimo.I18N
-import           GHCJS.DOM.Types (MonadJSM, liftJSM)
-import qualified GHCJS.DOM.Window                  as Window
-import qualified Gonimo.Client.Storage             as GStorage
-import qualified GHCJS.DOM                         as DOM
-import qualified Gonimo.Client.Storage.Keys        as GStorage
+import           Control.Monad.Reader
+import           Data.Maybe
+import           Data.Monoid
+import           Data.Text                   (Text)
+import qualified Data.Text                   as T
+import qualified GHCJS.DOM                   as DOM
+import           GHCJS.DOM.Types             (MonadJSM, liftJSM)
+import qualified GHCJS.DOM.Window            as Window
 import qualified Language.Javascript.JSaddle as JS
-import Control.Monad.Reader
-import Data.Maybe
+import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
+                                              webSocketConfig_send)
 #ifndef ghcjs_HOST_OS
-import Network.Wai.Handler.Warp
-       (defaultSettings, setTimeout, setPort, runSettings)
-import Network.WebSockets (defaultConnectionOptions)
+import           Network.Wai.Handler.Warp               (defaultSettings,
+                                                         runSettings, setPort,
+                                                         setTimeout)
+import           Network.WebSockets                     (defaultConnectionOptions)
 
-import Language.Javascript.JSaddle.Types (JSM)
-import Language.Javascript.JSaddle.Run (syncPoint)
-import Language.Javascript.JSaddle.WebSockets
+import           Language.Javascript.JSaddle.Run        (syncPoint)
+import           Language.Javascript.JSaddle.Types      (JSM)
+import           Language.Javascript.JSaddle.WebSockets
 import           Network.Wai.Middleware.Static
 #endif
+
+import qualified Gonimo.Client.App          as App
+import qualified Gonimo.Client.Auth         as Auth
+import qualified Gonimo.Client.Config       as Config
+import           Gonimo.Client.I18N
+import           Gonimo.Client.Server
+import qualified Gonimo.Client.Storage      as GStorage
+import qualified Gonimo.Client.Storage.Keys as GStorage
+import qualified Gonimo.Client.Subscriber   as Subscriber
+import           Gonimo.I18N
 
 -- import qualified GHCJS.DOM.Types as JS
 
@@ -44,25 +47,25 @@ app = mdo
                     <> subscriber^.Subscriber.request
                     <> app^.App.request
 
-  let wsConfig = def & Server.webSocketConfig_send .~ serverRequests
-                     & Server.webSocketConfig_reconnect .~ True
-  server <- Server.server Config.gonimoBackWSURL  wsConfig
+  let serverConfig' = def & configRequest .~ serverRequests
 
-  let authConfig = Auth.Config { Auth._configResponse = server^.Server.socket.webSocket_recv
-                               , Auth._configServerOpen = server^.Server.socket.webSocket_open
-                               , Auth._configServerClose = const () <$> server^.Server.socket.webSocket_close
-                               , Auth._configServerCloseRequested = server^.Server.closeRequested
+  server' <- makeServer Config.gonimoBackWSURL serverConfig'
+
+  let authConfig = Auth.Config { Auth._configResponse = server'^.response
+                               , Auth._configServerOpen = server'^.open
+                               , Auth._configServerClose = const () <$> server'^.close
+                               , Auth._configServerCloseRequested = server'^.closeRequested
                                }
   auth <- Auth.auth currentLocale authConfig
 
   let subscriberConfig
-        = Subscriber.Config { Subscriber._configResponse = server^.Server.socket.webSocket_recv
+        = Subscriber.Config { Subscriber._configResponse = server'^.response
                             , Subscriber._configSubscriptions = app^.App.subscriptions
                             , Subscriber._configAuthenticated = auth^.Auth.authenticated
                             }
   subscriber <- Subscriber.subscriber subscriberConfig
 
-  let appConfig = App.Config { App._server = server^.Server.socket
+  let appConfig = App.Config { App.__server = server'
                              , App._subscriber = subscriber
                              , App._auth = auth
                              }

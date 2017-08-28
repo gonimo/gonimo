@@ -1,7 +1,15 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE CPP #-}
-module Gonimo.Client.Server where
+module Gonimo.Client.Server ( ServerConfig
+                            , Server
+                            , HasServerConfig(..)
+                            , HasServer(..)
+                            , makeServer
+                            ) where
 
 import Gonimo.SocketAPI (ServerRequest(..), ServerResponse)
 import Reflex
@@ -11,8 +19,7 @@ import Control.Lens
 import qualified Data.Aeson as Aeson
 import GHCJS.DOM.Types (MonadJSM)
 import qualified Data.ByteString.Lazy as BL
-import Reflex.Dom.WebSocket (WebSocketConfig(..), RawWebSocket(..), webSocket)
-import Data.ByteString (ByteString)
+import qualified Gonimo.Client.Reflex.Dom.WebSocket as WS
 import Data.Text (Text)
 #ifdef DEVELOPMENT
 import qualified Data.Text.Encoding as T
@@ -23,46 +30,69 @@ import Control.Monad.Fix
 import Data.Monoid
 import Control.Monad.IO.Class
 import Gonimo.Constants
+import Data.Default
 
-type ServerConfig t = WebSocketConfig t ServerRequest
+data ServerConfig t
+  = ServerConfig { _configRequest :: Event t [ServerRequest]
+                 }
 
 
 data Server t
-  = Server { _socket :: RawWebSocket t ServerResponse
-           -- After 30 seconds we attempt to close the connection, unfortunately
-           -- it can take a significant amount of time until it really gets
-           -- closed, but we would like to inform the user about the problem
-           -- sooner. Therefore we provide the closeRequested event here:
+  = Server { _open :: Event t ()
+           , _response :: Event t ServerResponse
+           -- | A close got requested:
            , _closeRequested :: Event t ()
+           , _close :: Event t ()
+
+           -- Internal stuff ...
+           -- , _socket :: WS.WebSocket t
            }
 
-makeLenses ''Server
+makeClassy ''Server
 -- Generate our own lenses, because simple lenses are not good enough!
-makeLenses ''WebSocketConfig
-makeLenses ''RawWebSocket
+makeClassy ''ServerConfig
 
 
-server :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
+instance Reflex t => Default (ServerConfig t) where
+  def = ServerConfig never
+
+
+makeServer :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
                       )
           => Text -> ServerConfig t -> m (Server t)
-server url config = mdo
-  (newReq, killConn) <- handlePingPong (config^.webSocketConfig_send) (ws'^.webSocket_recv)
-  let config' = config & webSocketConfig_send .~ newReq
-                       & webSocketConfig_close .~ (const (4000, "Server did not respond.") <$> killConn)
-  ws <- webSocket url
-#ifdef DEVELOPMENT
-        $ config' & webSocketConfig_send . mapped . mapped %~ T.decodeUtf8 . BL.toStrict . Aeson.encode
-#else
-        $ config' & webSocketConfig_send . mapped . mapped %~ BL.toStrict . Aeson.encode
-#endif
-  let ws' = ws & webSocket_recv . mapped %~ decodeResponse
-  pure $ Server ws' killConn
+makeServer url conf = mdo
+  let
+    server' = Server { _open = ws^.WS.open
+                     , _response = decodedResponse
+                     , _closeRequested = killConn
+                     , _close = const () <$> ws^.WS.close
+                     -- , _socket = ws
+                     }
+
+  (requests, killConn) <- handlePingPong (conf^.configRequest) decodedResponse
+
+  let
+    wsConfig = def
+              & WS.configSend .~ encodedRequests
+              & WS.configClose .~ reqClose
+              & WS.configCloseTimeout .~ Just 4 -- Try with 4 seconds.
+
+    encodedRequests = fmap (T.decodeUtf8 . BL.toStrict . Aeson.encode) <$> requests
+
+    decodedResponse = decodeResponse <$> ws^.WS.receive
+    reqClose = const (WS.CloseParams 4000 "Server did not respond.") <$> killConn
+
+  ws <- WS.webSocket url wsConfig
+
+  pure server'
 
 
 
-decodeResponse :: ByteString -> ServerResponse
-decodeResponse = fromMaybe (error "Decoding Server Response Failed!") . Aeson.decodeStrict
+decodeResponse :: Text -> ServerResponse
+decodeResponse = fromMaybe (error "Decoding Server Response Failed!")
+                 . Aeson.decodeStrict
+                 . T.encodeUtf8
 
 
 -- We need to handle ping/pong at the application level so the client can detect a broken connection.
@@ -84,11 +114,50 @@ handlePingPong inRequest inResponse = do
   now <- liftIO $ getCurrentTime
   tick <- tickLossy webSocketPingInterval now
   let req = const [ReqPing] <$> tick
-  killValue <- hold Nothing $ leftmost [ const Nothing <$> inResponse
-                                       , const (Just ()) <$> tick
-                                       ]
-  -- If killValue is (Just ()) on a tick event - then we need to kill the
-  -- connection. (Server needed more than webSocketPingInterval for a response.)
-  let killConn = push (const $ sample killValue) tick
+  shallKill <- hold False $ leftmost [ const False <$> inResponse
+                                     , const True <$> tick
+                                     ]
+  let killConn = fmap (const ()) . ffilter id . tag shallKill $ tick
   let outRequest = req <> inRequest
   pure (outRequest, killConn)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Old server code (reflex.dom websockets):
+-- server :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
+--                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
+--                       )
+--           => Text -> ServerServerConfig t -> m (Server t)
+-- server url config = mdo
+--   (newReq, killConn) <- handlePingPong (config^.webSocketServerConfig_send) (ws'^.webSocket_recv)
+--   let config' = config & webSocketServerConfig_send .~ newReq
+--                        & webSocketServerConfig_close .~ (const (4000, "Server did not respond.") <$> killConn)
+--   ws <- webSocket url
+-- #ifdef DEVELOPMENT
+--         $ config' & webSocketServerConfig_send . mapped . mapped %~ T.decodeUtf8 . BL.toStrict . Aeson.encode
+-- #else
+--         $ config' & webSocketServerConfig_send . mapped . mapped %~ BL.toStrict . Aeson.encode
+-- #endif
+--   let ws' = ws & webSocket_recv . mapped %~ decodeResponse
+--   pure $ Server ws' killConn

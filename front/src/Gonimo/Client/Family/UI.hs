@@ -3,27 +3,28 @@
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.Family.UI where
 
+import           Control.Applicative
 import           Control.Lens
 import           Data.Monoid
-import           Control.Applicative
-import           Data.Text                        (Text)
-import qualified Gonimo.Client.Invite             as Invite
-import           Gonimo.Db.Entities               (FamilyId)
-import qualified Gonimo.Db.Entities               as Db
-import qualified Gonimo.SocketAPI                 as API
-import qualified Gonimo.Types                     as Gonimo
+import           Data.Text                         (Text)
 import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.App.Types          as App
-import qualified Gonimo.Client.Auth               as Auth
-import           Gonimo.Client.ConfirmationButton (confirmationEl)
-import           Gonimo.Client.EditStringButton   (editFamilyName)
+import qualified Gonimo.Client.App.Types           as App
+import qualified Gonimo.Client.Auth                as Auth
+import           Gonimo.Client.ConfirmationButton  (confirmationEl)
+import           Gonimo.Client.EditStringButton    (editFamilyName)
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Family.RoleSelector
+import           Gonimo.Client.Family.UI.I18N
+import           Gonimo.Client.I18N.UI
+import qualified Gonimo.Client.Invite              as Invite
+import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import Gonimo.Client.Prelude
-import Gonimo.Client.Family.UI.I18N
-import Gonimo.Client.I18N.UI
+import           Gonimo.Client.Server
+import           Gonimo.Db.Entities                (FamilyId)
+import qualified Gonimo.Db.Entities                as Db
+import qualified Gonimo.SocketAPI                  as API
+import qualified Gonimo.Types                      as Gonimo
 
 
 uiStart :: forall m t. GonimoM t m => m (UI t)
@@ -89,7 +90,7 @@ ui appConfig loaded familyGotCreated = do
         firstCreation <- headE inviteRequested
         let inviteUI
               = Invite.ui loaded
-                $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
+                $ Invite.Config { Invite._configResponse = appConfig^.server.response
                                 , Invite._configSelectedFamily = loaded^.App.selectedFamily
                                 , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
                                 , Invite._configCreateInvitation = never
@@ -186,14 +187,14 @@ renderFamilySelector _ family' selected' = do
 createFamily :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
-  let response = appConfig^.App.server.webSocket_recv
+  let response' = appConfig^.server.response
   let
     familyCreated :: Event t FamilyId
     familyCreated = push (\res ->
                               case res of
                                 API.ResCreatedFamily fid -> pure $ Just fid
                                 _ -> pure Nothing
-                           ) response
+                           ) response'
   mFamilyId' :: Dynamic t (Maybe FamilyId) <- holdDyn Nothing $ leftmost [ Just <$> familyCreated
                                                                          , const Nothing <$> gotValidFamilyId'
                                                                          ]
@@ -246,7 +247,7 @@ createFamily' appConfig loaded = mdo
       firstCreation <- headE showInviteView
       let inviteUI
             = Invite.ui loaded
-            $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
+            $ Invite.Config { Invite._configResponse = appConfig^.server.response
                             , Invite._configSelectedFamily = loaded^.App.selectedFamily
                             , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
                             , Invite._configCreateInvitation = never

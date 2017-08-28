@@ -1,6 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Gonimo.Client.Reflex.Dom.WebSocket ( CloseParams
+module Gonimo.Client.Reflex.Dom.WebSocket ( WebSocket
+                                          , CloseParams(..)
                                           , closeCode
                                           , closeReason
                                           , configSend

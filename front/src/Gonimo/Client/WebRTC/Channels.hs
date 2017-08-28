@@ -30,19 +30,19 @@ import           Reflex.Dom.Core
 
 import           GHCJS.DOM.Types               (MediaStream, MediaStreamTrack,
                                                 MonadJSM, RTCIceCandidate(..), RTCIceCandidateInit(..))
-import qualified GHCJS.DOM.Types               as JS
+
 
 import           Data.Maybe
 import           Debug.Trace                   (trace)
 import qualified Gonimo.SocketAPI.Translations as API
 import           Language.Javascript.JSaddle   (JSM, liftJSM)
-import qualified Language.Javascript.JSaddle   as JS
+
 
 import           GHCJS.DOM.EventM              (on)
 import qualified GHCJS.DOM.MediaStream         as MediaStream
 import           GHCJS.DOM.MediaStreamTrack    (getMuted, mute, unmute)
 import           Gonimo.Client.Reflex          (buildDynMap)
-import           Gonimo.Client.Util            (getTransmissionInfo, showJSException, fromPromiseM)
+import           Gonimo.Client.Util            (getTransmissionInfo, fromPromiseM)
 import           Gonimo.Client.WebRTC.Channel  (Channel (..), ChannelEvent (..),
                                                 CloseEvent (..), RTCEvent (..),
                                                 ReceivingState (..),
@@ -51,7 +51,7 @@ import           Gonimo.Client.WebRTC.Channel  (Channel (..), ChannelEvent (..),
                                                 theirStream,
                                                 videoReceivingState)
 import qualified Gonimo.Client.WebRTC.Channel  as Channel
-import qualified Data.Text.IO as T
+
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
 type StreamMap = Map (API.FromId, Secret) MediaStream

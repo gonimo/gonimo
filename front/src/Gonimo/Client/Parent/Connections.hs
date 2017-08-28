@@ -10,16 +10,15 @@ module Gonimo.Client.Parent.Connections where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
-import           Data.Map                          (Map)
-import qualified Data.Map                          as Map
-import           Gonimo.Db.Entities                (DeviceId)
-import qualified Gonimo.SocketAPI                  as API
-import qualified Gonimo.SocketAPI.Types            as API
+import           Data.Map                        (Map)
+import qualified Data.Map                        as Map
+import qualified GHCJS.DOM.AudioBufferSourceNode as AudioNode
+import           GHCJS.DOM.Types                 (MediaStream, MonadJSM,
+                                                  liftJSM)
 import           Reflex.Dom.Core
 
-import qualified GHCJS.DOM.AudioBufferSourceNode   as AudioNode
-import           GHCJS.DOM.Types                   (MediaStream, MonadJSM,
-                                                    liftJSM)
+import qualified Gonimo.Client.NavBar              as NavBar
+
 import           Gonimo.Client.Util                (boostMediaStreamVolume,
                                                     getVolumeInfo, loadSound,
                                                     startVibraAlert,
@@ -27,9 +26,11 @@ import           Gonimo.Client.Util                (boostMediaStreamVolume,
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import qualified Gonimo.Client.WebRTC.Channels     as Channels
+import           Gonimo.Db.Entities                (DeviceId)
+import qualified Gonimo.SocketAPI                  as API
+import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (Secret)
 import qualified Language.Javascript.JSaddle.Value as JS
-import qualified Gonimo.Client.NavBar             as NavBar
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse

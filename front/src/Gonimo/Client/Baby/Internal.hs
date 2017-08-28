@@ -10,7 +10,6 @@ module Gonimo.Client.Baby.Internal where
 import Gonimo.Client.Prelude
 
 import           Control.Lens
-import           Data.Maybe                        (catMaybes)
 import qualified GHCJS.DOM                         as DOM
 import qualified GHCJS.DOM.MediaStream             as MediaStream
 import qualified GHCJS.DOM.MediaStreamTrack        as MediaStreamTrack
@@ -24,7 +23,7 @@ import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
 
 import           Control.Exception                 (try)
-import           GHCJS.DOM.Types                   (Dictionary, MediaStream,
+import           GHCJS.DOM.Types                   (MediaStream,
                                                     MonadJSM, MediaStreamConstraints(..))
 import qualified GHCJS.DOM.Types                   as JS hiding (askJSM, runJSM)
 import qualified GHCJS.DOM.MediaDevices            as MediaDevices

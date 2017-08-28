@@ -1,11 +1,12 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module Gonimo.Client.App.Types where
 
 import Reflex
 import qualified Gonimo.SocketAPI as API
 import qualified Gonimo.SocketAPI.Types as API
 import Control.Lens
-import qualified Gonimo.Client.Server as Server
 import qualified Gonimo.Client.Auth as Auth
 import qualified Gonimo.Client.Subscriber as Subscriber
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
@@ -17,11 +18,10 @@ import qualified Gonimo.Types as Gonimo
 import Data.Default
 import qualified Data.Set as Set
 import Gonimo.I18N
-import Reflex.Dom.WebSocket (RawWebSocket(..))
-import Gonimo.SocketAPI (ServerResponse)
+import Gonimo.Client.Server
 
 data Config t
-  = Config { _server :: RawWebSocket t ServerResponse
+  = Config { __server :: Server t
            , _auth :: Auth.Auth t
            , _subscriber :: Subscriber.Subscriber t
            }
@@ -47,6 +47,9 @@ makeLenses ''Config
 makeLenses ''Loaded
 makeLenses ''App
 makeLenses ''Screen
+
+instance HasServer (Config t) t where
+  server = _server
 
 
 instance (Reflex t) => Default (App t) where

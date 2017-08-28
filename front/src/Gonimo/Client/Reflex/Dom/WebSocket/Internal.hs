@@ -18,12 +18,13 @@ import Data.JSString.Text (textFromJSVal)
 import qualified GHCJS.DOM.WebSocket as WS
 import qualified GHCJS.DOM.CloseEvent as WS
 import qualified GHCJS.DOM.MessageEvent as WS
+import Control.Concurrent (forkIO)
 
 import Data.Foldable (traverse_)
 import GHCJS.DOM.EventM (on)
 import Reflex.Dom.Core hiding (WebSocket, webSocket', webSocket)
 import           Control.Monad.Reader                 (ask)
-import Language.Javascript.JSaddle as JS
+import qualified Language.Javascript.JSaddle as JS
 
 import Gonimo.Client.Util
 
@@ -130,7 +131,7 @@ registerJSHandlers webSocket' ws' = do
       liftIO $ webSocket'^.triggerOpen -- Already open? -> Fire!
     releaseOnOpen <- on ws' WS.open $ do
       liftIO $ putStrLn "onOpen fired due to JS event"
-      liftIO $ webSocket'^.triggerOpen
+      liftIO .void . forkIO $ webSocket'^.triggerOpen
 
 
     releaseOnClose <- on ws' WS.closeEvent $ do
@@ -139,18 +140,19 @@ registerJSHandlers webSocket' ws' = do
       code <- WS.getCode e
       reason <- WS.getReason e
       liftIO $ putStrLn "WebSocket got closed! (JS event)"
-      liftIO $ (webSocket'^.triggerClose) (wasClean, CloseParams code reason)
+      liftIO . void . forkIO $ (webSocket'^.triggerClose) (wasClean, CloseParams code reason)
 
 
     releaseOnMessage <- on ws' WS.message $ do
       e <- ask
       d <- WS.getData e
       str <- liftJSM $ JS.ghcjsPure . textFromJSVal $ d
-      liftIO $ webSocket'^.triggerReceive $ str
+      -- Fork off, so on message handler does not get blocked too long.
+      liftIO . void . forkIO $ webSocket'^.triggerReceive $ str
 
 
     releaseOnError <- on ws' WS.error $ do
-      liftIO $ webSocket'^.triggerError
+      liftIO . void . forkIO $ webSocket'^.triggerError
 
     pure $ do
       releaseOnOpen
