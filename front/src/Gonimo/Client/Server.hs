@@ -21,9 +21,7 @@ import GHCJS.DOM.Types (MonadJSM)
 import qualified Data.ByteString.Lazy as BL
 import qualified Gonimo.Client.Reflex.Dom.WebSocket as WS
 import Data.Text (Text)
-#ifdef DEVELOPMENT
 import qualified Data.Text.Encoding as T
-#endif
 import Data.Maybe (fromMaybe)
 import Data.Time.Clock
 import Control.Monad.Fix
