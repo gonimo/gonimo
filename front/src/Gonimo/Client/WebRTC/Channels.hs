@@ -297,7 +297,7 @@ closeRTCConnections chans userClose = do
                                              AllChannels -> over mapped (^._2.rtcConnection) cChans
                                              OnlyChannel key -> maybeToList $ cChansMap^?at key._Just.rtcConnection
                          pure . Just $ do
-                           traverse_ safeClose connections
+                           traverse_ Channel.safeClose connections
                      ) delayClose
   performEvent_ doClose
 
@@ -380,7 +380,7 @@ handleMessages config chans = do
                                 addIceCandidate connection =<< API.mToFrontend candidate
                                 mzero
                               API.MsgCloseConnection  -> do
-                                safeClose connection
+                                Channel.safeClose connection
                                 mzero
                         ourId' <- lift $ sample (current $ config^.configOurId)
                         pure $ [API.ReqSendMessage ourId' fromId secret' resMesg]
@@ -423,7 +423,7 @@ handleRejectedWithClose :: forall m. MonadJSM m => RTCPeerConnection -> MaybeT J
 handleRejectedWithClose conn = MaybeT . fromPromiseM onError . runMaybeT
   where
     onError = do
-      safeClose conn
+      Channel.safeClose conn
       pure $ Just API.MsgCloseConnection
 
 
