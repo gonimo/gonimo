@@ -80,7 +80,12 @@ handleCloseRequest
 handleCloseRequest webSocket' closeTimeout' closeRequest = do
     performEvent_ $ safeClose <$> attach currentWS closeRequest
 
-    forceClose <- delayCloseRequest
+    delayedRequest <- delayCloseRequest
+
+    doForceClose <- hold False $ leftmost [ const True <$> closeRequest
+                                          , const False <$> webSocket'^.jsClose
+                                          ]
+    let forceClose = fmap snd . ffilter fst $ attach doForceClose delayedRequest
 
     pure $ leftmost [ (False, ) <$> forceClose
                     , webSocket'^.jsClose
