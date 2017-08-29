@@ -568,7 +568,7 @@ addFullScreenBtnAttrs className
   <> "onClick" =: requestFullScreenScript
 
 showJSException :: forall m. MonadJSM m => JSVal -> m Text
-showJSException e = pure "Some exception, we don't know nothing about."
+showJSException _ = pure "Some exception, we don't know nothing about."
   -- liftJSM $ do
   -- jsStackTrace <- JS.getProp "stack" =<< JS.makeObject e
   -- jsIsUndefined <- JS.ghcjsPure . JS.isUndefined $ jsStackTrace
