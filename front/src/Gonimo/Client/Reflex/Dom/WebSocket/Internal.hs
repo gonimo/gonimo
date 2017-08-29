@@ -146,9 +146,13 @@ registerJSHandlers webSocket' ws' = do
     releaseOnMessage <- on ws' WS.message $ do
       e <- ask
       d <- WS.getData e
-      str <- liftJSM $ JS.ghcjsPure . textFromJSVal $ d
-      -- Fork off, so on message handler does not get blocked too long.
-      liftIO . void . forkIO $ webSocket'^.triggerReceive $ str
+      dIsNull <- liftJSM . JS.ghcjsPure . JS.isNull $ d
+      dIsUndefined <- liftJSM . JS.ghcjsPure . JS.isUndefined $ d
+      when (dIsNull || dIsUndefined) $ liftIO $ putStrLn "WebSocket message was undefined/null!"
+      unless (dIsNull || dIsUndefined) $ do
+        str <- liftJSM $ JS.ghcjsPure . textFromJSVal $ d
+        -- Fork off, so on message handler does not get blocked too long.
+        liftIO . void . forkIO $ webSocket'^.triggerReceive $ str
 
 
     releaseOnError <- on ws' WS.error $ do
