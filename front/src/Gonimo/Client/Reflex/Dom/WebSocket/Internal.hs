@@ -99,10 +99,12 @@ handleCloseRequest webSocket' closeTimeout' closeRequest = do
     delayCloseRequest = maybe (pure never) (flip delay closeRequest . fromIntegral) closeTimeout'
 
 -- | Provide a websocket and create new one upon request,
--- cleaning up the old one. If the connection needs to be closed the provided code and reason are used.
--- TODO: Delay new socket creation for one second.
+-- cleaning up the old one. If the connection needs to be closed the provided
+-- code and reason are used.
 provideWebSocket :: forall t m. WebSocketM t m => WebSocket t -> Text -> Event t CloseParams -> m (Dynamic t JS.WebSocket)
-provideWebSocket webSocket' url makeNew = mdo
+provideWebSocket webSocket' url makeNew' = mdo
+    -- Avoid hoging CPU, wait for 1 second inbetween attempts:
+    makeNew <- delay 1 makeNew'
     wsInit <- WS.newWebSocket url ([] :: [Text])
 
     cleanupInit <- liftJSM $ registerJSHandlers webSocket' wsInit
