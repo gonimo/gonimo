@@ -133,7 +133,7 @@ registerJSHandlers webSocket' ws' = do
       liftIO $ webSocket'^.triggerOpen -- Already open? -> Fire!
     releaseOnOpen <- on ws' WS.open $ do
       liftIO $ putStrLn "onOpen fired due to JS event"
-      liftIO .void . forkIO $ webSocket'^.triggerOpen
+      liftIO $ webSocket'^.triggerOpen
 
 
     releaseOnClose <- on ws' WS.closeEvent $ do
@@ -142,7 +142,7 @@ registerJSHandlers webSocket' ws' = do
       code <- WS.getCode e
       reason <- WS.getReason e
       liftIO $ putStrLn "WebSocket got closed! (JS event)"
-      liftIO . void . forkIO $ (webSocket'^.triggerClose) (wasClean, CloseParams code reason)
+      liftIO $ (webSocket'^.triggerClose) (wasClean, CloseParams code reason)
 
 
     releaseOnMessage <- on ws' WS.message $ do
@@ -154,11 +154,11 @@ registerJSHandlers webSocket' ws' = do
       unless (dIsNull || dIsUndefined) $ do
         str <- liftJSM $ JS.ghcjsPure . textFromJSVal $ d
         -- Fork off, so on message handler does not get blocked too long.
-        liftIO . void . forkIO $ webSocket'^.triggerReceive $ str
+        liftIO $ webSocket'^.triggerReceive $ str
 
 
     releaseOnError <- on ws' WS.error $ do
-      liftIO . void . forkIO $ webSocket'^.triggerError
+      liftIO $ webSocket'^.triggerError
 
     pure $ do
       releaseOnOpen
