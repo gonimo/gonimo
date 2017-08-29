@@ -569,8 +569,18 @@ addFullScreenBtnAttrs className
 
 showJSException :: forall m. MonadJSM m => JSVal -> m Text
 showJSException e = liftJSM $ do
-  stackTrace <- JS.fromJSVal =<< JS.getProp "stack" =<< JS.makeObject e
-  pure $ fromMaybe "JS.PromiseRejected is not a JS-Error Object" stackTrace
+  jsStackTrace <- JS.getProp "stack" =<< JS.makeObject e
+  jsIsUndefined <- JS.ghcjsPure . JS.isUndefined $ jsStackTrace
+  if jsIsUndefined
+    then do
+      isEundefined <- JS.ghcjsPure . JS.isUndefined $ e
+      if isEundefined
+        then pure "Exception was undefined - WTF?"
+        else
+          fromMaybe "JS.PromiseRejected was not stringlike" <$> JS.fromJSVal e
+    else do
+      stackTrace <- JS.fromJSVal jsStackTrace
+      pure $ fromMaybe "JS.PromiseRejected is not a JS-Error Object" stackTrace
 
 -- | Like `fromPromiseM` but if you have a pure value to return on error
 -- instead of an action.

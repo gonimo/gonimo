@@ -18,7 +18,6 @@ import Data.JSString.Text (textFromJSVal)
 import qualified GHCJS.DOM.WebSocket as WS
 import qualified GHCJS.DOM.CloseEvent as WS
 import qualified GHCJS.DOM.MessageEvent as WS
-import Control.Concurrent (forkIO)
 
 import Data.Foldable (traverse_)
 import GHCJS.DOM.EventM (on)
@@ -148,6 +147,8 @@ registerJSHandlers webSocket' ws' = do
     releaseOnMessage <- on ws' WS.message $ do
       e <- ask
       d <- WS.getData e
+
+      -- TODO: Probably not really necessary, was just a try in the search of a bug:
       dIsNull <- liftJSM . JS.ghcjsPure . JS.isNull $ d
       dIsUndefined <- liftJSM . JS.ghcjsPure . JS.isUndefined $ d
       when (dIsNull || dIsUndefined) $ liftIO $ putStrLn "WebSocket message was undefined/null!"
