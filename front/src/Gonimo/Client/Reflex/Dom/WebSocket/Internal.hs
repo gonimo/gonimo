@@ -23,7 +23,7 @@ import Data.Foldable (traverse_)
 import GHCJS.DOM.EventM (on)
 import Reflex.Dom.Core hiding (WebSocket, webSocket', webSocket)
 import           Control.Monad.Reader                 (ask)
-import qualified Language.Javascript.JSaddle as JS
+import qualified Language.Javascript.JSaddle as JS hiding (MonadJSM)
 
 import Gonimo.Client.Util
 
@@ -78,7 +78,7 @@ handleCloseRequest
   -> Event t CloseParams -- ^ Params to use for JS close request
   -> m (Event t (Bool, CloseParams))
 handleCloseRequest webSocket' closeTimeout' closeRequest = do
-    performEvent_ $ safeClose <$> attach currentWS closeRequest
+    performEvent_ $ uncurry safeClose <$> attach currentWS closeRequest
 
     delayedRequest <- delayCloseRequest
 
@@ -94,7 +94,6 @@ handleCloseRequest webSocket' closeTimeout' closeRequest = do
     currentWS = current $ webSocket'^.ws
 
     -- ws.close with exception handling on current WebSocket:
-    safeClose (ws', CloseParams code reason) = fromJSFunc () $ WS.close ws' (Just code) (Just reason)
     delayCloseRequest = maybe (pure never) (flip delay closeRequest . fromIntegral) closeTimeout'
 
 -- | Provide a websocket and create new one upon request,
@@ -116,7 +115,7 @@ provideWebSocket webSocket' url makeNew' = mdo
     renew ((ws', cleanup'), ps) = liftJSM $ do
       state <- WS.getReadyState ws'
       unless (state == WS.CLOSING || state == WS.CLOSED)
-        $ WS.close ws' (Just $ ps^.closeCode) (Just $ ps^.closeReason)
+        $ safeClose ws' ps
       cleanup'
       newWS <- WS.newWebSocket url ([] :: [Text])
       newCleanup <- registerJSHandlers webSocket' newWS
@@ -166,3 +165,7 @@ registerJSHandlers webSocket' ws' = do
       releaseOnClose
       releaseOnMessage
       releaseOnError
+
+-- | Internal helper function: Call close and catch all exceptions..
+safeClose :: JS.MonadJSM m => WS.WebSocket -> CloseParams -> m ()
+safeClose ws' (CloseParams code reason) = fromJSFunc () $ WS.close ws' (Just code) (Just reason)
