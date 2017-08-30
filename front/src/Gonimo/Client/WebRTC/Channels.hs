@@ -139,7 +139,7 @@ handleMuteUpdate chans chanEv = do
               isMuted <- getMuted track'
               liftIO $ triggerStatUpdate (at mapKey._Just.audioVideo .~ isMuted)
               _ <- on track' mute $ do
-                liftIO $ threadDelay 2500000
+                liftIO $ threadDelay 3500000
                 stillMuted <- getMuted track'
                 liftIO . when stillMuted $
                   triggerStatUpdate (at mapKey._Just.audioVideo .~ True)
