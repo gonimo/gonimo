@@ -108,7 +108,7 @@ baby config = mdo
     videoDevices' = filter ((== VideoInput) . mediaDeviceKind) <$> devices
 
   selected <- handleCameraSelect config devices
-  enabled  <- handleCameraEnable config
+  enabled  <- handleCameraEnable config mediaStream'
   let mSelected = (\enabled' selected' -> if enabled' then selected' else Nothing)
                   <$> enabled <*> selected
 
@@ -117,7 +117,7 @@ baby config = mdo
                                , attach (current videoDevices') (tag (current mSelected) $ config^.configGetUserMedia)
                                ]
   let gotNewValidStream = fmapMaybeCheap (^?_Right) gotNewStream
-  -- WARNING: Don't do that- -inifinte MonadFix loop will down on you!
+  -- WARNING: Don't do that- -inifinte MonadFix loop will dawn on you!
   -- cSelected <- sample $ current selected
   mediaStream' :: Dynamic t (Either JS.PromiseRejected MediaStream) <- holdDyn badInit gotNewStream
 
@@ -131,7 +131,7 @@ baby config = mdo
                                            , Socket._configEnabled = sockEnabled
                                            , Socket._configMediaStream = mediaStream'
                                            }
-  -- OYD integration, if enabled by user. (Currently a hidden feature, use has to set local storage object 'OYD')
+  -- OYD integration, if enabled by user. (Currently a hidden feature, user has to set local storage object 'OYD')
   setOYDBabyNameEv <- performEvent $ uncurry oyd <$> attach (current babyName) gotNewValidStream
   setOYDBabyNameBeh <- hold (const (pure ())) setOYDBabyNameEv
   performEvent_ $ attachWith ($) setOYDBabyNameBeh (updated babyName)
@@ -162,14 +162,21 @@ baby config = mdo
               , _volumeLevel = volEvent
               }
 
-handleCameraEnable :: forall m t. GonimoM t m => Config t -> m (Dynamic t Bool)
-handleCameraEnable config = do
+handleCameraEnable :: forall m t. GonimoM t m => Config t -> Dynamic t (Either JS.PromiseRejected MediaStream) -> m (Dynamic t Bool)
+handleCameraEnable config mediaStream' = do
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     mLastEnabled <- GStorage.getItem storage GStorage.cameraEnabled
 
     let initVal = fromMaybe True $ mLastEnabled
 
-    enabled <- holdDyn initVal (config^.configEnableCamera)
+    let
+      getStreamFailed = push pure $ either (const (Just False)) (const Nothing) <$> updated mediaStream'
+
+    enabled' <- holdDyn initVal $ leftmost [ getStreamFailed
+                                           , config^.configEnableCamera
+                                           ]
+    let
+      enabled = uniqDyn enabled'
     performEvent_
       $ GStorage.setItem storage GStorage.CameraEnabled <$> updated enabled
     pure enabled
