@@ -8,12 +8,14 @@ import           Language.Javascript.JSaddle                       (JSVal,
                                                                     eval,
                                                                     jsg,
                                                                     liftJSM)
+import Control.Lens
 
 import qualified Language.Javascript.JSaddle                       as JS
 import GHCJS.DOM.MediaStream             as MediaStream
 import GHCJS.DOM.AudioBufferSourceNode (AudioBufferSourceNode(..))
 import           GHCJS.DOM.Types                   (MediaStreamTrack, RTCPeerConnection)
 import qualified GHCJS.DOM.Types               as JS hiding (JSM)
+import GHCJS.Types (nullRef)
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam
@@ -568,20 +570,15 @@ addFullScreenBtnAttrs className
   <> "onClick" =: requestFullScreenScript
 
 showJSException :: forall m. MonadJSM m => JSVal -> m Text
-showJSException _ = pure "Some exception, we don't know nothing about."
-  -- liftJSM $ do
-  -- jsStackTrace <- JS.getProp "stack" =<< JS.makeObject e
-  -- jsIsUndefined <- JS.ghcjsPure . JS.isUndefined $ jsStackTrace
-  -- if jsIsUndefined
-  --   then do
-  --     isEundefined <- JS.ghcjsPure . JS.isUndefined $ e
-  --     if isEundefined
-  --       then pure "Exception was undefined - WTF?"
-  --       else
-  --         fromMaybe "JS.PromiseRejected was not stringlike" <$> JS.fromJSVal e
-  --   else do
-  --     stackTrace <- JS.fromJSVal jsStackTrace
-  --     pure $ fromMaybe "JS.PromiseRejected is not a JS-Error Object" stackTrace
+showJSException e = liftJSM $ do
+  isEundefined <- JS.ghcjsPure . JS.isUndefined $ e
+  if isEundefined
+    then pure "Exception was undefined - WTF?"
+    else do
+      json <- JS.jsg ("JSON" :: Text)
+      propStr <- json^.JS.js3 ("stringify" :: Text) e nullRef (2 :: Int)
+      str <- fromMaybe ("Can't be stringifyed!") <$> JS.fromJSVal propStr
+      pure $ "Caught exception: " <> str
 
 -- | Like `fromPromiseM` but if you have a pure value to return on error
 -- instead of an action.
