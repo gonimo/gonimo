@@ -59,10 +59,12 @@ auth locDyn config = do
             API.ResAuthenticated -> Just ()
             _                    -> Nothing
       push handleAuthenticated $ config^.configResponse
-  isOnline' <- holdDyn False $ leftmost [ const False <$> config^.configServerClose
-                                        , const False <$> config^.configServerCloseRequested
-                                        , const True <$> authenticated'
-                                        ]
+  isOnline' <- fmap uniqDyn
+               . holdDyn False
+               $ leftmost [ const False <$> config^.configServerClose
+                          , const False <$> config^.configServerCloseRequested
+                          , const True <$> authenticated'
+                          ]
 
   pure $ Auth { _request = mconcat
                                . map (fmap (:[]))
