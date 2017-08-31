@@ -24,7 +24,6 @@ import Gonimo.Client.Util
 import GHCJS.DOM.EventM (on)
 import qualified GHCJS.DOM.MediaStream             as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended)
-import Data.Maybe
 
 
 renderVolumemeter :: forall m t. GonimoM t m => Event t Double -> m ()

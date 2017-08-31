@@ -5,29 +5,25 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.Invite.Internal where
 
-import Reflex.Dom.Core
-import Control.Monad
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Lens
-import Data.Monoid
-import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId, InvitationId)
-import qualified Gonimo.Db.Entities as Db
-import qualified Gonimo.SocketAPI.Types as API
-import qualified Gonimo.SocketAPI as API
-import qualified GHCJS.DOM.Location as Location
-import GHCJS.DOM.Types (ToJSVal, toJSVal, FromJSVal, fromJSVal, JSVal, MonadJSM)
-import qualified GHCJS.DOM.Window as Window
-import qualified GHCJS.DOM.Document as Document
-import qualified GHCJS.DOM as DOM
-import Control.Monad.Trans.Maybe
-import Data.Maybe (fromMaybe)
-import qualified Data.Aeson as Aeson
-import qualified Data.Text.Encoding as T
+import           Control.Lens
+import           Control.Monad
+import           Control.Monad.Fix    (MonadFix)
+import qualified Data.Aeson           as Aeson
 import qualified Data.ByteString.Lazy as BL
-import Network.HTTP.Types (urlEncode)
-import Control.Monad.Fix (MonadFix)
-import Data.Default (Default(..))
+import           Data.Default         (Default (..))
+import           Data.Monoid
+import           Data.Text            (Text)
+import qualified Data.Text.Encoding   as T
+import qualified GHCJS.DOM            as DOM
+import qualified GHCJS.DOM.Document   as Document
+import qualified GHCJS.DOM.Location   as Location
+import           GHCJS.DOM.Types      (MonadJSM)
+import           Network.HTTP.Types   (urlEncode)
+import           Reflex.Dom.Core
+
+import           Gonimo.Db.Entities   (FamilyId, InvitationId)
+import qualified Gonimo.Db.Entities   as Db
+import qualified Gonimo.SocketAPI     as API
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"

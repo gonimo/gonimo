@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html>
   <head>
+      <script>
+       window.WebSocket.prototype.origSend = window.WebSocket.prototype.send;
+       window.WebSocket.prototype.send = function(msg) {
+           try {
+            this.origSend(msg);
+           }
+           catch(e) {
+               console.log("Caught exception during send: " + e.toString());
+           }
+       };
+       window.WebSocket.prototype.origClose = window.WebSocket.prototype.close;
+       window.WebSocket.prototype.close = function(code, reason) {
+           try {
+            this.origClose(code, reason);
+           }
+           catch(e) {
+               console.log("Caught exception during close: " + e.toString());
+           }
+       };
+      </script>
     <script language="javascript" src="rts.js"></script>
     <script language="javascript" src="lib.js"></script>
     <script language="javascript" src="out.js"></script>

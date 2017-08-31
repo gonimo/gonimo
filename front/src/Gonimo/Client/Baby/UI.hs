@@ -5,30 +5,31 @@
 module Gonimo.Client.Baby.UI where
 
 import           Control.Lens
+import           Control.Monad
 import           Control.Monad.IO.Class
+import           Data.Foldable
+import qualified Data.Map.Strict                   as Map
 import           Data.Maybe                        (fromMaybe)
 import           Data.Monoid
 import           Data.Text                         (Text)
-import qualified Gonimo.Client.DeviceList          as DeviceList
+import           GHCJS.DOM.Types                   (MediaStream)
+import qualified GHCJS.DOM.Types                   as JS
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types           as App
 import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.Baby.Socket         as Socket
-import qualified Gonimo.Client.NavBar              as NavBar
-import           Gonimo.Client.Reflex.Dom
-import           Gonimo.DOM.Navigator.MediaDevices
-import           Gonimo.Client.EditStringButton    (editStringEl)
-import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
-import           Gonimo.Client.Util
-import qualified Data.Map.Strict as Map
-import           Data.Foldable
-import           GHCJS.DOM.Types                   (MediaStream)
-import           Control.Monad
 import           Gonimo.Client.Baby.UI.I18N
+import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
+import qualified Gonimo.Client.DeviceList          as DeviceList
+import           Gonimo.Client.EditStringButton    (editStringEl)
+import qualified Gonimo.Client.NavBar              as NavBar
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Client.Server
+import           Gonimo.Client.Util
+import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.I18N
-import Gonimo.Client.Prelude
-import qualified GHCJS.DOM.Types                   as JS
 
 data BabyScreen = ScreenStart | ScreenRunning
 
@@ -37,7 +38,7 @@ ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
                            , _configEnableAutoStart = leftmost [ui'^.uiEnableAutoStart, disableAutostart]
-                           , _configResponse = appConfig^.App.server.webSocket_recv
+                           , _configResponse = appConfig^.server.response
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = startMonitor
                            , _configStopMonitor  = leftmost [ui'^.uiGoHome, ui'^.uiStopMonitor]

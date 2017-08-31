@@ -3,37 +3,12 @@
 module Gonimo.DOM.Window.Internal where
 
 
-import           Language.Javascript.JSaddle                       (JSVal,
-                                                                    MonadJSM,
-                                                                    eval, fun,
-                                                                    js, js1,
-                                                                    jsf, jsg,
-                                                                    jss, js0,
-                                                                    liftJSM,
-                                                                    syncPoint,
-                                                                    valToNumber,
-                                                                    new,
-                                                                    ( # ), (<#))
-import qualified Language.Javascript.JSaddle                       as JS
+import           GHCJS.DOM.Types             hiding (MonadJSM, liftJSM)
+import           Language.Javascript.JSaddle (MonadJSM, jsg, liftJSM, new)
+import qualified Language.Javascript.JSaddle as JS
 
 
-import           Control.Lens                                      ((^.))
-import           Control.Monad.IO.Class
-import           Data.Maybe                                        (fromJust)
-import           GHCJS.DOM.Types                                   hiding
-                                                                    (MonadJSM,
-                                                                    liftJSM)
 
-import           Control.Concurrent.MVar                           (newEmptyMVar,
-                                                                    putMVar,
-                                                                    takeMVar)
-import           Control.Monad.IO.Class                            (MonadIO (..))
-
-
-import           GHCJS.DOM.NavigatorUserMediaError              (throwUserMediaException)
-
-import           GHCJS.DOM.NavigatorUserMediaErrorCallback (newNavigatorUserMediaErrorCallback)
-import           GHCJS.DOM.NavigatorUserMediaSuccessCallback (newNavigatorUserMediaSuccessCallback)
 
 
 newRTCPeerConnection :: (MonadJSM m, IsDictionary rtcConfiguration)

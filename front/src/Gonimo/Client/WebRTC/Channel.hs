@@ -32,13 +32,13 @@ import           GHCJS.DOM.Types                (Dictionary (..), MediaStream,
 import           Gonimo.Client.Config
 import           Gonimo.DOM.Window              (newRTCPeerConnection)
 
-import           Data.Maybe
+
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
 import           GHCJS.DOM.Enums (RTCIceConnectionState(..))
 import           Language.Javascript.JSaddle    (liftJSM, (<#))
 import qualified Language.Javascript.JSaddle    as JS
-import qualified Language.Javascript.JSaddle.Types    as JS
+
 import           Safe                           (fromJustNote)
 
 data CloseEvent = CloseRequested | CloseConnectionLoss
@@ -210,6 +210,6 @@ makeGonimoRTCConnection = liftJSM $ do
 -- Don't use plain close, it throws uncatchable exceptions when connection is already closed:
 safeClose :: MonadJSM m => RTCPeerConnection -> m ()
 safeClose conn = liftJSM $ do
-      jsClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Catched: \" + e.toString());}})" :: Text)
+      jsClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Caught: \" + e.toString());}})" :: Text)
       _ <- JS.call jsClose JS.obj [conn]
       pure ()

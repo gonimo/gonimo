@@ -3,25 +3,23 @@
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.AcceptInvitation.UI where
 
-import           Gonimo.Client.Prelude
-
 import           Control.Lens
-import           Control.Monad.Fix                       (MonadFix)
 import           Control.Monad.Trans.Class               (lift)
 import           Control.Monad.Trans.Maybe               (runMaybeT)
 import           Data.Maybe                              (fromMaybe, maybe)
+import qualified Data.Set                                as Set
 import           Data.Text                               (Text)
+import           Reflex.Dom.Core
+
 import           Gonimo.Client.AcceptInvitation.Internal
+import           Gonimo.Client.AcceptInvitation.UI.I18N
+import           Gonimo.Client.Prelude
 import qualified Gonimo.SocketAPI                        as API
 import           Gonimo.SocketAPI.Types                  (InvitationInfo (..))
 import           Gonimo.SocketAPI.Types                  (InvitationReply (..))
 import           Gonimo.Types                            (Secret)
 import qualified Gonimo.Types                            as Gonimo
-import           Reflex.Dom.Core
-import           GHCJS.DOM.Types (MonadJSM)
-import qualified Data.Set                                as Set
-import           Gonimo.Client.AcceptInvitation.UI.I18N
-import           Gonimo.I18N
+
 
 ui :: forall m t. GonimoM t m
       => Config t -> m (AcceptInvitation t)

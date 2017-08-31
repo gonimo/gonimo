@@ -7,36 +7,35 @@ module Gonimo.Client.Parent.UI where
 import           Control.Lens
 import           Data.Foldable
 import           Data.Monoid
-import qualified Gonimo.Client.DeviceList         as DeviceList
 import           Reflex.Dom.Core
 
 import qualified Data.Map                         as Map
 import qualified Data.Set                         as Set
+import qualified GHCJS.DOM.MediaStream            as MediaStream
+
 import qualified Gonimo.Client.App.Types          as App
--- import           Gonimo.Client.Parent.Internal
 import qualified Gonimo.Client.Auth               as Auth
 import           Gonimo.Client.ConfirmationButton (mayAddConfirmation)
+import qualified Gonimo.Client.DeviceList         as DeviceList
 import qualified Gonimo.Client.Invite             as Invite
 import qualified Gonimo.Client.NavBar             as NavBar
 import qualified Gonimo.Client.Parent.Connections as C
-import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Util               (volumeMeter)
-import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..),
-                                                   Channel, worstState)
-import           Gonimo.Db.Entities        (DeviceId)
-import           Gonimo.Client.Prelude
-import qualified GHCJS.DOM.MediaStream          as MediaStream
-import           Gonimo.Types                   (_Baby)
-import qualified Gonimo.Client.WebRTC.Channel      as Channel
-import           Gonimo.Client.Prelude
 import           Gonimo.Client.Parent.UI.I18N
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Client.Server
+import           Gonimo.Client.WebRTC.Channel     (Channel, ReceivingState (..),
+                                                   worstState)
+import qualified Gonimo.Client.WebRTC.Channel     as Channel
+import           Gonimo.Db.Entities               (DeviceId)
+import           Gonimo.Types                     (_Baby)
 
 
 
 ui :: forall m t. GonimoM t m
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
-  connections' <- C.connections $ C.Config { C._configResponse = appConfig^.App.server.webSocket_recv
+  connections' <- C.connections $ C.Config { C._configResponse = appConfig^.server.response
                                            , C._configAuthData = loaded^.App.authData
                                            , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
                                            , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
@@ -82,7 +81,7 @@ ui appConfig loaded deviceList = mdo
       firstCreation <- headE inviteRequested
       let inviteUI
             = Invite.ui loaded
-              $ Invite.Config { Invite._configResponse = appConfig^.App.server.webSocket_recv
+              $ Invite.Config { Invite._configResponse = appConfig^.server.response
                               , Invite._configSelectedFamily = loaded^.App.selectedFamily
                               , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
                               , Invite._configCreateInvitation = never

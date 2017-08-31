@@ -6,12 +6,12 @@ module Gonimo.Client.Subscriber where
 
 import Reflex.Dom.Core
 import Control.Monad.Fix (MonadFix)
-import qualified Gonimo.Db.Entities as Db
+
 import Data.Map (Map)
-import qualified Data.Map as Map
+
 import qualified Data.Set as Set
-import Data.Set (Set, (\\))
-import qualified Gonimo.SocketAPI.Types as API
+import Data.Set (Set)
+
 import qualified Gonimo.SocketAPI as API
 import Control.Lens
 

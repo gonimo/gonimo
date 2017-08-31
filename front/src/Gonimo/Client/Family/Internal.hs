@@ -28,6 +28,7 @@ import Control.Applicative
 import Data.Default (Default(..))
 import qualified Gonimo.Types                     as Gonimo
 import Gonimo.Client.Prelude
+import Gonimo.Client.Server
 
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Client.App.Types as App
@@ -84,7 +85,7 @@ instance Reflex t => Default (UI t) where
   def = UI never never never never never never never
 
 fromApp :: Reflex t => App.Config t -> Config t
-fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
+fromApp c = Config { _configResponse = c^.server.response
                    , _configAuthData = c^.App.auth^.Auth.authData
                    , _configSelectFamily = never
                    , _configSetName = never

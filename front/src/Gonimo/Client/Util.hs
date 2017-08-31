@@ -8,12 +8,14 @@ import           Language.Javascript.JSaddle                       (JSVal,
                                                                     eval,
                                                                     jsg,
                                                                     liftJSM)
+import Control.Lens
 
 import qualified Language.Javascript.JSaddle                       as JS
 import GHCJS.DOM.MediaStream             as MediaStream
 import GHCJS.DOM.AudioBufferSourceNode (AudioBufferSourceNode(..))
 import           GHCJS.DOM.Types                   (MediaStreamTrack, RTCPeerConnection)
 import qualified GHCJS.DOM.Types               as JS hiding (JSM)
+import GHCJS.Types (nullRef)
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam
@@ -569,8 +571,14 @@ addFullScreenBtnAttrs className
 
 showJSException :: forall m. MonadJSM m => JSVal -> m Text
 showJSException e = liftJSM $ do
-  stackTrace <- JS.fromJSVal =<< JS.getProp "stack" =<< JS.makeObject e
-  pure $ fromMaybe "JS.PromiseRejected is not a JS-Error Object" stackTrace
+  isEundefined <- JS.ghcjsPure . JS.isUndefined $ e
+  if isEundefined
+    then pure "Exception was undefined - WTF?"
+    else do
+      json <- JS.jsg ("JSON" :: Text)
+      propStr <- json^.JS.js3 ("stringify" :: Text) e nullRef (2 :: Int)
+      str <- fromMaybe ("Can't be stringifyed!") <$> JS.fromJSVal propStr
+      pure $ "Caught exception: " <> str
 
 -- | Like `fromPromiseM` but if you have a pure value to return on error
 -- instead of an action.
@@ -579,7 +587,7 @@ fromPromise onException = fromPromiseM (pure onException)
 
 -- | Run a computation which is a promise catching the rejected case.
 -- The second parameter is expected to be a promise, if it gets rejected by
--- means of `PromiseRejected` being thrown then it is catched, the exception is
+-- means of `PromiseRejected` being thrown then it is caught, the exception is
 -- printed to the console and the first parameter gets evaluated.
 fromPromiseM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
 fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
@@ -589,15 +597,15 @@ fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
       liftIO . T.putStrLn =<< showJSException e
       onException
 
--- | Like fromJSM but for a pure default value.
-fromJS :: forall m a. MonadJSM m => a -> JS.JSM a -> m a
-fromJS onException = fromJSM (pure onException)
+-- | Like fromJSFuncM but for a pure default value.
+fromJSFunc :: forall m a. MonadJSM m => a -> JS.JSM a -> m a
+fromJSFunc onException = fromJSFuncM (pure onException)
 
 -- | Run a JS function catching JSException.
 -- If an exception occurs it gets printed to the console and the 'onException'
 -- parameter gets evaluatedas result.
-fromJSM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
-fromJSM onException action = liftJSM $ action `JS.catch` handleException
+fromJSFuncM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
+fromJSFuncM onException action = liftJSM $ action `JS.catch` handleException
   where
     handleException :: JS.JSException -> JS.JSM a
     handleException (JS.JSException e) = do

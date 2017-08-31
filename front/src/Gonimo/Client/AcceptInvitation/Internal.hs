@@ -5,29 +5,30 @@
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.AcceptInvitation.Internal where
 
-import Reflex.Dom.Core
-import Control.Monad
-import Control.Lens
-import Data.Text (Text)
-import Gonimo.Types (Secret)
-import qualified Gonimo.SocketAPI as API
-import qualified GHCJS.DOM.Location as Location
-import qualified GHCJS.DOM.History as History
-import GHCJS.DOM.Types (toJSVal) 
-import qualified GHCJS.DOM.Window as Window
-import qualified GHCJS.DOM as DOM
-import Data.Maybe (maybe)
-import qualified Data.Aeson as Aeson
+import           Control.Lens
+import           Control.Monad
+import qualified Data.Aeson         as Aeson
+import           Data.Maybe         (maybe)
+import qualified Data.Set           as Set
+import           Data.Text          (Text)
+import qualified Data.Text          as T
 import qualified Data.Text.Encoding as T
-import qualified Data.Text as T
-import Network.HTTP.Types (urlDecode)
-import Gonimo.SocketAPI.Types (InvitationReply)
-import Gonimo.Client.Subscriber (SubscriptionsDyn)
+import qualified GHCJS.DOM          as DOM
+import qualified GHCJS.DOM.History  as History
+import qualified GHCJS.DOM.Location as Location
+import           GHCJS.DOM.Types    (toJSVal)
+import           GHCJS.DOM.Types    (MonadJSM, liftJSM)
+import qualified GHCJS.DOM.Window   as Window
+import           Network.HTTP.Types (urlDecode)
+import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.App.Types as App
-import qualified Gonimo.Client.Auth as Auth
-import           GHCJS.DOM.Types (MonadJSM, liftJSM)
-import qualified Data.Set                                as Set
+import qualified Gonimo.Client.App.Types  as App
+import qualified Gonimo.Client.Auth       as Auth
+import           Gonimo.Client.Server
+import           Gonimo.Client.Subscriber (SubscriptionsDyn)
+import qualified Gonimo.SocketAPI         as API
+import           Gonimo.SocketAPI.Types   (InvitationReply)
+import           Gonimo.Types             (Secret)
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -47,7 +48,7 @@ makeLenses ''AcceptInvitation
 
 
 fromApp :: Reflex t => App.Config t -> Config t
-fromApp c = Config { _configResponse = c^.App.server.webSocket_recv
+fromApp c = Config { _configResponse = c^.server.response
                    , _configAuthenticated = c^.App.auth^.Auth.authenticated
                    }
 
