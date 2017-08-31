@@ -210,6 +210,6 @@ makeGonimoRTCConnection = liftJSM $ do
 -- Don't use plain close, it throws uncatchable exceptions when connection is already closed:
 safeClose :: MonadJSM m => RTCPeerConnection -> m ()
 safeClose conn = liftJSM $ do
-      jsClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Catched: \" + e.toString());}})" :: Text)
+      jsClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Caught: \" + e.toString());}})" :: Text)
       _ <- JS.call jsClose JS.obj [conn]
       pure ()

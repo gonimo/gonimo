@@ -587,7 +587,7 @@ fromPromise onException = fromPromiseM (pure onException)
 
 -- | Run a computation which is a promise catching the rejected case.
 -- The second parameter is expected to be a promise, if it gets rejected by
--- means of `PromiseRejected` being thrown then it is catched, the exception is
+-- means of `PromiseRejected` being thrown then it is caught, the exception is
 -- printed to the console and the first parameter gets evaluated.
 fromPromiseM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
 fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
