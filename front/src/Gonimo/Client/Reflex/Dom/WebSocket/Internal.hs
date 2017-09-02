@@ -147,7 +147,7 @@ provideWebSocket webSocket' url makeNew = mdo
 
     renew :: JS.MonadJSM m1 => MVar (JSM ()) -> (JS.WebSocket, CloseParams) -> m1 JS.WebSocket
     renew cleanupAction (ws', ps) = liftJSM $ do
-      join . liftIO $ takeMVar cleanupAction
+      runCleanup cleanupAction
       state <- WS.getReadyState ws'
       unless (state == WS.CLOSING || state == WS.CLOSED)
         $ safeClose ws' ps
@@ -159,6 +159,8 @@ provideWebSocket webSocket' url makeNew = mdo
 
     setupHandlers cleanupAction
       = liftIO . putMVar cleanupAction <=< registerJSHandlers webSocket'
+
+    runCleanup = join . liftIO . takeMVar
 
 -- | Registers handlers for events of the JS WebSocket.
 -- Returns an action that can be triggerd for unregistering the handlers again.
