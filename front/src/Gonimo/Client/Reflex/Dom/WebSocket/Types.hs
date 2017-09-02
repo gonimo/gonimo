@@ -9,6 +9,7 @@ import Reflex.PerformEvent.Class
 import Reflex.PostBuild.Class
 import Reflex.TriggerEvent.Class
 import GHCJS.DOM.Types (MonadJSM)
+import Control.Monad.IO.Class (MonadIO)
 
 import Control.Lens
 import Data.Default
@@ -69,7 +70,9 @@ makeLenses ''CloseParams
 
 
 
-type WebSocketM t m = (MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, MonadFix m, MonadHold t m)
+type WebSocketM t m = (MonadJSM m, MonadJSM (Performable m), HasJSContext m,
+                       PerformEvent t m, TriggerEvent t m, PostBuild t m, MonadFix m, MonadHold t m,
+                       MonadIO (Performable m))
 
 
 instance Default CloseParams where

@@ -18,6 +18,7 @@ import Data.JSString.Text (textFromJSVal)
 import qualified GHCJS.DOM.WebSocket as WS
 import qualified GHCJS.DOM.CloseEvent as WS
 import qualified GHCJS.DOM.MessageEvent as WS
+import Control.Concurrent.MVar
 
 import Data.Foldable (traverse_)
 import GHCJS.DOM.EventM (on)
@@ -93,42 +94,85 @@ handleCloseRequest webSocket' closeTimeout' closeRequest = do
   where
     currentWS = current $ webSocket'^.ws
 
-    -- ws.close with exception handling on current WebSocket:
     delayCloseRequest = maybe (pure never) (flip delay closeRequest . fromIntegral) closeTimeout'
 
 -- | Provide a websocket and create new one upon request,
 -- cleaning up the old one. If the connection needs to be closed the provided
 -- code and reason are used.
+-- This code is actually quite a bit tricky. Beware of race conditions:
+-- It can happen that a JS close event and a force close are handled both, this just results in a needless connection
+-- re-establishment.
+-- Don't block close events with gate or something until a new websocket
+-- arrives, because an early close event of the new socket would be ignored,
+-- resulting in a connection that never gets re-established!
 provideWebSocket :: forall t m. WebSocketM t m => WebSocket t -> Text -> Event t CloseParams -> m (Dynamic t JS.WebSocket)
-provideWebSocket webSocket' url makeNew' = mdo
+provideWebSocket webSocket' url makeNew = mdo
+    (wsInit, cleanupAction) <- initialize
+
+    ws' <- holdDyn wsInit newWS
+
+    renewInProgress <- hold False $ leftmost [ const True <$> makeNew
+                                             , const False <$> newWS
+                                             ]
+
+    let
+      -- Avoid race condition, only allow one makeNew event to be processed at a time:
+      makeNewGated :: Event t CloseParams
+      makeNewGated = gate (not <$> renewInProgress) makeNew
+
     -- Avoid hoging CPU, wait for 1 second inbetween attempts:
-    makeNew <- delay 1 makeNew'
-    wsInit <- WS.newWebSocket url ([] :: [Text])
+    newWS <- performRenew cleanupAction ws' =<< delay 1 makeNewGated
 
-    cleanupInit <- liftJSM $ registerJSHandlers webSocket' wsInit
+    performSetupHandlers cleanupAction newWS
 
-    newWS <- performEvent $ renew <$> attach (current connCleanup) makeNew
-
-    connCleanup <- holdDyn (wsInit, cleanupInit) newWS
-    pure $ fst <$> connCleanup
+    pure ws'
   where
-    renew ((ws', cleanup'), ps) = liftJSM $ do
+    initialize = do
+      -- Needed for some sanity: With an MVar we can sync the asynchronous JS
+      -- world with our FRP state and get consistent behaviour: JS events will
+      -- target the right WebSocket. Otherwise an early `close` event would
+      -- arrive before our ws' dynamic is updated and would get lost due to our
+      -- gating above and without it would target the wrong websocket and would
+      -- effectively get lost too.
+      cleanupAction <- liftIO newEmptyMVar
+      wsInit <- WS.newWebSocket url ([] :: [Text])
+      liftJSM $ setupHandlers cleanupAction wsInit
+      pure (wsInit, cleanupAction)
+
+    performRenew :: MVar (JSM ()) -> Dynamic t JS.WebSocket
+                 -> Event t CloseParams
+                 -> m (Event t JS.WebSocket)
+    performRenew cleanupAction ws' makeNew'
+      = performEvent $ renew cleanupAction <$> attach (current ws') makeNew'
+
+    renew :: JS.MonadJSM m1 => MVar (JSM ()) -> (JS.WebSocket, CloseParams) -> m1 JS.WebSocket
+    renew cleanupAction (ws', ps) = liftJSM $ do
+      join . liftIO $ takeMVar cleanupAction
       state <- WS.getReadyState ws'
       unless (state == WS.CLOSING || state == WS.CLOSED)
         $ safeClose ws' ps
-      cleanup'
       newWS <- WS.newWebSocket url ([] :: [Text])
-      newCleanup <- registerJSHandlers webSocket' newWS
-      pure (newWS, newCleanup)
+      pure newWS
+
+    performSetupHandlers cleanupAction
+      = performEvent_ . fmap (liftJSM . setupHandlers cleanupAction)
+
+    setupHandlers cleanupAction
+      = liftIO . putMVar cleanupAction <=< registerJSHandlers webSocket'
 
 -- | Registers handlers for events of the JS WebSocket.
 -- Returns an action that can be triggerd for unregistering the handlers again.
 registerJSHandlers :: WebSocket t -> WS.WebSocket -> JSM (JSM ())
 registerJSHandlers webSocket' ws' = do
     state <- liftJSM $ WS.getReadyState ws'
-    when (state == WS.OPEN) $ liftIO $ do
+    when (state == WS.OPEN) . liftIO $ do
       putStrLn "!Websocket was already open - fire open event!"
-      liftIO $ webSocket'^.triggerOpen -- Already open? -> Fire!
+      webSocket'^.triggerOpen -- Already open? -> Fire!
+
+    when (state == WS.CLOSED) . liftIO $ do
+      putStrLn "!Websocket was already closed - fire close event!"
+      webSocket'^.triggerClose $ (False, CloseParams 4000 "Real close event got lost, faking it.")
+
     releaseOnOpen <- on ws' WS.open $ do
       liftIO $ putStrLn "onOpen fired due to JS event"
       liftIO $ webSocket'^.triggerOpen
@@ -155,7 +199,6 @@ registerJSHandlers webSocket' ws' = do
         str <- liftJSM $ JS.ghcjsPure . textFromJSVal $ d
         -- Fork off, so on message handler does not get blocked too long.
         liftIO $ webSocket'^.triggerReceive $ str
-
 
     releaseOnError <- on ws' WS.error $ do
       liftIO $ webSocket'^.triggerError
