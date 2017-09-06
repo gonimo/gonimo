@@ -114,7 +114,10 @@ library
 executable gonimo-back
   if flag(dev) 
       cpp-options:   -DDEVELOPMENT
-  ghc-options:        -threaded -O2 -rtsopts -with-rtsopts=-N -Wall
+  -- threaded disabled because of: https://ghc.haskell.org/trac/ghc/ticket/13751
+  -- Can be enabled again, once we upgrade to ghc 8.2
+  -- ghc-options:        -threaded -O2 -rtsopts -with-rtsopts=-N -Wall
+  ghc-options:        -O2  -Wall
   main-is:            GonimoBack.hs
   hs-source-dirs:      app
   default-language:    Haskell2010
