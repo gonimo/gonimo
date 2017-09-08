@@ -32,6 +32,8 @@ import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (Secret)
 import qualified Language.Javascript.JSaddle.Value as JS
 import Data.Time.Clock
+import qualified Data.Set as Set
+import  Data.Set (Set)
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -71,10 +73,14 @@ type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.F
 
 connections :: forall m t. GonimoM t m => Config t -> m (Connections t)
 connections config = mdo
+  shouldBeStreaming' <- hold Set.empty $ leftmost [ attachWith (flip Set.insert) shouldBeStreaming' $ config^.configConnectBaby
+                                                  , attachWith (flip Set.delete) shouldBeStreaming' $ config^.configDisconnectBaby
+                                                  , const Set.empty <$> config^.configDisconnectAll
+                                                  ]
   now <- liftIO $ getCurrentTime
   tick <- tickLossy 5 now
   let
-    channelSample = tag (current $ channels'^.Channels.channelMap) tick
+    channelSample = tag ((,) <$> shouldBeStreaming' <*> (current $ channels'^.Channels.channelMap)) tick
     renewEvent = renewConnection channelSample
 
     ourDevId = API.deviceId <$> current (config^.configAuthData)
@@ -126,12 +132,13 @@ connections config = mdo
     kickSecret :: forall v. Map (DeviceId, Secret) v -> Map DeviceId v
     kickSecret = Map.fromList . over (mapped._1) (^._1) . Map.toList
 
-renewConnection :: Reflex t => Event t (Channels.ChannelMap t) -> Event t [DeviceId]
-renewConnection = ffilter (not . null) . fmap makeRenew
+renewConnection :: Reflex t => Event t (Set DeviceId, Channels.ChannelMap t) -> Event t [DeviceId]
+renewConnection = ffilter (not . null) . fmap (Set.toList . getMissing)
   where
-    makeRenew = map (fst . fst)
-                . filter (Channel.needsAlert . snd)
-                . Map.toList
+    getMissing (should, channels) = Set.difference should
+                                    (Set.fromList . map (fst . fst) . filterInvalid $ channels)
+    filterInvalid = filter (not . Channel.needsAlert . snd)
+                    . Map.toList
 
 playAlarmOnBrokenConnection :: GonimoM t m => Channels.Channels t -> m ()
 playAlarmOnBrokenConnection channels' = mdo
