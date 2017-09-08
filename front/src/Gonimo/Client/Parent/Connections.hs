@@ -31,6 +31,7 @@ import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (Secret)
 import qualified Language.Javascript.JSaddle.Value as JS
+import Data.Time.Clock
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -70,9 +71,16 @@ type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.F
 
 connections :: forall m t. GonimoM t m => Config t -> m (Connections t)
 connections config = mdo
+  now <- liftIO $ getCurrentTime
+  tick <- tickLossy 5 now
   let
+    channelSample = tag (current $ channels'^.Channels.channelMap) tick
+    renewEvent = renewConnection channelSample
+
     ourDevId = API.deviceId <$> current (config^.configAuthData)
-    openChannelReq = (:[]) <$> attachWith API.ReqCreateChannel ourDevId (config^.configConnectBaby)
+    openChannelReq = attachWith makeReqs ourDevId
+                      $ ((:[]) <$> config^.configConnectBaby) <> renewEvent
+    makeReqs ourId = map (API.ReqCreateChannel ourId)
   let
     newChannelReq = push (\res -> do
                              case res of
@@ -80,16 +88,16 @@ connections config = mdo
                                _ -> pure Nothing
                          ) (config^.configResponse)
   let
-    getChannelsKey :: Event t DeviceId -> Event t (DeviceId, Secret)
-    getChannelsKey devId = push (\devId' -> do
-                                    cSecrets <- sample $ current secrets'
-                                    pure $ (devId',) <$> cSecrets^.at devId'
-                                ) devId
+    getChannelsKeys :: Event t [DeviceId] -> Event t [(DeviceId, Secret)]
+    getChannelsKeys = push (\devIds' -> do
+                               cSecrets <- sample $ current secrets'
+                               pure $ traverse (\devId -> (devId,) <$> cSecrets^.at devId) devIds'
+                           )
     closeEvent = leftmost [ const Channels.AllChannels <$> config^.configDisconnectAll
-                          , Channels.OnlyChannel <$> getChannelsKey (leftmost [ config^.configDisconnectBaby
-                                                                              , config^.configConnectBaby
-                                                                              ]
-                                                                    )
+                          , Channels.OnlyChannels <$> getChannelsKeys (mconcat $ [ (:[]) <$> config^.configDisconnectBaby
+                                                                                , (:[]) <$> config^.configConnectBaby
+                                                                                ] <> [renewEvent]
+                                                                     )
                           ]
   let
     channelsConfig = Channels.Config { Channels._configResponse = config^.configResponse
@@ -117,6 +125,13 @@ connections config = mdo
   where
     kickSecret :: forall v. Map (DeviceId, Secret) v -> Map DeviceId v
     kickSecret = Map.fromList . over (mapped._1) (^._1) . Map.toList
+
+renewConnection :: Reflex t => Event t (Channels.ChannelMap t) -> Event t [DeviceId]
+renewConnection = ffilter (not . null) . fmap makeRenew
+  where
+    makeRenew = map (fst . fst)
+                . filter (Channel.needsAlert . snd)
+                . Map.toList
 
 playAlarmOnBrokenConnection :: GonimoM t m => Channels.Channels t -> m ()
 playAlarmOnBrokenConnection channels' = mdo

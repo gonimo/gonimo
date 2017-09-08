@@ -57,7 +57,7 @@ type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
 type StreamMap = Map (API.FromId, Secret) MediaStream
 type ChannelsBehavior t = Behavior t (ChannelMap t)
 
-data ChannelSelector = AllChannels | OnlyChannel (DeviceId, Secret)
+data ChannelSelector = AllChannels | OnlyChannels [(DeviceId, Secret)]
 
 -- Channels encapsulate RTCPeerConnections and combine them with a signalling channel.
 data Config t
@@ -295,7 +295,7 @@ closeRTCConnections chans userClose = do
                          let cChans = Map.toList cChansMap
                          let connections = case ev of
                                              AllChannels -> over mapped (^._2.rtcConnection) cChans
-                                             OnlyChannel key -> maybeToList $ cChansMap^?at key._Just.rtcConnection
+                                             OnlyChannels keys -> catMaybes $ (\key -> cChansMap^?at key._Just.rtcConnection) <$> keys
                          pure . Just $ do
                            traverse_ Channel.safeClose connections
                      ) delayClose
@@ -312,7 +312,7 @@ sendCloseMessages ourId chans
                AllChannels -> do
                  cChans <- Map.keys <$> sample chans
                  pure . Just $ map mkRequest cChans
-               OnlyChannel key -> pure . Just $  [mkRequest key]
+               OnlyChannels keys -> pure . Just $ mkRequest <$> keys
          )
 
 -- Get channels that should be closed because the RTCConnection closed or remote send close request or user pressed closed.
@@ -333,7 +333,7 @@ getClosedChannels response chanEv userClose =
                       ) chanEv
     localClosed = push (\ev -> case ev of
                          AllChannels -> pure . Just $ (over mapped (closeRequested .~ True))
-                         OnlyChannel key -> pure . Just $ (at key . _Just . Channel.closeRequested .~ True)
+                         OnlyChannels keys -> pure . Just $ (foldr (.) id . map (\key -> at key . _Just . Channel.closeRequested .~ True)) keys
                        ) userClose
   in
     remoteClosed <> connClosed <> localClosed
