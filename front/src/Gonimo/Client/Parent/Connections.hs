@@ -73,10 +73,11 @@ type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.F
 
 connections :: forall m t. GonimoM t m => Config t -> m (Connections t)
 connections config = mdo
-  shouldBeStreaming' <- hold Set.empty $ leftmost [ attachWith (flip Set.insert) shouldBeStreaming' $ config^.configConnectBaby
-                                                  , attachWith (flip Set.delete) shouldBeStreaming' $ config^.configDisconnectBaby
-                                                  , const Set.empty <$> config^.configDisconnectAll
-                                                  ]
+  shouldBeStreaming' <- hold Set.empty
+    $ mergeWith mappend [ attachWith (flip Set.insert) shouldBeStreaming' $ config^.configConnectBaby
+                        , attachWith (flip Set.delete) shouldBeStreaming' $ config^.configDisconnectBaby
+                        , const Set.empty <$> config^.configDisconnectAll
+                        ]
   now <- liftIO $ getCurrentTime
   tick <- tickLossy 5 now
   let
