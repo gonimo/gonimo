@@ -19,6 +19,7 @@ import qualified GHCJS.DOM.WebSocket as WS
 import qualified GHCJS.DOM.CloseEvent as WS
 import qualified GHCJS.DOM.MessageEvent as WS
 import Control.Concurrent.MVar
+import Control.Concurrent (threadDelay)
 
 import Data.Foldable (traverse_)
 import GHCJS.DOM.EventM (on)
@@ -135,7 +136,7 @@ provideWebSocket webSocket' url makeNew = mdo
       -- gating above and without it would target the wrong websocket and would
       -- effectively get lost too.
       cleanupAction <- liftIO newEmptyMVar
-      wsInit <- WS.newWebSocket url ([] :: [Text])
+      wsInit <- safeNewWebSocket url ([] :: [Text])
       liftJSM $ setupHandlers cleanupAction wsInit
       pure (wsInit, cleanupAction)
 
@@ -151,7 +152,7 @@ provideWebSocket webSocket' url makeNew = mdo
       state <- WS.getReadyState ws'
       unless (state == WS.CLOSING || state == WS.CLOSED)
         $ safeClose ws' ps
-      newWS <- WS.newWebSocket url ([] :: [Text])
+      newWS <- safeNewWebSocket url ([] :: [Text])
       pure newWS
 
     performSetupHandlers cleanupAction
@@ -214,3 +215,14 @@ registerJSHandlers webSocket' ws' = do
 -- | Internal helper function: Call close and catch all exceptions..
 safeClose :: JS.MonadJSM m => WS.WebSocket -> CloseParams -> m ()
 safeClose ws' (CloseParams code reason) = fromJSFunc () $ WS.close ws' (Just code) (Just reason)
+
+safeNewWebSocket :: JS.MonadJSM m => Text -> [Text] -> m WS.WebSocket
+safeNewWebSocket url protocols = safeNewWebSocket'
+  where
+    safeNewWebSocket' = do
+      mWS <- fromJSFunc Nothing $ Just <$> WS.newWebSocket url protocols
+      case mWS of
+        Nothing -> do
+          liftIO $ threadDelay 1000000 -- sleep for one second & try again ..
+          safeNewWebSocket'
+        Just ws' -> pure ws'
