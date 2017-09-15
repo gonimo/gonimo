@@ -48,7 +48,6 @@ makeLenses ''Invite
 data InvitationSent
   = SentWhatsApp
   | SentTelegram
-  | SentSMS
   | SentCopy
   | SentRefresh
   | SentEmail

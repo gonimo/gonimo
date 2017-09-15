@@ -60,9 +60,8 @@ ui loaded config = mdo
       isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
       let onMobile mEv = if isMobile then mEv else pure never
       whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
-      -- tgClicked <- onMobile $ inviteButton "telegram" "tg:msg?text=" escapedLink
-      smsClicked <- onMobile $ inviteButton "sms" "sms:?body=" escapedLink
-      pure [const SentWhatsApp <$> whatsAppClicked, const SentSMS <$> smsClicked]
+      tgClicked <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
+      pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
 
     el "h3" $ trText Email
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
@@ -109,7 +108,6 @@ confirmationBox' (Just sendMethod) = do
     case sendMethod of
       SentWhatsApp -> el "strong" $ trText Sent_WhatsApp
       SentTelegram -> el "strong" $ trText Sent_Telegram
-      SentSMS -> el "strong" $ trText Sent_SMS
       SentCopy     -> el "strong" $ trText Sent_Copy
       SentRefresh  -> el "strong" $ trText Sent_Refresh
       SentEmail    -> el "strong" $ trText Sent_Email

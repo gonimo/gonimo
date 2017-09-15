@@ -815,10 +815,6 @@ span.device-self {
 	background-image: url("/pix/telegram.svg");
 	background-size: 100% 100%;
 }
-.invite-button.sms > a {
-	  background-image: url("/resources/pix/sms.png");
-	  background-size: 100% 100%;
-}
 
 .stream-baby {
 	position: relative;

@@ -11,7 +11,6 @@ data Message = Invite_More_Devices
              | Invitation_Link
              | Sent_WhatsApp
              | Sent_Telegram
-             | Sent_SMS
              | Sent_Copy
              | Sent_Refresh
              | Sent_Email
@@ -41,8 +40,6 @@ instance I18N Message where
     i18n DE_DE Sent_WhatsApp = "Mit WhatsApp versendet!"
     i18n EN_GB Sent_Telegram = "Sent with Telegram!"
     i18n DE_DE Sent_Telegram = "Mit Telegram versendet!"
-    i18n EN_GB Sent_SMS = "Sent via sms!"
-    i18n DE_DE Sent_SMS = "Mit sms versendet!"
     i18n EN_GB Sent_Copy     = "Copied invitation link to clipboard!"
     i18n DE_DE Sent_Copy     = "Einladung in die Zwischenablage kopiert!"
     i18n EN_GB Sent_Refresh  = "New invitation generated!"
