@@ -122,7 +122,7 @@ playAlarmOnBrokenConnection :: GonimoM t m => Channels.Channels t -> m ()
 playAlarmOnBrokenConnection channels' = mdo
     let
       loadAlert :: forall m1. MonadJSM m1 => m1 AudioNode.AudioBufferSourceNode
-      loadAlert = loadSound "/sounds/gonimo_alarm_96kb_smoothstart.mp3"
+      loadAlert = loadSound "/sounds/gonimo_alarm_64kb_long.mp3"
     alarmSound <- loadAlert
     newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only be played once!
     -- AudioNode.start alarmSound 0 0 1000000 -- 0 for duration does not work on Chrome at least! fs
