@@ -1,11 +1,10 @@
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE InstanceSigs          #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE InstanceSigs               #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 
 module Gonimo.Types where
 
@@ -22,7 +21,6 @@ import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
 import           Data.Monoid
 import           Data.Text.Encoding     (decodeUtf8, encodeUtf8)
-import           Database.Persist.TH
 
 import           GHC.Generics           (Generic)
 import           Control.Monad          (MonadPlus, mzero)
@@ -38,7 +36,18 @@ data DeviceType = NoBaby
                 | Baby Text
                 deriving (Show, Eq, Ord, Generic)
 
-makePrisms ''DeviceType
+
+_NoBaby :: Prism' DeviceType ()
+_NoBaby = let f () = NoBaby
+              g NoBaby = Right ()
+              g x      = Left x
+           in prism f g
+
+_Baby :: Prism' DeviceType Text
+_Baby = let g (Baby y) = Right y
+            g x        = Left x
+         in prism Baby g
+
 
 toBabyName :: MonadPlus m => DeviceType -> m Text
 toBabyName NoBaby = mzero
@@ -49,7 +58,8 @@ instance ToJSON DeviceType
 
 type SenderName = Text
 
-newtype Secret = Secret ByteString deriving (Generic, Show, Read, Ord, Eq)
+newtype Secret = Secret ByteString
+  deriving (Generic, Show, Read, Ord, Eq,PersistField, PersistFieldSql)
 
 instance FromJSON Secret where
   parseJSON (String t) = Secret <$> (rightZ . Base64.decode . encodeUtf8 $ t)
@@ -59,15 +69,23 @@ instance ToJSON Secret where
   toJSON (Secret bs) = String . decodeUtf8 . Base64.encode $ bs
   toEncoding (Secret bs) = toEncoding $ (decodeUtf8 . Base64.encode) bs
 
-
-derivePersistField "Secret"
-
 -- Other auth methods might be added later on, like oauth bearer tokens:
 data AuthToken = GonimoSecret Secret
                | PlaceHolder____
                deriving (Read, Show, Generic, Eq, Ord)
 
-derivePersistField "AuthToken"
+instance PersistField AuthToken where
+  toPersistValue = PersistText . T.pack . show
+  fromPersistValue v =
+    case fromPersistValue v of
+      Left e -> Left e
+      Right value
+        -> case reads $ T.unpack value of
+             [] -> Left $ "Invalid \"AuthToken\": " <> value
+             ((x, _):_) -> Right x
+
+instance PersistFieldSql AuthToken where
+  sqlType _ = SqlString
 
 instance FromJSON AuthToken
 instance ToJSON AuthToken where
@@ -137,4 +155,13 @@ instance ToJSON InvitationDelivery where
   toJSON = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
 
-derivePersistField "InvitationDelivery"
+instance PersistField InvitationDelivery where
+  toPersistValue = PersistText . T.pack . show
+  fromPersistValue v =
+    case fromPersistValue v of
+      Left e -> Left e
+      Right value
+        -> case reads $ T.unpack value of
+             [] -> Left $ "Invalid \"InvitationDelivery\": " <> value
+             ((x, _):_) -> Right x
+
