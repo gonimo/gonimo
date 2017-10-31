@@ -19,9 +19,8 @@ import           Data.Text             (Text)
 import           Data.Time             (UTCTime)
 import           GHC.Generics          (Generic)
 
-import           Gonimo.Types   hiding (FamilyName, familyName)
-import qualified Gonimo.Types   as Server
-
+import           Gonimo.Types.Extended   hiding (FamilyName, familyName)
+import qualified Gonimo.Types.Extended   as Server
 
 share [mkPersist (sqlSettings { mpsGeneric = False }),  mkMigrate "migrateAll"] [persistLowerCase|
   Account
@@ -77,8 +76,6 @@ instance FromJSON Family
 instance ToJSON Family where
   toJSON = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
-
-
 
 -- instance ToJSVal (Key a)
 -- instance FromJSVal (Key a)

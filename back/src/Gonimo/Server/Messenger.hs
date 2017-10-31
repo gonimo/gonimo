@@ -10,11 +10,10 @@ module Gonimo.Server.Messenger ( module I
 
 
 
-import           Gonimo.Db.Entities (DeviceId)
 import           Gonimo.Types      (DeviceType)
 import           Control.Concurrent.STM (STM)
 import           Control.Concurrent.STM.TVar (readTVar)
-import           Gonimo.Db.Entities
+import           Gonimo.SocketAPI.Types hiding (Message)
 
 
 import Gonimo.Server.Messenger.Internal as I ( FromId

@@ -29,7 +29,6 @@ library
   exposed-modules: Gonimo.SocketAPI
                  , Gonimo.SocketAPI.Types
                  , Gonimo.Types
-                 , Gonimo.Db.Entities
                  , Gonimo.Server.Error
                  , Gonimo.Prelude
                  , Gonimo.I18N
@@ -45,19 +44,16 @@ library
                     , ScopedTypeVariables
                     , FlexibleContexts
 
-  build-depends:        base >= 4.8 && < 4.10
+  build-depends:        base >= 4.8 && < 4.11
                       , aeson
                       , attoparsec
                       , base64-bytestring
                       , bytestring >= 0.10.6.0
                       , containers
-                      , persistent-template
                       , text
                       , time
                       , vector
-                      , persistent
                       , errors
-                      , http-api-data
                       , safe
                       , transformers
                       , transformers-base

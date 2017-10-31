@@ -19,7 +19,7 @@ import           Data.Set                  (Set)
 import qualified Data.Set                  as Set
 
 import           Control.Concurrent.STM    (STM)
-import           Gonimo.Db.Entities        (DeviceId, FamilyId)
+import           Gonimo.SocketAPI.Types    hiding (FromId, ToId, Message, deviceId)
 import qualified Gonimo.SocketAPI.Types    as API
 import           Gonimo.Types              (DeviceType (..), Secret)
 

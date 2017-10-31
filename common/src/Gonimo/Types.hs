@@ -22,14 +22,10 @@ import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
 import           Data.Monoid
 import           Data.Text.Encoding     (decodeUtf8, encodeUtf8)
-import           Database.Persist.TH
 
 import           GHC.Generics           (Generic)
 import           Control.Monad          (MonadPlus, mzero)
 import           Data.Vector                    (Vector)
-import           Database.Persist.Class (PersistField, toPersistValue, fromPersistValue)
-import           Database.Persist.Types (PersistValue(PersistText), SqlType(SqlString))
-import           Database.Persist.Sql   (PersistFieldSql, sqlType)
 import qualified Data.Text      as T
 import           Data.Text      (Text)
 import           Control.Lens
@@ -60,14 +56,10 @@ instance ToJSON Secret where
   toEncoding (Secret bs) = toEncoding $ (decodeUtf8 . Base64.encode) bs
 
 
-derivePersistField "Secret"
-
 -- Other auth methods might be added later on, like oauth bearer tokens:
 data AuthToken = GonimoSecret Secret
                | PlaceHolder____
                deriving (Read, Show, Generic, Eq, Ord)
-
-derivePersistField "AuthToken"
 
 instance FromJSON AuthToken
 instance ToJSON AuthToken where
@@ -111,14 +103,6 @@ instance ToJSON FamilyName where
   toJSON = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
 
-instance PersistField FamilyName where
-  toPersistValue = PersistText . writeFamilyName
-  fromPersistValue (PersistText t) = Right (parseFamilyName t)
-  fromPersistValue _ = Left "A FamilyName must be PersistText"
-
-instance PersistFieldSql FamilyName where
-  sqlType _ = SqlString
-
 type FamilyNames = Vector FamilyName
 
 type Predicates  = Vector Text
@@ -136,5 +120,3 @@ instance FromJSON InvitationDelivery
 instance ToJSON InvitationDelivery where
   toJSON = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
-
-derivePersistField "InvitationDelivery"

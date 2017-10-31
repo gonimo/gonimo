@@ -16,7 +16,7 @@ import qualified Data.Text.Lazy           as TL
 import qualified Data.ByteString.Lazy as BL
 import           Network.HTTP.Types (urlEncode)
 
-import           Gonimo.Db.Entities (Invitation(..))
+import           Gonimo.SocketAPI.Types (Invitation(..))
 import           Gonimo.Types
 import qualified Data.Aeson as Aeson
 

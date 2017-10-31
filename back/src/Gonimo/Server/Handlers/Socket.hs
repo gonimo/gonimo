@@ -1,11 +1,12 @@
 module Gonimo.Server.Handlers.Socket where
 
 import           Control.Monad.IO.Class  (liftIO)
-import           Gonimo.Db.Entities      (DeviceId)
+
 import           Gonimo.Server.Auth      as Auth
 import           Gonimo.Server.Effects
 import           Gonimo.Server.Error
 import           Gonimo.Server.Messenger
+import           Gonimo.SocketAPI.Types  (DeviceId)
 import qualified Gonimo.SocketAPI.Types  as API
 import           Gonimo.Types
 

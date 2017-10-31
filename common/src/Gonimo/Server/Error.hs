@@ -11,7 +11,7 @@ import           Control.Exception.Lifted       (throwIO)
 import           Control.Monad.Trans.Maybe     (MaybeT)
 import           Data.Aeson
 import           GHC.Generics
-import           Gonimo.Db.Entities      (FamilyId, DeviceId)
+import           Gonimo.SocketAPI.Types      (FamilyId, DeviceId, AccountId)
 import           Control.Monad.Trans.Class            (lift)
 import           Data.Typeable (Typeable)
 
@@ -20,9 +20,10 @@ data ServerError = InvalidAuthToken
                  | NotAuthenticated
                  | InvitationAlreadyClaimed -- ^ Invitation was already claimed by someone else.
                  | AlreadyFamilyMember !FamilyId-- ^ If a client tries to become a member of a family he is already a member of.
-                 | NoSuchDevice DeviceId -- ^ The device could not be found in the database.
-                 | NoSuchFamily FamilyId
-                 | FamilyNotOnline FamilyId
+                 | NoSuchDevice !DeviceId -- ^ The device could not be found in the database.
+                 | NoSuchAccount !AccountId
+                 | NoSuchFamily !FamilyId
+                 | FamilyNotOnline !FamilyId
                  | CantSendInvitation
                  | NoSuchInvitation
                  | DeviceOffline -- ^ You tried to send a message to an offline device.

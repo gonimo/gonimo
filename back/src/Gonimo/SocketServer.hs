@@ -25,10 +25,7 @@ import           Data.IORef
 import           Data.Monoid                      ((<>))
 import qualified Data.Set                         as Set
 import qualified Data.Text                        as T
-import           Database.Persist                 (Entity (..), (==.))
-import qualified Database.Persist.Class           as Db
-import           Gonimo.Database.Effects.Servant  (serverErrOnNothing)
-import           Gonimo.Db.Entities
+import           Gonimo.SocketAPI.Types           hiding (AuthData(..), Message(..))
 import           Gonimo.Server.Auth               (AuthData (..), AuthReader,
                                                    allowedFamilies)
 import qualified Gonimo.Server.Auth               as Auth
@@ -51,6 +48,8 @@ import qualified Network.WebSockets               as WS
 import           Data.Maybe
 import           Control.Concurrent
 import           Gonimo.Constants
+import qualified Gonimo.Server.Db.Device          as Device
+import qualified Gonimo.Server.Db.Account         as Account
 
 type AuthDataRef = IORef (Maybe AuthData)
 
@@ -211,14 +210,15 @@ authenticate receiver sub token = do
 
 makeAuthData :: MonadServer m => AuthToken -> m AuthData
 makeAuthData token = runDb $ do
-    device@(Entity _ Device{..}) <- getByAuthErr $ AuthTokenDevice token
-    account <- getAuthErr deviceAccountId
-    fids <- map (familyAccountFamilyId . entityVal)
-            <$> Db.selectList [FamilyAccountAccountId ==. deviceAccountId] []
-    return $ AuthData (Entity deviceAccountId account) fids device
-  where
-    getByAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.getBy
-    getAuthErr = serverErrOnNothing InvalidAuthToken <=< Db.get
+    (devId, dev@Device{..}) <- Device.getByAuthToken token
+    account <- Account.get deviceAccountId
+    fids <- Account.getFamilyIds deviceAccountId
+    return $ AuthData { _authAccountId = deviceAccountId
+                      , _authAccount = account
+                      , _allowedFamilies = fids
+                      , _authDeviceId = devId
+                      , _authDevice = dev
+                      }
 
 -- Clean up dead connections after a sensible delay:
 watchDog :: IORef Int -> IO ()

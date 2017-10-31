@@ -1,25 +1,25 @@
 module Gonimo.Server.Handlers.Messenger where
 
-import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
-import           Control.Monad.IO.Class               (liftIO)
-import           Data.Maybe                           (fromMaybe)
-import           Gonimo.Server.Auth                   as Auth
-import           Gonimo.Db.Entities
+import           Control.Monad.IO.Class    (liftIO)
+import           Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import           Data.Foldable             (traverse_)
+import           Data.Maybe                (fromMaybe)
+import           Data.Text                 (Text)
+
+import           Gonimo.Server.Auth        as Auth
+import qualified Gonimo.Server.Db.Device   as Device
+import qualified Gonimo.Server.Db.Family   as Family
 import           Gonimo.Server.Effects
 import           Gonimo.Server.Messenger
-import           Data.Text (Text)
-import           Data.Foldable (traverse_)
-
+import           Gonimo.SocketAPI
+import           Gonimo.SocketAPI.Types    hiding (Message, deviceId)
 import           Gonimo.Types
-import qualified Gonimo.Server.Db.Family as Family
-import qualified Gonimo.Server.Db.Device as Device
-import Gonimo.SocketAPI
 
 -- | A device registers itself (happens at authentication)
 --
 --   Afterwards you can use switchFamilyR for becoming online in a family.
 registerReceiverR :: (AuthReader m, MonadServer m)
-                =>  DeviceId -> (Message -> IO ()) -> m ()
+                  => DeviceId -> (Message -> IO ()) -> m ()
 registerReceiverR deviceId receiver = do
     authorizeAuthData $ isDevice deviceId
 
