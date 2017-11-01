@@ -21,9 +21,9 @@ import qualified Gonimo.Client.Invite              as Invite
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server
-import           Gonimo.Db.Entities                (FamilyId)
-import qualified Gonimo.Db.Entities                as Db
+import           Gonimo.SocketAPI.Types                (FamilyId)
 import qualified Gonimo.SocketAPI                  as API
+import qualified Gonimo.SocketAPI.Types            as API
 import qualified Gonimo.Types                      as Gonimo
 
 
@@ -176,12 +176,12 @@ renderFamilySelectors family' = fmap fst <$> selectViewListWithKey (family'^.def
 
 -- Internal helper for familyChooser ...
 renderFamilySelector :: forall m t. GonimoM t m
-                    => FamilyId -> Dynamic t Db.Family -> Dynamic t Bool -> m (Event t ())
+                    => FamilyId -> Dynamic t API.Family -> Dynamic t Bool -> m (Event t ())
 renderFamilySelector _ family' selected' = do
     el "div" $ do
       makeClickable . elAttr' "a" (addBtnAttrs "")
         $ dynText
-          $ (Gonimo.familyName . Db.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
+          $ (Gonimo.familyName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
 createFamily :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool

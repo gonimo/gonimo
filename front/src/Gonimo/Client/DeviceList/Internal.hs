@@ -16,7 +16,7 @@ import           Data.Set                 (Set)
 import qualified Data.Set                 as Set
 import           Gonimo.Client.Reflex     (buildMap)
 import           Gonimo.Client.Subscriber (subscribeKeys)
-import           Gonimo.Db.Entities       (AccountId, DeviceId, FamilyId)
+import           Gonimo.SocketAPI.Types       (AccountId, DeviceId, FamilyId)
 import qualified Gonimo.SocketAPI         as API
 import qualified Gonimo.SocketAPI.Types   as API
 import           Gonimo.Types             (DeviceType)

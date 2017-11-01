@@ -17,7 +17,6 @@ import qualified GHCJS.DOM.Navigator               as Navigator
 import qualified GHCJS.DOM.Window                  as Window
 import qualified Gonimo.Client.Storage             as GStorage
 import qualified Gonimo.Client.Storage.Keys        as GStorage
-import qualified Gonimo.Db.Entities                as Db
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
@@ -42,7 +41,7 @@ data Config t
             , _configStartMonitor  :: Event t ()
             , _configStopMonitor  :: Event t ()
             , _configSetBabyName :: Event t Text
-            , _configSelectedFamily :: Dynamic t Db.FamilyId
+            , _configSelectedFamily :: Dynamic t API.FamilyId
             , _configGetUserMedia :: Event t () -- Get a new media stream, usefull for error handling.
             }
 

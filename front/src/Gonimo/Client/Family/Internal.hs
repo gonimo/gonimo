@@ -7,8 +7,7 @@ module Gonimo.Client.Family.Internal where
 import Reflex.Dom.Core
 import Data.Monoid
 import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId)
-import qualified Gonimo.Db.Entities as Db
+import Gonimo.SocketAPI.Types (FamilyId)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -36,7 +35,7 @@ import qualified Gonimo.Client.Auth as Auth
 import Gonimo.I18N
 
 
-type FamilyMap = Map FamilyId Db.Family
+type FamilyMap = Map FamilyId API.Family
 
 data GonimoRole = RoleBaby | RoleParent deriving (Eq, Ord)
 
@@ -127,8 +126,8 @@ uiSwitchPromptlyDyn ev
 currentFamilyName :: forall t. Reflex t => DefiniteFamily t -> Dynamic t Text
 currentFamilyName df =
     let
-      getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
-      getFamilyName fid families' = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
+      getFamilyName :: FamilyId -> Map FamilyId API.Family -> Text
+      getFamilyName fid families' = families'^.at fid._Just.to API.familyName . to Gonimo.familyName
     in
       zipDynWith getFamilyName (df^.definiteSelected) (df^.definiteFamilies)
 

@@ -21,9 +21,9 @@ import           GHCJS.DOM.Types      (MonadJSM)
 import           Network.HTTP.Types   (urlEncode)
 import           Reflex.Dom.Core
 
-import           Gonimo.Db.Entities   (FamilyId, InvitationId)
-import qualified Gonimo.Db.Entities   as Db
+import           Gonimo.SocketAPI.Types   (FamilyId, InvitationId)
 import qualified Gonimo.SocketAPI     as API
+import qualified Gonimo.SocketAPI.Types     as API
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -36,7 +36,7 @@ data Config t
            }
 
 data Invite t
-  = Invite { _invitation :: Dynamic t (Maybe (InvitationId, Db.Invitation))
+  = Invite { _invitation :: Dynamic t (Maybe (InvitationId, API.Invitation))
            , _request :: Event t [ API.ServerRequest ]
            , _uiGoBack :: Event t ()
            , _uiDone :: Event t()
@@ -89,10 +89,10 @@ getBaseLink = do
   pathName <- Location.getPathname location
   pure $ protocol <> "//" <> host <> pathName
 
-makeInvitationLink :: Text -> Db.Invitation -> Text
+makeInvitationLink :: Text -> API.Invitation -> Text
 makeInvitationLink baseURL inv =
   let
-    encodedSecret = T.decodeUtf8 .  urlEncode True . BL.toStrict . Aeson.encode . Db.invitationSecret $ inv
+    encodedSecret = T.decodeUtf8 .  urlEncode True . BL.toStrict . Aeson.encode . API.invitationSecret $ inv
   in
     baseURL <> "?" <> invitationQueryParam <> "=" <> encodedSecret
 

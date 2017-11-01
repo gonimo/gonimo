@@ -190,13 +190,10 @@ executable gonimo-front
                     , base64-bytestring
                     , bytestring >= 0.10.6.0
                     , containers
-                    , persistent-template
                     , text
                     , time
                     , vector
-                    , persistent
                     , errors
-                    , http-api-data
                     , data-default
                     , reflex-dom-core
                     , jsaddle

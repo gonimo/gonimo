@@ -26,7 +26,7 @@ import           Gonimo.Client.Util                (boostMediaStreamVolume,
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import qualified Gonimo.Client.WebRTC.Channels     as Channels
-import           Gonimo.Db.Entities                (DeviceId)
+import           Gonimo.SocketAPI.Types                (DeviceId)
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (Secret)

@@ -11,7 +11,7 @@ import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types as App
 import           Gonimo.Client.Server
-import           Gonimo.Db.Entities      (FamilyId)
+import           Gonimo.SocketAPI.Types      (FamilyId)
 import qualified Gonimo.SocketAPI        as API
 
 invitationQueryParam :: Text

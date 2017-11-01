@@ -27,7 +27,7 @@ import           Gonimo.Client.Server
 import           Gonimo.Client.WebRTC.Channel     (Channel, ReceivingState (..),
                                                    worstState)
 import qualified Gonimo.Client.WebRTC.Channel     as Channel
-import           Gonimo.Db.Entities               (DeviceId)
+import           Gonimo.SocketAPI.Types               (DeviceId)
 import           Gonimo.Types                     (_Baby)
 
 

@@ -77,7 +77,7 @@ app = mdo
   performEvent_ $ writeLocale <$> updated currentLocale
   pure ()
 
-main :: JSM ()
+main :: JS.JSM ()
 -- main = run 3709 $ mainWidget app
 main = mainWidgetInElementById "app" app
 

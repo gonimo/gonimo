@@ -21,7 +21,7 @@ import           GHCJS.DOM.RTCPeerConnection    as RTCPeerConnection
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
 -- -- import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection (addStream)
 -- #endif
-import           Gonimo.Db.Entities             (DeviceId)
+import           Gonimo.SocketAPI.Types        (DeviceId)
 import qualified Gonimo.SocketAPI               as API
 import qualified Gonimo.SocketAPI.Types         as API
 import           Gonimo.Types                   (Secret)
