@@ -134,7 +134,6 @@ library
                     , Gonimo.Client.Reflex.Dom
                     , Gonimo.Client.Reflex.Dom.WebSocket
                     , Gonimo.Client.Reflex.Dom.WebSocket.Internal
-                    , Gonimo.Client.Reflex.Dom.WebSocket.Types
                     , Gonimo.Client.Server
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Subscriber

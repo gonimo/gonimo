@@ -61,27 +61,28 @@ makeServer :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Per
           => Text -> ServerConfig t -> m (Server t)
 makeServer url conf = mdo
   let
-    server' = Server { _open = ws^.WS.open
+    server' = Server { _open = ws^.WS.onOpen
                      , _response = decodedResponse
                      , _closeRequested = killConn
-                     , _close = const () <$> ws^.WS.close
+                     , _close = const () <$> ws^.WS.onClose
                      -- , _socket = ws
                      }
 
   (requests, killConn) <- handlePingPong (conf^.configRequest) decodedResponse
 
   let
+    wsConfig :: WS.Config t
     wsConfig = def
-              & WS.configSend .~ encodedRequests
-              & WS.configClose .~ reqClose
-              & WS.configCloseTimeout .~ Just 4 -- Try with 4 seconds.
+               & WS.configOnSend .~ encodedRequests
+               & WS.configOnClose .~ reqClose
+               & WS.configCloseTimeout .~ Just 4 -- Try with 4 seconds.
 
     encodedRequests = fmap (T.decodeUtf8 . BL.toStrict . Aeson.encode) <$> requests
 
-    decodedResponse = decodeResponse <$> ws^.WS.receive
+    decodedResponse = decodeResponse <$> ws^.WS.onReceive
     reqClose = const (WS.CloseParams 4000 "Server did not respond.") <$> killConn
 
-  ws <- WS.webSocket url wsConfig
+  ws <- WS.create url wsConfig
 
   pure server'
 
