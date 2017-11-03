@@ -17,7 +17,7 @@ import Control.Lens
 -- | Build up a websocket
 -- - Connections get re-established on `configOnClose`.
 -- - Messages from `configOnSend` will simply get dropped when socket is not ready.
-create :: forall t m config . WebSocketM t m => Text -> Config t -> m (WebSocket t)
+create :: forall t m . WebSocketM t m => Text -> Config t -> m (WebSocket t)
 create url c = mdo
     let webSocket' = WebSocket {..}
 
