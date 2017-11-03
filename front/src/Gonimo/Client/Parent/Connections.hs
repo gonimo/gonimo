@@ -1,6 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TupleSections #-}
@@ -60,11 +59,6 @@ data VideoView t
               , _videoViewDisconnectBaby :: Event t DeviceId
               , _videoViewDisconnectAll  :: Event t ()
               }
-
-makeLenses ''Config
-makeLenses ''Connections
-makeLenses ''StreamData
-makeLenses ''VideoView
 
 type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
@@ -219,3 +213,64 @@ pTraverseCache cache f inStreams = do
   let
     newCache = reallyCached <> Map.intersectionWith (\s d -> (s,d)) toProcess newEntries
   pure (snd <$> newCache, newCache)
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configAuthData :: Lens' (Config t) (Dynamic t API.AuthData)
+configAuthData f config' = (\configAuthData' -> config' { _configAuthData = configAuthData' }) <$> f (_configAuthData config')
+
+configConnectBaby :: Lens' (Config t) (Event t DeviceId)
+configConnectBaby f config' = (\configConnectBaby' -> config' { _configConnectBaby = configConnectBaby' }) <$> f (_configConnectBaby config')
+
+configDisconnectBaby :: Lens' (Config t) (Event t DeviceId)
+configDisconnectBaby f config' = (\configDisconnectBaby' -> config' { _configDisconnectBaby = configDisconnectBaby' }) <$> f (_configDisconnectBaby config')
+
+configDisconnectAll :: Lens' (Config t) (Event t ())
+configDisconnectAll f config' = (\configDisconnectAll' -> config' { _configDisconnectAll = configDisconnectAll' }) <$> f (_configDisconnectAll config')
+
+
+-- Lenses for Connections t:
+
+request :: Lens' (Connections t) (Event t [ API.ServerRequest ])
+request f connections' = (\request' -> connections' { _request = request' }) <$> f (_request connections')
+
+channelMap :: Lens' (Connections t) (Dynamic t (Map DeviceId (Channel.Channel t)))
+channelMap f connections' = (\channelMap' -> connections' { _channelMap = channelMap' }) <$> f (_channelMap connections')
+
+origStreams :: Lens' (Connections t) (Dynamic t (Map DeviceId MediaStream))
+origStreams f connections' = (\origStreams' -> connections' { _origStreams = origStreams' }) <$> f (_origStreams connections')
+
+streams :: Lens' (Connections t) (Dynamic t (Map DeviceId (StreamData t)))
+streams f connections' = (\streams' -> connections' { _streams = streams' }) <$> f (_streams connections')
+
+unreliableConnections :: Lens' (Connections t) (Dynamic t Bool)
+unreliableConnections f connections' = (\unreliableConnections' -> connections' { _unreliableConnections = unreliableConnections' }) <$> f (_unreliableConnections connections')
+
+brokenConnections :: Lens' (Connections t) (Dynamic t Bool)
+brokenConnections f connections' = (\brokenConnections' -> connections' { _brokenConnections = brokenConnections' }) <$> f (_brokenConnections connections')
+
+
+-- Lenses for StreamData t:
+
+stream :: Lens' (StreamData t) MediaStream
+stream f streamData' = (\stream' -> streamData' { _stream = stream' }) <$> f (_stream streamData')
+
+volumeLevel :: Lens' (StreamData t) (Event t Double)
+volumeLevel f streamData' = (\volumeLevel' -> streamData' { _volumeLevel = volumeLevel' }) <$> f (_volumeLevel streamData')
+
+
+-- Lenses for VideoView t:
+
+videoViewNavBar :: Lens' (VideoView t) (NavBar.NavBar t)
+videoViewNavBar f videoView' = (\videoViewNavBar' -> videoView' { _videoViewNavBar = videoViewNavBar' }) <$> f (_videoViewNavBar videoView')
+
+videoViewDisconnectBaby :: Lens' (VideoView t) (Event t DeviceId)
+videoViewDisconnectBaby f videoView' = (\videoViewDisconnectBaby' -> videoView' { _videoViewDisconnectBaby = videoViewDisconnectBaby' }) <$> f (_videoViewDisconnectBaby videoView')
+
+videoViewDisconnectAll :: Lens' (VideoView t) (Event t ())
+videoViewDisconnectAll f videoView' = (\videoViewDisconnectAll' -> videoView' { _videoViewDisconnectAll = videoViewDisconnectAll' }) <$> f (_videoViewDisconnectAll videoView')
+
+

@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE FunctionalDependencies #-}
 module Gonimo.Client.App.Types where
 
 import Reflex
@@ -17,7 +14,8 @@ import qualified Gonimo.Types as Gonimo
 import Data.Default
 import qualified Data.Set as Set
 import Gonimo.I18N
-import Gonimo.Client.Server
+import Gonimo.Client.Server (Server, HasServer)
+import qualified Gonimo.Client.Server as Server
 
 data Config t
   = Config { __server :: Server t
@@ -42,12 +40,7 @@ data Screen t
            , _screenGoHome :: Event t ()
            }
 
-makeLenses ''Config
-makeLenses ''Loaded
-makeLenses ''App
-makeLenses ''Screen
-
-instance HasServer (Config t) t where
+instance HasServer Config where
   server = _server
 
 
@@ -85,3 +78,47 @@ babyNames loaded =
       getBabyNames fid families' = families'^.at fid._Just.to API.familyLastUsedBabyNames
     in
       zipDynWith getBabyNames (loaded^.selectedFamily) (loaded^.families)
+
+
+-- Config lenses:
+
+_server :: Lens' (Config t) (Server t)
+_server f config' = (\_server' -> config' { __server = _server' }) <$> f (__server config')
+
+auth :: Lens' (Config t) (Auth.Auth t)
+auth f config' = (\auth' -> config' { _auth = auth' }) <$> f (_auth config')
+
+subscriber :: Lens' (Config t) (Subscriber.Subscriber t)
+subscriber f config' = (\subscriber' -> config' { _subscriber = subscriber' }) <$> f (_subscriber config')
+
+-- Loaded lenses:
+
+authData :: Lens' (Loaded t) (Dynamic t API.AuthData)
+authData f loaded' = (\authData' -> loaded' { _authData = authData' }) <$> f (_authData loaded')
+
+families :: Lens' (Loaded t) (Dynamic t (Map API.FamilyId API.Family))
+families f loaded' = (\families' -> loaded' { _families = families' }) <$> f (_families loaded')
+
+selectedFamily :: Lens' (Loaded t) (Dynamic t API.FamilyId)
+selectedFamily f loaded' = (\selectedFamily' -> loaded' { _selectedFamily = selectedFamily' }) <$> f (_selectedFamily loaded')
+
+-- App lenses:
+
+subscriptions :: Lens' (App t) (SubscriptionsDyn t)
+subscriptions f app' = (\subscriptions' -> app' { _subscriptions = subscriptions' }) <$> f (_subscriptions app')
+
+request :: Lens' (App t) (Event t [ API.ServerRequest ])
+request f app' = (\request' -> app' { _request = request' }) <$> f (_request app')
+
+selectLang :: Lens' (App t) (Event t Locale)
+selectLang f app' = (\selectLang' -> app' { _selectLang = selectLang' }) <$> f (_selectLang app')
+
+
+-- Screen lenses:
+
+screenApp :: Lens' (Screen t) (App t)
+screenApp f screen' = (\screenApp' -> screen' { _screenApp = screenApp' }) <$> f (_screenApp screen')
+
+
+screenGoHome :: Lens' (Screen t) (Event t ())
+screenGoHome f screen' = (\screenGoHome' -> screen' { _screenGoHome = screenGoHome' }) <$> f (_screenGoHome screen')

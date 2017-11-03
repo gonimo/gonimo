@@ -1,7 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.Invite.Internal where
 
@@ -41,9 +40,6 @@ data Invite t
            , _uiGoBack :: Event t ()
            , _uiDone :: Event t()
            }
-
-makeLenses ''Config
-makeLenses ''Invite
 
 data InvitationSent
   = SentWhatsApp
@@ -122,3 +118,35 @@ inviteSwitchPromptlyDyn dynInvite
            , _uiGoBack = switchPromptlyDyn (_uiGoBack <$> dynInvite)
            , _uiDone = switchPromptlyDyn (_uiDone <$> dynInvite)
            }
+
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configSelectedFamily :: Lens' (Config t) (Dynamic t FamilyId)
+configSelectedFamily f config' = (\configSelectedFamily' -> config' { _configSelectedFamily = configSelectedFamily' }) <$> f (_configSelectedFamily config')
+
+configAuthenticated :: Lens' (Config t) (Event t ())
+configAuthenticated f config' = (\configAuthenticated' -> config' { _configAuthenticated = configAuthenticated' }) <$> f (_configAuthenticated config')
+
+configCreateInvitation :: Lens' (Config t) (Event t ())
+configCreateInvitation f config' = (\configCreateInvitation' -> config' { _configCreateInvitation = configCreateInvitation' }) <$> f (_configCreateInvitation config')
+
+
+-- Lenses for Invite t:
+
+invitation :: Lens' (Invite t) (Dynamic t (Maybe (InvitationId, API.Invitation)))
+invitation f invite' = (\invitation' -> invite' { _invitation = invitation' }) <$> f (_invitation invite')
+
+request :: Lens' (Invite t) (Event t [ API.ServerRequest ])
+request f invite' = (\request' -> invite' { _request = request' }) <$> f (_request invite')
+
+uiGoBack :: Lens' (Invite t) (Event t ())
+uiGoBack f invite' = (\uiGoBack' -> invite' { _uiGoBack = uiGoBack' }) <$> f (_uiGoBack invite')
+
+uiDone :: Lens' (Invite t) (Event t ())
+uiDone f invite' = (\uiDone' -> invite' { _uiDone = uiDone' }) <$> f (_uiDone invite')
+
+

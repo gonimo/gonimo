@@ -1,6 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GADTs #-}
@@ -82,9 +81,6 @@ data Channel t
             , _audioMuted :: Bool
             , _videoMuted :: Bool
             }
-
-makeLenses ''Config
-makeLenses ''Channel
 
 channel :: forall m t. (MonadJSM m, Reflex t) => Config t -> m (Channel t)
 channel config = mdo
@@ -213,3 +209,44 @@ safeClose conn = liftJSM $ do
       jsClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Caught: \" + e.toString());}})" :: Text)
       _ <- JS.call jsClose JS.obj [conn]
       pure ()
+
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configTriggerChannelEvent :: Lens' (Config t) (ChannelEvent -> IO ())
+configTriggerChannelEvent f config' = (\configTriggerChannelEvent' -> config' { _configTriggerChannelEvent = configTriggerChannelEvent' }) <$> f (_configTriggerChannelEvent config')
+
+configTheirId :: Lens' (Config t) DeviceId
+configTheirId f config' = (\configTheirId' -> config' { _configTheirId = configTheirId' }) <$> f (_configTheirId config')
+
+configSecret :: Lens' (Config t) Secret
+configSecret f config' = (\configSecret' -> config' { _configSecret = configSecret' }) <$> f (_configSecret config')
+
+
+-- Lenses for Channel t:
+
+rtcConnection :: Lens' (Channel t) RTCPeerConnection
+rtcConnection f channel' = (\rtcConnection' -> channel' { _rtcConnection = rtcConnection' }) <$> f (_rtcConnection channel')
+
+theirStream :: Lens' (Channel t) (Maybe MediaStream)
+theirStream f channel' = (\theirStream' -> channel' { _theirStream = theirStream' }) <$> f (_theirStream channel')
+
+closeRequested :: Lens' (Channel t) Bool
+closeRequested f channel' = (\closeRequested' -> channel' { _closeRequested = closeRequested' }) <$> f (_closeRequested channel')
+
+audioReceivingState :: Lens' (Channel t) ReceivingState
+audioReceivingState f channel' = (\audioReceivingState' -> channel' { _audioReceivingState = audioReceivingState' }) <$> f (_audioReceivingState channel')
+
+videoReceivingState :: Lens' (Channel t) ReceivingState
+videoReceivingState f channel' = (\videoReceivingState' -> channel' { _videoReceivingState = videoReceivingState' }) <$> f (_videoReceivingState channel')
+
+audioMuted :: Lens' (Channel t) Bool
+audioMuted f channel' = (\audioMuted' -> channel' { _audioMuted = audioMuted' }) <$> f (_audioMuted channel')
+
+videoMuted :: Lens' (Channel t) Bool
+videoMuted f channel' = (\videoMuted' -> channel' { _videoMuted = videoMuted' }) <$> f (_videoMuted channel')
+
+

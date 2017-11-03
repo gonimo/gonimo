@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 -- {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Gonimo.SocketAPI where
 
@@ -95,5 +94,3 @@ instance FromJSON ServerResponse
 instance ToJSON ServerResponse where
   toEncoding = genericToEncoding defaultOptions
 
-makeClassyPrisms ''ServerRequest
-makeClassyPrisms ''ServerResponse

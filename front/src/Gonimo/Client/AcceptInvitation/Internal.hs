@@ -1,7 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.AcceptInvitation.Internal where
 
@@ -24,7 +23,7 @@ import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types  as App
 import qualified Gonimo.Client.Auth       as Auth
-import           Gonimo.Client.Server
+import           Gonimo.Client.Server hiding (Config)
 import           Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.SocketAPI         as API
 import           Gonimo.SocketAPI.Types   (InvitationReply)
@@ -42,9 +41,6 @@ data AcceptInvitation t
   = AcceptInvitation { _request :: Event t [ API.ServerRequest ]
                      , _subscriptions :: SubscriptionsDyn t
                      }
-
-makeLenses ''Config
-makeLenses ''AcceptInvitation
 
 
 fromApp :: Reflex t => App.Config t -> Config t
@@ -81,3 +77,22 @@ makeAnswerInvitation secret reply
 
 emptyAcceptInvitation :: Reflex t => AcceptInvitation t
 emptyAcceptInvitation = AcceptInvitation never (constDyn Set.empty)
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configAuthenticated :: Lens' (Config t) (Event t ())
+configAuthenticated f config' = (\configAuthenticated' -> config' { _configAuthenticated = configAuthenticated' }) <$> f (_configAuthenticated config')
+
+
+-- Lenses for AcceptInvitation t:
+
+request :: Lens' (AcceptInvitation t) (Event t [ API.ServerRequest ])
+request f acceptInvitation' = (\request' -> acceptInvitation' { _request = request' }) <$> f (_request acceptInvitation')
+
+subscriptions :: Lens' (AcceptInvitation t) (SubscriptionsDyn t)
+subscriptions f acceptInvitation' = (\subscriptions' -> acceptInvitation' { _subscriptions = subscriptions' }) <$> f (_subscriptions acceptInvitation')
+
+

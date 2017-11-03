@@ -35,6 +35,7 @@ import qualified Gonimo.Client.Auth         as Auth
 import qualified Gonimo.Client.Config       as Config
 import           Gonimo.Client.I18N
 import           Gonimo.Client.Server
+import qualified Gonimo.Client.Server       as Server
 import qualified Gonimo.Client.Storage      as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified Gonimo.Client.Subscriber   as Subscriber
@@ -51,7 +52,7 @@ app = mdo
 
   let serverConfig' = def & configRequest .~ serverRequests
 
-  server' <- makeServer Config.gonimoBackWSURL serverConfig'
+  server' <- Server.create Config.gonimoBackWSURL serverConfig'
 
   let authConfig = Auth.Config { Auth._configResponse = server'^.response
                                , Auth._configServerOpen = server'^.open
