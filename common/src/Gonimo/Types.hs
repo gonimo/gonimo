@@ -56,7 +56,7 @@ instance ToJSON DeviceType
 type SenderName = Text
 
 newtype Secret = Secret ByteString
-  deriving (Generic, Show, Read, Ord, Eq,PersistField, PersistFieldSql)
+  deriving (Generic, Show, Read, Ord, Eq)
 
 instance FromJSON Secret where
   parseJSON (String t) = Secret <$> (rightZ . Base64.decode . encodeUtf8 $ t)
