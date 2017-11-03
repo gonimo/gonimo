@@ -1,6 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TupleSections #-}
@@ -39,9 +38,6 @@ data Socket t
            , _subscriptions :: SubscriptionsDyn t
            }
 
-
-makeLenses ''Config
-makeLenses ''Socket
 
 type ChannelsTransformation t = Map (API.FromId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
@@ -100,3 +96,31 @@ handleMutedTracks triggerClose stream = do
   traverse_ addCloseListener $ (,) <$> [mute] <*> tracks -- Previously also ended
   
   
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configAuthData :: Lens' (Config t) (Dynamic t API.AuthData)
+configAuthData f config' = (\configAuthData' -> config' { _configAuthData = configAuthData' }) <$> f (_configAuthData config')
+
+configEnabled :: Lens' (Config t) (Dynamic t DeviceType)
+configEnabled f config' = (\configEnabled' -> config' { _configEnabled = configEnabled' }) <$> f (_configEnabled config')
+
+configMediaStream :: Lens' (Config t) (Dynamic t (Either JS.PromiseRejected MediaStream))
+configMediaStream f config' = (\configMediaStream' -> config' { _configMediaStream = configMediaStream' }) <$> f (_configMediaStream config')
+
+
+-- Lenses for Socket t:
+
+request :: Lens' (Socket t) (Event t [ API.ServerRequest ])
+request f socket' = (\request' -> socket' { _request = request' }) <$> f (_request socket')
+
+channels :: Lens' (Socket t) (Dynamic t (Channels.ChannelMap t))
+channels f socket' = (\channels' -> socket' { _channels = channels' }) <$> f (_channels socket')
+
+subscriptions :: Lens' (Socket t) (SubscriptionsDyn t)
+subscriptions f socket' = (\subscriptions' -> socket' { _subscriptions = subscriptions' }) <$> f (_subscriptions socket')
+
+

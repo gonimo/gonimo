@@ -75,76 +75,75 @@ library
                     , jsaddle
                     , reflex-dom-core
   if !impl(ghcjs)
-     build-depends: jsaddle-warp
-                  , jsaddle-dom
+     build-depends: jsaddle-dom
   if impl(ghcjs)
      build-depends: ghcjs-base
 
   exposed-modules:    Gonimo.Client.Storage
-                    , Gonimo.Client.Config
-                    , Gonimo.Client.Storage.Keys
-                    , Gonimo.Client.Auth
-                    , Gonimo.Client.Auth.I18N
-                    , Gonimo.Client.Server
-                    , Gonimo.Client.Invite
-                    , Gonimo.Client.Invite.UI
-                    , Gonimo.Client.Invite.UI.I18N
-                    , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.Internal
                     , Gonimo.Client.AcceptInvitation.UI
                     , Gonimo.Client.AcceptInvitation.UI.I18N
-                    , Gonimo.Client.MessageBox
-                    , Gonimo.Client.MessageBox.UI
-                    , Gonimo.Client.MessageBox.UI.I18N
-                    , Gonimo.Client.MessageBox.Internal
-                    , Gonimo.Client.Family
-                    , Gonimo.Client.Family.Internal
-                    , Gonimo.Client.Family.UI
-                    , Gonimo.Client.Family.UI.I18N
-                    , Gonimo.Client.Family.RoleSelector
-                    , Gonimo.Client.Family.RoleSelector.I18N
-                    , Gonimo.Client.DeviceList
-                    , Gonimo.Client.DeviceList.Internal
-                    , Gonimo.Client.DeviceList.UI
-                    , Gonimo.Client.DeviceList.UI.I18N
-                    , Gonimo.Client.ConfirmationButton
-                    , Gonimo.Client.ConfirmationButton.I18N
-                    , Gonimo.Client.EditStringButton
-                    , Gonimo.Client.EditStringButton.I18N
-                    , Gonimo.Client.I18N
-                    , Gonimo.Client.Subscriber
-                    , Gonimo.Client.Reflex
-                    , Gonimo.Client.Reflex.Dom
-                    , Gonimo.Client.Reflex.Dom.WebSocket
-                    , Gonimo.Client.Reflex.Dom.WebSocket.Types
-                    , Gonimo.Client.Reflex.Dom.WebSocket.Internal
                     , Gonimo.Client.App
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
                     , Gonimo.Client.App.UI.I18N
-                    , Gonimo.Client.NavBar.Internal
-                    , Gonimo.Client.NavBar.UI
-                    , Gonimo.Client.NavBar
+                    , Gonimo.Client.Auth
+                    , Gonimo.Client.Auth.I18N
+                    , Gonimo.Client.Baby
                     , Gonimo.Client.Baby.Internal
                     , Gonimo.Client.Baby.Socket
                     , Gonimo.Client.Baby.UI
                     , Gonimo.Client.Baby.UI.I18N
-                    , Gonimo.Client.Baby
-                    , Gonimo.DOM.Navigator.MediaDevices.Types
-                    , Gonimo.DOM.Navigator.MediaDevices.Internal
-                    , Gonimo.DOM.Navigator.MediaDevices
-                    , Gonimo.DOM.Window.Internal
-                    , Gonimo.Client.Prelude
-                    , Gonimo.Client.Util
-                    , Gonimo.Client.WebRTC.Channel
-                    , Gonimo.Client.WebRTC.Channels
+                    , Gonimo.Client.Config
+                    , Gonimo.Client.ConfirmationButton
+                    , Gonimo.Client.ConfirmationButton.I18N
+                    , Gonimo.Client.DeviceList
+                    , Gonimo.Client.DeviceList.Internal
+                    , Gonimo.Client.DeviceList.UI
+                    , Gonimo.Client.DeviceList.UI.I18N
+                    , Gonimo.Client.EditStringButton
+                    , Gonimo.Client.EditStringButton.I18N
+                    , Gonimo.Client.Family
+                    , Gonimo.Client.Family.Internal
+                    , Gonimo.Client.Family.RoleSelector
+                    , Gonimo.Client.Family.RoleSelector.I18N
+                    , Gonimo.Client.Family.UI
+                    , Gonimo.Client.Family.UI.I18N
+                    , Gonimo.Client.I18N
+                    , Gonimo.Client.I18N.UI
+                    , Gonimo.Client.Invite
+                    , Gonimo.Client.Invite.Internal
+                    , Gonimo.Client.Invite.UI
+                    , Gonimo.Client.Invite.UI.I18N
+                    , Gonimo.Client.Main
+                    , Gonimo.Client.MessageBox
+                    , Gonimo.Client.MessageBox.Internal
+                    , Gonimo.Client.MessageBox.UI
+                    , Gonimo.Client.MessageBox.UI.I18N
+                    , Gonimo.Client.NavBar
+                    , Gonimo.Client.NavBar.Internal
+                    , Gonimo.Client.NavBar.UI
+                    , Gonimo.Client.Parent
                     , Gonimo.Client.Parent.Connections
                     , Gonimo.Client.Parent.UI
                     , Gonimo.Client.Parent.UI.I18N
-                    , Gonimo.Client.Parent
-                    , Gonimo.Client.I18N.UI
+                    , Gonimo.Client.Prelude
+                    , Gonimo.Client.Reflex
+                    , Gonimo.Client.Reflex.Dom
+                    , Gonimo.Client.Reflex.Dom.WebSocket
+                    , Gonimo.Client.Reflex.Dom.WebSocket.Internal
+                    , Gonimo.Client.Server
+                    , Gonimo.Client.Storage.Keys
+                    , Gonimo.Client.Subscriber
+                    , Gonimo.Client.Util
+                    , Gonimo.Client.WebRTC.Channel
+                    , Gonimo.Client.WebRTC.Channels
+                    , Gonimo.DOM.Navigator.MediaDevices
+                    , Gonimo.DOM.Navigator.MediaDevices.Internal
+                    , Gonimo.DOM.Navigator.MediaDevices.Types
+                    , Gonimo.DOM.Window.Internal
                     , Gonimo.SocketAPI.Translations
 
 
@@ -190,21 +189,34 @@ executable gonimo-front
                     , base64-bytestring
                     , bytestring >= 0.10.6.0
                     , containers
-                    , persistent-template
                     , text
                     , time
                     , vector
-                    , persistent
                     , errors
-                    , http-api-data
                     , data-default
                     , reflex-dom-core
-                    , jsaddle-warp
                     , jsaddle
                     , ghcjs-dom
                     , mtl
-  if !impl(ghcjs)
-    build-depends: warp
-                 , websockets
-                 , wai-middleware-static
+  -- if !impl(ghcjs)
+  --   build-depends: wai-middleware-static
                     
+
+executable gonimo-front-android
+  ghc-options: -optl-fuse-ld=gold
+  ld-options:  -fuse-ld=gold
+  if flag(dev) 
+      cpp-options:   -DDEVELOPMENT
+      ghc-options:   -Wall -threaded
+      ghcjs-options: -debug
+  else
+      ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
+  main-is:            Mobile.hs
+  hs-source-dirs:      app
+  default-language:    Haskell2010
+
+  default-extensions: 
+
+  build-depends:      base >=4.8 && <4.10
+                    , gonimo-front
+                    , reflex-dom

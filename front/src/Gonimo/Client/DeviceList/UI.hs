@@ -21,7 +21,7 @@ import           Data.Time.Format                  (defaultTimeLocale,
 import           Data.Time.LocalTime               (TimeZone,
                                                     getCurrentTimeZone,
                                                     utcToLocalTime)
-import           Gonimo.Db.Entities                (AccountId, DeviceId)
+import           Gonimo.SocketAPI.Types                (AccountId, DeviceId)
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (DeviceType (..), _Baby)

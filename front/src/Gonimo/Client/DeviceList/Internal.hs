@@ -1,6 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.DeviceList.Internal where
@@ -16,7 +15,7 @@ import           Data.Set                 (Set)
 import qualified Data.Set                 as Set
 import           Gonimo.Client.Reflex     (buildMap)
 import           Gonimo.Client.Subscriber (subscribeKeys)
-import           Gonimo.Db.Entities       (AccountId, DeviceId, FamilyId)
+import           Gonimo.SocketAPI.Types       (AccountId, DeviceId, FamilyId)
 import qualified Gonimo.SocketAPI         as API
 import qualified Gonimo.SocketAPI.Types   as API
 import           Gonimo.Types             (DeviceType)
@@ -48,10 +47,6 @@ data UI t
        , _uiDisconnect :: Event t DeviceId
        , _uiShowStream :: Event t DeviceId
        }
-
-makeLenses ''Config
-makeLenses ''DeviceList
-makeLenses ''UI
 
 instance Reflex t => Default (UI t) where
   def = UI { _uiRequest = never
@@ -207,3 +202,47 @@ getDeviceInfosSubscription
 
 getAccountDeviceInfosSubscription :: [DeviceId] -> Set API.ServerRequest
 getAccountDeviceInfosSubscription = Set.unions . map (Set.singleton . API.ReqGetDeviceInfo)
+
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configFamilyId :: Lens' (Config t) (Dynamic t FamilyId)
+configFamilyId f config' = (\configFamilyId' -> config' { _configFamilyId = configFamilyId' }) <$> f (_configFamilyId config')
+
+configAuthData :: Lens' (Config t) (Dynamic t (Maybe API.AuthData))
+configAuthData f config' = (\configAuthData' -> config' { _configAuthData = configAuthData' }) <$> f (_configAuthData config')
+
+
+-- Lenses for DeviceList t:
+
+deviceInfos :: Lens' (DeviceList t) (Dynamic t (NestedDeviceInfos t))
+deviceInfos f deviceList' = (\deviceInfos' -> deviceList' { _deviceInfos = deviceInfos' }) <$> f (_deviceInfos deviceList')
+
+onlineDevices :: Lens' (DeviceList t) (Dynamic t (Map DeviceId DeviceType))
+onlineDevices f deviceList' = (\onlineDevices' -> deviceList' { _onlineDevices = onlineDevices' }) <$> f (_onlineDevices deviceList')
+
+subscriptions :: Lens' (DeviceList t) (SubscriptionsDyn t)
+subscriptions f deviceList' = (\subscriptions' -> deviceList' { _subscriptions = subscriptions' }) <$> f (_subscriptions deviceList')
+
+request :: Lens' (DeviceList t) (Event t [ API.ServerRequest ])
+request f deviceList' = (\request' -> deviceList' { _request = request' }) <$> f (_request deviceList')
+
+
+-- Lenses for UI t:
+
+uiRequest :: Lens' (UI t) (Event t [ API.ServerRequest ])
+uiRequest f uI' = (\uiRequest' -> uI' { _uiRequest = uiRequest' }) <$> f (_uiRequest uI')
+
+uiConnect :: Lens' (UI t) (Event t DeviceId)
+uiConnect f uI' = (\uiConnect' -> uI' { _uiConnect = uiConnect' }) <$> f (_uiConnect uI')
+
+uiDisconnect :: Lens' (UI t) (Event t DeviceId)
+uiDisconnect f uI' = (\uiDisconnect' -> uI' { _uiDisconnect = uiDisconnect' }) <$> f (_uiDisconnect uI')
+
+uiShowStream :: Lens' (UI t) (Event t DeviceId)
+uiShowStream f uI' = (\uiShowStream' -> uI' { _uiShowStream = uiShowStream' }) <$> f (_uiShowStream uI')
+
+

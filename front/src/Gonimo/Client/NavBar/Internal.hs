@@ -1,7 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.NavBar.Internal where
 
@@ -23,5 +22,24 @@ data NavBar t
            }
 
 
-makeLenses ''Config
-makeLenses ''NavBar
+-- Lenses for Config t:
+
+configLoaded :: Lens' (Config t) (App.Loaded t)
+configLoaded f config' = (\configLoaded' -> config' { _configLoaded = configLoaded' }) <$> f (_configLoaded config')
+
+configDeviceList :: Lens' (Config t) (DeviceList.DeviceList t)
+configDeviceList f config' = (\configDeviceList' -> config' { _configDeviceList = configDeviceList' }) <$> f (_configDeviceList config')
+
+
+-- Lenses for NavBar t:
+
+backClicked :: Lens' (NavBar t) (Event t ())
+backClicked f navBar' = (\backClicked' -> navBar' { _backClicked = backClicked' }) <$> f (_backClicked navBar')
+
+homeClicked :: Lens' (NavBar t) (Event t ())
+homeClicked f navBar' = (\homeClicked' -> navBar' { _homeClicked = homeClicked' }) <$> f (_homeClicked navBar')
+
+request :: Lens' (NavBar t) (Event t [API.ServerRequest])
+request f navBar' = (\request' -> navBar' { _request = request' }) <$> f (_request navBar')
+
+

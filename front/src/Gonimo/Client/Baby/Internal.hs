@@ -1,6 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TupleSections #-}
@@ -17,7 +16,6 @@ import qualified GHCJS.DOM.Navigator               as Navigator
 import qualified GHCJS.DOM.Window                  as Window
 import qualified Gonimo.Client.Storage             as GStorage
 import qualified Gonimo.Client.Storage.Keys        as GStorage
-import qualified Gonimo.Db.Entities                as Db
 import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 import           Reflex.Dom.Core
@@ -42,7 +40,7 @@ data Config t
             , _configStartMonitor  :: Event t ()
             , _configStopMonitor  :: Event t ()
             , _configSetBabyName :: Event t Text
-            , _configSelectedFamily :: Dynamic t Db.FamilyId
+            , _configSelectedFamily :: Dynamic t API.FamilyId
             , _configGetUserMedia :: Event t () -- Get a new media stream, usefull for error handling.
             }
 
@@ -69,9 +67,6 @@ data UI t
        , _uiRequest :: Event t [API.ServerRequest]
        }
 
-makeLenses ''Config
-makeLenses ''Baby
-makeLenses ''UI
 
 uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
 uiSwitchPromptly ev
@@ -290,3 +285,95 @@ getUserMedia' nav md = do
   mediaDevices <- Navigator.getMediaDevices nav
   jsm <- JS.askJSM
   liftIO . try $ JS.runJSM (MediaDevices.getUserMedia mediaDevices md) jsm
+
+
+-- Lenses for Config t:
+
+configSelectCamera :: Lens' (Config t) (Event t Text)
+configSelectCamera f config' = (\configSelectCamera' -> config' { _configSelectCamera = configSelectCamera' }) <$> f (_configSelectCamera config')
+
+configEnableCamera :: Lens' (Config t) (Event t Bool)
+configEnableCamera f config' = (\configEnableCamera' -> config' { _configEnableCamera = configEnableCamera' }) <$> f (_configEnableCamera config')
+
+configEnableAutoStart :: Lens' (Config t) (Event t Bool)
+configEnableAutoStart f config' = (\configEnableAutoStart' -> config' { _configEnableAutoStart = configEnableAutoStart' }) <$> f (_configEnableAutoStart config')
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configAuthData :: Lens' (Config t) (Dynamic t API.AuthData)
+configAuthData f config' = (\configAuthData' -> config' { _configAuthData = configAuthData' }) <$> f (_configAuthData config')
+
+configStartMonitor :: Lens' (Config t) (Event t ())
+configStartMonitor f config' = (\configStartMonitor' -> config' { _configStartMonitor = configStartMonitor' }) <$> f (_configStartMonitor config')
+
+configStopMonitor :: Lens' (Config t) (Event t ())
+configStopMonitor f config' = (\configStopMonitor' -> config' { _configStopMonitor = configStopMonitor' }) <$> f (_configStopMonitor config')
+
+configSetBabyName :: Lens' (Config t) (Event t Text)
+configSetBabyName f config' = (\configSetBabyName' -> config' { _configSetBabyName = configSetBabyName' }) <$> f (_configSetBabyName config')
+
+configSelectedFamily :: Lens' (Config t) (Dynamic t API.FamilyId)
+configSelectedFamily f config' = (\configSelectedFamily' -> config' { _configSelectedFamily = configSelectedFamily' }) <$> f (_configSelectedFamily config')
+
+configGetUserMedia :: Lens' (Config t) (Event t ())
+configGetUserMedia f config' = (\configGetUserMedia' -> config' { _configGetUserMedia = configGetUserMedia' }) <$> f (_configGetUserMedia config')
+
+
+-- Lenses for Baby t:
+
+videoDevices :: Lens' (Baby t) (Dynamic t [MediaDeviceInfo])
+videoDevices f baby' = (\videoDevices' -> baby' { _videoDevices = videoDevices' }) <$> f (_videoDevices baby')
+
+selectedCamera :: Lens' (Baby t) (Dynamic t (Maybe Text))
+selectedCamera f baby' = (\selectedCamera' -> baby' { _selectedCamera = selectedCamera' }) <$> f (_selectedCamera baby')
+
+cameraEnabled :: Lens' (Baby t) (Dynamic t Bool)
+cameraEnabled f baby' = (\cameraEnabled' -> baby' { _cameraEnabled = cameraEnabled' }) <$> f (_cameraEnabled baby')
+
+autoStartEnabled :: Lens' (Baby t) (Dynamic t Bool)
+autoStartEnabled f baby' = (\autoStartEnabled' -> baby' { _autoStartEnabled = autoStartEnabled' }) <$> f (_autoStartEnabled baby')
+
+mediaStream :: Lens' (Baby t) (Dynamic t (Either JS.PromiseRejected MediaStream))
+mediaStream f baby' = (\mediaStream' -> baby' { _mediaStream = mediaStream' }) <$> f (_mediaStream baby')
+
+socket :: Lens' (Baby t) (Socket.Socket t)
+socket f baby' = (\socket' -> baby' { _socket = socket' }) <$> f (_socket baby')
+
+name :: Lens' (Baby t) (Dynamic t Text)
+name f baby' = (\name' -> baby' { _name = name' }) <$> f (_name baby')
+
+request :: Lens' (Baby t) (Event t [API.ServerRequest])
+request f baby' = (\request' -> baby' { _request = request' }) <$> f (_request baby')
+
+volumeLevel :: Lens' (Baby t) (Event t Double)
+volumeLevel f baby' = (\volumeLevel' -> baby' { _volumeLevel = volumeLevel' }) <$> f (_volumeLevel baby')
+
+
+-- Lenses for UI t:
+
+uiGoHome :: Lens' (UI t) (Event t ())
+uiGoHome f uI' = (\uiGoHome' -> uI' { _uiGoHome = uiGoHome' }) <$> f (_uiGoHome uI')
+
+uiStartMonitor :: Lens' (UI t) (Event t ())
+uiStartMonitor f uI' = (\uiStartMonitor' -> uI' { _uiStartMonitor = uiStartMonitor' }) <$> f (_uiStartMonitor uI')
+
+uiStopMonitor :: Lens' (UI t) (Event t ())
+uiStopMonitor f uI' = (\uiStopMonitor' -> uI' { _uiStopMonitor = uiStopMonitor' }) <$> f (_uiStopMonitor uI')
+
+uiEnableCamera :: Lens' (UI t) (Event t Bool)
+uiEnableCamera f uI' = (\uiEnableCamera' -> uI' { _uiEnableCamera = uiEnableCamera' }) <$> f (_uiEnableCamera uI')
+
+uiEnableAutoStart :: Lens' (UI t) (Event t Bool)
+uiEnableAutoStart f uI' = (\uiEnableAutoStart' -> uI' { _uiEnableAutoStart = uiEnableAutoStart' }) <$> f (_uiEnableAutoStart uI')
+
+uiSelectCamera :: Lens' (UI t) (Event t Text)
+uiSelectCamera f uI' = (\uiSelectCamera' -> uI' { _uiSelectCamera = uiSelectCamera' }) <$> f (_uiSelectCamera uI')
+
+uiSetBabyName :: Lens' (UI t) (Event t Text)
+uiSetBabyName f uI' = (\uiSetBabyName' -> uI' { _uiSetBabyName = uiSetBabyName' }) <$> f (_uiSetBabyName uI')
+
+uiRequest :: Lens' (UI t) (Event t [API.ServerRequest])
+uiRequest f uI' = (\uiRequest' -> uI' { _uiRequest = uiRequest' }) <$> f (_uiRequest uI')
+
+

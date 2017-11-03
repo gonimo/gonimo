@@ -1,6 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
@@ -22,7 +21,7 @@ import           GHCJS.DOM.RTCPeerConnection   as RTCPeerConnection
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
 import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection
 #endif
-import           Gonimo.Db.Entities            (DeviceId)
+import           Gonimo.SocketAPI.Types            (DeviceId)
 import qualified Gonimo.SocketAPI              as API
 import qualified Gonimo.SocketAPI.Types        as API
 import           Gonimo.Types                  (Secret)
@@ -73,12 +72,6 @@ data Channels t
              , _request :: Event t [ API.ServerRequest ]
              , _remoteStreams :: Dynamic t StreamMap -- Useful to have this separate for rendering. (Don't reload videos on every change to map.)
              }
-
-
-
-makeLenses ''Config
-makeLenses ''Channels
-
 
 channels :: forall m t. GonimoM t m => Config t -> m (Channels t)
 channels config = mdo
@@ -442,3 +435,34 @@ rtcIceCandidateToInit (RTCIceCandidate cand) = RTCIceCandidateInit cand
 --     handleException e = do
 --       putStrLn "Handled rejected promise"
 --       pure Nothing
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configOurId :: Lens' (Config t) (Dynamic t DeviceId)
+configOurId f config' = (\configOurId' -> config' { _configOurId = configOurId' }) <$> f (_configOurId config')
+
+configBroadcastStream :: Lens' (Config t) (Dynamic t (Maybe MediaStream))
+configBroadcastStream f config' = (\configBroadcastStream' -> config' { _configBroadcastStream = configBroadcastStream' }) <$> f (_configBroadcastStream config')
+
+configCreateChannel :: Lens' (Config t) (Event t (DeviceId, Secret))
+configCreateChannel f config' = (\configCreateChannel' -> config' { _configCreateChannel = configCreateChannel' }) <$> f (_configCreateChannel config')
+
+configCloseChannel :: Lens' (Config t) (Event t ChannelSelector)
+configCloseChannel f config' = (\configCloseChannel' -> config' { _configCloseChannel = configCloseChannel' }) <$> f (_configCloseChannel config')
+
+
+-- Lenses for Channels t:
+
+channelMap :: Lens' (Channels t) (Dynamic t (ChannelMap t))
+channelMap f channels' = (\channelMap' -> channels' { _channelMap = channelMap' }) <$> f (_channelMap channels')
+
+request :: Lens' (Channels t) (Event t [ API.ServerRequest ])
+request f channels' = (\request' -> channels' { _request = request' }) <$> f (_request channels')
+
+remoteStreams :: Lens' (Channels t) (Dynamic t StreamMap)
+remoteStreams f channels' = (\remoteStreams' -> channels' { _remoteStreams = remoteStreams' }) <$> f (_remoteStreams channels')
+
+

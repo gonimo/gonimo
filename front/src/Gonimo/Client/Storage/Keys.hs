@@ -6,7 +6,7 @@ module Gonimo.Client.Storage.Keys where
 import Data.Text (Text)
 import Gonimo.SocketAPI.Types as API
 import Data.Aeson (FromJSON, ToJSON, toEncoding, genericToEncoding, defaultOptions)
-import Gonimo.Db.Entities (FamilyId)
+import Gonimo.SocketAPI.Types (FamilyId)
 import GHC.Generics (Generic)
 import Gonimo.I18N (Locale(..))
 

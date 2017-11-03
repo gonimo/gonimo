@@ -1,14 +1,12 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.Family.Internal where
 
 import Reflex.Dom.Core
 import Data.Monoid
 import Data.Text (Text)
-import Gonimo.Db.Entities (FamilyId)
-import qualified Gonimo.Db.Entities as Db
+import Gonimo.SocketAPI.Types (FamilyId)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -28,7 +26,7 @@ import Control.Applicative
 import Data.Default (Default(..))
 import qualified Gonimo.Types                     as Gonimo
 import Gonimo.Client.Prelude
-import Gonimo.Client.Server
+import Gonimo.Client.Server hiding (Config)
 
 import Gonimo.Client.Subscriber (SubscriptionsDyn)
 import qualified Gonimo.Client.App.Types as App
@@ -36,7 +34,7 @@ import qualified Gonimo.Client.Auth as Auth
 import Gonimo.I18N
 
 
-type FamilyMap = Map FamilyId Db.Family
+type FamilyMap = Map FamilyId API.Family
 
 data GonimoRole = RoleBaby | RoleParent deriving (Eq, Ord)
 
@@ -74,12 +72,6 @@ data DefiniteFamily t
                    , _definiteSelected :: Dynamic t FamilyId
                    }
 
-
-makeLenses ''Config
-makeLenses ''Family
-makeLenses ''UI
-makeLenses ''DefiniteFamily
-makePrisms ''CreateFamilyResult
 
 instance Reflex t => Default (UI t) where
   def = UI never never never never never never never
@@ -127,19 +119,19 @@ uiSwitchPromptlyDyn ev
 currentFamilyName :: forall t. Reflex t => DefiniteFamily t -> Dynamic t Text
 currentFamilyName df =
     let
-      getFamilyName :: FamilyId -> Map FamilyId Db.Family -> Text
-      getFamilyName fid families' = families'^.at fid._Just.to Db.familyName . to Gonimo.familyName
+      getFamilyName :: FamilyId -> Map FamilyId API.Family -> Text
+      getFamilyName fid families' = families'^.at fid._Just.to API.familyName . to Gonimo.familyName
     in
       zipDynWith getFamilyName (df^.definiteSelected) (df^.definiteFamilies)
 
 family :: forall m t. (GonimoM t m) => Config t -> m (Family t)
-family config = do
-    (subs, familyIds', families') <- makeFamilies config
+family config' = do
+    (subs, familyIds', families') <- makeFamilies config'
     -- We need to use ids here, because we need intermediate information not available in families'
-    (selectReqs, selected') <- handleFamilySelect config familyIds'
-    let createReqs = handleCreateFamily config
-    let leaveReqs = handleLeaveFamily config selected'
-    let renameReqs = handleSetName config selected'
+    (selectReqs, selected') <- handleFamilySelect config' familyIds'
+    let createReqs = handleCreateFamily config'
+    let leaveReqs = handleLeaveFamily config' selected'
+    let renameReqs = handleSetName config' selected'
     pure $ Family { _subscriptions = subs
                   , _families = families'
                   , _selectedFamily = selected'
@@ -149,7 +141,7 @@ family config = do
 handleFamilySelect :: forall m t. GonimoM t m
                       => Config t -> Dynamic t (Maybe [FamilyId])
                       -> m (Event t [ API.ServerRequest ], Dynamic t (Maybe FamilyId))
-handleFamilySelect config familyIds' = mdo
+handleFamilySelect config' familyIds' = mdo
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     loadedFamilyId <- GStorage.getItem storage GStorage.currentFamily
     performEvent_
@@ -175,7 +167,7 @@ handleFamilySelect config familyIds' = mdo
                                        then Nothing
                                        else Just $ headMay valid
 
-    let selectEvent = leftmost [ Just <$> config^.configSelectFamily, switchOnChange ]
+    let selectEvent = leftmost [ Just <$> config'^.configSelectFamily, switchOnChange ]
     selected <- holdDyn loadedFamilyId selectEvent
     reqs <- makeRequest selected
 
@@ -187,37 +179,37 @@ handleFamilySelect config familyIds' = mdo
         mayReq :: Maybe API.AuthData -> Maybe FamilyId -> Maybe API.ServerRequest
         mayReq mAuth mFid = API.ReqSwitchFamily <$> fmap API.deviceId mAuth <*> mFid
 
-        reqDyn = zipDynWith mayReq (config^.configAuthData) selected'
+        reqDyn = zipDynWith mayReq (config'^.configAuthData) selected'
         reqsDyn :: Dynamic t [ API.ServerRequest ]
         reqsDyn = maybe [] (:[]) <$> reqDyn
 
-      pure $ mconcat $ [ tag (current reqsDyn) $ config^.configAuthenticated
+      pure $ mconcat $ [ tag (current reqsDyn) $ config'^.configAuthenticated
                        , updated reqsDyn
                        ]
 
 handleCreateFamily :: forall t. Reflex t => Config t -> Event t [ API.ServerRequest ]
-handleCreateFamily config = const [API.ReqCreateFamily] <$> config^.configCreateFamily
+handleCreateFamily config' = const [API.ReqCreateFamily] <$> config'^.configCreateFamily
 
 handleLeaveFamily :: forall t. Reflex t => Config t -> Dynamic t (Maybe FamilyId) -> Event t [ API.ServerRequest ]
-handleLeaveFamily config selected'
+handleLeaveFamily config' selected'
   = push (\_ -> runMaybeT $ do
-             auth <- MaybeT . sample $ current (config^.configAuthData)
+             auth <- MaybeT . sample $ current (config'^.configAuthData)
              selected <- MaybeT . sample $ current selected'
              let req = API.ReqLeaveFamily (API.accountId auth) selected
              pure [req]
-         ) (config^.configLeaveFamily)
+         ) (config'^.configLeaveFamily)
 
 handleSetName :: forall t. Reflex t => Config t -> Dynamic t (Maybe FamilyId) -> Event t [ API.ServerRequest ]
-handleSetName config selectedFamily' = push (\name -> do
+handleSetName config' selectedFamily' = push (\name -> do
                                                 mFid <- sample $ current selectedFamily'
                                                 case mFid of
                                                   Nothing -> pure Nothing
                                                   Just fid -> pure $ Just [ API.ReqSetFamilyName fid name ]
-                                            ) (config^.configSetName)
+                                            ) (config'^.configSetName)
 
 makeFamilies :: forall m t. GonimoM t m
                 => Config t -> m (SubscriptionsDyn t, Dynamic t (Maybe [FamilyId]), Dynamic t (Maybe FamilyMap))
-makeFamilies config = do
+makeFamilies config' = do
   (subs, fids) <- makeSubscriptions
   families' <- makeFamilyMap fids
   pure (subs, fids, families')
@@ -228,7 +220,7 @@ makeFamilies config = do
        handleGotFamilies resp = case resp of
          API.ResGotFamilies _ fids -> pure . Just $ fids
          _ -> pure Nothing
-       gotFamiliesEvent = push handleGotFamilies (config^.configResponse)
+       gotFamiliesEvent = push handleGotFamilies (config'^.configResponse)
 
        fidsToSubscriptions = foldr Set.insert Set.empty . map API.ReqGetFamily
 
@@ -236,7 +228,7 @@ makeFamilies config = do
      let familiesSubs = fidsToSubscriptions <$> familyIds
 
      let familyIdsSubs = maybe Set.empty (Set.singleton . API.ReqGetFamilies . API.accountId)
-                          <$> config^.configAuthData
+                          <$> config'^.configAuthData
 
      mFamilyIds <- holdDyn Nothing (Just <$> gotFamiliesEvent)
      pure $ ( zipDynWith Set.union familyIdsSubs familiesSubs
@@ -268,6 +260,121 @@ makeFamilies config = do
            then Just fixedMap
            else Nothing -- Map not yet complete
 
-       familyMapEv = push resToFamily $ config^.configResponse
+       familyMapEv = push resToFamily $ config'^.configResponse
      familyMap <- holdDyn Map.empty familyMapEv
      pure $ zipDynWith makeConsistent familyMap allFids
+
+
+
+-- Prisms:
+
+
+_CreateFamilyCancel :: Prism' CreateFamilyResult ()
+_CreateFamilyCancel = prism' (\() -> CreateFamilyCancel) go
+  where
+    go c = case c of
+      CreateFamilyCancel -> Just ()
+      _ -> Nothing
+
+_CreateFamilyOk :: Prism' CreateFamilyResult ()
+_CreateFamilyOk = prism' (\() -> CreateFamilyOk) go
+  where
+    go c = case c of
+      CreateFamilyOk -> Just ()
+      _ -> Nothing
+
+_CreateFamilySetName :: Prism' CreateFamilyResult Text
+_CreateFamilySetName = prism' (\t -> CreateFamilySetName t) go
+  where
+    go c = case c of
+      CreateFamilySetName t -> Just $ t
+      _ -> Nothing
+
+_RoleParent :: Prism' GonimoRole ()
+_RoleParent = prism' (\() -> RoleParent) go
+  where
+    go c = case c of
+      RoleParent -> Just ()
+      _ -> Nothing
+
+_RoleBaby :: Prism' GonimoRole ()
+_RoleBaby = prism' (\() -> RoleBaby) go
+  where
+    go c = case c of
+      RoleBaby -> Just ()
+      _ -> Nothing
+
+
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configAuthData :: Lens' (Config t) (Dynamic t (Maybe API.AuthData))
+configAuthData f config' = (\configAuthData' -> config' { _configAuthData = configAuthData' }) <$> f (_configAuthData config')
+
+configSelectFamily :: Lens' (Config t) (Event t FamilyId)
+configSelectFamily f config' = (\configSelectFamily' -> config' { _configSelectFamily = configSelectFamily' }) <$> f (_configSelectFamily config')
+
+configAuthenticated :: Lens' (Config t) (Event t ())
+configAuthenticated f config' = (\configAuthenticated' -> config' { _configAuthenticated = configAuthenticated' }) <$> f (_configAuthenticated config')
+
+configCreateFamily :: Lens' (Config t) (Event t ())
+configCreateFamily f config' = (\configCreateFamily' -> config' { _configCreateFamily = configCreateFamily' }) <$> f (_configCreateFamily config')
+
+configLeaveFamily :: Lens' (Config t) (Event t ())
+configLeaveFamily f config' = (\configLeaveFamily' -> config' { _configLeaveFamily = configLeaveFamily' }) <$> f (_configLeaveFamily config')
+
+configSetName :: Lens' (Config t) (Event t Text)
+configSetName f config' = (\configSetName' -> config' { _configSetName = configSetName' }) <$> f (_configSetName config')
+
+
+-- Lenses for Family t:
+
+families :: Lens' (Family t) (Dynamic t (Maybe FamilyMap))
+families f family' = (\families' -> family' { _families = families' }) <$> f (_families family')
+
+selectedFamily :: Lens' (Family t) (Dynamic t (Maybe FamilyId))
+selectedFamily f family' = (\selectedFamily' -> family' { _selectedFamily = selectedFamily' }) <$> f (_selectedFamily family')
+
+subscriptions :: Lens' (Family t) (SubscriptionsDyn t)
+subscriptions f family' = (\subscriptions' -> family' { _subscriptions = subscriptions' }) <$> f (_subscriptions family')
+
+request :: Lens' (Family t) (Event t [ API.ServerRequest ])
+request f family' = (\request' -> family' { _request = request' }) <$> f (_request family')
+
+
+-- Lenses for UI t:
+
+uiSelectFamily :: Lens' (UI t) (Event t FamilyId)
+uiSelectFamily f uI' = (\uiSelectFamily' -> uI' { _uiSelectFamily = uiSelectFamily' }) <$> f (_uiSelectFamily uI')
+
+uiCreateFamily :: Lens' (UI t) (Event t ())
+uiCreateFamily f uI' = (\uiCreateFamily' -> uI' { _uiCreateFamily = uiCreateFamily' }) <$> f (_uiCreateFamily uI')
+
+uiLeaveFamily :: Lens' (UI t) (Event t ())
+uiLeaveFamily f uI' = (\uiLeaveFamily' -> uI' { _uiLeaveFamily = uiLeaveFamily' }) <$> f (_uiLeaveFamily uI')
+
+uiSetName :: Lens' (UI t) (Event t Text)
+uiSetName f uI' = (\uiSetName' -> uI' { _uiSetName = uiSetName' }) <$> f (_uiSetName uI')
+
+uiRoleSelected :: Lens' (UI t) (Event t GonimoRole)
+uiRoleSelected f uI' = (\uiRoleSelected' -> uI' { _uiRoleSelected = uiRoleSelected' }) <$> f (_uiRoleSelected uI')
+
+uiRequest :: Lens' (UI t) (Event t [ API.ServerRequest ])
+uiRequest f uI' = (\uiRequest' -> uI' { _uiRequest = uiRequest' }) <$> f (_uiRequest uI')
+
+uiSelectLang :: Lens' (UI t) (Event t Locale)
+uiSelectLang f uI' = (\uiSelectLang' -> uI' { _uiSelectLang = uiSelectLang' }) <$> f (_uiSelectLang uI')
+
+
+-- Lenses for DefiniteFamily t:
+
+definiteFamilies :: Lens' (DefiniteFamily t) (Dynamic t FamilyMap)
+definiteFamilies f definiteFamily' = (\definiteFamilies' -> definiteFamily' { _definiteFamilies = definiteFamilies' }) <$> f (_definiteFamilies definiteFamily')
+
+definiteSelected :: Lens' (DefiniteFamily t) (Dynamic t FamilyId)
+definiteSelected f definiteFamily' = (\definiteSelected' -> definiteFamily' { _definiteSelected = definiteSelected' }) <$> f (_definiteSelected definiteFamily')
+
+

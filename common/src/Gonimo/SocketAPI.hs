@@ -13,7 +13,10 @@ import           Gonimo.Server.Error    (ServerError)
 import           Gonimo.SocketAPI.Types (FromId, InvitationInfo,
                                          InvitationReply, Message, ToId)
 import qualified Gonimo.SocketAPI.Types as Client
-import           Gonimo.Types           (AuthToken, DeviceType, Secret)
+import Gonimo.SocketAPI.Types
+import GHC.Generics (Generic)
+import Gonimo.Server.Error (ServerError)
+import Gonimo.Types (AuthToken, Secret, DeviceType)
 
 type MessageId = Int
 

@@ -1,12 +1,14 @@
 module Gonimo.Server.Handlers where
 
-import           Data.Text                     (Text, take)
-import qualified Database.Persist.Class       as Db
-import           Gonimo.Db.Entities
+import           Data.Text               (Text, take)
+import           Prelude                 hiding (take, unwords)
+
+
+import           Gonimo.Server.Db.Device as Device
+import           Gonimo.Server.Db.Account as Account
 import           Gonimo.Server.Effects
+import           Gonimo.SocketAPI.Types  as Client
 import           Gonimo.Types
-import qualified Gonimo.SocketAPI.Types as Client
-import           Prelude                       hiding (take, unwords)
 
 
 
@@ -24,21 +26,25 @@ maxUserAgentLength = 300
 createDeviceR :: MonadServer m => Maybe Text -> m Client.AuthData
 createDeviceR mUserAgent = do
   now <- getCurrentTime
-  authToken <- GonimoSecret <$> generateSecret
+  authToken' <- GonimoSecret <$> generateSecret
   let userAgent = maybe noUserAgentDefault (take maxUserAgentLength) mUserAgent
   runDb $ do
-    aid <- Db.insert Account { accountCreated     = now
-                             }
-    cid <- Db.insert Device  { deviceName         = Nothing -- Will be set on join of first family
-                             , deviceAuthToken    = authToken
-                             , deviceAccountId    = aid
-                             , deviceLastAccessed = now
-                             , deviceUserAgent    = userAgent
-                             }
+    aid <- Account.insert
+      $ Account { accountCreated = now
+                }
+
+    cid <- Device.insert
+      $ Device  { deviceName         = Nothing -- Will be set on join of first family
+                , deviceAuthToken    = authToken'
+                , deviceAccountId    = aid
+                , deviceLastAccessed = now
+                , deviceUserAgent    = userAgent
+                }
+
     return Client.AuthData {
         Client.accountId = aid
       , Client.deviceId  = cid
-      , Client.authToken = authToken
+      , Client.authToken = authToken'
       }
 
 

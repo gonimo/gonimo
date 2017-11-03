@@ -29,22 +29,24 @@ import qualified Data.Text                            as T
 import           Database.Persist                     (Entity (..), (==.))
 import           Database.Persist.Class
 import qualified Database.Persist.Class               as Db
+
 import           Gonimo.Database.Effects.Servant      as Db
 import           Gonimo.Server.Auth                   as Auth
-import           Gonimo.Db.Entities            as Db
 import           Gonimo.Server.Effects                as Eff
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
-import           Gonimo.Types                  as Server
 import           Gonimo.SocketAPI.Types                  (InvitationInfo (..),
                                                        InvitationReply (..))
-import qualified Gonimo.SocketAPI.Types                  as Client
+import           Gonimo.SocketAPI.Types                  as API
 import           Gonimo.SocketAPI (ServerRequest(..))
 import           Unsafe.Coerce
 import           Utils.Control.Monad.Trans.Maybe      (maybeT)
 import qualified Gonimo.Server.Db.Account             as Account
 import qualified Gonimo.Server.Db.Device              as Device
 import qualified Gonimo.Server.Db.Family              as Family
+import qualified Gonimo.Server.Db.Invitation              as Invitation
+import qualified Gonimo.Types.Extended   as Server
+import           Gonimo.Types.Extended   (Secret, InvitationDelivery(..))
 
 createInvitationR :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
 createInvitationR fid = do
@@ -52,7 +54,7 @@ createInvitationR fid = do
   now <- getCurrentTime
   isecret <- generateSecret
   -- family <- getFamily fid  -- defined but not used (yet).
-  senderId' <- authView $ deviceEntity.to entityKey
+  senderId' <- authView $ authDeviceId
   let inv = Invitation {
     invitationSecret = isecret
     , invitationFamilyId = fid
@@ -61,44 +63,38 @@ createInvitationR fid = do
     , invitationSenderId = senderId'
     , invitationReceiverId = Nothing
   }
-  iid <- runDb $ Db.insert inv
+  iid <- runDb $ Invitation.insert inv
   return (iid, inv)
 
 -- | Receive an invitation and mark it as received - it can no longer be claimed
 --   by any other device.
 claimInvitationR :: (AuthReader m, MonadServer m) => Secret -> m InvitationInfo
 claimInvitationR invSecret = do
-  aid <- authView $ accountEntity . to entityKey
+  aid <- authView $ authAccountId
   runDb $ do
-    Entity invId inv <- getByErr NoSuchInvitation $ SecretInvitation invSecret
-    guardWithM InvitationAlreadyClaimed
-      $ case invitationReceiverId inv of
-        Nothing -> do
-          Db.replace invId $ inv { invitationReceiverId = Just aid }
-          return True
-        Just receiverId' -> return $ receiverId' == aid
-    invFamily  <- get404   $ invitationFamilyId inv
-    invDevice  <- get404   $ invitationSenderId inv
-    mInvUser   <- Db.getBy $ AccountIdUser (deviceAccountId invDevice)
+    (_, inv) <- Invitation.claim aid invSecret
+    invFamily  <- Family.get $ invitationFamilyId inv
+    invDevice  <- Device.get $ invitationSenderId inv
+    mInvUser   <- Account.getUser (deviceAccountId invDevice)
     return InvitationInfo
-                { invitationInfoFamily = Db.familyName invFamily
+                { invitationInfoFamily = API.familyName invFamily
                 , invitationInfoSendingDevice = fromMaybe "" $ deviceName invDevice
-                , invitationInfoSendingUser = userLogin . entityVal <$> mInvUser
+                , invitationInfoSendingUser = userLogin . snd <$> mInvUser
                 }
 
 -- | Actually accept or decline an invitation.
 answerInvitationR :: (AuthReader m, MonadServer m) => Secret -> InvitationReply -> m (Maybe FamilyId)
 answerInvitationR invSecret reply = do
   authData <- ask
-  let aid = authData ^. accountEntity . to entityKey
+  let aid = authData ^. authAccountId
   now <- getCurrentTime
   inv <- runDb $ do
-    Entity iid inv <- getByErr NoSuchInvitation (SecretInvitation invSecret)
+    (iid, inv) <- Invitation.getBySecret invSecret
     guardWith InvitationAlreadyClaimed
       $ case invitationReceiverId inv of
           Nothing -> True
           Just receiverId' -> receiverId' == aid
-    Db.delete iid
+    Invitation.delete iid
     return inv
   predPool <- getPredicatePool
   runDb $ do -- Separate transaction - we want the invitation to be deleted now!
@@ -119,63 +115,55 @@ answerInvitationR invSecret reply = do
     _ -> pure Nothing
 
 
-sendInvitationR :: (AuthReader m, MonadServer m) => Client.SendInvitation -> m ()
-sendInvitationR (Client.SendInvitation iid d@(EmailInvitation email)) = do
+sendInvitationR :: (AuthReader m, MonadServer m) => API.SendInvitation -> m ()
+sendInvitationR (API.SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
   (inv, family) <- runDb $ do
-    inv <- get404 iid
+    inv <- Invitation.get iid
     authorize (isFamilyMember (invitationFamilyId inv)) authData
-    let newInv = inv {
-      invitationDelivery = d
-    }
-    Db.replace iid newInv
-    family <- get404 (invitationFamilyId inv)
+    newInv <- Invitation.updateDelivery d iid
+    family <- Family.get (invitationFamilyId inv)
     return (newInv, family)
   baseURL <- getFrontendURL
-  sendEmail $ makeInvitationEmail baseURL inv email (Db.familyName family)
+  sendEmail $ makeInvitationEmail baseURL inv email (API.familyName family)
 
-sendInvitationR (Client.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
+sendInvitationR (API.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 
 getFamilyMembersR :: (AuthReader m, MonadServer m) => FamilyId -> m [AccountId]
 getFamilyMembersR familyId = do
   authorizeAuthData $ isFamilyMember familyId
-  runDb $ do
-    familyAccounts <- Db.selectList [FamilyAccountFamilyId ==. familyId] []
-    pure $ map (familyAccountAccountId . entityVal) familyAccounts
+  runDb $ Family.getAccountIds familyId
 
 getDevicesR :: (AuthReader m, MonadServer m) => AccountId -> m [DeviceId]
-getDevicesR accountId = do
+getDevicesR accountId' = do
   (result, inFamilies) <- runDb $ do
-    inFamilies' <- map (familyAccountFamilyId . entityVal)
-                   <$> Db.selectList [ FamilyAccountAccountId ==. accountId ] []
-    result' <- map entityKey <$> Db.selectList [DeviceAccountId ==. accountId] []
+    inFamilies' <- Account.getFamilyIds accountId'
+    result' <- map fst <$> Account.getDevices accountId'
     pure (result', inFamilies')
   authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
   pure result
 
-getDeviceInfoR :: (AuthReader m, MonadServer m) => DeviceId -> m Client.DeviceInfo
-getDeviceInfoR deviceId = do
+getDeviceInfoR :: (AuthReader m, MonadServer m) => DeviceId -> m API.DeviceInfo
+getDeviceInfoR deviceId' = do
   (result, inFamilies) <- runDb $ do
-    device <- Db.get404 deviceId
-    inFamilies' <- map (familyAccountFamilyId . entityVal)
-                   <$> Db.selectList [ FamilyAccountAccountId ==. deviceAccountId device ] []
-    pure (Client.fromDevice device, inFamilies')
+    device <- Device.get deviceId'
+    inFamilies' <- Account.getFamilyIds (deviceAccountId device)
+    pure (API.fromDevice device, inFamilies')
   -- authorizeAuthData $ or (map isFamilyMember inFamilies)
   authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
   pure result
 
 setDeviceNameR :: (AuthReader m, MonadServer m) => DeviceId -> Text -> m ()
-setDeviceNameR deviceId name = do
+setDeviceNameR deviceId' name = do
   inFamilies <- runDb $ do
-    device <- Db.get404 deviceId
-    inFamilies' <- map (familyAccountFamilyId . entityVal)
-                   <$> Db.selectList [ FamilyAccountAccountId ==. deviceAccountId device ] []
+    device <- Device.get deviceId'
+    inFamilies' <- Account.getFamilyIds (deviceAccountId device)
     pure inFamilies'
   -- authorizeAuthData $ or (map isFamilyMember inFamilies)
   authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
 
-  _ :: Maybe () <- runDb $ runMaybeT . Device.update deviceId $ Device.setName name
-  notify $ ReqGetDeviceInfo deviceId
+  _ :: Maybe () <- runDb $ runMaybeT . Device.update deviceId' $ Device.setName name
+  notify $ ReqGetDeviceInfo deviceId'
   pure ()
 
 createFamilyR :: (AuthReader m, MonadServer m) =>  m FamilyId
@@ -186,8 +174,8 @@ createFamilyR = do
   n <- generateFamilyName
   predPool <- getPredicatePool
   fid <- runDb $ do
-    fid <- Db.insert Family {
-        Db.familyName = n
+    fid <- Family.insert $ Family {
+        API.familyName = n
       , familyCreated = now
       , familyLastAccessed = now
       , familyLastUsedBabyNames = []
@@ -210,31 +198,28 @@ setFamilyNameR familyId' name = do
   notify $ ReqGetFamily familyId'
 
 leaveFamilyR :: (AuthReader m, MonadServer m) => AccountId -> FamilyId -> m ()
-leaveFamilyR accountId familyId = do
-  -- authorizeAuthData $ isAccount accountId -- Not needed - any member can kick another member.
-  authorizeAuthData $ isFamilyMember familyId
+leaveFamilyR accountId' familyId' = do
+  -- authorizeAuthData $ isAccount accountId' -- Not needed - any member can kick another member.
+  authorizeAuthData $ isFamilyMember familyId'
 
   runDb $ do
-    Db.deleteBy $ Db.FamilyMember accountId familyId
-    familyAccounts <- Db.selectList [ FamilyAccountFamilyId ==. familyId ] []
-    when (null familyAccounts) $ do
-      Db.deleteWhere [ InvitationFamilyId ==. familyId ]
-      Db.delete familyId
-  notify $ ReqGetFamilies accountId
-  notify $ ReqGetFamilyMembers familyId
+    Family.deleteMember accountId' familyId'
+    familyAccounts <- Family.getAccountIds familyId'
+    when (null familyAccounts)
+      $ Family.delete familyId'
+  notify $ ReqGetFamilies accountId'
+  notify $ ReqGetFamilyMembers familyId'
 
 
 getFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
-getFamiliesR accountId = do
-  authorizeAuthData $ isAccount accountId
-  runDb $ do
-    map (familyAccountFamilyId . entityVal)
-      <$> Db.selectList [FamilyAccountAccountId ==. accountId] []
+getFamiliesR accountId' = do
+  authorizeAuthData $ isAccount accountId'
+  runDb $ Account.getFamilyIds accountId'
 
 getFamilyR :: (AuthReader m, MonadServer m) => FamilyId -> m Family
-getFamilyR familyId = do
-  authorizeAuthData $ isFamilyMember familyId
-  runDb $ Db.getErr (NoSuchFamily familyId) familyId
+getFamilyR familyId' = do
+  authorizeAuthData $ isFamilyMember familyId'
+  runDb $ Family.get familyId'
 
 -- Internal function for debugging:
 prettyKey :: Key a -> Text

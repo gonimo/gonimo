@@ -8,8 +8,7 @@ import Control.Lens
 import Control.Monad
 import Data.Monoid
 import Data.Text (Text)
-import Gonimo.Db.Entities (InvitationId)
-import qualified Gonimo.Db.Entities as Db
+import Gonimo.SocketAPI.Types (InvitationId)
 import Gonimo.Client.Invite.Internal
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (maybe)
@@ -169,7 +168,7 @@ copyClipboardScript = el "script" $ text $
     <> "};\n"
 
 emailWidget :: forall t m. GonimoM t m
-  => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Db.Invitation))
+  => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, API.Invitation))
   -> m (Event t [API.ServerRequest])
 emailWidget _ invData = mdo
     req <- elClass "div" "mail-form" $ do

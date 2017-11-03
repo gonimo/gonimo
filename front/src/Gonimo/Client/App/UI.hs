@@ -24,7 +24,7 @@ import qualified Gonimo.Client.MessageBox       as MessageBox
 import qualified Gonimo.Client.Parent           as Parent
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server
+import           Gonimo.Client.Server hiding (Config, config)
 import qualified Gonimo.Client.Storage          as GStorage
 import qualified Gonimo.Client.Storage.Keys     as GStorage
 import           Gonimo.Client.Util             (getBrowserProperty,

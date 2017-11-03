@@ -32,23 +32,27 @@ library
                         , ssl
 
   exposed-modules:  Gonimo.Database.Effects.Servant
-                , Gonimo.Server.Auth
-                , Gonimo.Server.Db.Internal
-                , Gonimo.Server.Db.Device
-                , Gonimo.Server.Db.Family
-                , Gonimo.Server.Db.Account
-                , Gonimo.Server.Effects
-                , Gonimo.Server.EmailInvitation
-                , Gonimo.Server.Handlers
-                , Gonimo.Server.Handlers.Auth
-                , Gonimo.Server.Handlers.Messenger
-                , Gonimo.Server.Handlers.Socket
-                , Gonimo.Server.NameGenerator
-                , Gonimo.Server.Messenger
-                , Gonimo.Server.Messenger.Internal
-                , Gonimo.SocketServer
-                , Gonimo.Server.Subscriber.Types
-                , Gonimo.Server.Subscriber
+                  , Gonimo.Db.Entities
+                  , Gonimo.Server.Auth
+                  , Gonimo.Server.Db.Account
+                  , Gonimo.Server.Db.Device
+                  , Gonimo.Server.Db.Family
+                  , Gonimo.Server.Db.Internal
+                  , Gonimo.Server.Db.Invitation
+                  , Gonimo.Server.Db.IsDb
+                  , Gonimo.Server.Effects
+                  , Gonimo.Server.EmailInvitation
+                  , Gonimo.Server.Handlers
+                  , Gonimo.Server.Handlers.Auth
+                  , Gonimo.Server.Handlers.Messenger
+                  , Gonimo.Server.Handlers.Socket
+                  , Gonimo.Server.Messenger
+                  , Gonimo.Server.Messenger.Internal
+                  , Gonimo.Server.NameGenerator
+                  , Gonimo.Server.Subscriber
+                  , Gonimo.Server.Subscriber.Types
+                  , Gonimo.SocketServer
+                  , Gonimo.Types.Extended
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random

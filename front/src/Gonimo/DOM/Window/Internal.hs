@@ -5,7 +5,6 @@ module Gonimo.DOM.Window.Internal where
 
 import           GHCJS.DOM.Types             hiding (MonadJSM, liftJSM)
 import           Language.Javascript.JSaddle (MonadJSM, jsg, liftJSM, new)
-import qualified Language.Javascript.JSaddle as JS
 
 
 

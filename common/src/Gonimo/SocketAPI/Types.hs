@@ -5,15 +5,15 @@
 
 module Gonimo.SocketAPI.Types where
 
-import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
-                                        genericToEncoding)
-import           Data.Text           (Text)
+import           Data.Aeson.Types (FromJSON, ToJSON (..), defaultOptions,
+                                   genericToEncoding)
+import           Data.Int         (Int64)
+import           Data.Maybe       (fromMaybe)
+import           Data.Text        (Text)
+import           Data.Time        (UTCTime)
 import           GHC.Generics
-import           Data.Time             (UTCTime)
-import           Data.Maybe             (fromMaybe)
 
 import           Gonimo.Types
-import           Gonimo.Db.Entities
 
 
 data AuthData = AuthData {
@@ -112,3 +112,84 @@ instance ToJSON IceCandidate where
 instance FromJSON Message
 instance ToJSON Message where
   toEncoding = genericToEncoding defaultOptions
+
+-- For now, just copied Db types:
+
+type DbKey = Int64
+
+-- Account:
+newtype Account = Account {accountCreated :: UTCTime} deriving (Generic)
+newtype AccountId = AccountId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
+
+-- User:
+data User = User { userLogin     :: !Text
+                 , userPassword  :: !Text
+                 , userAccountId :: !AccountId
+                 } deriving (Generic)
+
+instance FromJSON User
+instance ToJSON User
+
+newtype UserId = UserId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
+
+-- Family:
+data Family = Family { familyName              :: !FamilyName
+                     , familyCreated           :: !UTCTime
+                     , familyLastAccessed      :: !UTCTime
+                     , familyLastUsedBabyNames :: ![Text]
+                     } deriving (Generic, Show)
+
+instance FromJSON Family
+instance ToJSON Family
+
+newtype FamilyId = FamilyId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
+
+
+-- Invitation:
+
+data Invitation
+  = Invitation { invitationSecret     :: !Secret
+               , invitationFamilyId   :: !FamilyId
+               , invitationCreated    :: !UTCTime
+               , invitationDelivery   :: !InvitationDelivery
+               , invitationSenderId   :: !DeviceId
+               , invitationReceiverId :: !(Maybe AccountId)
+               }
+  deriving (Show, Generic, Eq, Ord)
+
+instance FromJSON Invitation
+instance ToJSON Invitation
+
+newtype InvitationId = InvitationId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
+
+
+-- Family Account:
+
+data FamilyAccount
+  = FamilyAccount { familyAccountAccountId :: !AccountId
+                  , familyAccountFamilyId  :: !FamilyId
+                  , familyAccountJoined    :: !UTCTime
+                  , familyAccountInvitedBy :: !(Maybe InvitationDelivery)
+                  } deriving (Generic)
+
+instance FromJSON FamilyAccount
+instance ToJSON FamilyAccount
+
+newtype FamilyAccountId = FamilyAccountId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
+
+
+-- Device:
+
+data Device
+  = Device { deviceName         :: !(Maybe Text)
+           , deviceAuthToken    :: !AuthToken
+           , deviceAccountId    :: !AccountId
+           , deviceLastAccessed :: !UTCTime
+           , deviceUserAgent    :: !Text
+           }
+  deriving (Generic)
+
+instance FromJSON Device
+instance ToJSON Device
+
+newtype DeviceId = DeviceId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
