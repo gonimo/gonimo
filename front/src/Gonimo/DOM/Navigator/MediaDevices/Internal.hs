@@ -5,8 +5,7 @@ module Gonimo.DOM.Navigator.MediaDevices.Internal where
 
 import           Control.Concurrent.MVar                     (newEmptyMVar,
                                                               putMVar, takeMVar)
-import           GHCJS.DOM.Types                             (Dictionary (..),
-                                                              fromJSValUnchecked, MediaStreamConstraints(..))
+import           GHCJS.DOM.Types                             (fromJSValUnchecked, MediaStreamConstraints(..))
 import           Language.Javascript.JSaddle                 (JSVal, MonadJSM,
                                                               eval, fun, js,
                                                               liftJSM,

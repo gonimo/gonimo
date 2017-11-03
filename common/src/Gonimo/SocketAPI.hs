@@ -7,15 +7,10 @@ import           Data.Aeson.Types       (FromJSON, ToJSON (..), defaultOptions,
                                          genericToEncoding)
 import           Data.Text              (Text)
 import           GHC.Generics           (Generic)
-import           Gonimo.Db.Entities     (AccountId, DeviceId, Family, FamilyId,
-                                         Invitation, InvitationId)
 import           Gonimo.Server.Error    (ServerError)
 import           Gonimo.SocketAPI.Types (FromId, InvitationInfo,
-                                         InvitationReply, Message, ToId)
+                                         InvitationReply, Message, ToId, AccountId, DeviceId, Family, FamilyId, Invitation, InvitationId)
 import qualified Gonimo.SocketAPI.Types as Client
-import Gonimo.SocketAPI.Types
-import GHC.Generics (Generic)
-import Gonimo.Server.Error (ServerError)
 import Gonimo.Types (AuthToken, Secret, DeviceType)
 
 type MessageId = Int
