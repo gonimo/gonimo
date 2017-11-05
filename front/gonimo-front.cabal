@@ -204,7 +204,7 @@ executable gonimo-front
 
 executable gonimo-front-android
   if impl(ghcjs)
-    buildable: False;
+    buildable: False
   ghc-options: -optl-fuse-ld=gold
   ld-options:  -fuse-ld=gold
   if flag(dev) 
