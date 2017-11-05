@@ -32,6 +32,7 @@ finishBuild _ _ _ localBuildInfo = do
 cleanBuild ::  Args -> BuildFlags -> IO HookedBuildInfo
 cleanBuild _ _ = do
   let prog = emptyProgramInvocation { progInvokePath = "./preBuild.sh"
+                                    , progInvokeArgs = ["dev"] -- Dummy parameter needed to avoid JS error.
                                     }
   runProgramInvocation normal prog
   pure (Nothing, [])
