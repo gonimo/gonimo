@@ -20,6 +20,7 @@ Flag dev
 custom-setup
     setup-depends: base >=4.8 && <4.10
                  , Cabal >= 1.18 && < 1.25
+                 , process
                  -- , bytestring
                  -- , conduit
                  -- , conduit-extra

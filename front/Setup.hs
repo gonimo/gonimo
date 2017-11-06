@@ -6,6 +6,8 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
 import Distribution.Simple.Program.Run
 import Distribution.Verbosity (normal)
 import Distribution.Compiler (CompilerInfo(..), CompilerId(..), CompilerFlavor(..))
+import System.Process
+import Data.Monoid
 
 -- Can't use __GHCJS__ because Setup.hs might get build with ghc (nix does this!)
 -- #ifdef GHCJS_COMPILER
@@ -21,20 +23,27 @@ finishBuild _ _ _ localBuildInfo = do
 
   let unFlagName = \(FlagName s) -> s
   let flagStrings = unFlagName . fst <$> (filter ((=="dev") . unFlagName . fst) . filter snd) flags
-  let prog = emptyProgramInvocation { progInvokePath = script
-                                    , progInvokeArgs = flagStrings
-                                    -- , progInvokeArgs = [ "-a", "./static/*", "./dist/build/gonimo-front/gonimo-front.jsexe/" ]
-                                    -- , progInvokeCwd = Just "./"
-                                    }
-  runProgramInvocation normal prog
+  -- let prog = emptyProgramInvocation { progInvokePath = script
+  --                                   , progInvokeArgs = flagStrings
+  --                                   -- , progInvokeArgs = [ "-a", "./static/*", "./dist/build/gonimo-front/gonimo-front.jsexe/" ]
+  --                                   -- , progInvokeCwd = Just "./"
+  --                                   }
+  -- runProgramInvocation normal prog
+
+  -- Now this works and the above does not ... (It used to be the other way round ...)
+  _ <- system $ script <> mconcat flagStrings
+  pure ()
   -- _ <- system "cp -a static/* dist/build/gonimo-front/gonimo-front.jsexe/"
 
 cleanBuild ::  Args -> BuildFlags -> IO HookedBuildInfo
 cleanBuild _ _ = do
-  let prog = emptyProgramInvocation { progInvokePath = "./preBuild.sh"
-                                    , progInvokeArgs = ["dev"] -- Dummy parameter needed to avoid JS error.
-                                    }
-  runProgramInvocation normal prog
+  -- No longer works (some JS error):
+  -- let prog = emptyProgramInvocation { progInvokePath = "./preBuild.sh"
+  --                                   }
+  -- runProgramInvocation normal prog
+
+  -- Calling system does work now (used not to work because of some JS error):
+  _ <- system "./preBuild.sh"
   pure (Nothing, [])
   -- Can't use this because of bug in cabal (we cannot conditionally add custom setup dependencies):
   -- cwd <- getCurrentDirectory
