@@ -1,6 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Client.Auth where
 
 import Reflex
@@ -42,9 +41,6 @@ data Auth t
          , _authenticated :: Event t () -- TODO: Now redundant, because of isOnline.
          , _isOnline :: Dynamic t Bool
          }
-
-makeLenses ''Config
-makeLenses ''Auth
 
 auth :: forall t m. (HasWebView m, MonadWidget t m) => Dynamic t Locale -> Config t -> m (Auth t)
 auth locDyn config = do
@@ -168,3 +164,35 @@ loadingDots = do
   tickCount :: Dynamic t Int <- count tick
   let dotCount = mod <$> tickCount <*> pure 8
   pure $ T.replicate <$> dotCount <*> pure "."
+
+
+-- Lenses for Config t:
+
+configResponse :: Lens' (Config t) (Event t API.ServerResponse)
+configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+
+configServerOpen :: Lens' (Config t) (Event t ())
+configServerOpen f config' = (\configServerOpen' -> config' { _configServerOpen = configServerOpen' }) <$> f (_configServerOpen config')
+
+configServerClose :: Lens' (Config t) (Event t ())
+configServerClose f config' = (\configServerClose' -> config' { _configServerClose = configServerClose' }) <$> f (_configServerClose config')
+
+configServerCloseRequested :: Lens' (Config t) (Event t ())
+configServerCloseRequested f config' = (\configServerCloseRequested' -> config' { _configServerCloseRequested = configServerCloseRequested' }) <$> f (_configServerCloseRequested config')
+
+
+-- Lenses for Auth t:
+
+request :: Lens' (Auth t) (Event t [ API.ServerRequest ])
+request f auth' = (\request' -> auth' { _request = request' }) <$> f (_request auth')
+
+authData :: Lens' (Auth t) (Dynamic t (Maybe API.AuthData))
+authData f auth' = (\authData' -> auth' { _authData = authData' }) <$> f (_authData auth')
+
+authenticated :: Lens' (Auth t) (Event t ())
+authenticated f auth' = (\authenticated' -> auth' { _authenticated = authenticated' }) <$> f (_authenticated auth')
+
+isOnline :: Lens' (Auth t) (Dynamic t Bool)
+isOnline f auth' = (\isOnline' -> auth' { _isOnline = isOnline' }) <$> f (_isOnline auth')
+
+
