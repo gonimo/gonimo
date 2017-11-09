@@ -18,18 +18,6 @@ import qualified GHCJS.DOM.Window            as Window
 import qualified Language.Javascript.JSaddle as JS
 import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
                                               webSocketConfig_send)
-#ifndef ghcjs_HOST_OS
-import           Network.Wai.Handler.Warp               (defaultSettings,
-                                                         runSettings, setPort,
-                                                         setTimeout)
-import           Network.WebSockets                     (defaultConnectionOptions)
-
-import           Language.Javascript.JSaddle.Run        (syncPoint)
-import           Language.Javascript.JSaddle.Types      (JSM)
-import           Language.Javascript.JSaddle.WebSockets
-import           Network.Wai.Middleware.Static
-#endif
-
 import qualified Gonimo.Client.App          as App
 import qualified Gonimo.Client.Auth         as Auth
 import qualified Gonimo.Client.Config       as Config
