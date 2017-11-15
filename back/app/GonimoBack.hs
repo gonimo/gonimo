@@ -1,33 +1,34 @@
 {-# LANGUAGE CPP #-}
 module Main where
 
-import           Control.Concurrent.STM            (atomically)
+import           Control.Concurrent.STM        (atomically)
 import           Control.Concurrent.STM.TVar
 import           Control.Monad.Logger
 import           Database.Persist.Sqlite
+import           Gonimo.Server.Subscriber
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Static
-import           Gonimo.Server.Subscriber
 
-import           Gonimo.SocketServer (serve)
-import           Gonimo.Server.Effects             (Config(..))
-import           Gonimo.Server.NameGenerator     (loadFamilies, loadPredicates)
-import           Database.Persist.Postgresql
-import           Control.Monad.IO.Class         (MonadIO)
-import           Gonimo.Db.Entities
-import qualified Gonimo.Server.Messenger as Messenger
 import           Control.Exception             (Exception)
-import           GHC.Generics
-import qualified Data.Text as T
-import           Data.Typeable
-import           System.Environment (lookupEnv)
-import           Gonimo.Server.Error (fromMaybeErr)
-import           Safe (readMay)
-import qualified Data.Text.Encoding as T
-import           Data.Text (Text)
-import           Network.HTTP.Types.Status
+import           Control.Monad.IO.Class        (MonadIO)
 import           Crypto.Random                 (newGenIO)
+import           Data.Monoid
+import           Data.Text                     (Text)
+import qualified Data.Text                     as T
+import qualified Data.Text.Encoding            as T
+import           Data.Typeable
+import           Database.Persist.Postgresql
+import           GHC.Generics
+import           Gonimo.Db.Entities
+import           Gonimo.Server.Effects         (Config (..))
+import           Gonimo.Server.Error           (fromMaybeErr)
+import qualified Gonimo.Server.Messenger       as Messenger
+import           Gonimo.Server.NameGenerator   (loadFamilies, loadPredicates)
+import           Gonimo.SocketServer           (serve)
+import           Network.HTTP.Types.Status
+import           Safe                          (readMay)
+import           System.Environment            (lookupEnv)
 
 data StartupError
   = NO_GONIMO_FRONTEND_URL
@@ -99,6 +100,7 @@ checkOrigin frontendURL app req sendResponse = do
     headers = requestHeaders req
     mOrigin = lookup "Origin" headers
     deny reason = sendResponse $ responseLBS (Status 403 reason) [] mempty
+  putStrLn $ "ORIGIN CHECK, got origin: " <> show mOrigin
   case mOrigin of
     Nothing -> deny "No Origin Header"
     Just origin -> if T.isPrefixOf (T.decodeUtf8 origin) frontendURL
