@@ -159,18 +159,19 @@ checkBrowser = do
     browserVersion <- getBrowserVersion
     let warnMessage = if isiOS
                       then Just $ do
-                        el "h1" $ trText We_are_sorry_Apple_does_not_like_us_yet 
+                        el "h1" $ trText IOS_support_is_in_the_works
                         el "br" blank
                         -- el "h2" $ trText Gonimo_might_not_work_as_expected
                         -- el "br" blank
-                        trText Unfortunately_Apple_iOS_devices_cannot_be_supported
+                        trText We_are_sorry_right_now_iOS_devices_might_not_work_as_expected
                         el "br" blank
-                        trText Also_Apple_restricts_all_other_browsers_on_iOS
-                        el "br" blank
-                        trText Fortunately_Apple_has_made_some_progress
+                        trText Once_we_verified_that_everything_works_as_expected_this_message_will_disappear
                         elAttr "a" ("class" =: "link" <> "href" =: "https://facebook.com/mygonimo")
                           $ text "Facebook"
-                        trText We_will_post_on_our_page_when_iOS_support_is_ready
+                        trText Or_On_Our
+                        elAttr "a" ("class" =: "link" <> "href" =: "https://blog.gonimo.com")
+                          $ text "blog"
+                        trText To_stay_up_to_date_on_the_progress
                       else if (isFirefox && browserVersion < 52.0)
                               || (isChrome && browserVersion < 55.0)
                            then  Just $ do

@@ -4,12 +4,7 @@ module Gonimo.Client.App.UI.I18N where
 import           Gonimo.I18N
 
 data Message = Loading_stay_tight
-             | We_are_sorry_Apple_does_not_like_us_yet
              | Gonimo_might_not_work_as_expected
-             | Unfortunately_Apple_iOS_devices_cannot_be_supported
-             | Also_Apple_restricts_all_other_browsers_on_iOS
-             | Fortunately_Apple_has_made_some_progress
-             | We_will_post_on_our_page_when_iOS_support_is_ready
              | Please_upgrade_your_browser
              | Gonimo_needs_some_cutting_edge_technology
              | If_you_can't_upgrade
@@ -17,6 +12,12 @@ data Message = Loading_stay_tight
              | We_either_never_tested_gonimo_with_your_browser
              | Thank_you
              | OK
+             -- iOS:
+             | IOS_support_is_in_the_works
+             | We_are_sorry_right_now_iOS_devices_might_not_work_as_expected
+             | Once_we_verified_that_everything_works_as_expected_this_message_will_disappear
+             | Or_On_Our
+             | To_stay_up_to_date_on_the_progress
              deriving (Show, Eq)
 
 instance I18N Message where
@@ -24,30 +25,10 @@ instance I18N Message where
           = "Loading, stay tight..."
   i18n DE_DE Loading_stay_tight
           = "Lade, einen Moment bitte ..."
-  i18n EN_GB We_are_sorry_Apple_does_not_like_us_yet
-          = "We are sorry, Apple will start to like us with the coming iOS 11!"
-  i18n DE_DE We_are_sorry_Apple_does_not_like_us_yet
-          = "Sorry, aber Apple mag uns erst ab iOS 11!"
   i18n EN_GB Gonimo_might_not_work_as_expected
           = "Gonimo might not work as expected"
   i18n DE_DE Gonimo_might_not_work_as_expected
           = "Gonimo könnte nicht wie erwartet funktionieren"
-  i18n EN_GB Unfortunately_Apple_iOS_devices_cannot_be_supported
-          = "Unfortunately, Apple iOS devices cannot be supported right now, because Safari does not yet implement the necessary technology."
-  i18n DE_DE Unfortunately_Apple_iOS_devices_cannot_be_supported
-          = "Bedauerlicherweise, können Apple iOS Geräte von uns noch nicht unterstützt werden, weil Safari die benötigte Technologie noch nicht unterstützt."
-  i18n EN_GB Also_Apple_restricts_all_other_browsers_on_iOS
-          = "Also Apple restricts all other browsers on iOS to the same technology as Safari, so on iOS not even Chrome will work!"
-  i18n DE_DE Also_Apple_restricts_all_other_browsers_on_iOS
-          = "Apple verlangt leider, dass auch alle anderen Browser die Technologie verwenden, die Safari benutzt, deshalb funktioniert auf iOS Geräten derzeit auch Chrome nicht."
-  i18n EN_GB Fortunately_Apple_has_made_some_progress
-          = "Fortunately Apple has made some progress lately and Gonimo will be supported on iOS 11! You can follow us on "
-  i18n DE_DE Fortunately_Apple_has_made_some_progress
-          = "Glücklicherweise macht Apple Fortschritte und wird Gonimo ab iOS11 unterstützen! Du kannst uns auf "
-  i18n EN_GB We_will_post_on_our_page_when_iOS_support_is_ready
-          = ": We will post on our page, when iOS support is ready!"
-  i18n DE_DE We_will_post_on_our_page_when_iOS_support_is_ready
-          = " folgen: Wir werden auf unserer Seite posten, sobald es dazu Neuigkeiten gibt!"
   i18n EN_GB Please_upgrade_your_browser
           = "Please, upgrade your browser!"
   i18n DE_DE Please_upgrade_your_browser
@@ -76,3 +57,23 @@ instance I18N Message where
           = "OK"
   i18n DE_DE OK
           = "OK"
+  i18n EN_GB IOS_support_is_in_the_works
+          = "iOS support is in the works!"
+  i18n DE_DE IOS_support_is_in_the_works
+          = "iOS Unterstützung ist in Arbeit!"
+  i18n EN_GB We_are_sorry_right_now_iOS_devices_might_not_work_as_expected
+          = "We are sorry, right now iOS devices might not work as expected. Unfortunately, there are still be some issues Apple and we are working on."
+  i18n DE_DE We_are_sorry_right_now_iOS_devices_might_not_work_as_expected
+          = "Wir entschuldigen uns, aber im Moment funktioniert Gonimo auf iOS noch nicht wie erwartet. Es gibt leider noch Probleme an denen Apple und wir arbeiten."
+  i18n EN_GB Once_we_verified_that_everything_works_as_expected_this_message_will_disappear
+          = "Once we verified, that everything works as expected, this message will disappear. You can follow us on "
+  i18n DE_DE Once_we_verified_that_everything_works_as_expected_this_message_will_disappear
+          = "Sobald wir verifiziert haben, dass alles funktioniert, wird diese Nachricht verschwinden. Du kannst uns auf "
+  i18n EN_GB Or_On_Our
+          = " or on our "
+  i18n DE_DE Or_On_Our
+          = " folgen oder auch unserem "
+  i18n EN_GB To_stay_up_to_date_on_the_progress
+          = " to stay up to date on the progress."
+  i18n DE_DE To_stay_up_to_date_on_the_progress
+          = " um über den Fortschritt am Laufenden zu bleiben."
