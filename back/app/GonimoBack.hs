@@ -13,7 +13,6 @@ import           Network.Wai.Middleware.Static
 import           Control.Exception             (Exception)
 import           Control.Monad.IO.Class        (MonadIO)
 import           Crypto.Random                 (newGenIO)
-import           Data.Monoid
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import qualified Data.Text.Encoding            as T
@@ -100,9 +99,8 @@ checkOrigin frontendURL app req sendResponse = do
     headers = requestHeaders req
     mOrigin = lookup "Origin" headers
     deny reason = sendResponse $ responseLBS (Status 403 reason) [] mempty
-  putStrLn $ "ORIGIN CHECK, got origin: " <> show mOrigin
   case mOrigin of
     Nothing -> deny "No Origin Header"
-    Just origin -> if T.isPrefixOf (T.decodeUtf8 origin) frontendURL
+    Just origin -> if T.isPrefixOf (T.decodeUtf8 origin) frontendURL || origin == "file://" -- Support native app!
                       then app req sendResponse
                       else deny "Wrong origin - you nasty boy!"
