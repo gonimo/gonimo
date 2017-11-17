@@ -118,14 +118,18 @@ answerInvitationR invSecret reply = do
 sendInvitationR :: (AuthReader m, MonadServer m) => API.SendInvitation -> m ()
 sendInvitationR (API.SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
-  (inv, family) <- runDb $ do
+  (secret, famName, devName) <- runDb $ do
     inv <- Invitation.get iid
     authorize (isFamilyMember (invitationFamilyId inv)) authData
     newInv <- Invitation.updateDelivery d iid
     family <- Family.get (invitationFamilyId inv)
-    return (newInv, family)
+    sendingDevice <- Device.get (invitationSenderId inv)
+    let devName = fromMaybe "device with no name" $ deviceName sendingDevice
+    let famName = API.familyName family
+    let secret = API.invitationSecret newInv
+    return (secret, famName, devName)
   baseURL <- getFrontendURL
-  sendEmail $ makeInvitationEmail baseURL inv email (API.familyName family)
+  sendEmail $ makeInvitationEmail baseURL secret email (Server.familyName famName) devName
 
 sendInvitationR (API.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 

@@ -8,59 +8,95 @@ import           Data.Text                as T
 import           Data.Text.Encoding       as T
 #ifndef DEVELOPMENT
 import           NeatInterpolation
-#else
-import           Data.Monoid
 #endif
-import           Network.Mail.Mime        (Address (..), Mail, simpleMail')
+import           Data.Monoid
+import           Network.Mail.Mime        (Address (..), Mail, simpleMailInMemory)
 import qualified Data.Text.Lazy           as TL
 import qualified Data.ByteString.Lazy as BL
 import           Network.HTTP.Types (urlEncode)
 
-import           Gonimo.SocketAPI.Types (Invitation(..))
 import           Gonimo.Types
 import qualified Data.Aeson as Aeson
 
 
 #ifdef DEVELOPMENT
-invitationText :: Text -> Invitation -> FamilyName -> Text
-invitationText baseURL _inv (FamilyName _ _n) = "New invitation for family "
-    <> _n
-    <> ":\n"
-    <> baseURL <> "?acceptInvitation="
-    <> secret
-    <> "\n"
+invitationMail :: Text -> Text -> Text -> (Text, Text)
+invitationMail invURL famName _ = (textStuff, "")
   where
-    secret = T.decodeUtf8 . urlEncode True . encodeStrict $ invitationSecret _inv
-    encodeStrict = BL.toStrict . Aeson.encode
+    textStuff =
+      "New invitation for family "
+      <> famName
+      <> ":\n"
+      <> invURL
+      <> "\n"
+
 #else
-invitationText :: Text -> Invitation -> FamilyName -> Text
-invitationText baseURL _inv (FamilyName _ _n) =
-  [text|
-    Dear User of gonimo.com!
+invitationMail :: Text -> Text -> Text -> (Text, Text)
+invitationMail invURL famName invDevice =
+  ( [text|
+      Welcome to GONIMO!
 
-    You got invited to join gonimo family "$_n"!
-    Just click on the link below and you are all set for the best baby monitoring on the planet!
+      You got invited by "$invDevice" to join "$famName"!
 
-    $baseURL?acceptInvitation=$secret
+      Click the following link for accepting the invitation:
 
-    Please note that this link is only valid once, for security reasons. If you
-    want to invite more than one device you need to send additional invitations.
+      $invURL
 
-    Sincerely yours,
+      Gonimo is a free, secure and reliable baby monitor, only using your
+      browser (Chrome works best) to stream video and/or audio. Working
+      out of the box without registration or login. Just take your laptop or
+      Android phone or tablet and use it to take care of your children.
 
-    Gonimo
-  |]
-  where
-    secret = T.decodeUtf8 . urlEncode True . encodeStrict $ invitationSecret _inv
-    encodeStrict = BL.toStrict . Aeson.encode
+      Soon available on Google Play!
+
+    |]
+  , [text|
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width" />
+          <title>Invitation to Family "$famName"</title>
+        </head>
+        <body style="background:#F0F0F0;">
+          <div style="background:#FFF; width:90%;padding:1em 0 15em 0;margin:auto;">
+            <div style="text-align:center;">
+              <h1>Welcome to GONIMO</h1>
+                <img src="https://gonimo.com/img/ico/usp/gonimo-02-342ed36bf433629ee761649b5ec51da2.svg" alt="Gonimo invitation" height="200px" />
+              <h2>You got invited by "$invDevice" to join "$famName"!</h2>
+              Click the button for accepting the invitation:
+            </div>
+            <div style="text-align:center;margin: 40pt;">
+              <a role="button" style="font-size: 200%;padding: 1em 5em;border:3pt solid #dec0ca;background:white;color:#dec0ca;" href="$invURL">
+                Load Invitation
+              </a>
+            </div>
+            <p style="padding:0 2em 0 2em;">
+              Gonimo is a free, secure and reliable baby monitor, only using your
+              browser (Chrome works best) to stream video and/or audio. Working
+              out of the box without registration or login. Just take your laptop or
+              Android phone or tablet and use it to take care of your children.
+            </p>
+            <p style="padding:2em;">
+              Soon available on Google Play!
+            </p>
+          </div>
+        </body>
+      </html>
+    |]
+  )
+
 #endif
 
-makeInvitationEmail :: Text -> Invitation -> EmailAddress -> FamilyName -> Mail
-makeInvitationEmail baseURL inv addr name = simpleMail' receiver sender "You got invited to a family on gonimo.com" (TL.fromStrict textContent)
+makeInvitationEmail :: Text -> Secret -> EmailAddress -> Text -> Text -> Mail
+makeInvitationEmail baseURL secret' addr famName invitingDevice = simpleMailInMemory receiver sender "Gonimo Family Invitation" (TL.fromStrict asText) (TL.fromStrict asHTML) []
   where
-    textContent = invitationText baseURL inv name
+    invURL =  baseURL <> "?acceptInvitation=" <> secret
+    (asText, asHTML) = invitationMail invURL famName invitingDevice
     receiver = Address Nothing addr
     sender = Address Nothing "hello@gonimo.com"
+    secret = T.decodeUtf8 . urlEncode True . encodeStrict $ secret'
+    encodeStrict = BL.toStrict . Aeson.encode
     -- sender = if T.isSuffixOf "gonimo.com" addr
     --   then Address Nothing "hello@baby.gonimo.com" -- So we can send emails to ourself. (noreply@gonimo.com gets blocked by easyname)
     --   else Address Nothing "hello@gonimo.com"
