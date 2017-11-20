@@ -54,32 +54,27 @@ invitationMail invURL famName invDevice =
       <!DOCTYPE html>
       <html>
         <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width" />
+          <meta http-equiv="content-type" content="text/html; charset=utf-8">
+          <meta name="viewport" content="width=device-width">
           <title>Invitation to Family "$famName"</title>
         </head>
-        <body style="background:#F0F0F0;">
-          <div style="background:#FFF; width:90%;padding:1em 0 15em 0;margin:auto;">
+        <body text="#000000" bgcolor="#eee" style="text-align:center;">
+          <meta charset="utf-8">
+          <div style="background:#fff; width:90%;padding:2% 0%;margin:auto;">
             <div style="text-align:center;">
               <h1>Welcome to GONIMO</h1>
-                <img src="https://gonimo.com/img/ico/usp/gonimo-02-342ed36bf433629ee761649b5ec51da2.svg" alt="Gonimo invitation" height="200px" />
+              <img src="https://gonimo.com/img/ico/usp/gonimo-02-342ed36bf433629ee761649b5ec51da2.svg" alt="Gonimo invitation" height="200px">
               <h2>You got invited by "$invDevice" to join "$famName"!</h2>
-              Click the button for accepting the invitation:
+              <p style="padding:2%;">Click the button to accept the invitation:</p>
             </div>
-            <div style="text-align:center;margin: 40pt;">
-              <a role="button" style="font-size: 200%;padding: 1em 5em;border:3pt solid #dec0ca;background:white;color:#dec0ca;" href="$invURL">
-                Load Invitation
-              </a>
-            </div>
-            <p style="padding:0 2em 0 2em;">
-              Gonimo is a free, secure and reliable baby monitor, only using your
-              browser (Chrome works best) to stream video and/or audio. Working
-              out of the box without registration or login. Just take your laptop or
-              Android phone or tablet and use it to take care of your children.
-            </p>
-            <p style="padding:2em;">
-              Soon available on Google Play!
-            </p>
+            <div style="text-align:center;margin: 10pt auto;"> <a role="button" style="font-size: 200%;padding: 2% 10%;border:3pt solid #dec0ca;background:#dec0ca;color:white;text-decoration:none;display:inline-block;" href="$invURL">Load Invitation </a> </div>
+            <p style="padding:2% 0%;text-align:center;"> Gonimo is a free,
+            secure and reliable baby monitor, only using your browser (Chrome
+            works best) to stream video and/or audio. Working out of the box
+            without registration or login. Just take your laptop or Android
+            phone or tablet and use it to take care of your children. </p>
+            <p style="padding:2%;text-align:center;"> Soon available on Google
+            Play! </p>
           </div>
         </body>
       </html>
