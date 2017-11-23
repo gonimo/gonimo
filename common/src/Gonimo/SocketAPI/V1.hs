@@ -64,7 +64,7 @@ data FromClient
 
   -- | Create a new invitation on the server.
   --
-  --   This message will trigger the `APIEvent` `MadeInvitation` which contains
+  --   This message will trigger the `Update` 'OnNewFamilyInvitation' which contains
   --   the secret you need to transmit to the device being invited.
   | MakeInvitation !FamilyId
 
@@ -80,23 +80,24 @@ data FromClient
   --
   --   You can either accept or decline the invitation. If you accept, then your
   --   device will become a member of the inviting family. If you decline, the
-  --   invitation will simply be deleted from the server and nothing happens.
-  | AnswerInvitation !Secret !InvitationReply
+  --   invitation will simply be deleted from the server.
+  | AnswerInvitation !InvitationId !InvitationReply
 
   -- | Send a message to another device in your currently selected family.
   --
   --   The server will simply forward the message to the other device. The only
   --   requirement is that both the sending and the receiving device are online
-  --   in the same family. This means their accounts have belong to the same
-  --   family and both devices issued a `SwitchFamily` `APIEvent` with the same `FamilyId`.
+  --   in the same family.
   | SendMessage !ToId !ClientMessage
 
-  -- | Send an event to the server.
+  -- | Send an update to the server.
   --
-  --   Those events will most likely change the server state in some way and
+  --   Those updates will change the server state in some way and
   --   will be forwarded to other devices that might be concerned to update
   --   their local state accordingly.
-  | ClientEvent !APIEvent
+  | UpdateServer !Update
+
+  | Get !ViewSelector
 
 
 -- | Messages to the client from the server.
@@ -114,22 +115,22 @@ data ToClient
   --   authenticated - the current session is invalid.
   | StoleSession
 
-  -- | Response with auth data for a newly created client, in response to `MakeDevice`.
-  | MadeDevice !Client.AuthData
+  -- | Response with  'AuthToken' for a newly created client, in response to `MakeDevice`.
+  | MadeDevice !AuthToken
 
 
   -- | Receive a message sent by another device.
   | ReceiveMessage !FromId !ClientMessage
 
-  -- | Server events for keeping the client's local state in sync.
-  | ServerEvent !APIEvent
+  -- | Server updates for keeping the client's local state in sync.
+  | UpdateClient !Update
 
   -- | Responses to `GetView` commands.
   --
   --   The server will respond with the current status of the specified views.
   --   The client should then keep its local copy in sync by handling
   --   `SeverEvent` messages.
-  | View !View
+  | Got !View
 
   -- | Some message could not be processed.
   --
@@ -139,102 +140,185 @@ data ToClient
   | ServerError !FromClient !ServerError
 
 
--- | Idempotent events for updating state.
+-- | Idempotent update actions for updating state on both the client and the server.
 --
---   Clients can send `APIEvent`s to the server via `ClientEvent`, those events
---   will trigger updates in the server state and will be forwarded to concerned
---   clients via `ServerEvent`.
+--   Clients can send 'Update' messages by means of 'UpdateServer' to the server
+--   for updating the server state, if the server accepts the update it will
+--   perform it (updating the server state) and will forward the 'Update'
+--   wrapped in an 'UpdateClient' message to all clients that hold a copy of the
+--   affected data, including the client that sent the 'Update' message with
+--   'UpdateServer'. The client knows that the server accepted the update if it
+--   receives the same 'Update' message from the server in an 'UpdateClient'
+--   message. In case the server does not accept an update, it will respond with
+--   an appropriate 'ServerError'.
 --
---   Clients are expected to retrieve data from the server via `GetView` once
---   they authenticated, afterwards there are expected to keeping their local state
---   in sync by handling `APIEvent` messages from the server appropriately.
+--   Clients can only update server state they previously got with 'Get' from the server.
+--   Trying to update data not downloaded first via 'Get', might trigger
+--   an 'DataNotCachedError' from the server.
+
+--   The server state can also be modified by clients by issuing appropriate
+--   'FromClient' commands, for example by accepting an invitation with
+--   'AnswerInvitation' or creating a new family with 'MakeFamily'. Those
+--   commands will also trigger approriate 'UpdateClient' messages like:
+--   'OnNewFamilyMember', 'OnRemovedFamilyInvitation' (it just got accepted) or
+--   for 'MakeFamily': 'OnNewAccountFamily'.
 --
---   The server will send `ServerEvent` messages immediately. You will get
---   messages that affect your account data and messages concerning your
---   currently selected family.
-data APIEvent
-  -- | A client changed it's `DeviceStatus`.
-  --
-  --   `Offline`: The device is considered offline chosen family.
-  --
-  --   `BabyStation`: The device is online and a baby station, accepting
-  --   connections from other stations.
-  --
-  --   `ParentStation`: The device is online and might connect to baby stations.
-  --
-  --   A client can send `SetStatus` for selecting one of those modes and for
-  --   selecting the family it will have this status in. In all other families
-  --   it will have status `Offline`. This means, the server will forward the
-  --   `SetStatus` message to clients in the selected family and will send a
-  --   newly created `SetStatus` message to the family the device previously had
-  --   a non `Offline` status (if any) with `DeviceStatus` being `Offline`.
-  = SetStatus         !DeviceId !FamilyId !DeviceStatus
+--   All 'Update' messages might get sent by the server at some point, only some
+--   might be sent clients.
+data Update
+  =
+    -- * Family updates
 
-  -- | A device successfully created a new family.
-  | MadeFamily        !AccountId !(FamilyId, Account.FamilyView)
+    -- | Change the family name.
+    --
+    --   Accepted from clients, that are members of the family and have any non 'Offline' 'DeviceStatus' in the family. See 'OnChangedDeviceStatus'.
+    OnChangedFamilyName         !FamilyId !Text
 
-  -- | A device name got changed.
-  | SetDeviceName     !DeviceId !Text
+    -- | When was the last time a device was online in this family.
+    --
+    --   Not accepted from clients, gets updated automatically by the server.
+  | OnChangedFamilyLastAccessed !FamilyId !UTCTime
 
-  -- | Change the name of the family.
-  --
-  --   Currently you are only allowed to change the name of the family you have
-  --   a `DeviceStatus` other than `Offline`.
-  | SetFamilyName     !FamilyId !Text
+    -- | A new member joined the family (has accepted an invitation).
+    --
+    --   Not accepted from clients, gets sent by server on invitation acceptance
+    --   to all clients that have a non 'Offline ''DeviceStatus' in the
+    --   concerned family.
+  | OnNewFamilyMember           !FamilyId !AccountId
 
-  -- | An invitation was created.
-  --
-  --   Clients can update their family invitation view and forward the secret of
-  --   the invitation to devices they want invited.
-  | MadeInvitation    !FamilyId !(InvitationId, Family.InvitationView)
+    -- | A family member left the family.
+    --
+    --   Accepted from all not offline family members.
+  | OnRemovedFamilyMember       !FamilyId !AccountId
 
-  -- | An invitation was sent via some means.
-  --
-  --   Clients can update their view on the invitation.
-  | SendInvitation    !InvitationId !Client.SendInvitation
+    -- | A new invitation for the family was created.
+    --
+    --   Not accepted from clients, but sent by the server if a client issued
+    --   the 'MakeInvitation' command.
+  | OnNewFamilyInvitation       !FamilyId !InvitationId
 
-  -- | Get rid of an invitation:
-  --
-  --   This event can be triggered by clients in the family causing the server
-  --  to delete the invitation. The server will forward the event to all other
-  --  clients in the family, so they can update their state accordingly.
-  --
-  --  This event gets also sent by the server if an invited client declined or
-  --  accepted the invitation.
-  | DeleteInvitation  !InvitationId
+    -- | A family invitation got removed/accepted/declined.
+    --
+    --   An invitation got either removed by a client (by sending
+    --   'OnRemovedFamilyInvitation') or accepted/declined.
+    --
+    --   Accepted from online family members.
+  | OnRemovedFamilyInviation !FamilyId !InvitationId
 
-  -- | A device claimed an invitation.
-  --
-  --   If a device claimed an invitation via 'ClaimInvitation' the server will
-  --   respond with 'ClaimedInvitation' with a 'Just' 'Account.InvitationView'
-  --   containing more details about the invitation.
-  --
-  --   Family members of the inviting family will receive this event too, but
-  --   with 'Nothing'.
-  | ClaimedInvitation !InvitationId !(Maybe Account.InvitationView)
+    -- * Account updates
+  | OnNewAccountDevice          !AccountId !DeviceId
+  | OnRemovedAccountDevice      !AccountId !Deviceid
+    -- | A new invitation got claimed by the account.
+    --
+    --   Not accepted from clients. Clients will receive this message when the
+    --   issue a 'ClaimInvitation' command.
+  | OnNewAccountInvitation      !AccountId !InvitationId
 
-  -- | A client accepted the invitation.
-  --
-  --   The message contains all relevant data about the new family member. The
-  --   device will be initially offline.
-  | AcceptInvitation  !(AccountId, Family.AccountView) !InvitationId
+    -- | The account became member of another family.
+    --
+    --   Not accepted from clients, clients have to create new families with
+    --   'MakeFamily' or accept invitations for becoming members of new
+    --   families.
+  | OnNewAccountFamily          !AccountId !FamilyId
 
-  -- | A device is no longer part of this family.
-  --
-  --   A device sending this message will get removed from the family (it will
-  --   no longer be able to use it with `SetStatus`). The `LeaveFamily`
-  --   message will be forwarded to the remaining members of the family.
-  | LeaveFamily       !FamilyId !AccountId
+    -- * Device updates
 
+    -- | Change the name of a device.
+    --
+    --   Accepted from clients that are currently online in the same family as
+    --   the targeted device.
+  | OnChangedDeviceName         !DeviceId !Text
+
+    -- | When was the device online the last time.
+    --
+    --   Automatically sent on changes by the server, not accepted by clients.
+  | OnChangedDeviceLastAccessed !DeviceId !UTCTime
+
+    -- | Clients have an online status ('DeviceStatus') for a given family.
+    --
+    --   Accepted from the client itself for updating the server. If the device
+    --   was online in another family before, the members fo this family will
+    --   receive an 'OnChangedDeviceStatus' with 'Offline' status, the now
+    --   selected family will receive an 'OnChangedDeviceStatus' message of
+    --   'Online'.
+  | OnChangedDeviceStatus       !DeviceId !FamilyId !DeviceStatus
+
+    -- * Invitation updates
+
+    -- | The invitation got claimed by some device.
+    --
+    --   Not accepted from clients, will get sent by the server to the inviting
+    --   family members on 'ClaimInvitation' command.
+  | OnClaimedInvitation         !InvitationId
+
+    -- | The invitation got delivered by some means.
+    --
+    --   Accepted from clients, once other deliveries then email are supported.
+    --   The message will be triggered by the server if a client issues a
+    --   'SendInvitation' command.
+  | OnChangedInvitationDelivery !InvitationId !InvitationDelivery
+  deriving (Generic, Show)
+
+
+
+-- | To be used with the 'Get' command for retrieving data from the server.
+--
+--   Data is organized in views, currently there are two views on data the
+--   account view and the family view: The account view has views as seen by a
+--   single account: E.g. what devices belong to the account, the families it is
+--   a member of.
+--
+--  The family view is the view a family member has on data. E.g. other members,
+--  open invitations, ...
+--
+--  There are top-level selectors for both account views and family views,
+--  'SelectAccountOwn' and 'SelectFamily', they retrieve all the data that is
+--  relevant to the account/family. The other selectors can be used to fetch new
+--  incremental data from the server, in case you received an 'Update' message
+--  from the server. For example you can fetch a newly claimed invitation from
+--  the server you just got informed about by a 'OnNewAccountInvitation' by
+--  using 'Get' with 'SelectAccountInvitation'.
+--
+--  ** Receiving 'Update' messages
+--  You will be receiving 'Update' messages regarding your account immediately
+--  after being authenticated. You can ignore them though if you are not yet
+--  interested. Once you retrieved your account data via 'SelectAccountOwn' you
+--  can keep your data in sync with the server by incrementaly applying the sent
+--  'Update' messages, retrieving additional data via 'Get' as indicated by the
+--  'Update' messages.
+--
+--  For a family you will be receiving 'Update' messages for the family you are
+--  currently online in. See 'OnChangeDeviceStatus'. Also the server will only
+--  accept 'Get' messages for the family you are currently online.
+--
+--  ** Sending 'Update' messages:
+--  You can only reliably send 'Update' messages for data you previously
+--  selected by means of 'Get'. Once you hold a copy of some data you can expect
+--  the server to accept updates, assuming you have the needed permissions of
+--  course.
 
 data ViewSelector
-  = SelectClaimedInvitations !AccountId
-  | SelectAccountFamilies !AccountId
-  | SelectAccountDevices !AccountId
+  = SelectAccountOwn
+  | SelectAccountDevice !DeviceId
+  | SelectAccountFamily !FamilyId
+  | SelectAccountInvitation !InvitationId
+
+  | SelectFamily !FamilyId
+  | SelectFamilyAccount !AccountId
+  | SelectFamilyDevice !DeviceId
+  | SelectFamilyInvitation !InvitationId
   deriving (Eq, Ord)
 
 
+-- | The data you selected with 'Get' and 'ViewSelector' will be transmitted to
+--   you in a 'Got' message with the appropriate 'View' data.
 data View
-  = ViewClaimedInvitations !(Map Secret InvitationInfo)
-  | ViewAccountFamilies !(Map FamilyId, Account.FamilyView)
-  | ViewAccountDevices !(Map DeviceId, Account.DeviceView)
+  = ViewAccount !AccountId !Account.View
+  | ViewAccountDevice !DeviceId !Account.DeviceView
+  | ViewAccountFamily !FamilyId !Account.FamilyView
+  | ViewAccountInvitation !InvitationId !Account.InvitationView
+
+  | ViewFamily !FamilyId !Family.View
+  | ViewFamilyAccount !AccoundId !Family.AccountView
+  | ViewFamilyDevice !AccountId !(DeviceId, Family.DeviceView)
+  | ViewFamilyInvitation !InvitationId !Family.InvitationView
