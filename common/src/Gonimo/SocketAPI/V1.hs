@@ -13,17 +13,33 @@ import           Data.Aeson.Types       (FromJSON, ToJSON (..), defaultOptions,
                                          genericToEncoding)
 import           Data.Text              (Text)
 import           GHC.Generics           (Generic)
+
 import           Gonimo.Server.Error    (ServerError)
-import           Gonimo.SocketAPI.Types (FromId, InvitationInfo,
-                                         InvitationReply, Message, ToId, AccountId, DeviceId, Family, FamilyId, Invitation, InvitationId)
-import qualified Gonimo.SocketAPI.Types as Client
-import Gonimo.Types (AuthToken, Secret, DeviceType)
+import           Gonimo.SocketAPI.Model
+import qualified Gonimo.SocketAPI.View.Family as Family
+
+
+type FromId = DeviceId
+type ToId = DeviceId
 
 -- | Messages from the client to the server.
+--
+--   Top level messages can be thought of being commands to the server to do
+--   something, something more than just updating state. For example
+--   'MakeDevice' makes the server create a secret, retrieve the current time
+--   and so on and then create a new device with those properties.
+--
+--   In contrast 'APIEvent's in the 'ClientEvent' constructor are simple state
+--   upating events containing all the needed information to perform the state
+--   update. Therefore the server can also simply forward those messages to
+--   other devices interested in the concerned state.
 data FromClient
   -- | Client will send periodic ping messages to the server, for keeping the session alive.
   --
-  --   We can't rely on WebSocket ping control messages, because the client can't see/handle them!
+  --   We can't rely on WebSocket ping control messages, because the client
+  --   can't see/handle them! This is just a simple control message, no real
+  --   state is updated. Although the device online status depends on regular
+  --   pings.
   = Ping
 
   -- | Create a new device on the server.
@@ -35,7 +51,10 @@ data FromClient
 
   -- | Authenticate to the server.
   --
-  --   All other messages except for `Ping` and `MakeDevice `won't get accepted without authenticating first. If you don't yet have the needed data, issue a `MakeDevice` command first for creating a machine account on the server.
+  --   All other messages except for `Ping` and `MakeDevice `won't get accepted
+  --   without authenticating first. If you don't yet have the needed data,
+  --   issue a `MakeDevice` command first for creating a machine account on the
+  --   server.
   | Authenticate !AuthToken
 
   -- | Create a new family with your account being the only member.
@@ -70,21 +89,14 @@ data FromClient
   --   requirement is that both the sending and the receiving device are online
   --   in the same family. This means their accounts have belong to the same
   --   family and both devices issued a `SwitchFamily` `APIEvent` with the same `FamilyId`.
-  | SendMessage !ToId !Message
+  | SendMessage !ToId !ClientMessage
 
   -- | Send an event to the server.
   --
   --   Those events will most likely change the server state in some way and
   --   will be forwarded to other devices that might be concerned to update
   --   their local state accordingly.
-  | ClientEvent !APIEvent -- ^ Event coming from the client, used for updating server state and will trigger ServerEvent for clients.
-
-  -- | Get data from the server.
-  --
-  --   You can retrieve data from the server in nicely packaged views. You are
-  --   expected to retrieve the data once and then keep it up2date by handling
-  --   `ServerEvent` messages appropriately.
-  | GetView !ViewSelector
+  | ClientEvent !APIEvent
 
 
 -- | Messages to the client from the server.
@@ -107,7 +119,7 @@ data ToClient
 
 
   -- | Receive a message sent by another device.
-  | ReceiveMessage !FromId !Message
+  | ReceiveMessage !FromId !ClientMessage
 
   -- | Server events for keeping the client's local state in sync.
   | ServerEvent !APIEvent
@@ -174,33 +186,44 @@ data APIEvent
   --
   --   Clients can update their family invitation view and forward the secret of
   --   the invitation to devices they want invited.
-  | MadeInvitation    !FamilyId !(InvitationId, Invitation)
+  | MadeInvitation    !FamilyId !(InvitationId, Family.InvitationView)
 
   -- | An invitation was sent via some means.
   --
   --   Clients can update their view on the invitation.
   | SendInvitation    !InvitationId !Client.SendInvitation
 
+  -- | Get rid of an invitation:
+  --
+  --   This event can be triggered by clients in the family causing the server
+  --  to delete the invitation. The server will forward the event to all other
+  --  clients in the family, so they can update their state accordingly.
+  --
+  --  This event gets also sent by the server if an invited client declined or
+  --  accepted the invitation.
   | DeleteInvitation  !InvitationId
 
   -- | A device claimed an invitation.
   --
-  --   Devices in the inviting family can update their invitation state
-  --   accordingly. The claiming device receives this event to in order to
-  --   gather more information about the claimed invitation.
-  | ClaimedInvitation !(InvitationId, Family.InvitationView)
+  --   If a device claimed an invitation via 'ClaimInvitation' the server will
+  --   respond with 'ClaimedInvitation' with a 'Just' 'Account.InvitationView'
+  --   containing more details about the invitation.
+  --
+  --   Family members of the inviting family will receive this event too, but
+  --   with 'Nothing'.
+  | ClaimedInvitation !InvitationId !(Maybe Account.InvitationView)
 
   -- | A client accepted the invitation.
   --
   --   The message contains all relevant data about the new family member. The
   --   device will be initially offline.
-  | AcceptInvitation  !(InvitationId, Family.AccountView)
+  | AcceptInvitation  !(AccountId, Family.AccountView) !InvitationId
 
   -- | A device is no longer part of this family.
   --
   --   A device sending this message will get removed from the family (it will
-  --   no longer be able to use it with SetStatus) and it will be forwarded to
-  --   the remaining members of the family.
+  --   no longer be able to use it with `SetStatus`). The `LeaveFamily`
+  --   message will be forwarded to the remaining members of the family.
   | LeaveFamily       !FamilyId !AccountId
 
 
@@ -215,8 +238,3 @@ data View
   = ViewClaimedInvitations !(Map Secret InvitationInfo)
   | ViewAccountFamilies !(Map FamilyId, Account.FamilyView)
   | ViewAccountDevices !(Map DeviceId, Account.DeviceView)
-
-
-
-data DeviceStatus = BabyStation | ParentStation | Offline
-
