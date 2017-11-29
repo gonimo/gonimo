@@ -8,19 +8,24 @@ API used for client - server communication, version 1.
 
 module Gonimo.SocketAPI.V1 where
 
-import           Control.Lens
-import           Data.Aeson.Types       (FromJSON, ToJSON (..), defaultOptions,
-                                         genericToEncoding)
-import           Data.Text              (Text)
-import           GHC.Generics           (Generic)
 
-import           Gonimo.Server.Error    (ServerError)
+import           Data.Aeson.Types             (FromJSON, ToJSON (..),
+                                               defaultOptions,
+                                               genericToEncoding)
+import           Data.Text                    (Text)
+import           Data.Time.Clock              (UTCTime)
+import           GHC.Generics                 (Generic)
+
+import           Gonimo.Server.Error          (ServerError)
 import           Gonimo.SocketAPI.Model
 import qualified Gonimo.SocketAPI.View.Family as Family
+import qualified Gonimo.SocketAPI.View.Account as Account
 
 
 type FromId = DeviceId
 type ToId = DeviceId
+
+type ClientMessage = Text
 
 -- | Messages from the client to the server.
 --
@@ -52,14 +57,15 @@ data FromClient
   -- | Authenticate to the server.
   --
   --   All other messages except for `Ping` and `MakeDevice `won't get accepted
-  --   without authenticating first. If you don't yet have the needed data,
+  --   without authenticating first. If you don't yet have the needed 'AuthToken',
   --   issue a `MakeDevice` command first for creating a machine account on the
   --   server.
   | Authenticate !AuthToken
 
   -- | Create a new family with your account being the only member.
   --
-  --   Afterwards you can add further accounts to your family by inviting them via `MakeInvitation` and `SendInvitation`.
+  --   Afterwards you can add further accounts to your family by inviting them
+  --   via `MakeInvitation` and `SendInvitation`.
   | MakeFamily
 
   -- | Create a new invitation on the server.
@@ -102,41 +108,41 @@ data FromClient
 
 -- | Messages to the client from the server.
 data ToClient
-  -- | The server will respond with `Pong` on every `Ping`.
-  --
-  --   Those messages are used by both the client and the server to check
-  --   whether the connection is still alive. The client will usually reconnect
-  --   once it does not get a timely `Pong`. The server will to get rid of
-  --   connections it did not receive a `Ping` for in a reasonable time frame.
-  = Pong -- ^ Response to `Ping`
+    -- | The server will respond with `Pong` on every `Ping`.
+    --
+    --   Those messages are used by both the client and the server to check
+    --   whether the connection is still alive. The client will usually reconnect
+    --   once it does not get a timely `Pong`. The server will to get rid of
+    --   connections it did not receive a `Ping` for in a reasonable time frame.
+  = Pong
 
-  -- | If another client with the same device id comes online it will steal the session:
-  --   After the server sent `StoleSession`, the client is no longer
-  --   authenticated - the current session is invalid.
+    -- | If another client with the same 'DeviceId' comes online it will steal the session:
+    --   After the server sent 'StoleSession', the client is no longer
+    --   authenticated - the current session is invalid.
   | StoleSession
 
-  -- | Response with  'AuthToken' for a newly created client, in response to `MakeDevice`.
+    -- | Response with  'AuthToken' for a newly created client, in response to 'MakeDevice'.
   | MadeDevice !AuthToken
 
 
-  -- | Receive a message sent by another device.
+    -- | Receive a message sent by another device.
   | ReceiveMessage !FromId !ClientMessage
 
-  -- | Server updates for keeping the client's local state in sync.
+    -- | Server updates for keeping the client's local state in sync.
   | UpdateClient !Update
 
-  -- | Responses to `GetView` commands.
-  --
-  --   The server will respond with the current status of the specified views.
-  --   The client should then keep its local copy in sync by handling
-  --   `SeverEvent` messages.
+    -- | Responses to `GetView` commands.
+    --
+    --   The server will respond with the current status of the specified views.
+    --   The client should then keep its local copy in sync by handling
+    --   `SeverEvent` messages.
   | Got !View
 
-  -- | Some message could not be processed.
-  --
-  -- The server will include the offending `FromClient` message, so the client
-  -- can map it back to issued requests. In addition `ServerError` are designed
-  -- to be as self contained as possible.
+    -- | Some message could not be processed.
+    --
+    -- The server will include the offending `FromClient` message, so the client
+    -- can map it back to issued requests. In addition `ServerError` are designed
+    -- to be as self contained as possible.
   | ServerError !FromClient !ServerError
 
 
@@ -154,7 +160,7 @@ data ToClient
 --
 --   Clients can only update server state they previously got with 'Get' from the server.
 --   Trying to update data not downloaded first via 'Get', might trigger
---   an 'DataNotCachedError' from the server.
+--   an 'DataNotCached' error from the server.
 
 --   The server state can also be modified by clients by issuing appropriate
 --   'FromClient' commands, for example by accepting an invitation with
@@ -207,7 +213,7 @@ data Update
 
     -- * Account updates
   | OnNewAccountDevice          !AccountId !DeviceId
-  | OnRemovedAccountDevice      !AccountId !Deviceid
+  | OnRemovedAccountDevice      !AccountId !DeviceId
     -- | A new invitation got claimed by the account.
     --
     --   Not accepted from clients. Clients will receive this message when the
@@ -319,6 +325,13 @@ data View
   | ViewAccountInvitation !InvitationId !Account.InvitationView
 
   | ViewFamily !FamilyId !Family.View
-  | ViewFamilyAccount !AccoundId !Family.AccountView
+  | ViewFamilyAccount !AccountId !Family.AccountView
   | ViewFamilyDevice !AccountId !(DeviceId, Family.DeviceView)
   | ViewFamilyInvitation !InvitationId !Family.InvitationView
+
+
+data InvitationReply = InvitationAccept | InvitationReject deriving (Generic, Show, Eq, Ord)
+
+instance FromJSON InvitationReply
+instance ToJSON InvitationReply where
+  toEncoding = genericToEncoding defaultOptions

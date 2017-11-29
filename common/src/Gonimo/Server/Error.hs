@@ -11,7 +11,7 @@ import           Control.Exception.Lifted       (throwIO)
 import           Control.Monad.Trans.Maybe     (MaybeT)
 import           Data.Aeson
 import           GHC.Generics
-import           Gonimo.SocketAPI.Types      (FamilyId, DeviceId, AccountId)
+import           Gonimo.SocketAPI.Model      (FamilyId, DeviceId, AccountId)
 import           Control.Monad.Trans.Class            (lift)
 import           Data.Typeable (Typeable)
 
@@ -32,6 +32,7 @@ data ServerError = InvalidAuthToken
                  | TransactionTimeout
                  | SessionInvalid -- There exists a session for this device, but it does not match
                  | NoActiveSession -- There is no sessino for this device.
+                 | DataNotCached
                  | InternalServerError deriving (Generic, Eq, Show, Typeable)
 
 instance Exception ServerError
