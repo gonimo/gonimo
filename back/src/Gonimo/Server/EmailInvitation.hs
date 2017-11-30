@@ -16,9 +16,10 @@ import qualified Data.Text.Lazy           as TL
 import qualified Data.ByteString.Lazy as BL
 import           Network.HTTP.Types (urlEncode)
 
-import           Gonimo.SocketAPI.Types (Invitation(..))
-import           Gonimo.Types
+import           Gonimo.SocketAPI.Model (Invitation(..), FamilyName(..))
 import qualified Data.Aeson as Aeson
+
+type EmailAddress = Text
 
 
 #ifdef DEVELOPMENT

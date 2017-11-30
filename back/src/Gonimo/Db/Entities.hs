@@ -1,10 +1,10 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE StandaloneDeriving    #-}
 
 module Gonimo.Db.Entities where
 
@@ -13,14 +13,15 @@ module Gonimo.Db.Entities where
 import           Database.Persist.TH
 
 
-import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
-                                        genericToJSON, genericToEncoding)
-import           Data.Text             (Text)
-import           Data.Time             (UTCTime)
-import           GHC.Generics          (Generic)
+import           Data.Aeson.Types        (FromJSON, ToJSON (..), defaultOptions,
+                                          genericToEncoding, genericToJSON)
+import           Data.Text               (Text)
+import           Data.Time               (UTCTime)
+import           GHC.Generics            (Generic)
 
-import           Gonimo.Types.Extended   hiding (FamilyName, familyName)
-import qualified Gonimo.Types.Extended   as Server
+import           Gonimo.Db.PersistFields ()
+import           Gonimo.SocketAPI.Model  (AuthToken, InvitationDelivery, Secret)
+import qualified Gonimo.SocketAPI.Model  as Server
 
 share [mkPersist (sqlSettings { mpsGeneric = False }),  mkMigrate "migrateAll"] [persistLowerCase|
   Account
@@ -51,7 +52,7 @@ share [mkPersist (sqlSettings { mpsGeneric = False }),  mkMigrate "migrateAll"] 
     SecretInvitation secret
     deriving Show Generic
 
-  Device -- or more precise: a browser on a device
+  Device -- or more precisely: a browser on a device
     name Text Maybe
     authToken AuthToken
     accountId AccountId

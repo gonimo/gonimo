@@ -14,9 +14,13 @@ import           Data.Vector      (Vector, (!))
 import qualified Data.Vector      as V
 import qualified Data.Text      as T
 import qualified Data.Text.IO   as T
-import           Gonimo.Types (FamilyName(..), FamilyNames, Predicates, parseFamilyName)
+import           Gonimo.SocketAPI.Model (FamilyName(..), parseFamilyName)
 
 import           Paths_gonimo_back
+
+type FamilyNames = Vector FamilyName
+
+type Predicates  = Vector Text
 
 loadFamilies :: IO FamilyNames
 loadFamilies = do
@@ -35,7 +39,7 @@ generateFamilyName :: MonadIO m => Predicates -> FamilyNames -> m FamilyName
 generateFamilyName predicates familyNames = do
   predicate <- getRandomVectorElement predicates
   fName <- getRandomVectorElement familyNames
-  pure $ fName { familyName = predicate <> " " <> familyName fName }
+  pure $ fName { familyNameName = predicate <> " " <> familyNameName fName }
 
 generateDeviceName :: MonadIO m => Predicates -> FamilyName -> m Text
 generateDeviceName predicates f = do
