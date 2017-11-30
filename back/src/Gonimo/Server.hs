@@ -67,11 +67,6 @@ trigger :: (Eq event, Ord event) => event -> EventListeners event listener ->
     -- Remove requests from queue.
 --}
 
-type Queues k v = Map k [v]
-
-newtype Cache t k v = Cache { runCache :: Behavior t (Map k v)
-                            }
-
 newtype LoaderConfig t k request
   = LoaderConfig {
       -- | E.g. for a Behavior map you can define '_isCached' like so:
@@ -90,7 +85,7 @@ newtype LoaderConfig t k request
     , _onCache :: Event t (k, request)
     }
 
-newtype Loader t k request
+data Loader t k request
   = Loader { _onLoadRequest :: Event t k -- ^ Load request to be handled by the cache manager.
            , _onCached :: Event t [request] -- ^ Delayed input events. When triggered the needed data is available in the cache (if the given key was valid in the first place.)
            }
@@ -111,9 +106,8 @@ load conf = do
       needsLoad      = not `cached` inCache
       alreadyLoaded  = is  `cached` inCache
 
-      _onLoadRequest = fst <$> needsLoad
 
-    queue <- foldBehavior id Map.empty
+    queue <- foldp id Map.empty
       $ mergeWith (.) [ queueReq <$> needsLoad
                       , unqueueReqs <$> conf^.onLoaded
                       ]
@@ -121,6 +115,7 @@ load conf = do
       readyRequests = attachWith (\q k -> q^.at k. non []) queue (conf^.onLoaded)
       bornReadyRequests = (:[]) . snd <$> alreadyLoaded
 
+      _onLoadRequest = fst <$> needsLoad
       _onCached = mconcat [ readyRequests
                           , bornReadyRequests
                           ]
@@ -175,37 +170,4 @@ handleFamilyLoad cache onLoad = do
 
 
 -- Cache:
-
-data Config t
-  = Config { -- | Load all data from the Db related to a single family. (Family data, accounts, invitations, devices, ...)
-             _onLoadFamilyData :: Event t FamilyId
-             -- | Load all data related to a single account: Account data, devices, families.
-           , _onLoadAccountData :: Event t AccountId
-           }
-
-data Cache t
-  = Cache { _families :: Dynamic t Families
-          , _invitations :: Dynamic t Invitations
-          , _familyInvitations :: Dynamic t FamilyInvitations
-          , _accountInvitations :: Dynamict t AccountInvitations
-          , _accounts :: Dynamic t Accounts
-          , _familyAccounts :: Dynamic t FamilyAccounts
-          , _accountFamilies :: Dynamict t AccountFamilies
-
-          , _onLoadedFamilyData :: Event t FamilyId
-          , _onLoadedAccountData :: Event t AccountId
-          }
-
-type Families = Map FamilyId Family
-type Invitations = Map InvitationId Invitation
-type FamilyInvitations = Map FamilyId [InvitationId]
-
--- | Claimed invitations of an account.
-type AccountInvitations = Map AccountId [InvitationId]
-
-type Accounts = Map AccountId Account
-type FamilyAccounts = Map FamilyId [AccountId]
-type AccountFamilies = Map AccountId [FamilyId]
-
-
 

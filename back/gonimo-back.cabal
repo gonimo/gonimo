@@ -33,26 +33,15 @@ library
 
   exposed-modules:  Gonimo.Database.Effects.Servant
                   , Gonimo.Db.Entities
-                  , Gonimo.Server.Auth
+                  , Gonimo.Db.PersistFields
                   , Gonimo.Server.Db.Account
                   , Gonimo.Server.Db.Device
                   , Gonimo.Server.Db.Family
                   , Gonimo.Server.Db.Internal
                   , Gonimo.Server.Db.Invitation
                   , Gonimo.Server.Db.IsDb
-                  , Gonimo.Server.Effects
                   , Gonimo.Server.EmailInvitation
-                  , Gonimo.Server.Handlers
-                  , Gonimo.Server.Handlers.Auth
-                  , Gonimo.Server.Handlers.Messenger
-                  , Gonimo.Server.Handlers.Socket
-                  , Gonimo.Server.Messenger
-                  , Gonimo.Server.Messenger.Internal
                   , Gonimo.Server.NameGenerator
-                  , Gonimo.Server.Subscriber
-                  , Gonimo.Server.Subscriber.Types
-                  , Gonimo.SocketServer
-                  , Gonimo.Types.Extended
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random
@@ -69,8 +58,8 @@ library
                     , TypeOperators
                     , ScopedTypeVariables
                     , FlexibleContexts
-
-  build-depends:         aeson
+  -- Check for encoding changes prior to bumping aeson version!
+  build-depends:        aeson < 1.3.0  
                       , async
                       , attoparsec
                       , base >=4.8 && <4.10
@@ -113,6 +102,8 @@ library
                       , wai-websockets
                       , warp
                       , websockets
+                      , reflex
+                      , reflex-host
 
 
 executable gonimo-back

@@ -96,7 +96,6 @@ type DbPool = Pool SqlBackend
 data Config = Config {
   configPool       :: !DbPool
 , configMessenger  :: !MessengerVar
-, configSubscriber :: !Subscriber
 , configNames      :: !FamilyNames
 , configPredicates :: !Predicates
 , configFrontendURL :: !Text
