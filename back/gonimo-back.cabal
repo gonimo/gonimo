@@ -42,6 +42,7 @@ library
                   , Gonimo.Server.Db.IsDb
                   , Gonimo.Server.EmailInvitation
                   , Gonimo.Server.NameGenerator
+                  , Control.Logging.Extended
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random
@@ -104,6 +105,7 @@ library
                       , websockets
                       , reflex
                       , reflex-host
+                      , logging
 
 
 executable gonimo-back
