@@ -85,7 +85,6 @@ library
                       , gonimo-common
                       , http-api-data
                       , http-types
-                      , lens
                       , lens >= 4.13
                       , lifted-async
                       , lifted-base >= 0.2.3.6
