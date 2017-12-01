@@ -1,4 +1,10 @@
-module Gonimo.Server.NameGenerator ( loadFamilies
+module Gonimo.Server.NameGenerator (
+                                   -- * Types
+                                     FamilyName
+                                   , FamilyNames
+                                   , Predicates
+                                   -- * Functions
+                                   , loadFamilies
                                    , loadPredicates
                                    , generateFamilyName
                                    , generateDeviceName
@@ -6,15 +12,15 @@ module Gonimo.Server.NameGenerator ( loadFamilies
                                    , getRandomVectorElement
                                    ) where
 
-import           System.Random   (getStdRandom, randomR)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Data.Text      (Text)
 import           Data.Monoid
-import           Data.Vector      (Vector, (!))
-import qualified Data.Vector      as V
-import qualified Data.Text      as T
-import qualified Data.Text.IO   as T
-import           Gonimo.SocketAPI.Model (FamilyName(..), parseFamilyName)
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import qualified Data.Text.IO           as T
+import           Data.Vector            (Vector, (!))
+import qualified Data.Vector            as V
+import           Gonimo.SocketAPI.Model (FamilyName (..), parseFamilyName)
+import           System.Random          (getStdRandom, randomR)
 
 import           Paths_gonimo_back
 
