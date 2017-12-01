@@ -16,12 +16,12 @@ import           Database.Persist.Class     (PersistEntity,
 import           Database.Persist.Sql       (SqlBackend)
 import qualified Database.Persist.Class  as Db
 import           Database.Persist           ((==.), Entity(..))
+import Control.Arrow
 
 import           Gonimo.Server.Db.Internal  (UpdateT, updateRecord)
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error        (ServerError (NoSuchFamily))
-import           Gonimo.SocketAPI.Types
-import qualified Gonimo.Types               as Gonimo
+import           Gonimo.SocketAPI.Model
 import qualified Gonimo.Db.Entities         as Db
 import Gonimo.Database.Effects.Servant
 
@@ -42,6 +42,15 @@ getAccountIds fid = do
   entities <- Db.selectList [ Db.FamilyAccountFamilyId ==. toDb fid ] []
   pure $ map (fromDb . Db.familyAccountAccountId . entityVal) entities
 
+getFamilyAccounts :: MonadIO m => FamilyId -> ReaderT SqlBackend m [FamilyAccount]
+getFamilyAccounts fid = do
+  entities <- Db.selectList [ Db.FamilyAccountFamilyId ==. toDb fid ] []
+  pure $ map (fromDb . entityVal) entities
+
+getInvitations :: MonadIO m => FamilyId -> ReaderT SqlBackend m [(InvitationId, Invitation)]
+getInvitations fid = do
+  entities <- Db.selectList [ Db.InvitationFamilyId ==. toDb fid ] []
+  pure $ (fromDb . entityKey &&& fromDb . entityVal) <$> entities
 
 delete :: MonadIO m => FamilyId -> ReaderT SqlBackend m ()
 delete fid' = do
@@ -63,9 +72,9 @@ setFamilyName :: (MonadState Family m, MonadPlus m) => Text -> m ()
 setFamilyName name = do
   oldFamily <- State.get
   let oldName = familyName oldFamily
-  guard $ name /= Gonimo.familyName oldName
+  guard $ name /= familyNameName oldName
   put $ oldFamily
-    { familyName = oldName { Gonimo.familyName = name }
+    { familyName = oldName { familyNameName = name }
     }
 
 -- | Update db entity as specified by the given UpdateFamilyT - on Nothing, no update occurs.
