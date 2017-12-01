@@ -40,6 +40,8 @@ library
                  , Gonimo.I18N
                  , Gonimo.Constants
 
+                 , Reflex.Behavior
+
   default-extensions: ConstraintKinds
                     , DataKinds
                     , DeriveGeneric
@@ -50,21 +52,22 @@ library
                     , ScopedTypeVariables
                     , FlexibleContexts
 
-  build-depends:        base >= 4.8 && < 4.11
-                      , aeson
+  build-depends:        aeson
+                      , async
                       , attoparsec
+                      , base >= 4.8 && < 4.11
                       , base64-bytestring
                       , bytestring >= 0.10.6.0
                       , containers
+                      , errors
+                      , lens
+                      , lifted-base
+                      , mtl
+                      , reflex >= 0.5.0
+                      , safe
+                      , stm
                       , text
                       , time
-                      , vector
-                      , errors
-                      , safe
                       , transformers
                       , transformers-base
-                      , lifted-base
-                      , stm
-                      , async
-                      , lens
-                      , mtl
+                      , vector
