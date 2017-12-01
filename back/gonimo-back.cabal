@@ -34,6 +34,9 @@ library
   exposed-modules:  Gonimo.Database.Effects.Servant
                   , Gonimo.Db.Entities
                   , Gonimo.Db.PersistFields
+                  , Gonimo.Server
+                  , Gonimo.Server.Config
+                  , Gonimo.Server.Config.Internal
                   , Gonimo.Server.Db.Account
                   , Gonimo.Server.Db.Device
                   , Gonimo.Server.Db.Family
