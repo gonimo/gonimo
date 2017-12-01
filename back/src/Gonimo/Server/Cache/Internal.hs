@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-|
 Module      : Gonimo.Server.Cache.Internal
 Description : Types and internal function for "Gonimo.Server.Cache"
@@ -5,11 +6,25 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Cache.Internal where
 
-import Reflex
-import qualified Reflex.Host.App as App
+import           Control.Arrow
+import           Control.Lens
+import           Control.Monad.Base         (MonadBase)
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Reader
+import           Data.Map                   (Map)
+import qualified Data.Map                   as Map
+import           Database.Persist.Sql       (SqlBackend)
+import           Reflex
+import           Reflex.Host.App            (MonadAppHost)
+import qualified Reflex.Host.App            as App
+
+
 
 import Gonimo.SocketAPI
 import Gonimo.SocketAPI.Model
+import qualified Gonimo.Server.Db.Family as Family
+import qualified Gonimo.Server.Db.Account as Account
+import qualified Gonimo.Server.Config as Server
 
 data Config t
   = Config { -- | Load all data from the Db related to a single family. (Family
@@ -22,7 +37,7 @@ data Config t
              -- | Cache will be updated according to incoming updates.
            , _onUpdate :: Event t Update
 
-           , _serverConfig :: Server.Config t
+           , _serverConfig :: Server.Config
            }
 
 data Cache t
@@ -47,62 +62,60 @@ type FamilyInvitations = Map FamilyId [InvitationId]
 type AccountInvitations = Map AccountId [InvitationId]
 
 type Accounts = Map AccountId Account
+type Devices = Map DeviceId Device
 type FamilyAccounts = Map FamilyId [AccountId]
 type AccountFamilies = Map AccountId [FamilyId]
 type FamilyAccountData = Map (FamilyId, AccountId) FamilyAccount
 
-make :: (MonadServer m, Reflex t) => Config t -> m (Cache t)
-make conf = undefined
+-- make :: (MonadAppHost m, Reflex t) => Config t -> m (Cache t)
+-- make conf = undefined
 
 
 data FamilyLoad
-  = FamilyLoad { _loadedFamily            :: !(FamilyId, Family)
+  = FamilyLoad { _loadedFamily            :: !Family
                , _loadedAccounts          :: !Accounts
                , _loadedFamilyAccountData :: !FamilyAccountData
                , _loadedFamilyInvitations :: !Invitations
                , _loadedFamilyDevices     :: !Devices
                }
 
-loadFamilyData :: (Server.HasConfig c , Reflex t)
+loadFamilyData :: (Server.HasConfig c , MonadAppHost t m)
                => c
                -> Event t FamilyId
                -> m (Event t (FamilyId, Maybe FamilyLoad))
-loadFamilyData serverConf onFamilyId = performEventAsync $ loadFamilyData' <$> onFamilyId
+loadFamilyData c onFamilyId = App.performEventAsync $ withFamilyId doLoad <$> onFamilyId
   where
-    doLoad = fmap Just . runDb serverConf . loadFamilyData'
-    safeLoad fid = doLoad fid `catch` logError
+    withFamilyId :: (FamilyId -> IO (Maybe FamilyLoad)) -> FamilyId -> IO (FamilyId, Maybe FamilyLoad)
+    withFamilyId load = runKleisli (Kleisli pure &&& Kleisli load)
 
-    logError :: SomeException -> IO (Maybe FamilyLoad)
-    logError e = 
+    doLoad :: FamilyId -> IO (Maybe FamilyLoad)
+    doLoad = Server.mayRunDb c . loadFamilyData'
 
-    forkIt sendResult fid = void . forkIO $ do
-      liftIO . sendResult =<< loadFamilyData' fid
-
-loadFamilyData' :: (MonadIO m) => FamilyId -> ReaderT SqlBackend m FamilyLoad
+loadFamilyData' :: (MonadIO m, MonadBase IO m) => FamilyId -> ReaderT SqlBackend m FamilyLoad
 loadFamilyData' fid = do
   family' <- Family.get fid
   familyAccounts' :: [FamilyAccount] <- Family.getFamilyAccounts fid
   let
-    familyAccounts :: [((FamilyId, AccountId), FamilyAccount)]
-    familyAccounts = ((fid,) . familyAccountAccountId &&& id ) familyAccounts'
+    familyAccounts'' :: [((FamilyId, AccountId), FamilyAccount)]
+    familyAccounts'' = map ((fid,) . familyAccountAccountId &&& id ) familyAccounts'
 
     accountIds :: [AccountId]
-    accountIds = familyAccountAccountId <$> familyAccounts
+    accountIds = familyAccountAccountId . snd <$> familyAccounts''
 
-  accounts :: [Account] <- traverse Account.get accountIds
+  accounts' :: [Account] <- traverse Account.get accountIds
   devices :: [(DeviceId, Device)] <- concat <$> traverse Account.getDevices accountIds
-  invitations :: [(InvitationId, Invitation)] <- Family.getInvitations fid
+  invitations' :: [(InvitationId, Invitation)] <- Family.getInvitations fid
 
   pure $ FamilyLoad { _loadedFamily = family'
-                    , _loadedAccounts = Map.fromList $ zip accountIds accounts
-                    , _loadedFamilyAccountData = Map.fromList familyAccounts
-                    , _loadedFamilyInvitations = Map.fromList invitations
+                    , _loadedAccounts = Map.fromList $ zip accountIds accounts'
+                    , _loadedFamilyAccountData = Map.fromList familyAccounts''
+                    , _loadedFamilyInvitations = Map.fromList invitations'
                     , _loadedFamilyDevices = Map.fromList devices
                     }
 
 -- * Lenses:
 
-instance Server.HasConfig Config where
+instance Server.HasConfig (Config t) where
   config = serverConfig
 
 class HasConfig a where
@@ -129,10 +142,10 @@ class HasConfig a where
       go f config' = (\onUpdate' -> config' { _onUpdate = onUpdate' }) <$> f (_onUpdate config')
 
 
-  serverConfig :: Lens' (a t) (Server.Config t)
+  serverConfig :: Lens' (a t) Server.Config
   serverConfig = config . go
     where
-      go :: Lens' (Config t) (Server.Config t)
+      go :: Lens' (Config t) Server.Config
       go f config' = (\serverConfig' -> config' { _serverConfig = serverConfig' }) <$> f (_serverConfig config')
 
 
