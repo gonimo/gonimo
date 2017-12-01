@@ -25,8 +25,7 @@ import qualified Gonimo.Db.Entities              as Db
 import           Gonimo.Server.Db.Internal       (UpdateT, updateRecord)
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error             (ServerError (NoSuchDevice, InvalidAuthToken))
-import           Gonimo.SocketAPI.Types
-import           Gonimo.Types                    (AuthToken (..))
+import           Gonimo.SocketAPI.Model
 
 type UpdateDeviceT m a = UpdateT Device m a
 
