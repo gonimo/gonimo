@@ -37,61 +37,28 @@ instance Exception StartupError
 runGonimoLoggingT :: MonadIO m => LoggingT m a -> m a
 runGonimoLoggingT = runStdoutLoggingT
 
-devMain :: IO ()
-devMain = do
-  subscriber' <- atomically $ makeSubscriber
-  pool        <- runGonimoLoggingT (createSqlitePool "testdb" 1)
-  messenger   <- newTVarIO $ Messenger.empty
-  flip runSqlPool pool $ runMigration migrateAll
-  names <- loadFamilies
-  predicates <- loadPredicates
-  generator <- newTVarIO =<< newGenIO
-  let config = Config {
-    configPool = pool
-  , configMessenger  = messenger
-  , configSubscriber = subscriber'
-  , configNames      = names
-  , configPredicates = predicates
-  , configFrontendURL = "http://localhost:8081/index.html"
-  , configRandom = generator
-  }
-  run 8081 . addDevServer $ serve runGonimoLoggingT config
-
-prodMain :: IO ()
-prodMain = do
+config :: IO Config
+config = do
   frontendURL <- fromMaybeErr NO_GONIMO_FRONTEND_URL =<< lookupEnv "GONIMO_FRONTEND_URL"
   mPort <- lookupEnv "GONIMO_BACK_PORT"
   port <- fromMaybeErr NO_GONIMO_BACK_PORT $ do
       strPort <- mPort
       readMay strPort
-  subscriber' <- atomically $ makeSubscriber
   -- empty connection string means settings are fetched from env.
   pool        <- runGonimoLoggingT (createPostgresqlPool "" 10)
-  messenger   <- newTVarIO $ Messenger.empty
   flip runSqlPool pool $ runMigration migrateAll
   names <- loadFamilies
-  predicates <- loadPredicates
+  predicates' <- loadPredicates
   generator <- newTVarIO =<< newGenIO
-  let config = Config {
-    configPool = pool
-  , configMessenger  = messenger
-  , configSubscriber = subscriber'
-  , configNames      = names
-  , configPredicates = predicates
-  , configFrontendURL = T.pack frontendURL
-  , configRandom = generator
-  }
-  run port . checkOrigin (T.pack frontendURL) $ serve runGonimoLoggingT config
+  pure $ Config { _dbPool = pool
+                , _familynames      = names
+                , _predicates = predicates'
+                , configFrontendURL = T.pack frontendURL
+                , _random = generator
+                }
 
 main :: IO ()
-#ifdef DEVELOPMENT
-main = devMain
-#else
-main = prodMain
-#endif
-
-addDevServer :: Application -> Application
-addDevServer = staticPolicy $ addBase "../front/devRoot" <|> addSlash
+main = run port . checkOrigin (T.pack frontendURL) . serve =<< config
 
 checkOrigin :: Text -> Application -> Application
 checkOrigin frontendURL app req sendResponse = do

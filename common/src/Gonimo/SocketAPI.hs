@@ -6,11 +6,11 @@ API used for client - server communication.
 -}
 
 module Gonimo.SocketAPI ( module Gonimo.SocketAPI.V1
-                        , apiVersion
+                        , currentVersion
                         ) where
 
 
 import Gonimo.SocketAPI.V1
 
-apiVersion :: Int
-apiVersion = 1
+import Gonimo.SocketAPI.APIVersion (currentVersion)
+

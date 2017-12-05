@@ -42,9 +42,10 @@ data FromClient
   -- | Client will send periodic ping messages to the server, for keeping the session alive.
   --
   --   We can't rely on WebSocket ping control messages, because the client
-  --   can't see/handle them! This is just a simple control message, no real
-  --   state is updated. Although the device online status depends on regular
-  --   pings.
+  --   can't see/handle them!
+  --
+  --   This is just a simple control message, no real state is updated. Although
+  --   the device online status depends on regular pings.
   = Ping
 
   -- | Create a new device on the server.
@@ -56,7 +57,7 @@ data FromClient
 
   -- | Authenticate to the server.
   --
-  --   All other messages except for `Ping` and `MakeDevice `won't get accepted
+  --   All other messages except for `Ping` and `MakeDevice` won't get accepted
   --   without authenticating first. If you don't yet have the needed 'AuthToken',
   --   issue a `MakeDevice` command first for creating a machine account on the
   --   server.
@@ -75,7 +76,7 @@ data FromClient
   | MakeInvitation !FamilyId
 
   -- | The invited device can use this command for claiming the invitation for itself.
-
+  --
   --   The server will respond with an `ClaimedInvitation` `APIEvent` which
   --   contains details about the invitation. After sending `ClaimInvitation`
   --   the invitation belongs to your device, other devices will no longer be allowed
@@ -173,7 +174,7 @@ data ToClient
 --   might be sent clients.
 data Update
   =
-    -- * Family updates
+    --   Family updates
 
     -- | Change the family name.
     --
@@ -211,7 +212,7 @@ data Update
     --   Accepted from online family members.
   | OnRemovedFamilyInviation !FamilyId !InvitationId
 
-    -- * Account updates
+    --   Account updates
   | OnNewAccountDevice          !AccountId !DeviceId
   | OnRemovedAccountDevice      !AccountId !DeviceId
     -- | A new invitation got claimed by the account.
@@ -227,7 +228,7 @@ data Update
     --   families.
   | OnNewAccountFamily          !AccountId !FamilyId
 
-    -- * Device updates
+    --   Device updates
 
     -- | Change the name of a device.
     --
@@ -249,7 +250,7 @@ data Update
     --   'Online'.
   | OnChangedDeviceStatus       !DeviceId !FamilyId !DeviceStatus
 
-    -- * Invitation updates
+    --   Invitation updates
 
     -- | The invitation got claimed by some device.
     --

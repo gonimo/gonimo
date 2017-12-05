@@ -9,6 +9,7 @@ module Gonimo.Prelude ( MaybeT(..)
                       , module Monoid
                       , module Applicative
                       , module Monad
+                      , module Arrow
                       , Text
                       , module Constants
                       ) where
@@ -24,3 +25,4 @@ import Data.Monoid as Monoid
 import Control.Applicative as Applicative
 import Control.Monad as Monad
 import Gonimo.Constants as Constants
+import Control.Arrow as Arrow

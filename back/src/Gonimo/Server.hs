@@ -6,19 +6,37 @@
 {-# LANGUAGE RecordWildCards #-}
 module Gonimo.Server where
 
-data Clients t
-  = Clients { _onReceived :: Event t (DeviceId, FromClient)
-              -- | A device came online:
-            , _onCreatedClient :: Event t DeviceId
-              -- | A device went offline:
-            , _onRemovedClient :: Event t DeviceId
-            , _onlineStatus :: Behavior t (Map DeviceId DeviceStatus)
-            , _selectedFamily :: Behavior t (Map DeviceId FamilyId)
-            , _bySelectedFamily :: Behavior t (Map FamilyId DeviceId) -- ^ Needed for routing messages to concerned devices.
-            -- For notifying devices that they have been kicked out from a family they don't have currently selected,
-            -- We just look up the kicked device in clients and notify it.
-            -- Therefore with _bySelectedFamily the event route has all needed information for routing all events to concerend parties.
-            }
+
+import           Gonimo.Server.Clients (Clients)
+import qualified Gonimo.Server.Clients as Clients
+
+
+
+serve :: Config -> Wai.Application
+serve config req respond = do
+  (sessionConfig, clients) <- runSpiderHost $ Clients.make config
+  Clients.serve sessionConfig req respond
+
+{- Tasks:
+  - Accept connection
+  - Authorize -> open session with DeviceId in memory (No need to store AccountId, as it can be looked up if needed.)
+  - handle requests
+-}
+
+data Server
+  = Server { _
+    
+           }
+
+-- Server:
+make :: MonadAppHost t m => Config -> m ()
+make config = do
+  clients <- Clients.make clientConfig
+  authorized <- Authorizer.make authConfig
+  authorized >>= requesthandler
+
+{--
+
 
 -- Authorizer:
 
@@ -30,110 +48,14 @@ data Authorizer t
   = Authorizer { _onForbidden :: Event t (DeviceId, ToClient)
                , _onAuthorized :: Event t FromClient
                }
-
--- Server:
-make = do
-  clients <- Clients.make clientConfig
-  authorized <- Authorizer.make authConfig
-  authorized >>= requesthandler
-
+-- Cache:
 data LoadOrRead
   = LoadFamily !FamilyId
   | LoadAccount !AccountId
   | Read !View
 
-type FamilyWaiters = Map FamilyId [DeviceId]
-
-newtype EventListeners event listener = EventListeners (Map event [listener])
-
-waitOn :: (Eq event, Ord event) => event -> listener -> EventListeners event listener -> EventListeners event listener
-waitOn ev l (EventListeners m) = m & at ev . non [] %~ l
-
-trigger :: (Eq event, Ord event) => event -> EventListeners event listener -> 
 
 
--- Cache:
-
-{--
-  Client requests some data ('Get'):
-  Either family or account data needs to be fetched if not yet there.
-
--> loadInCache:
- -- Data there: Ready event - done
- -- Data not there:
-    -- Issue load
-    -- Queue request
-    -- onload: send ready event
-    -- Remove requests from queue.
---}
-
-newtype LoaderConfig t k request
-  = LoaderConfig {
-      -- | E.g. for a Behavior map you can define '_isCached' like so:
-      --
-      -- @
-      --   LoaderConfig { _isCached = flip Map.member <$> someMapBehavior
-                        }
-      -- @
-      _isCached :: Behavior t (k -> Bool)
-
-      -- | Event from the cache manager, if this event is triggered it is
-      --   assumed that the requested data can be found in the cache already.
-    , _onLoaded :: Event t k
-
-      -- | User event that should be delayed until the data specified by k is available in the cache.
-    , _onCache :: Event t (k, request)
-    }
-
-data Loader t k request
-  = Loader { _onLoadRequest :: Event t k -- ^ Load request to be handled by the cache manager.
-           , _onCached :: Event t [request] -- ^ Delayed input events. When triggered the needed data is available in the cache (if the given key was valid in the first place.)
-           }
-
--- | Delays an event until the required data is cached.
---
---   When the delayed event triggers, either the data is in cache or it was not
---   found, result: If the data is not in the cache then, it wasn't in the
---   database either.
-load :: forall m t k request. (Reflex t, MonadHold t m)
-     => LoaderConfig t k request -> Loader t k request
-load conf = do
-    let
-      inCache :: Event t ((k, request), Bool)
-      inCache = attachWith checkCached (conf^.isCached) (conf^.onCache)
-
-      needsLoad, alreadyLoaded :: Event t (k, request)
-      needsLoad      = not `cached` inCache
-      alreadyLoaded  = is  `cached` inCache
-
-
-    queue <- foldp id Map.empty
-      $ mergeWith (.) [ queueReq <$> needsLoad
-                      , unqueueReqs <$> conf^.onLoaded
-                      ]
-    let
-      readyRequests = attachWith (\q k -> q^.at k. non []) queue (conf^.onLoaded)
-      bornReadyRequests = (:[]) . snd <$> alreadyLoaded
-
-      _onLoadRequest = fst <$> needsLoad
-      _onCached = mconcat [ readyRequests
-                          , bornReadyRequests
-                          ]
-    pure $ Loader { .. }
-  where
-    checkCached :: (k -> Bool) -> (k, request) -> ((k, request), Bool)
-    checkCached check entry@(key, _) = (entry, check key)
-
-    cached :: forall a. (Bool -> Bool) -> Event t (a, Bool) -> Event t a
-    cached f = fmap fst . ffilter (f . snd)
-
-    is = id
-
-    queueReq :: (k, request) -> Queues k request -> Queues k request
-    queueReq (k, req) = at k . non [] %~ (req:)
-
-    unqueueReqs :: k -> Queues k request -> Queues k request
-    unqueueReqs k = at k .~ Nothing
 
 handleFamilyLoad :: Event t (DeviceId, ViewSelector) -> m ( Event t (DeviceId, View),
                                                           , Event t FamilyId
@@ -166,8 +88,4 @@ handleFamilyLoad cache onLoad = do
           if Map.member accId accounts
             then Read . (deviceId, ) <$> getCachedSelectorData selector
             else pure $ LoadAccount accId
-
-
-
--- Cache:
-
+--}

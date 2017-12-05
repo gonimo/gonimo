@@ -16,8 +16,7 @@ import           Gonimo.Database.Effects.Servant as Db
 import qualified Gonimo.Db.Entities              as Db
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error
-import           Gonimo.SocketAPI.Types          as API
-import           Gonimo.Types.Extended           (Secret, InvitationDelivery(..))
+import           Gonimo.SocketAPI.Model          as API
 
 
 
