@@ -65,6 +65,10 @@ make config = build $ do
 
 
 
+-- | Serve our clients.
+--
+--   Incoming WebSocket requests are handled and sessions opened for each client.
+--   Once the client authenticated it will be visible in 'Clients'.
 serve :: Session.Config -> Wai.Application
 serve config req respond =
   let
@@ -72,14 +76,7 @@ serve config req respond =
 
     wsResponse = do
       version <- mVersion
-      Wai.websocketsApp WS.defaultConnectionOptions (handleWSConnection version) req
-
-
-    handleWSConnection :: WS.PendingConnection -> IO ()
-    handleWSConnection pending = do
-          connection <- WS.acceptRequest pending
-          noAuthRef <- newIORef Nothing
-          runServer runLoggingT config $ serveWebSocket noAuthRef connection
+      Wai.websocketsApp WS.defaultConnectionOptions (Session.make config version) req
 
     errorResponse :: Wai.Response
     errorResponse = if isWebSocketsReq req

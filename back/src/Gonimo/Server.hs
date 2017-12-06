@@ -12,6 +12,9 @@ import qualified Gonimo.Server.Clients as Clients
 
 
 
+-- | Serve. This is a Wai.Application sutiable for being run by Warp for example.
+--
+--   The given database is assumed to have all needed tables already created.
 serve :: Config -> Wai.Application
 serve config req respond = do
   (sessionConfig, clients) <- runSpiderHost $ Clients.make config
