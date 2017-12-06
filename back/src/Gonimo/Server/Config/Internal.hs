@@ -11,7 +11,11 @@ import           Crypto.Random               (SystemRandom)
 import           Data.Pool                   (Pool)
 import           Data.Text                   (Text)
 import           Database.Persist.Sql        (SqlBackend)
+import Data.ByteString (ByteString)
+import           Crypto.Classes.Exceptions      (genBytes)
+import           Control.Concurrent.STM (readTVar, writeTVar, atomically)
 
+import Gonimo.Prelude
 import           Gonimo.Server.NameGenerator (FamilyNames, Predicates)
 
 
@@ -25,9 +29,18 @@ data Config
            , _familyNames :: !FamilyNames
            , _predicates  :: !Predicates
            , _frontendURL :: !Text
-           , _random      :: !(TVar SystemRandom)
+           , _random      :: !(TVar SystemRandom) -- STM necessary so multiple threads won't return the same secret!
            }
 
+-- | Generate some random bytes.
+--
+--   Used in 'generateSecret'.
+genRandomBytes :: (MonadIO m, HasConfig c) => c -> Int ->  m ByteString
+genRandomBytes c l = liftIO . atomically $ do
+      oldGen <- readTVar $ c^.random
+      let (r, newGen) = genBytes l oldGen
+      writeTVar (c^.random) newGen
+      pure r
 
 
 -- Lenses:

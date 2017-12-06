@@ -45,6 +45,8 @@ library
                   , Gonimo.Server.Db.IsDb
                   , Gonimo.Server.EmailInvitation
                   , Gonimo.Server.NameGenerator
+                  , Gonimo.Server.Session
+                  , Gonimo.Server.Session.Internal
                   , Control.Logging.Extended
 
   other-modules:  Utils.Control.Monad.Trans.Maybe

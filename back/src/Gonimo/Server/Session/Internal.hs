@@ -5,18 +5,33 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Session.Internal where
 
-import           Data.Aeson                       (FromJSON)
-import qualified Data.Aeson                       as Aeson
-import qualified Data.ByteString.Lazy             as LB
+import           Control.Concurrent
+import           Control.Exception
+import           Control.Lens
 import           Control.Logging.Extended
-import           Data.Text (Text)
-import qualified Data.Text as T
+import           Data.Aeson               (FromJSON)
+import qualified Data.Aeson               as Aeson
+import qualified Data.ByteString.Lazy     as LB
+import           Data.IORef
+import           Data.Text                (Text)
+import qualified Data.Text                as T
+import           Data.Time.Clock
+import qualified Network.WebSockets       as WS
 
 
-import Gonimo.Server.Error
-import Gonimo.SocketAPI
-import Gonimo.Constants
-import Gonimo.Prelude
+
+import           Gonimo.Prelude
+import           Gonimo.Server.Config     (generateSecret, runDb)
+import qualified Gonimo.Server.Config     as Server
+import qualified Gonimo.Server.Db.Account as Account
+import qualified Gonimo.Server.Db.Device  as Device
+import           Gonimo.Server.Error
+import           Gonimo.SocketAPI
+import           Gonimo.SocketAPI.Model
+
+
+
+
 
 -- | "Server.Config" for database access and callbacks for transmitting client events.
 data Config
@@ -52,7 +67,7 @@ newtype Session
 data Impl
   = Impl { __session  :: Session
            -- | When authenticated this variable holds the device id of the connected device.
-         , _sessionId :: !(IORef (Maybe Deviceid))
+         , _sessionId :: !(IORef (Maybe DeviceId))
 
          , _msgCounter :: !(IORef Int)
          , _connection :: WS.Connection
@@ -64,14 +79,14 @@ logSource = "Session"
 
 
 -- | Decode and receive messages.
-receiveMessages :: Config -> Impl -> IO ()
+receiveMessages :: (HasConfig c, Server.HasConfig c ) => c -> Impl -> IO ()
 receiveMessages conf impl = forever $ do
-    raw <- liftIO . WS.receiveDataMessage (impl^.connection)
-    modifyIORef' msgCounter (+1)
+    raw <- WS.receiveDataMessage (impl^.connection)
+    modifyIORef' (impl^.msgCounter) (+1)
     let bs = case raw of
               WS.Binary bs' -> bs'
               WS.Text bs' -> bs'
-    handleMessage impl conf =<< decodeLogError bs
+    handleMessage conf impl =<< decodeLogError bs
 
 noUserAgentDefault :: Text
 noUserAgentDefault = "None"
@@ -80,12 +95,12 @@ maxUserAgentLength :: Int
 maxUserAgentLength = 300
 
 -- | Handle a single message from the client.
-handleMessage :: Config -> Impl -> FromClient -> IO ()
-handleMessage impl msg
+handleMessage :: (HasConfig c, Server.HasConfig c ) => c -> Impl -> FromClient -> IO ()
+handleMessage conf impl msg
   = reportExceptions $ case msg of
       Ping -> impl^._session.sendMessage $ Pong
-      MakeDevice userAgent -> makeDevice impl conf userAgent
-      Authenticate token -> authenticate token
+      MakeDevice userAgent -> makeDevice conf impl userAgent
+      Authenticate token -> authenticate conf impl token
       _ -> do
         mDevId <- readIORef $ impl^.sessionId
         devId <- fromMaybeErr NotAuthenticated mDevId
@@ -103,10 +118,10 @@ handleMessage impl msg
 --   Each device is uniquely identified by a DeviceId, multiple
 --   Device's can share a single account in case a user login was provided,
 --   otherwise every device corresponds to a single Account.
-createDeviceR :: Config -> Impl -> Maybe Text -> IO ()
-createDeviceR conf impl mUserAgent = do
+makeDevice :: (HasConfig c, Server.HasConfig c ) => c -> Impl -> Maybe Text -> IO ()
+makeDevice conf impl mUserAgent = do
   now <- getCurrentTime
-  authToken' <- GonimoSecret <$> generateSecret
+  authToken' <- GonimoSecret <$> generateSecret conf
   let userAgent = maybe noUserAgentDefault (T.take maxUserAgentLength) mUserAgent
   runDb conf $ do
     aid <- Account.insert
@@ -123,8 +138,8 @@ createDeviceR conf impl mUserAgent = do
   impl^._session.sendMessage $ MadeDevice authToken'
 
 -- | Find secret in db, initialize sessionId and call conf^.authenticated.
-authenticate :: forall m.  AuthToken -> IO ()
-authenticate impl conf token = do
+authenticate :: (Server.HasConfig c, HasConfig c) => c -> Impl -> AuthToken -> IO ()
+authenticate conf impl token = do
   (deviceId', _) <- runDb conf $ Device.getByAuthToken token
   writeIORef (impl^.sessionId) $ Just deviceId'
   conf^.authenticated $ (deviceId', impl^._session)
@@ -189,37 +204,33 @@ class HasConfig a where
 instance HasConfig Config where
   config = id
 
-class HasImpl a where
-  impl :: Lens' a Impl
+-- Lenses for Impl:
 
-  _session :: Lens' a Session
-  _session = impl . go
+_session :: Lens' Impl Session
+_session f impl' = (\_session' -> impl' { __session = _session' }) <$> f (__session impl')
+
+sessionId :: Lens' Impl ((IORef (Maybe DeviceId)))
+sessionId f impl' = (\sessionId' -> impl' { _sessionId = sessionId' }) <$> f (_sessionId impl')
+
+msgCounter :: Lens' Impl ((IORef Int))
+msgCounter f impl' = (\msgCounter' -> impl' { _msgCounter = msgCounter' }) <$> f (_msgCounter impl')
+
+connection :: Lens' Impl WS.Connection
+connection f impl' = (\connection' -> impl' { _connection = connection' }) <$> f (_connection impl')
+
+
+
+
+class HasSession a where
+  session :: Lens' a Session
+
+  sendMessage :: Lens' a (ToClient -> IO ())
+  sendMessage = session . go
     where
-      go :: Lens' Impl Session
-      go f impl' = (\_session' -> impl' { __session = _session' }) <$> f (__session impl')
+      go :: Lens' Session (ToClient -> IO ())
+      go f session' = (\sendMessage' -> session' { _sendMessage = sendMessage' }) <$> f (_sendMessage session')
 
 
-  sessionId :: Lens' a ((IORef (Maybe Deviceid)))
-  sessionId = impl . go
-    where
-      go :: Lens' Impl ((IORef (Maybe Deviceid)))
-      go f impl' = (\sessionId' -> impl' { _sessionId = sessionId' }) <$> f (_sessionId impl')
-
-
-  msgCounter :: Lens' a ((IORef Int))
-  msgCounter = impl . go
-    where
-      go :: Lens' Impl ((IORef Int))
-      go f impl' = (\msgCounter' -> impl' { _msgCounter = msgCounter' }) <$> f (_msgCounter impl')
-
-
-  connection :: Lens' a WS.Connection
-  connection = impl . go
-    where
-      go :: Lens' Impl WS.Connection
-      go f impl' = (\connection' -> impl' { _connection = connection' }) <$> f (_connection impl')
-
-
-instance HasImpl Impl where
-  impl = id
+instance HasSession Session where
+  session = id
 

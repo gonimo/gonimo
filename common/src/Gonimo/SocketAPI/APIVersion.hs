@@ -8,6 +8,8 @@ Data and functions for handling API versions.
 
 module Gonimo.SocketAPI.APIVersion where
 
+import           Data.Text (Text)
+
 -- | API version numbers:
 data APIVersion = V1 -- ^ Currently only one version
 

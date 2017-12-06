@@ -12,6 +12,7 @@ module Gonimo.Prelude ( MaybeT(..)
                       , module Arrow
                       , Text
                       , module Constants
+                      , module Control.Exception
                       ) where
 
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -26,3 +27,4 @@ import Control.Applicative as Applicative
 import Control.Monad as Monad
 import Gonimo.Constants as Constants
 import Control.Arrow as Arrow
+import Control.Exception

@@ -11,7 +11,7 @@ module Gonimo.SocketAPI.V1 where
 
 import           Data.Aeson.Types             (FromJSON, ToJSON (..),
                                                defaultOptions,
-                                               genericToEncoding)
+                                               genericToEncoding, genericToJSON)
 import           Data.Text                    (Text)
 import           Data.Time.Clock              (UTCTime)
 import           GHC.Generics                 (Generic)
@@ -105,7 +105,12 @@ data FromClient
   | UpdateServer !Update
 
   | Get !ViewSelector
+  deriving (Generic, Show)
 
+instance FromJSON FromClient
+instance ToJSON FromClient where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 -- | Messages to the client from the server.
 data ToClient
@@ -145,7 +150,11 @@ data ToClient
     -- can map it back to issued requests. In addition `ServerError` are designed
     -- to be as self contained as possible.
   | ServerError !FromClient !ServerError
+  deriving (Generic, Show)
 
+instance ToJSON ToClient where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 -- | Idempotent update actions for updating state on both the client and the server.
 --
@@ -267,6 +276,10 @@ data Update
   deriving (Generic, Show)
 
 
+instance FromJSON Update
+instance ToJSON Update where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 -- | To be used with the 'Get' command for retrieving data from the server.
 --
@@ -314,7 +327,13 @@ data ViewSelector
   | SelectFamilyAccount !AccountId
   | SelectFamilyDevice !DeviceId
   | SelectFamilyInvitation !InvitationId
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic, Show)
+
+
+instance FromJSON ViewSelector
+instance ToJSON ViewSelector where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 
 -- | The data you selected with 'Get' and 'ViewSelector' will be transmitted to
@@ -329,7 +348,11 @@ data View
   | ViewFamilyAccount !AccountId !Family.AccountView
   | ViewFamilyDevice !AccountId !(DeviceId, Family.DeviceView)
   | ViewFamilyInvitation !InvitationId !Family.InvitationView
+  deriving (Generic, Show)
 
+instance ToJSON View where
+  toJSON = genericToJSON defaultOptions
+  toEncoding = genericToEncoding defaultOptions
 
 data InvitationReply = InvitationAccept | InvitationReject deriving (Generic, Show, Eq, Ord)
 

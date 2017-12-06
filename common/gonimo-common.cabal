@@ -27,6 +27,7 @@ library
       ghc-options:   -Wall -Werror -fwarn-tabs -O2
 
   exposed-modules: Gonimo.SocketAPI
+                 , Gonimo.SocketAPI.APIVersion
                  , Gonimo.SocketAPI.Model
                  , Gonimo.SocketAPI.View.Family
                  , Gonimo.SocketAPI.View.Account

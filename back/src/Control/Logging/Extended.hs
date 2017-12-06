@@ -9,6 +9,7 @@ module Control.Logging.Extended ( -- * Re-exported modules
                               module Logging
                             -- * Functions
                             , logExceptionS
+                            , errorS
                             ) where
 
 

@@ -13,6 +13,7 @@ module Gonimo.Server.Config ( -- * Types and classes
                             -- * Functions
                             , runDb
                             , mayRunDb
+                            , generateSecret
                             ) where
 
 
@@ -24,6 +25,7 @@ import           Data.Text                     (Text)
 import           Database.Persist.Sql          (SqlBackend, runSqlPool)
 
 import           Gonimo.Server.Config.Internal
+import           Gonimo.SocketAPI.Model        (Secret(..))
 
 -- | Log messages from this module will be tagged with this string.
 logSource :: Text
@@ -37,3 +39,12 @@ runDb c = liftIO . flip runSqlPool (c^.dbPool)
 --   In case of an exception, it gets logged and 'mayRunDb' will return 'Nothing'.
 mayRunDb :: forall m c a. (MonadIO m, HasConfig c) => c -> ReaderT SqlBackend IO a -> m (Maybe a)
 mayRunDb c = liftIO . logExceptionS logSource "runDb failed" . runDb c
+
+-- | What length do our secrets need?
+secretLength :: Int
+secretLength = 16
+
+-- | Generate a new random secret for usage as 'AuthToken' for example.
+generateSecret :: (MonadIO m, HasConfig c) => c -> m Secret
+generateSecret c = Secret <$> genRandomBytes c secretLength
+
