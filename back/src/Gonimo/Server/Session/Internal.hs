@@ -30,13 +30,10 @@ import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Model
 
 
-
-
-
 -- | "Server.Config" for database access and callbacks for transmitting client events.
 data Config
   = Config {
-              _serverConfig :: Server.Config
+              _serverConfig   :: Server.Config
               -- | Gets called on every message that comes from the device,
               --   except for the low lovel session commands
               --   'Authenticate', 'Ping' and 'MakeDevice'.
@@ -65,12 +62,12 @@ newtype Session
 
 -- | Internal data for implementing client sessions.
 data Impl
-  = Impl { __session  :: Session
+  = Impl { __session   :: !Session
            -- | When authenticated this variable holds the device id of the connected device.
-         , _sessionId :: !(IORef (Maybe DeviceId))
+         , _sessionId  :: !(IORef (Maybe DeviceId))
 
          , _msgCounter :: !(IORef Int)
-         , _connection :: WS.Connection
+         , _connection :: !WS.Connection
          }
 
 -- | Tag for log messages from this module.

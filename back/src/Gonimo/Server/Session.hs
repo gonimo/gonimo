@@ -10,6 +10,7 @@ module Gonimo.Server.Session ( -- * Types and classes
                              , HasConfig (..)
                              , Session (..)
                              , HasSession (..)
+                               -- * Make a new session.
                              , make
                              ) where
 
@@ -53,9 +54,8 @@ make conf _ pending = do
 
       __session = Session sendWSMessage
 
-    let impl = Impl {..}
+      impl = Impl {..}
 
-    let
       work = race_ (watchDog _msgCounter) (receiveMessages conf impl)
 
       cleanup = do
