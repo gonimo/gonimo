@@ -46,6 +46,9 @@ make conf _ pending = do
       sendWSMessage msg = do
         let encoded = Aeson.encode msg
         deviceId' <- readIORef _sessionId -- On 'Nothing' just log "Nothing"
+        case msg of
+          StoleSession -> writeIORef _sessionId Nothing -- Session just got invalid!
+          _ -> pure ()
         safeSend deviceId' encoded
 
       safeSend deviceId'

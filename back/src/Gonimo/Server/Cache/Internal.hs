@@ -40,6 +40,7 @@ data Config t
            , _serverConfig :: Server.Config
            }
 
+
 data Cache t
   = Cache { _families            :: Behavior t Families
           , _invitations         :: Behavior t Invitations
@@ -49,10 +50,24 @@ data Cache t
           , _familyAccounts      :: Behavior t FamilyAccounts
           , _accountFamilies     :: Behavior t AccountFamilies
           , _familyAccountData   :: Behavior t FamilyAccountData
+          , _devices             :: Behavior t Devices
 
           , _onLoadedFamilyData  :: Event t FamilyId
           , _onLoadedAccountData :: Event t AccountId
           }
+
+-- | Sampled data of a cache for covenience.
+data Sampled
+  = Sampled { _sampledFamilies            :: !Families
+            , _sampledInvitations         :: !Invitations
+            , _sampledFamilyInvitations   :: !FamilyInvitations
+            , _sampledAccountInvitations  :: !AccountInvitations
+            , _sampledAccounts            :: !Accounts
+            , _sampledFamilyAccounts      :: !FamilyAccounts
+            , _sampledAccountFamilies     :: !AccountFamilies
+            , _sampledFamilyAccountData   :: !FamilyAccountData
+            , _sampledDevices             :: !Devices
+            }
 
 type Families = Map FamilyId Family
 type Invitations = Map InvitationId Invitation
