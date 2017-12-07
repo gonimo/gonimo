@@ -85,9 +85,11 @@ receiveMessages conf impl = forever $ do
               WS.Text bs' -> bs'
     handleMessage conf impl =<< decodeLogError bs
 
+-- | Text to use if the client did not provide any UserAgent string.
 noUserAgentDefault :: Text
 noUserAgentDefault = "None"
 
+-- | Maximum accepted length of a User Agent string.
 maxUserAgentLength :: Int
 maxUserAgentLength = 300
 
