@@ -26,6 +26,7 @@ data ServerError = InvalidAuthToken
                  | FamilyNotOnline !FamilyId
                  | CantSendInvitation
                  | NoSuchInvitation
+                 -- TODO: Is this error still used or do we just send 'Forbidden' in all cases?
                  | DeviceOffline -- ^ You tried to send a message to an offline device.
                  | Forbidden
                  | NotFound
