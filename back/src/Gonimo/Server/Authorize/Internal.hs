@@ -5,6 +5,16 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Authorize.Internal where
 
+import Reflex
+import Reflex.Host.App
+import Control.Lens
+
+
+import Gonimo.Server.Error
+import Gonimo.Prelude
+import Gonimo.Server.Cache
+import Gonimo.Clients.Internal
+
 
 data Config t
   = Config { __clients :: Clients t
@@ -83,10 +93,10 @@ denyView auth@AuthRequest {..} view' =
    SelectAccountFamily fid       -> denyUnless (isFamilyMember cache' senderId fid)
    SelectAccountInvitation invId -> denyUnless (hasClaimedInvitation cache' senderId invId)
 
-   SelectFamily fid             -> denyUnless (isOnlineInFamily clients' senderId fid)
-   SelectFamilyAccount aid      -> denyUnless (isAccountInOurFamily auth aid)
-   SelectFamilyDevice devId     -> denyUnless (isDeviceInOurFamily aut devId)
-   SelectFamilyInvitation invId -> denyUnless (familyHasInvitation auth invId)
+   SelectFamily fid              -> denyUnless (isOnlineInFamily clients' senderId fid)
+   SelectFamilyAccount aid       -> denyUnless (isAccountInOurFamily auth aid)
+   SelectFamilyDevice devId      -> denyUnless (isDeviceInOurFamily aut devId)
+   SelectFamilyInvitation invId  -> denyUnless (familyHasInvitation auth invId)
 
 -- | Return 'Forbidden' unless the first argument is true.
 denyUnless :: MonadPlus m => Bool -> m ServerError

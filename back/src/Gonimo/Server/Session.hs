@@ -27,6 +27,7 @@ import           Gonimo.Prelude
 import qualified Gonimo.Server.Config           as Server
 import           Gonimo.Server.Session.Internal
 import           Gonimo.SocketAPI.APIVersion
+import           Gonimo.SocketAPI
 
 
 

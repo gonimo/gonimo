@@ -243,3 +243,73 @@ class HasCache a where
 instance HasCache Cache where
   cache = id
 
+
+class HasSampled a where
+  sampled :: Lens' a Sampled
+
+  sampledFamilies :: Lens' a Families
+  sampledFamilies = sampled . go
+    where
+      go :: Lens' Sampled Families
+      go f sampled' = (\sampledFamilies' -> sampled' { _sampledFamilies = sampledFamilies' }) <$> f (_sampledFamilies sampled')
+
+
+  sampledInvitations :: Lens' a Invitations
+  sampledInvitations = sampled . go
+    where
+      go :: Lens' Sampled Invitations
+      go f sampled' = (\sampledInvitations' -> sampled' { _sampledInvitations = sampledInvitations' }) <$> f (_sampledInvitations sampled')
+
+
+  sampledFamilyInvitations :: Lens' a FamilyInvitations
+  sampledFamilyInvitations = sampled . go
+    where
+      go :: Lens' Sampled FamilyInvitations
+      go f sampled' = (\sampledFamilyInvitations' -> sampled' { _sampledFamilyInvitations = sampledFamilyInvitations' }) <$> f (_sampledFamilyInvitations sampled')
+
+
+  sampledAccountInvitations :: Lens' a AccountInvitations
+  sampledAccountInvitations = sampled . go
+    where
+      go :: Lens' Sampled AccountInvitations
+      go f sampled' = (\sampledAccountInvitations' -> sampled' { _sampledAccountInvitations = sampledAccountInvitations' }) <$> f (_sampledAccountInvitations sampled')
+
+
+  sampledAccounts :: Lens' a Accounts
+  sampledAccounts = sampled . go
+    where
+      go :: Lens' Sampled Accounts
+      go f sampled' = (\sampledAccounts' -> sampled' { _sampledAccounts = sampledAccounts' }) <$> f (_sampledAccounts sampled')
+
+
+  sampledFamilyAccounts :: Lens' a FamilyAccounts
+  sampledFamilyAccounts = sampled . go
+    where
+      go :: Lens' Sampled FamilyAccounts
+      go f sampled' = (\sampledFamilyAccounts' -> sampled' { _sampledFamilyAccounts = sampledFamilyAccounts' }) <$> f (_sampledFamilyAccounts sampled')
+
+
+  sampledAccountFamilies :: Lens' a AccountFamilies
+  sampledAccountFamilies = sampled . go
+    where
+      go :: Lens' Sampled AccountFamilies
+      go f sampled' = (\sampledAccountFamilies' -> sampled' { _sampledAccountFamilies = sampledAccountFamilies' }) <$> f (_sampledAccountFamilies sampled')
+
+
+  sampledFamilyAccountData :: Lens' a FamilyAccountData
+  sampledFamilyAccountData = sampled . go
+    where
+      go :: Lens' Sampled FamilyAccountData
+      go f sampled' = (\sampledFamilyAccountData' -> sampled' { _sampledFamilyAccountData = sampledFamilyAccountData' }) <$> f (_sampledFamilyAccountData sampled')
+
+
+  sampledDevices :: Lens' a Devices
+  sampledDevices = sampled . go
+    where
+      go :: Lens' Sampled Devices
+      go f sampled' = (\sampledDevices' -> sampled' { _sampledDevices = sampledDevices' }) <$> f (_sampledDevices sampled')
+
+
+instance HasSampled Sampled where
+  sampled = id
+
