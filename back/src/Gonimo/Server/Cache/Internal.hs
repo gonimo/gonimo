@@ -118,14 +118,14 @@ loadFamilyData' fid = do
     accountIds = familyAccountAccountId . snd <$> familyAccounts''
 
   accounts' :: [Account] <- traverse Account.get accountIds
-  devices :: [(DeviceId, Device)] <- concat <$> traverse Account.getDevices accountIds
+  devices' :: [(DeviceId, Device)] <- concat <$> traverse Account.getDevices accountIds
   invitations' :: [(InvitationId, Invitation)] <- Family.getInvitations fid
 
   pure $ FamilyLoad { _loadedFamily = family'
                     , _loadedAccounts = Map.fromList $ zip accountIds accounts'
                     , _loadedFamilyAccountData = Map.fromList familyAccounts''
                     , _loadedFamilyInvitations = Map.fromList invitations'
-                    , _loadedFamilyDevices = Map.fromList devices
+                    , _loadedFamilyDevices = Map.fromList devices'
                     }
 
 -- * Lenses:
@@ -239,6 +239,11 @@ class HasCache a where
       go :: Lens' (Cache t) (Event t AccountId)
       go f cache' = (\onLoadedAccountData' -> cache' { _onLoadedAccountData = onLoadedAccountData' }) <$> f (_onLoadedAccountData cache')
 
+  devices :: Lens' (a t) (Behavior t Devices)
+  devices = cache . go
+    where
+      go :: Lens' (Cache t) (Behavior t Devices)
+      go f cache' = (\devices' -> cache' { _devices = devices' }) <$> f (_devices cache')
 
 instance HasCache Cache where
   cache = id

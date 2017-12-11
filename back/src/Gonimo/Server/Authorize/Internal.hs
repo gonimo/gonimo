@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-|
 Module      : Gonimo.Server.Authorize.Internal
 Description : Types and internal functions for "Gonimo.Server.Authorize"
@@ -8,12 +9,23 @@ module Gonimo.Server.Authorize.Internal where
 import Reflex
 import Reflex.Host.App
 import Control.Lens
+import Data.Maybe
 
 
 import Gonimo.Server.Error
 import Gonimo.Prelude
-import Gonimo.Server.Cache
-import Gonimo.Clients.Internal
+import Gonimo.SocketAPI.Model
+import Gonimo.SocketAPI
+import           Gonimo.Server.Cache (HasSampled(..))
+import qualified Gonimo.Server.Cache as Cache
+import           Gonimo.Server.Clients.Internal (Clients(..), HasSampled(..))
+import qualified Gonimo.Server.Clients.Internal as Clients
+
+
+
+
+
+
 
 
 data Config t
@@ -34,7 +46,7 @@ data AuthRequest
                 }
 
 make :: forall t m. MonadAppHost t m => Config t -> m (Authorize t)
-make config = undefined
+make _ = undefined
 
 -- | Tell what requests should be forbidden.
 --
@@ -53,7 +65,7 @@ deny auth@AuthRequest {..} =
     MakeInvitation fid       -> denyUnless (isOnlineInFamily clients' senderId fid)
     -- If the device knows the secret it may access the invitation. If it is already
     -- claimed, is checked at access:
-    ClaimInvitation secret   -> mzero
+    ClaimInvitation _        -> mzero
     AnswerInvitation invId _ -> denyUnless (deviceOwnsInvitation cache' senderId invId)
     SendMessage toId _       -> denyUnless (isOnlineInSameFamily clients' senderId toId)
     UpdateServer update'     -> denyUpdate auth update'
@@ -63,25 +75,29 @@ deny auth@AuthRequest {..} =
 -- | Deny not allowed updates.
 denyUpdate :: AuthRequest -> Update -> Maybe ServerError
 denyUpdate auth@AuthRequest {..} update' =
-  case udpate' of
-    OnChangedFamilyName         fid name    -> denyUnless (isOnlineInFamily clients' senderId fid)
-    OnChangedFamilyLastAccessed fid time'   -> pure Forbidden
-    OnNewFamilyMember           fid aid     -> pure Forbidden
-    OnRemovedFamilyMember       fid aid     -> denyUnless (isOnlineInFamily clients' senderId fid)
-    OnNewFamilyInvitation       fid invId   -> pure Forbidden
+  case update' of
+    OnChangedFamilyName         fid _    -> denyUnless (isOnlineInFamily clients' senderId fid)
+    OnChangedFamilyLastAccessed _ _   -> pure Forbidden
+    OnNewFamilyMember           _ _     -> pure Forbidden
+    OnRemovedFamilyMember fid aid -> denyUnless ( isOnlineInFamily clients' senderId fid
+                                                 && isAccountInOurFamily auth aid
+                                                )
+    OnNewFamilyInvitation       _ _   -> pure Forbidden
     OnRemovedFamilyInviation fid invId      -> denyUnless ( isOnlineInFamily clients' senderId fid
                                                        && onlineFamilyHasInvitation auth invId
                                                      )
-    OnNewAccountDevice          aid devId   -> pure Forbidden
-    OnRemovedAccountDevice      aid devId   -> pure Forbidden
-    OnNewAccountInvitation      aid invId   -> pure Forbidden
-    OnNewAccountFamily          aid fid     -> pure Forbidden
-    OnChangedDeviceName         devId _     -> denyUnless (senderId == devId)
-    OnChangedDeviceLastAccessed devId time' -> pure Forbidden
+    OnNewAccountDevice          _ _   -> pure Forbidden
+    OnRemovedAccountDevice      _ _   -> pure Forbidden
+    OnNewAccountInvitation      _ _   -> pure Forbidden
+    OnNewAccountFamily          _ _     -> pure Forbidden
+    OnChangedDeviceName         devId _     -> denyUnless ( senderId == devId
+                                                            || isOnlineInSameFamily clients' senderId devId
+                                                          )
+    OnChangedDeviceLastAccessed _ _ -> pure Forbidden
     OnChangedDeviceStatus       devId fid _ -> denyUnless ( senderId == devId
                                                             && isFamilyMember cache' senderId fid
                                                           )
-    OnClaimedInvitation         invId       -> pure Forbidden
+    OnClaimedInvitation         _       -> pure Forbidden
     OnChangedInvitationDelivery invId _     -> denyUnless (onlineFamilyHasInvitation auth invId)
 
 -- | Deny not allowed views.
@@ -95,47 +111,47 @@ denyView auth@AuthRequest {..} view' =
 
    SelectFamily fid              -> denyUnless (isOnlineInFamily clients' senderId fid)
    SelectFamilyAccount aid       -> denyUnless (isAccountInOurFamily auth aid)
-   SelectFamilyDevice devId      -> denyUnless (isDeviceInOurFamily aut devId)
+   SelectFamilyDevice devId      -> denyUnless (isDeviceInOurFamily auth devId)
    SelectFamilyInvitation invId  -> denyUnless (familyHasInvitation auth invId)
 
 -- | Return 'Forbidden' unless the first argument is true.
 denyUnless :: MonadPlus m => Bool -> m ServerError
-denyUnless c = mfilter (not c) $ pure Forbidden
+denyUnless c = guard (not c) >> pure Forbidden
 
 
 -- | Check whether the sender device is member of an account which is a family
 --   member of the given family.
 isFamilyMember :: Cache.Sampled -> DeviceId -> FamilyId -> Bool
-isFamilyMember cache' senderId' fid = maybe False (const True) $ do
+isFamilyMember cache' senderId' fid = isJust $ do
   aid <- cache'^?sampledDevices.at senderId'._Just.to deviceAccountId
   fids <- cache'^.sampledAccountFamilies.at aid
-  mfilter (fid `elem` fids) $ pure ()
+  guard (fid `elem` fids)
 
 -- | Does the given device id belong to the same account as we?
 isSameAccount :: AuthRequest -> DeviceId -> Bool
-isSameAccount AuthRequest {..} other = maybe False (const True) $ do
-  otherDevice <- cache'^.sampledDevices.at devId
+isSameAccount AuthRequest {..} other = isJust $ do
+  otherDevice <- cache'^.sampledDevices.at other
   ourDevice <- cache'^.sampledDevices.at senderId
-  mfilter (devieAccountId ourDevice == deviceAccountId otherDevice) $ pure ()
+  guard (deviceAccountId ourDevice == deviceAccountId otherDevice)
 
 -- | Does the sender device own the given invitation?
 hasClaimedInvitation :: Cache.Sampled -> DeviceId -> InvitationId -> Bool
-hasClaimedInvitation cache' senderId' invId = maybe False (const True) $ do
+hasClaimedInvitation cache' senderId' invId = isJust $ do
   aid <- cache'^?sampledDevices.at senderId'._Just.to deviceAccountId
-  invitations <- cache'^.sampledAcountInvitations.at aid
-  mfilter (invId `elem` invitations) $ pure ()
+  invitations <- cache'^.sampledAccountInvitations.at aid
+  guard (invId `elem` invitations)
 
 -- | Does the invitatation belong to the family we are currently online in?
 familyHasInvitation :: AuthRequest -> InvitationId -> Bool
-familyHasInvitation AuthRequest {..} invId = maybe False (const True) $ do
+familyHasInvitation AuthRequest {..} invId = isJust $ do
   ourFamily <- clients'^.sampledSelectedFamily . at senderId
   invitations <- cache'^.sampledFamilyInvitations.at ourFamily
-  mfilter (invId `elem` invitations) $ pure ()
+  guard (invId `elem` invitations)
 
 -- | Auth check whether a device is currently online in a given family.
 isOnlineInFamily :: Clients.Sampled -> DeviceId -> FamilyId -> Bool
 isOnlineInFamily clients' devId' fid
-  = maybe False (const True)
+  = isJust
     $ clients'^?sampledSelectedFamily .at devId'.only (Just fid)
 
 -- | Both devices in the same family online?
@@ -150,26 +166,27 @@ isOnlineInSameFamily clients' we they =
 
 -- | Invitation is from the family the device is currently online in?
 onlineFamilyHasInvitation :: AuthRequest -> InvitationId -> Bool
-onlineFamilyHasInvitation AuthRequest{..} invId = maybe False (const True) $ do
+onlineFamilyHasInvitation AuthRequest{..} invId = isJust $ do
     ourFamily <- clients'^.sampledSelectedFamily . at senderId
     invIds <- cache'^.sampledFamilyInvitations.at ourFamily
-    mfilter (invId `elem` invIds) $ pure ()
+    guard (invId `elem` invIds)
 
 -- | The device already claimed the invitation?
 deviceOwnsInvitation :: Cache.Sampled -> DeviceId -> InvitationId -> Bool
-deviceOwnsInvitation cache' devId' invId'
-  = maybe False (const True)
-    $ cache'^.sampledInvitations.at invId'._Just . to invitationReceiverId. only (Just devId')
+deviceOwnsInvitation cache' devId' invId' = isJust $ do
+  ourAccount <- cache'^?sampledDevices.at devId'._Just.to deviceAccountId
+  invitationAccount <- cache'^?sampledInvitations.at invId'._Just . to invitationReceiverId._Just
+  guard (ourAccount == invitationAccount)
 
 -- | Is the given account part of the family we are currently online in?
 isAccountInOurFamily :: AuthRequest -> AccountId -> Bool
-isAccountInOurFamily AuthRequest {..} aid = maybe False (const True) $ do
+isAccountInOurFamily AuthRequest {..} aid = isJust $ do
   fid <- clients'^.sampledSelectedFamily . at senderId
   accounts <- cache'^.sampledFamilyAccounts.at fid
-  mfilter (aid `elem` accounts) $ pure ()
+  guard (aid `elem` accounts)
 
 -- | Is the given device part of the family we are currently online in?
 isDeviceInOurFamily :: AuthRequest -> DeviceId -> Bool
-isDeviceInOurFamily auth@AuthRequest {..} devId = maybe False (const True) $ do
+isDeviceInOurFamily auth@AuthRequest {..} devId = isJust $ do
   aid <- cache'^?sampledDevices.at devId._Just.to deviceAccountId
-  mfilter (isAccountInOurFamily auth aid) $ pure ()
+  guard (isAccountInOurFamily auth aid)

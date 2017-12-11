@@ -8,8 +8,11 @@ Copyright   : (c) Robert Klotzner, 2017
 Here is a longer description of this module, containing some
 commentary with @some markup@.
 -}
-module Gonimo.Server.Cache ( -- * Types
+module Gonimo.Server.Cache ( -- * Types and classes
                              Cache(..)
+                           , HasCache(..)
+                           , Sampled(..)
+                           , HasSampled(..)
                              -- * Functions
                            , sampleAll
                            ) where
@@ -31,6 +34,7 @@ sampleAll cache' = do
   _sampledFamilyAccounts     <- sample $ cache'^.familyAccounts
   _sampledAccountFamilies    <- sample $ cache'^.accountFamilies
   _sampledFamilyAccountData  <- sample $ cache'^.familyAccountData
+  _sampledDevices            <- sample $ cache'^.devices
   pure $ Sampled {..}
 
 

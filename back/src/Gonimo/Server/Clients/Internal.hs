@@ -7,19 +7,23 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Clients.Internal where
 
-import Reflex
-import Reflex.Host.App
+import Reflex as Reflex
+import Reflex.Host.App as App
 import           Data.Map (Map)
 import qualified Data.Map as Map
+import Reflex.Behavior
+import Control.Concurrent
 
 
 
 import Gonimo.Prelude
-import Gonimo.Server.Session (Session, HasSession)
+import Gonimo.Server.Session (Session)
 import qualified Gonimo.Server.Session as Session
 import qualified Gonimo.Server.Config as Server
 import Gonimo.SocketAPI
 import Gonimo.SocketAPI.Model
+
+
 
 data Config t
   = Config { _serverConfig :: Server.Config
@@ -54,54 +58,6 @@ data Impl t
          }
 
 
-make :: forall t m. MonadAppHost t m => Config t -> m (Session.Config, Clients t)
-make conf = build $ \impl -> do
-    (onReceived', fireOnReceived) <- newExternalEvent
-    (onCreatedClient', fireOnCreatedClient) <- newExternalEvent
-    (onRemovedClient', fireOnRemovedClient) <- newExternalEvent
-
-    sessions' <- makeSessions impl
-
-    sendMessage impl $ conf^.onSend
-
-    pure $ Impl { __clients = Clients { _onReceived = onReceived'
-                                      , _onCreatedClient = onCreatedClient'
-                                      , _onRemovedClient = onRemovedClient'
-                                      , _onlineStatus = onlineStatus'
-                                      , _selectedFamily = selectedFamily'
-                                      , _bySelectedFamily = bySelectedFamily'
-                                      }
-                , _sessionConfig = Session.Config { Session.serverConfig = config^.serverConfig
-                                                  , Session._receiveMessage = fireOnReceived
-                                                  , Session._authenticated = fireOnCreatedClient
-                                                  , Session._quit = fireOnRemovedClient
-                                                  }
-                , _sessions = sessions'
-                }
-
-  where
-    build :: Impl t -> m (Impl t) -> m (Session.Config, Clients t)
-    build = (_sessionConfig &&& __clients) . mfix
-
--- | Serve our clients.
---
---   Incoming WebSocket requests are handled and sessions opened for each client.
---   Once the client authenticated it will be visible in 'Clients'.
-serve :: Session.Config -> Wai.Application
-serve config req respond =
-  let
-    mVersion = (pathInfo req)^?_Cons._Just._1.to APIVersion.fromText
-
-    wsResponse = do
-      version <- mVersion
-      Wai.websocketsApp WS.defaultConnectionOptions (Session.make config version) req
-
-    errorResponse :: Wai.Response
-    errorResponse = if isWebSocketsReq req
-                    then Wai.responseLBS (Http.Status 400 "No valid API version selected!") [] ""
-                    else Wai.responseLBS (Http.Status 400 "WebSocket Only Server") [] ""
-  in
-    respond $ fromMaybe errorResponse wsResponse
 
 -- | Sample the whole cache for your convenience!
 sampleAll :: forall t m. (Reflex t, MonadHold t m) => Clients t -> m Sampled
@@ -117,24 +73,29 @@ sampleAll clients' = do
 --
 -- And also send SessionStolen messages to devices in case their session just got stolen.
 makeSessions :: MonadAppHost t m => Impl t -> m (Behavior t (Map DeviceId Session))
-makeSessions impl = do
-    sessions' <- foldp id Map.empty $ mergeWith (.) [ uncurry Map.insert <$> impl^.onCreatedClient
-                                                    , Map.delete <$> impl^.onRemovedClient
+makeSessions impl' = do
+    sessions' <- foldp id Map.empty $ mergeWith (.) [ uncurry Map.insert <$> impl'^.onCreatedClient
+                                                    , Map.delete <$> impl'^.onRemovedClient
                                                     ]
-    let stealSession = second (const StoleSession) <$> impl^.onCreatedClient
-    performEvent_ $ attachWith sendMessage' sessions' stealSession
+    let stealSession = second (const StoleSession) <$> impl'^.onCreatedClient
+    App.performEvent_ $ attachWith sendMessage' sessions' stealSession
     pure sessions'
 
 -- | Handle onSend events by calling 'sendMessage''.
 sendMessage :: MonadAppHost t m => Impl t -> Event t (DeviceId, ToClient) -> m ()
-sendMessage impl onSend' = performEvent_ $ attachWith sendMessage' (impl^.sessions) onSend'
+sendMessage impl' onSend' = App.performEvent_ $ attachWith sendMessage' (impl'^.sessions) onSend'
 
 -- | Send a message asynchronously to a given device.
-sendMessage' :: Map DeviceId Session -> (DeviceId, ToClient) -> IO ()
-sendMessage' sessions' (destination, msg) = void . forkIO $ do
-  let mSendMessage = sessions'^?at destination._Just.sendMessage
-  sequence_ $ mSendMessage <$> pure msg
+sendMessage' :: MonadIO m => Map DeviceId Session -> (DeviceId, ToClient) -> m ()
+sendMessage' sessions' (destination, msg) = liftIO . void . forkIO $ do
+  let
+    mSendMessage :: Maybe (ToClient -> IO ())
+    mSendMessage = sessions'^?at destination._Just.Session.sendMessage
+  sequence_ $ mSendMessage <*> pure msg
 
+
+instance HasClients Impl where
+  clients = _clients
 
 -- Lenses:
 
