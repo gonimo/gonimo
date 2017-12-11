@@ -6,24 +6,20 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Authorize.Internal where
 
-import Reflex
-import Reflex.Host.App
-import Control.Lens
-import Data.Maybe
+import           Control.Lens
+import           Data.Maybe
+import           Reflex
+import           Reflex.Host.App
 
 
-import Gonimo.Server.Error
-import Gonimo.Prelude
-import Gonimo.SocketAPI.Model
-import Gonimo.SocketAPI
-import           Gonimo.Server.Cache (HasSampled(..))
-import qualified Gonimo.Server.Cache as Cache
-import           Gonimo.Server.Clients.Internal (Clients(..), HasSampled(..))
+import           Gonimo.Prelude
+import           Gonimo.Server.Cache            (HasSampled (..))
+import qualified Gonimo.Server.Cache            as Cache
+import           Gonimo.Server.Clients.Internal (Clients (..), HasSampled (..))
 import qualified Gonimo.Server.Clients.Internal as Clients
-
-
-
-
+import           Gonimo.Server.Error
+import           Gonimo.SocketAPI
+import           Gonimo.SocketAPI.Model
 
 
 
@@ -76,28 +72,28 @@ deny auth@AuthRequest {..} =
 denyUpdate :: AuthRequest -> Update -> Maybe ServerError
 denyUpdate auth@AuthRequest {..} update' =
   case update' of
-    OnChangedFamilyName         fid _    -> denyUnless (isOnlineInFamily clients' senderId fid)
-    OnChangedFamilyLastAccessed _ _   -> pure Forbidden
-    OnNewFamilyMember           _ _     -> pure Forbidden
-    OnRemovedFamilyMember fid aid -> denyUnless ( isOnlineInFamily clients' senderId fid
-                                                 && isAccountInOurFamily auth aid
-                                                )
-    OnNewFamilyInvitation       _ _   -> pure Forbidden
+    OnChangedFamilyName         fid _       -> denyUnless (isOnlineInFamily clients' senderId fid)
+    OnChangedFamilyLastAccessed _ _         -> pure Forbidden
+    OnNewFamilyMember           _ _         -> pure Forbidden
+    OnRemovedFamilyMember fid aid           -> denyUnless ( isOnlineInFamily clients' senderId fid
+                                                            && isAccountInOurFamily auth aid
+                                                          )
+    OnNewFamilyInvitation       _ _         -> pure Forbidden
     OnRemovedFamilyInviation fid invId      -> denyUnless ( isOnlineInFamily clients' senderId fid
-                                                       && onlineFamilyHasInvitation auth invId
-                                                     )
-    OnNewAccountDevice          _ _   -> pure Forbidden
-    OnRemovedAccountDevice      _ _   -> pure Forbidden
-    OnNewAccountInvitation      _ _   -> pure Forbidden
-    OnNewAccountFamily          _ _     -> pure Forbidden
+                                                            && onlineFamilyHasInvitation auth invId
+                                                          )
+    OnNewAccountDevice          _ _         -> pure Forbidden
+    OnRemovedAccountDevice      _ _         -> pure Forbidden
+    OnNewAccountInvitation      _ _         -> pure Forbidden
+    OnNewAccountFamily          _ _         -> pure Forbidden
     OnChangedDeviceName         devId _     -> denyUnless ( senderId == devId
                                                             || isOnlineInSameFamily clients' senderId devId
                                                           )
-    OnChangedDeviceLastAccessed _ _ -> pure Forbidden
+    OnChangedDeviceLastAccessed _ _         -> pure Forbidden
     OnChangedDeviceStatus       devId fid _ -> denyUnless ( senderId == devId
                                                             && isFamilyMember cache' senderId fid
                                                           )
-    OnClaimedInvitation         _       -> pure Forbidden
+    OnClaimedInvitation         _           -> pure Forbidden
     OnChangedInvitationDelivery invId _     -> denyUnless (onlineFamilyHasInvitation auth invId)
 
 -- | Deny not allowed views.
