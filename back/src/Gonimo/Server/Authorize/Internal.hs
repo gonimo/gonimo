@@ -59,7 +59,7 @@ deny auth@AuthRequest {..} =
     Authenticate _           -> pure InternalServerError -- Should already be handled!
     MakeFamily               -> mzero -- All devices are allowed to create families.
     MakeInvitation fid       -> denyUnless (isOnlineInFamily clients' senderId fid)
-    -- If the device knows the secret it may access the invitation. If it is already
+    -- If the device knows the secret it may access the invitation. Whether it is already
     -- claimed, is checked at access:
     ClaimInvitation _        -> mzero
     AnswerInvitation invId _ -> denyUnless (deviceOwnsInvitation cache' senderId invId)
@@ -100,12 +100,10 @@ denyUpdate auth@AuthRequest {..} update' =
 denyView :: AuthRequest -> ViewSelector -> Maybe ServerError
 denyView auth@AuthRequest {..} view' =
   case view' of
-   SelectAccountOwn              -> mzero -- One is always allowed to retrieve it's own account data.
    SelectAccountDevice devId     -> denyUnless (isSameAccount auth devId)
    SelectAccountFamily fid       -> denyUnless (isFamilyMember cache' senderId fid)
    SelectAccountInvitation invId -> denyUnless (hasClaimedInvitation cache' senderId invId)
 
-   SelectFamily fid              -> denyUnless (isOnlineInFamily clients' senderId fid)
    SelectFamilyAccount aid       -> denyUnless (isAccountInOurFamily auth aid)
    SelectFamilyDevice devId      -> denyUnless (isDeviceInOurFamily auth devId)
    SelectFamilyInvitation invId  -> denyUnless (familyHasInvitation auth invId)
@@ -136,6 +134,11 @@ hasClaimedInvitation cache' senderId' invId = isJust $ do
   aid <- cache'^?sampledDevices.at senderId'._Just.to deviceAccountId
   invitations <- cache'^.sampledAccountInvitations.at aid
   guard (invId `elem` invitations)
+
+-- | Is the invitation claimed already?
+isInvitationClaimed :: Cache.Sampled -> InvitationId -> Bool
+isInvitationClaimed cache' invId = isJust
+  $ cache'^?sampledInvitations.at invId._Just.to invitationReceiverId._Just
 
 -- | Does the invitatation belong to the family we are currently online in?
 familyHasInvitation :: AuthRequest -> InvitationId -> Bool

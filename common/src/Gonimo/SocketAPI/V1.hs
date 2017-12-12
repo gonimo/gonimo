@@ -291,9 +291,11 @@ instance ToJSON Update where
 --  The family view is the view a family member has on data. E.g. other members,
 --  open invitations, ...
 --
---  There are top-level selectors for both account views and family views,
---  'SelectAccountOwn' and 'SelectFamily', they retrieve all the data that is
---  relevant to the account/family. The other selectors can be used to fetch new
+--  There are no top-level selectors for account views and family views, the
+--  server will send 'ViewAccount' and 'ViewFamily' messages upon authentication
+--  and on 'OnChangedDeviceStatus' commands respectively.
+
+--  The selectors can be used to fetch new
 --  incremental data from the server, in case you received an 'Update' message
 --  from the server. For example you can fetch a newly claimed invitation from
 --  the server you just got informed about by a 'OnNewAccountInvitation' by
@@ -301,29 +303,25 @@ instance ToJSON Update where
 --
 --  ** Receiving 'Update' messages
 --  You will be receiving 'Update' messages regarding your account immediately
---  after being authenticated. You can ignore them though if you are not yet
---  interested. Once you retrieved your account data via 'SelectAccountOwn' you
---  can keep your data in sync with the server by incrementaly applying the sent
---  'Update' messages, retrieving additional data via 'Get' as indicated by the
---  'Update' messages.
+--  after being authenticated. You will also receive a 'ViewAccount' message.
+--  You can keep this data in sync with the server by incrementaly applying the
+--  sent 'Update' messages, retrieving additional data via 'Get' as indicated by
+--  the 'Update' messages.
 --
 --  For a family you will be receiving 'Update' messages for the family you are
 --  currently online in. See 'OnChangeDeviceStatus'. Also the server will only
 --  accept 'Get' messages for the family you are currently online.
 --
 --  ** Sending 'Update' messages:
---  You can only reliably send 'Update' messages for data you previously
---  selected by means of 'Get'. Once you hold a copy of some data you can expect
---  the server to accept updates, assuming you have the needed permissions of
---  course.
+--  You can only reliably send 'Update' messages for data you already hold. Once
+--  you hold a copy of some data you can expect the server to accept updates,
+--  assuming you have the needed permissions of course.
 
 data ViewSelector
-  = SelectAccountOwn
-  | SelectAccountDevice !DeviceId
+  = SelectAccountDevice !DeviceId
   | SelectAccountFamily !FamilyId
   | SelectAccountInvitation !InvitationId
 
-  | SelectFamily !FamilyId
   | SelectFamilyAccount !AccountId
   | SelectFamilyDevice !DeviceId
   | SelectFamilyInvitation !InvitationId
@@ -339,11 +337,14 @@ instance ToJSON ViewSelector where
 -- | The data you selected with 'Get' and 'ViewSelector' will be transmitted to
 --   you in a 'Got' message with the appropriate 'View' data.
 data View
+     -- | Will be sent to you upon successful authentication.
   = ViewAccount !AccountId !Account.View
   | ViewAccountDevice !DeviceId !Account.DeviceView
   | ViewAccountFamily !FamilyId !Account.FamilyView
   | ViewAccountInvitation !InvitationId !Account.InvitationView
 
+  -- | Will be sent to you on 'OnChangedDeviceStatus' - if the 'FamilyId'
+  --   differs from the previously selected one.
   | ViewFamily !FamilyId !Family.View
   | ViewFamilyAccount !AccountId !Family.AccountView
   | ViewFamilyDevice !AccountId !(DeviceId, Family.DeviceView)
