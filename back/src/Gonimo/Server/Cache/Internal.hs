@@ -25,7 +25,14 @@ import Gonimo.SocketAPI.Model
 import qualified Gonimo.Server.Db.Family as Family
 import qualified Gonimo.Server.Db.Account as Account
 import qualified Gonimo.Server.Config as Server
-import Gonimo.Server.Cache.IndexedTable as Table
+import           Gonimo.Server.Cache.Invitations (Invitations)
+import qualified Gonimo.Server.Cache.Invitations as Invitations
+import           Gonimo.Server.Cache.FamilyAccounts (FamilyAccounts)
+import qualified Gonimo.Server.Cache.FamilyAccounts as FamilyAccounts
+import           Gonimo.Server.Cache.Devices (Devices)
+import qualified Gonimo.Server.Cache.Devices as Devices
+
+
 
 data Config t
   = Config { -- | Load all data from the Db related to a single family. (Family
@@ -45,8 +52,6 @@ data Config t
 data Cache t
   = Cache { _families            :: Behavior t Families
           , _invitations         :: Behavior t Invitations
-          , _familyInvitations   :: Behavior t FamilyInvitations
-          , _accountInvitations  :: Behavior t AccountInvitations
           , _accounts            :: Behavior t Accounts
           , _familyAccounts      :: Behavior t FamilyAccounts
           , _devices             :: Behavior t Devices
@@ -59,24 +64,13 @@ data Cache t
 data Sampled
   = Sampled { _sampledFamilies            :: !Families
             , _sampledInvitations         :: !Invitations
-            , _sampledFamilyInvitations   :: !FamilyInvitations
-            , _sampledAccountInvitations  :: !AccountInvitations
             , _sampledAccounts            :: !Accounts
             , _sampledFamilyAccounts      :: !FamilyAccounts
             , _sampledDevices             :: !Devices
             }
 
 type Families = Map FamilyId Family
-type Invitations = Map InvitationId Invitation
-type FamilyInvitations = Map FamilyId [InvitationId]
-
--- | Claimed invitations of an account.
-type AccountInvitations = Map AccountId [InvitationId]
-
 type Accounts = Map AccountId Account
-type Devices = Map DeviceId Device
-type AccountFamilies = Map AccountId [FamilyId]
-type FamilyAccountData = Map (FamilyId, AccountId) FamilyAccount
 
 
 -- make :: (MonadAppHost m, Reflex t) => Config t -> m (Cache t)
@@ -86,7 +80,7 @@ type FamilyAccountData = Map (FamilyId, AccountId) FamilyAccount
 data FamilyLoad
   = FamilyLoad { _loadedFamily            :: !Family
                , _loadedAccounts          :: !Accounts
-               , _loadedFamilyAccountData :: !FamilyAccountData
+               , _loadedFamilyAccounts    :: !FamilyAccounts
                , _loadedFamilyInvitations :: !Invitations
                , _loadedFamilyDevices     :: !Devices
                }
@@ -106,13 +100,10 @@ loadFamilyData c onFamilyId = App.performEventAsync $ withFamilyId doLoad <$> on
 loadFamilyData' :: (MonadIO m, MonadBase IO m) => FamilyId -> ReaderT SqlBackend m FamilyLoad
 loadFamilyData' fid = do
   family' <- Family.get fid
-  familyAccounts' :: [FamilyAccount] <- Family.getFamilyAccounts fid
+  familyAccounts' :: [(FamilyAccountId, FamilyAccount)] <- Family.getFamilyAccounts fid
   let
-    familyAccounts'' :: [((FamilyId, AccountId), FamilyAccount)]
-    familyAccounts'' = map ((fid,) . familyAccountAccountId &&& id ) familyAccounts'
-
     accountIds :: [AccountId]
-    accountIds = familyAccountAccountId . snd <$> familyAccounts''
+    accountIds = familyAccountAccountId . snd <$> familyAccounts'
 
   accounts' :: [Account] <- traverse Account.get accountIds
   devices' :: [(DeviceId, Device)] <- concat <$> traverse Account.getDevices accountIds
@@ -120,9 +111,9 @@ loadFamilyData' fid = do
 
   pure $ FamilyLoad { _loadedFamily = family'
                     , _loadedAccounts = Map.fromList $ zip accountIds accounts'
-                    , _loadedFamilyAccountData = Map.fromList familyAccounts''
-                    , _loadedFamilyInvitations = Map.fromList invitations'
-                    , _loadedFamilyDevices = Map.fromList devices'
+                    , _loadedFamilyAccounts = FamilyAccounts.make $ Map.fromList familyAccounts'
+                    , _loadedFamilyInvitations = Invitations.make $ Map.fromList invitations'
+                    , _loadedFamilyDevices = Devices.make $ Map.fromList devices'
                     }
 
 -- * Lenses:
@@ -181,20 +172,6 @@ class HasCache a where
       go f cache' = (\invitations' -> cache' { _invitations = invitations' }) <$> f (_invitations cache')
 
 
-  familyInvitations :: Lens' (a t) (Behavior t FamilyInvitations)
-  familyInvitations = cache . go
-    where
-      go :: Lens' (Cache t) (Behavior t FamilyInvitations)
-      go f cache' = (\familyInvitations' -> cache' { _familyInvitations = familyInvitations' }) <$> f (_familyInvitations cache')
-
-
-  accountInvitations :: Lens' (a t) (Behavior t AccountInvitations)
-  accountInvitations = cache . go
-    where
-      go :: Lens' (Cache t) (Behavior t AccountInvitations)
-      go f cache' = (\accountInvitations' -> cache' { _accountInvitations = accountInvitations' }) <$> f (_accountInvitations cache')
-
-
   accounts :: Lens' (a t) (Behavior t Accounts)
   accounts = cache . go
     where
@@ -248,20 +225,6 @@ class HasSampled a where
     where
       go :: Lens' Sampled Invitations
       go f sampled' = (\sampledInvitations' -> sampled' { _sampledInvitations = sampledInvitations' }) <$> f (_sampledInvitations sampled')
-
-
-  sampledFamilyInvitations :: Lens' a FamilyInvitations
-  sampledFamilyInvitations = sampled . go
-    where
-      go :: Lens' Sampled FamilyInvitations
-      go f sampled' = (\sampledFamilyInvitations' -> sampled' { _sampledFamilyInvitations = sampledFamilyInvitations' }) <$> f (_sampledFamilyInvitations sampled')
-
-
-  sampledAccountInvitations :: Lens' a AccountInvitations
-  sampledAccountInvitations = sampled . go
-    where
-      go :: Lens' Sampled AccountInvitations
-      go f sampled' = (\sampledAccountInvitations' -> sampled' { _sampledAccountInvitations = sampledAccountInvitations' }) <$> f (_sampledAccountInvitations sampled')
 
 
   sampledAccounts :: Lens' a Accounts

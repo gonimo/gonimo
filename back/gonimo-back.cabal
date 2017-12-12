@@ -51,6 +51,10 @@ library
                   , Gonimo.Server.Authorize.Internal
                   , Gonimo.Server.Cache.Internal
                   , Gonimo.Server.Clients.Internal
+                  , Gonimo.Server.Cache.IndexedTable
+                  , Gonimo.Server.Cache.FamilyAccounts
+                  , Gonimo.Server.Cache.Invitations
+                  , Gonimo.Server.Cache.Devices
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random

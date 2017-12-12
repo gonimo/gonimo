@@ -42,10 +42,10 @@ getAccountIds fid = do
   entities <- Db.selectList [ Db.FamilyAccountFamilyId ==. toDb fid ] []
   pure $ map (fromDb . Db.familyAccountAccountId . entityVal) entities
 
-getFamilyAccounts :: MonadIO m => FamilyId -> ReaderT SqlBackend m [FamilyAccount]
+getFamilyAccounts :: MonadIO m => FamilyId -> ReaderT SqlBackend m [(FamilyAccountId, FamilyAccount)]
 getFamilyAccounts fid = do
   entities <- Db.selectList [ Db.FamilyAccountFamilyId ==. toDb fid ] []
-  pure $ map (fromDb . entityVal) entities
+  pure $ map (fromDb . entityKey &&& fromDb . entityVal) entities
 
 getInvitations :: MonadIO m => FamilyId -> ReaderT SqlBackend m [(InvitationId, Invitation)]
 getInvitations fid = do
