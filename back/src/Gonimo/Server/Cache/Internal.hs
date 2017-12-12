@@ -25,6 +25,7 @@ import Gonimo.SocketAPI.Model
 import qualified Gonimo.Server.Db.Family as Family
 import qualified Gonimo.Server.Db.Account as Account
 import qualified Gonimo.Server.Config as Server
+import Gonimo.Server.Cache.IndexedTable as Table
 
 data Config t
   = Config { -- | Load all data from the Db related to a single family. (Family
@@ -48,8 +49,6 @@ data Cache t
           , _accountInvitations  :: Behavior t AccountInvitations
           , _accounts            :: Behavior t Accounts
           , _familyAccounts      :: Behavior t FamilyAccounts
-          , _accountFamilies     :: Behavior t AccountFamilies
-          , _familyAccountData   :: Behavior t FamilyAccountData
           , _devices             :: Behavior t Devices
 
           , _onLoadedFamilyData  :: Event t FamilyId
@@ -64,8 +63,6 @@ data Sampled
             , _sampledAccountInvitations  :: !AccountInvitations
             , _sampledAccounts            :: !Accounts
             , _sampledFamilyAccounts      :: !FamilyAccounts
-            , _sampledAccountFamilies     :: !AccountFamilies
-            , _sampledFamilyAccountData   :: !FamilyAccountData
             , _sampledDevices             :: !Devices
             }
 
@@ -78,9 +75,9 @@ type AccountInvitations = Map AccountId [InvitationId]
 
 type Accounts = Map AccountId Account
 type Devices = Map DeviceId Device
-type FamilyAccounts = Map FamilyId [AccountId]
 type AccountFamilies = Map AccountId [FamilyId]
 type FamilyAccountData = Map (FamilyId, AccountId) FamilyAccount
+
 
 -- make :: (MonadAppHost m, Reflex t) => Config t -> m (Cache t)
 -- make conf = undefined
@@ -212,18 +209,11 @@ class HasCache a where
       go f cache' = (\familyAccounts' -> cache' { _familyAccounts = familyAccounts' }) <$> f (_familyAccounts cache')
 
 
-  accountFamilies :: Lens' (a t) (Behavior t AccountFamilies)
-  accountFamilies = cache . go
+  devices :: Lens' (a t) (Behavior t Devices)
+  devices = cache . go
     where
-      go :: Lens' (Cache t) (Behavior t AccountFamilies)
-      go f cache' = (\accountFamilies' -> cache' { _accountFamilies = accountFamilies' }) <$> f (_accountFamilies cache')
-
-
-  familyAccountData :: Lens' (a t) (Behavior t FamilyAccountData)
-  familyAccountData = cache . go
-    where
-      go :: Lens' (Cache t) (Behavior t FamilyAccountData)
-      go f cache' = (\familyAccountData' -> cache' { _familyAccountData = familyAccountData' }) <$> f (_familyAccountData cache')
+      go :: Lens' (Cache t) (Behavior t Devices)
+      go f cache' = (\devices' -> cache' { _devices = devices' }) <$> f (_devices cache')
 
 
   onLoadedFamilyData :: Lens' (a t) (Event t FamilyId)
@@ -239,15 +229,9 @@ class HasCache a where
       go :: Lens' (Cache t) (Event t AccountId)
       go f cache' = (\onLoadedAccountData' -> cache' { _onLoadedAccountData = onLoadedAccountData' }) <$> f (_onLoadedAccountData cache')
 
-  devices :: Lens' (a t) (Behavior t Devices)
-  devices = cache . go
-    where
-      go :: Lens' (Cache t) (Behavior t Devices)
-      go f cache' = (\devices' -> cache' { _devices = devices' }) <$> f (_devices cache')
 
 instance HasCache Cache where
   cache = id
-
 
 class HasSampled a where
   sampled :: Lens' a Sampled
@@ -292,20 +276,6 @@ class HasSampled a where
     where
       go :: Lens' Sampled FamilyAccounts
       go f sampled' = (\sampledFamilyAccounts' -> sampled' { _sampledFamilyAccounts = sampledFamilyAccounts' }) <$> f (_sampledFamilyAccounts sampled')
-
-
-  sampledAccountFamilies :: Lens' a AccountFamilies
-  sampledAccountFamilies = sampled . go
-    where
-      go :: Lens' Sampled AccountFamilies
-      go f sampled' = (\sampledAccountFamilies' -> sampled' { _sampledAccountFamilies = sampledAccountFamilies' }) <$> f (_sampledAccountFamilies sampled')
-
-
-  sampledFamilyAccountData :: Lens' a FamilyAccountData
-  sampledFamilyAccountData = sampled . go
-    where
-      go :: Lens' Sampled FamilyAccountData
-      go f sampled' = (\sampledFamilyAccountData' -> sampled' { _sampledFamilyAccountData = sampledFamilyAccountData' }) <$> f (_sampledFamilyAccountData sampled')
 
 
   sampledDevices :: Lens' a Devices
