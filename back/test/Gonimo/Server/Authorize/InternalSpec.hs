@@ -67,6 +67,7 @@ spec = do
     it "succeeds if both devices are online within the same family" $ do
       deny (mkRequest 9 (SendMessage (DeviceId 10) "Haha")) `shouldBe` Nothing
   describe "UpdateServer" $ updateServerSpec
+  describe "Get" $ getSpec
 
 updateServerSpec :: Spec
 updateServerSpec = do
@@ -113,6 +114,48 @@ updateServerSpec = do
   where
     mkUpdate client upd = mkRequest client (UpdateServer upd)
 
+getSpec :: Spec
+getSpec = do
+  describe "SelectAccountDevice" $ do
+    it "fails for devices of a different account (1)" $ do
+      deny (mkGet 1 (SelectAccountDevice (DeviceId 9))) `shouldBe` Just Forbidden
+    it "fails for devices of a different account (2)" $ do
+      deny (mkGet 9 (SelectAccountDevice (DeviceId 1))) `shouldBe` Just Forbidden
+    it "works for devices of a the same account" $ do
+      deny (mkGet 9 (SelectAccountDevice (DeviceId 8))) `shouldBe` Nothing
+  describe "SelectAccountFamily" $ do
+    it "fails for devices of a different family (1)" $ do
+      deny (mkGet 1 (SelectAccountFamily (FamilyId 9))) `shouldBe` Just Forbidden
+    it "works for devices having access to the family (1)" $ do
+      deny (mkGet 9 (SelectAccountFamily (FamilyId 9))) `shouldBe` Nothing
+    it "works for devices having access to the family (2)" $ do
+      deny (mkGet 8 (SelectAccountFamily (FamilyId 9))) `shouldBe` Nothing
+  describe "SelectAccountInvitation" $ do
+    it "fails for devices not having claimed the inviation" $ do
+      deny (mkGet 1 (SelectAccountInvitation (InvitationId 3))) `shouldBe` Just Forbidden
+    it "fails for unclaimed invitations" $ do
+      deny (mkGet 9 (SelectAccountInvitation (InvitationId 1))) `shouldBe` Just Forbidden
+    it "works for devices that claimed the invitation (1)" $ do
+      deny (mkGet 8 (SelectAccountInvitation (InvitationId 3))) `shouldBe` Nothing
+    it "works for devices that claimed the invitation (2)" $ do
+      deny (mkGet 9 (SelectAccountInvitation (InvitationId 3))) `shouldBe` Nothing
+  describe "SelectFamilyAccount" $ do
+    it "fails for devices not online in the right family" $ do
+      deny (mkGet 8 (SelectFamilyAccount (AccountId 9))) `shouldBe` Just Forbidden
+    it "works for devices online in the right family" $ do
+      deny (mkGet 9 (SelectFamilyAccount (AccountId 9))) `shouldBe` Nothing
+  describe "SelectFamilyDevice" $ do
+    it "fails for devices not online in the right family" $ do
+      deny (mkGet 8 (SelectFamilyDevice (DeviceId 8))) `shouldBe` Just Forbidden
+    it "works for devices online in the right family" $ do
+      deny (mkGet 9 (SelectFamilyDevice (DeviceId 8))) `shouldBe` Nothing
+  describe "SelectFamilyInvitation" $ do
+    it "fails for devices not online in the right family" $ do
+      deny (mkGet 8 (SelectFamilyInvitation (InvitationId 1))) `shouldBe` Just Forbidden
+    it "works for devices online in the right family" $ do
+      deny (mkGet 9 (SelectFamilyInvitation (InvitationId 1))) `shouldBe` Nothing
+  where
+    mkGet client get = mkRequest client (Get get)
 
 mkRequest client msg = AuthRequest myCache myClients (DeviceId client) msg
 
