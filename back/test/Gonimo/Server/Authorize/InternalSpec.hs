@@ -80,8 +80,36 @@ updateServerSpec = do
   describe "OnRemovedFamilyMember" $ do
     it "fails for non family members" $ do
       deny (mkUpdate 1 (OnRemovedFamilyMember (FamilyId 9) (AccountId 9))) `shouldBe` Just Forbidden
+    it "fails for family members that are not online" $ do
+      deny (mkUpdate 8 (OnRemovedFamilyMember (FamilyId 9) (AccountId 9))) `shouldBe` Just Forbidden
     it "succeeds for family members (that are online)" $ do
       deny (mkUpdate 9 (OnRemovedFamilyMember (FamilyId 9) (AccountId 10))) `shouldBe` Nothing
+  describe "OnRemovedFamilyInvitation" $ do
+    it "fails non family members" $ do
+      deny (mkUpdate 1 (OnRemovedFamilyInvitation (FamilyId 9) (InvitationId 1))) `shouldBe` Just Forbidden
+    it "fails non online family members" $ do
+      deny (mkUpdate 8 (OnRemovedFamilyInvitation (FamilyId 9) (InvitationId 1))) `shouldBe` Just Forbidden
+    it "fails for invitations not belonging to the given family" $ do
+      deny (mkUpdate 9 (OnRemovedFamilyInvitation (FamilyId 9) (InvitationId 4))) `shouldBe` Just Forbidden
+    it "succeeds for online family members" $ do
+      deny (mkUpdate 9 (OnRemovedFamilyInvitation (FamilyId 9) (InvitationId 1))) `shouldBe` Nothing
+  describe "OnChangedDeviceName" $ do
+    it "fails for non online family members" $ do
+      deny (mkUpdate 8 (OnChangedDeviceName (DeviceId 9) "Heinzi")) `shouldBe` Just Forbidden
+    it "works for online family members" $ do
+      deny (mkUpdate 9 (OnChangedDeviceName (DeviceId 8) "Heinzi")) `shouldBe` Just Forbidden
+  describe "OnChangedDeviceStatus" $ do
+    it "fails for all other devices" $ do
+      deny (mkUpdate 8 (OnChangedDeviceStatus (DeviceId 9) (FamilyId 9) Online)) `shouldBe` Just Forbidden
+    it "works for the device itself" $ do
+      deny (mkUpdate 9 (OnChangedDeviceStatus (DeviceId 9) (FamilyId 9) Online)) `shouldBe` Nothing
+  describe "OnChangedInvitationDelivery" $ do
+    it "fails for non online family devices" $ do
+      deny (mkUpdate 8 (OnChangedInvitationDelivery (InvitationId 1) OtherDelivery)) `shouldBe` Just Forbidden
+    it "fails for invitations not belonging to the current family" $ do
+      deny (mkUpdate 9 (OnChangedInvitationDelivery (InvitationId 4) OtherDelivery)) `shouldBe` Just Forbidden
+    it "works for online devices in the right family" $ do
+      deny (mkUpdate 9 (OnChangedInvitationDelivery (InvitationId 1) OtherDelivery)) `shouldBe` Nothing
   where
     mkUpdate client upd = mkRequest client (UpdateServer upd)
 
@@ -96,6 +124,7 @@ myCache
                      $ Map.fromList [ (InvitationId 1, Invitation (Secret "haha") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) Nothing)
                                     , (InvitationId 2, Invitation (Secret "haha1") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 2)))
                                     , (InvitationId 3, Invitation (Secret "haha2") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 9)))
+                                    , (InvitationId 4, Invitation (Secret "haha3") (FamilyId 1) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 9)))
                                     ]
     , _accounts = Map.fromList [ (AccountId 9, Account timeStamp)
                                , (AccountId 1, Account timeStamp)
