@@ -18,14 +18,20 @@ import Data.Time
 
 
 import           Gonimo.Prelude
-import           Gonimo.Server.Cache.Internal            (HasSampled (..), Sampled(..))
 import qualified Gonimo.Server.Cache.Internal            as Cache
-import           Gonimo.Server.Clients.Internal (Clients (..), HasSampled (..), Sampled(..))
-import qualified Gonimo.Server.Clients.Internal as Clients
+import           Gonimo.Server.Cache.Internal         (Model(..))
+import           Gonimo.Server.Clients.ClientStatus (ClientStatuses, ClientStatus(..))
+import qualified Gonimo.Server.Clients.ClientStatus as ClientStatuses
+
+
 import           Gonimo.Server.Error
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Model
 import           Gonimo.Server.Authorize.Internal
+import qualified Gonimo.Server.Cache.Devices        as Devices
+import qualified Gonimo.Server.Cache.FamilyAccounts as FamilyAccounts
+import qualified Gonimo.Server.Cache.IndexedTable   as Table
+import qualified Gonimo.Server.Cache.Invitations    as Invitations
 
 
 spec :: Spec
@@ -82,42 +88,39 @@ updateServerSpec = do
 
 mkRequest client msg = AuthRequest myCache myClients (DeviceId client) msg
 
-myCache :: Cache.Sampled
+myCache :: Cache.Model
 myCache
-  = Cache.Sampled
-    { _sampledFamilies = Map.fromList [(FamilyId 9, Family (parseFamilyName "Family9") timeStamp timeStamp [])]
-    , _sampledInvitations = Map.fromList [ (InvitationId 1, Invitation (Secret "haha") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) Nothing)
-                                         , (InvitationId 2, Invitation (Secret "haha1") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 2)))
-                                         , (InvitationId 3, Invitation (Secret "haha2") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 9)))
-                                          ]
-    , _sampledFamilyInvitations = Map.fromList [(FamilyId 9, [InvitationId 1, InvitationId 2, InvitationId 3])
-                                                ]
-    , _sampledAccountInvitations = Map.empty
-    , _sampledAccounts = Map.fromList [ (AccountId 9, Account timeStamp)
-                                      , (AccountId 1, Account timeStamp)
-                                      , (AccountId 2, Account timeStamp)
-                                      , (AccountId 10, Account timeStamp)
-                                      ]
-    , _sampledFamilyAccounts = Map.fromList [(FamilyId 9, [AccountId 9, AccountId 10])]
-    , _sampledAccountFamilies = Map.fromList [(AccountId 9, [FamilyId 9]), (AccountId 10, [FamilyId 9])]
-    , _sampledFamilyAccountData = Map.empty -- Not correct, but should not do any harm.
-    , _sampledDevices = Map.fromList [ (DeviceId 9, Device (Just "inFamilyDevice") (ourAuthToken "device 9") (AccountId 9) timeStamp "Some very weird browser.")
-                                     , (DeviceId 8, Device (Just "inFamilyDevice2") (ourAuthToken "device 8") (AccountId 9) timeStamp "Some very weird browser.")
-                                     , (DeviceId 1, Device (Just "notInFamilyDevice") (ourAuthToken "device 1") (AccountId 1) timeStamp "Some very weird browser.")
-                                     , (DeviceId 10, Device (Just "inFamilyDevice3") (ourAuthToken "device 10") (AccountId 9) timeStamp "Some very weird browser.")
-                                     , (DeviceId 11, Device (Just "inFamilyDevice4") (ourAuthToken "device 11") (AccountId 10) timeStamp "Some very weird browser.")
-                                     ]
+  = Cache.Model
+    { _families = Map.fromList [(FamilyId 9, Family (parseFamilyName "Family9") timeStamp timeStamp [])]
+    , _invitations = Invitations.make
+                     $ Map.fromList [ (InvitationId 1, Invitation (Secret "haha") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) Nothing)
+                                    , (InvitationId 2, Invitation (Secret "haha1") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 2)))
+                                    , (InvitationId 3, Invitation (Secret "haha2") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 9)))
+                                    ]
+    , _accounts = Map.fromList [ (AccountId 9, Account timeStamp)
+                               , (AccountId 1, Account timeStamp)
+                               , (AccountId 2, Account timeStamp)
+                               , (AccountId 10, Account timeStamp)
+                               ]
+    , _familyAccounts = FamilyAccounts.make
+                        $ Map.fromList [ (FamilyAccountId 9, FamilyAccount (AccountId 9) (FamilyId 9) timeStamp Nothing)
+                                       , (FamilyAccountId 10, FamilyAccount (AccountId 10) (FamilyId 9) timeStamp Nothing)
+                                       ]
+    , _devices = Devices.make
+                 $ Map.fromList [ (DeviceId 9, Device (Just "inFamilyDevice") (ourAuthToken "device 9") (AccountId 9) timeStamp "Some very weird browser.")
+                                , (DeviceId 8, Device (Just "inFamilyDevice2") (ourAuthToken "device 8") (AccountId 9) timeStamp "Some very weird browser.")
+                                , (DeviceId 1, Device (Just "notInFamilyDevice") (ourAuthToken "device 1") (AccountId 1) timeStamp "Some very weird browser.")
+                                , (DeviceId 10, Device (Just "inFamilyDevice3") (ourAuthToken "device 10") (AccountId 9) timeStamp "Some very weird browser.")
+                                , (DeviceId 11, Device (Just "inFamilyDevice4") (ourAuthToken "device 11") (AccountId 10) timeStamp "Some very weird browser.")
+                                ]
     }
 
-myClients :: Clients.Sampled
+myClients :: ClientStatuses
 myClients
-  = Clients.Sampled
-  { _sampledOnlineStatus = Map.fromList [(DeviceId 9, Online), (DeviceId 10, Online)]
-  , _sampledSelectedFamily = Map.fromList [(DeviceId 9, FamilyId 9), (DeviceId 10, FamilyId 9)]
-  , _sampledBySelectedFamily = Map.fromList [ (FamilyId 9, [DeviceId 9])
-                                            , (FamilyId 9, [DeviceId 10])
-                                            ]
-  }
+  = ClientStatuses.make
+    $ Map.fromList [ (DeviceId 9, ClientStatus Online (Just (FamilyId 9)))
+                   , (DeviceId 10, ClientStatus Online (Just (FamilyId 9)))
+                   ]
 
 ourAuthToken :: ByteString -> AuthToken
 ourAuthToken bs = GonimoSecret (Secret bs)
