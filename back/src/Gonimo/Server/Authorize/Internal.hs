@@ -13,13 +13,15 @@ import           Reflex.Host.App
 
 
 import           Gonimo.Prelude
-import           Gonimo.Server.Cache            (HasSampled (..))
+import           Gonimo.Server.Cache            (HasModel (..))
 import qualified Gonimo.Server.Cache            as Cache
-import           Gonimo.Server.Clients.Internal (Clients (..), HasSampled (..))
-import qualified Gonimo.Server.Clients.Internal as Clients
+import           Gonimo.Server.Clients.Internal (Clients (..))
+import           Gonimo.Server.Clients.ClientStatus
 import           Gonimo.Server.Error
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Model
+import qualified Gonimo.Server.Cache.FamilyAccounts as FamilyAccounts
+import qualified Gonimo.Server.Cache.Invitations    as Invitations
 
 
 
@@ -35,8 +37,8 @@ data Authorize t
               }
 
 data AuthRequest
-  = AuthRequest { cache'   :: !Cache.Sampled
-                , clients' :: !Clients.Sampled
+  = AuthRequest { cache'   :: !Cache.Model
+                , clients' :: !ClientStatuses
                 , senderId :: !DeviceId
                 , msg :: !FromClient
                 }
@@ -115,77 +117,76 @@ denyUnless c = guard (not c) >> pure Forbidden
 
 -- | Check whether the sender device is member of an account which is a family
 --   member of the given family.
-isFamilyMember :: Cache.Sampled -> DeviceId -> FamilyId -> Bool
+isFamilyMember :: Cache.Model -> DeviceId -> FamilyId -> Bool
 isFamilyMember cache' senderId' fid = isJust $ do
-  aid <- cache'^?sampledDevices.at senderId'._Just.to deviceAccountId
-  fids <- cache'^.sampledAccountFamilies.at aid
+  aid <- cache'^?devices.at senderId'._Just.to deviceAccountId
+  let fids = FamilyAccounts.getFamilies aid (cache'^.familyAccounts)
   guard (fid `elem` fids)
 
 -- | Does the given device id belong to the same account as we?
 isSameAccount :: AuthRequest -> DeviceId -> Bool
 isSameAccount AuthRequest {..} other = isJust $ do
-  otherDevice <- cache'^.sampledDevices.at other
-  ourDevice <- cache'^.sampledDevices.at senderId
+  otherDevice <- cache'^.devices.at other
+  ourDevice <- cache'^.devices.at senderId
   guard (deviceAccountId ourDevice == deviceAccountId otherDevice)
 
 -- | Does the sender device own the given invitation?
-hasClaimedInvitation :: Cache.Sampled -> DeviceId -> InvitationId -> Bool
+hasClaimedInvitation :: Cache.Model -> DeviceId -> InvitationId -> Bool
 hasClaimedInvitation cache' senderId' invId = isJust $ do
-  aid <- cache'^?sampledDevices.at senderId'._Just.to deviceAccountId
-  invitations <- cache'^.sampledAccountInvitations.at aid
-  guard (invId `elem` invitations)
+  aid <- cache'^?devices.at senderId'._Just.to deviceAccountId
+  let byReceiverId =  Invitations.byReceiverId (cache'^.invitations)
+  invitations' <- byReceiverId^.at aid
+  guard (invId `elem` invitations')
 
 -- | Is the invitation claimed already?
-isInvitationClaimed :: Cache.Sampled -> InvitationId -> Bool
+isInvitationClaimed :: Cache.Model -> InvitationId -> Bool
 isInvitationClaimed cache' invId = isJust
-  $ cache'^?sampledInvitations.at invId._Just.to invitationReceiverId._Just
+  $ cache'^?invitations.at invId._Just.to invitationReceiverId._Just
 
 -- | Does the invitatation belong to the family we are currently online in?
 familyHasInvitation :: AuthRequest -> InvitationId -> Bool
 familyHasInvitation AuthRequest {..} invId = isJust $ do
-  ourFamily <- clients'^.sampledSelectedFamily . at senderId
-  invitations <- cache'^.sampledFamilyInvitations.at ourFamily
-  guard (invId `elem` invitations)
+  ourFamily <- clients'^? at senderId . _Just . clientFamily . _Just
+  let byFamilyId' = Invitations.byFamilyId (cache'^.invitations)
+  invitations' <- byFamilyId' ^. at ourFamily
+  guard (invId `elem` invitations')
 
 -- | Auth check whether a device is currently online in a given family.
-isOnlineInFamily :: Clients.Sampled -> DeviceId -> FamilyId -> Bool
+isOnlineInFamily :: ClientStatuses -> DeviceId -> FamilyId -> Bool
 isOnlineInFamily clients' devId' fid
   = isJust
-    $ clients'^?sampledSelectedFamily .at devId'.only (Just fid)
+    $ clients'^?at devId' . _Just . clientFamily . only (Just fid)
 
 -- | Both devices in the same family online?
-isOnlineInSameFamily :: Clients.Sampled -> DeviceId -> DeviceId -> Bool
-isOnlineInSameFamily clients' we they =
-  let
-    mOurFamily = clients'^.sampledSelectedFamily . at we
-  in
-    case mOurFamily of
-      Nothing          -> False -- We are not online in any family - we are done!
-      Just ourFamily -> isOnlineInFamily clients' they ourFamily
+isOnlineInSameFamily :: ClientStatuses -> DeviceId -> DeviceId -> Bool
+isOnlineInSameFamily clients' we they = isJust $ do
+    ourFamily <- clients'^? at we . _Just . clientFamily . _Just
+    guard (isOnlineInFamily clients' they ourFamily)
 
 -- | Invitation is from the family the device is currently online in?
 onlineFamilyHasInvitation :: AuthRequest -> InvitationId -> Bool
 onlineFamilyHasInvitation AuthRequest{..} invId = isJust $ do
-    ourFamily <- clients'^.sampledSelectedFamily . at senderId
-    invIds <- cache'^.sampledFamilyInvitations.at ourFamily
+    ourFamily <- clients'^? at senderId . _Just . clientFamily . _Just
+    let byFamilyId' = Invitations.byFamilyId (cache'^.invitations)
+    invIds <- byFamilyId' ^. at ourFamily
     guard (invId `elem` invIds)
 
 -- | The device already claimed the invitation?
-deviceOwnsInvitation :: Cache.Sampled -> DeviceId -> InvitationId -> Bool
+deviceOwnsInvitation :: Cache.Model -> DeviceId -> InvitationId -> Bool
 deviceOwnsInvitation cache' devId' invId' = isJust $ do
-  ourAccount <- cache'^?sampledDevices.at devId'._Just.to deviceAccountId
-  invitationAccount <- cache'^?sampledInvitations.at invId'._Just . to invitationReceiverId._Just
+  ourAccount <- cache'^?devices.at devId'._Just.to deviceAccountId
+  invitationAccount <- cache'^?invitations.at invId'._Just . to invitationReceiverId._Just
   guard (ourAccount == invitationAccount)
 
 -- | Is the given account part of the family we are currently online in?
 isAccountInOurFamily :: AuthRequest -> AccountId -> Bool
 isAccountInOurFamily AuthRequest {..} aid = isJust $ do
-  fid <- clients'^.sampledSelectedFamily . at senderId
-  accounts <- cache'^.sampledFamilyAccounts.at fid
-  guard (aid `elem` accounts)
+  fid <- clients'^? at senderId . _Just . clientFamily . _Just
+  let accounts' = FamilyAccounts.getAccounts fid (cache'^.familyAccounts)
+  guard (aid `elem` accounts')
 
 -- | Is the given device part of the family we are currently online in?
 isDeviceInOurFamily :: AuthRequest -> DeviceId -> Bool
 isDeviceInOurFamily auth@AuthRequest {..} devId = isJust $ do
-  aid <- cache'^?sampledDevices.at devId._Just.to deviceAccountId
+  aid <- cache'^?devices.at devId._Just.to deviceAccountId
   guard (isAccountInOurFamily auth aid)

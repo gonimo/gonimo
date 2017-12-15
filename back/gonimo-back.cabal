@@ -32,9 +32,18 @@ library
                         , ssl
 
   exposed-modules:  Gonimo.Database.Effects.Servant
+                  , Control.Logging.Extended
                   , Gonimo.Db.Entities
                   , Gonimo.Db.PersistFields
                   -- , Gonimo.Server
+                  , Gonimo.Server.Authorize.Internal
+                  , Gonimo.Server.Cache.Devices
+                  , Gonimo.Server.Cache.FamilyAccounts
+                  , Gonimo.Server.Cache.IndexedTable
+                  , Gonimo.Server.Cache.Internal
+                  , Gonimo.Server.Cache.Invitations
+                  , Gonimo.Server.Clients.Internal
+                  , Gonimo.Server.Clients.ClientStatus
                   , Gonimo.Server.Config
                   , Gonimo.Server.Config.Internal
                   , Gonimo.Server.Db.Account
@@ -47,14 +56,6 @@ library
                   , Gonimo.Server.NameGenerator
                   , Gonimo.Server.Session
                   , Gonimo.Server.Session.Internal
-                  , Control.Logging.Extended
-                  , Gonimo.Server.Authorize.Internal
-                  , Gonimo.Server.Cache.Internal
-                  , Gonimo.Server.Clients.Internal
-                  , Gonimo.Server.Cache.IndexedTable
-                  , Gonimo.Server.Cache.FamilyAccounts
-                  , Gonimo.Server.Cache.Invitations
-                  , Gonimo.Server.Cache.Devices
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random
@@ -117,6 +118,7 @@ library
                       , reflex
                       , reflex-host
                       , logging
+                      , generic-deriving
 
 
 executable gonimo-back

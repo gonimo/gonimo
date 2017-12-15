@@ -38,6 +38,36 @@ make config = do
   authorized <- Authorizer.make authConfig
   authorized >>= requesthandler
 
+-- Cache handling:
+-- On authentication, load all data the device has access to: Account, Devices, Families, Accounts & Devices in those families, invitations from those families & claimed invitations. Don't assume those data is loaded in cache, but check and load everything that is not there. Important: Don't load anything that is already there, that would make the cache inconsistent!
+-- When selecting a family everything is already there - no loading required.
+-- That's a good compromise on performance and implementation complexity. A db access on authentication is required anyway, and if we restrict the numbers of devices per account/ accounts per family, families per account this should work well.
+performUpdate :: Update -> Model -> Model
+performUpdate update =
+  case update of
+    OnChangedFamilyName         fid name       ->
+    OnChangedFamilyLastAccessed fid t         ->
+    OnNewFamilyMember           fid aid         ->
+    OnRemovedFamilyMember fid aid           ->
+
+
+    OnNewFamilyInvitation       fid invId         ->
+    OnRemovedFamilyInviation fid invId      ->
+
+
+    OnNewAccountDevice          aid devId         ->
+    OnRemovedAccountDevice      aid devId         ->
+    OnNewAccountInvitation      aid invid         ->
+    OnNewAccountFamily          aid fid         ->
+    OnChangedDeviceName         devId name     ->
+
+
+    OnChangedDeviceLastAccessed devId t         ->
+    OnChangedDeviceStatus       devId fid status ->
+
+
+    OnClaimedInvitation         _           ->
+    OnChangedInvitationDelivery invId _     ->
 {--
 
 

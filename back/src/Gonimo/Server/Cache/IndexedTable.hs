@@ -15,8 +15,9 @@ If you need multiple indeces, you can nest 'IndexedTable', for an example checko
 module Gonimo.Server.Cache.IndexedTable (
                                           -- * Types
                                           IndexedTable
-                                          -- * Creation
+                                          -- * Creation & expansion
                                         , fromRawTable
+                                        , loadData
                                           -- * Access inner tables and the index
                                         , getInner
                                         , getIndex
@@ -50,6 +51,15 @@ fromRawTable valToIndex' m = IndexedTable { _table = m
                                           , _valToIndex = valToIndex'
                                           }
 
+-- | Convenience function for mass insertion into the table.
+loadData :: (At (c key val), Ord key
+            , IxValue (c key val) ~ val
+            , Index (c key val) ~ key
+            , Ord index
+            )
+         => [(key, val)] -> IndexedTable index c key val -> IndexedTable index c key val
+loadData = flip $ foldr (uncurry insert)
+
 -- | Get the inner table, which can be another 'IndexedTable' or a plain 'Map'.
 getInner :: IndexedTable index c key val -> c key val
 getInner = _table
@@ -68,7 +78,7 @@ lookupByIndex index t = fromMaybe [] $ do
   pure $ mapMaybe (\k -> (k, ) <$> t ^. table . at k) keys
 
 
--- | Get access to the underlying table as a map
+-- | Get access to the underlying table as a Map
 class HasRawTable t where
   toRawTable :: t key val -> Map key val
 

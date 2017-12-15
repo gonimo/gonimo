@@ -5,7 +5,6 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Cache.Invitations ( Invitations
                                        , make
-                                       , bySecret
                                        , byFamilyId
                                        , byReceiverId
                                        ) where
@@ -17,9 +16,8 @@ import           Gonimo.Server.Cache.IndexedTable as Table
 import           Gonimo.SocketAPI.Model
 
 
-type SecretIndexed = IndexedTable Secret Map
 
-type ReceiverIndexed = IndexedTable AccountId SecretIndexed
+type ReceiverIndexed = IndexedTable AccountId Map
 
 type Invitations = IndexedTable FamilyId ReceiverIndexed InvitationId Invitation
 
@@ -27,13 +25,8 @@ type Invitations = IndexedTable FamilyId ReceiverIndexed InvitationId Invitation
 make :: Map InvitationId Invitation -> Invitations
 make invitations' = fromRawTable (Just . invitationFamilyId) receiverIndexed
   where
-    secretIndexed = fromRawTable (Just . invitationSecret) invitations'
-    receiverIndexed = fromRawTable invitationReceiverId secretIndexed
+    receiverIndexed = fromRawTable invitationReceiverId invitations'
 
-
--- | Search entries by Secret
-bySecret :: Invitations -> Map Secret [InvitationId]
-bySecret = getIndex . Table.getInner . Table.getInner
 
 -- | Serch entries by FamilyId
 byFamilyId :: Invitations -> Map FamilyId [InvitationId]

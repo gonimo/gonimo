@@ -46,8 +46,6 @@ make conf = build $ \impl -> do
                                       , _onCreatedClient = onCreatedClient'
                                       , _onRemovedClient = onRemovedClient'
                                       , _onlineStatus = onlineStatus'
-                                      , _selectedFamily = selectedFamily'
-                                      , _bySelectedFamily = bySelectedFamily'
                                       }
                 , _sessionConfig = Session.Config { Session._serverConfig = config^.serverConfig
                                                   , Session._receiveMessage = fireOnReceived
