@@ -21,7 +21,7 @@ import           Gonimo.Prelude
 import qualified Gonimo.Server.Cache.Internal            as Cache
 import           Gonimo.Server.Cache.Internal         (Model(..))
 import           Gonimo.Server.Clients.ClientStatus (ClientStatuses, ClientStatus(..))
-import qualified Gonimo.Server.Clients.ClientStatus as ClientStatuses
+import qualified Gonimo.Server.Clients.ClientStatus as ClientStatus
 
 
 import           Gonimo.Server.Error
@@ -117,7 +117,7 @@ myCache
 
 myClients :: ClientStatuses
 myClients
-  = ClientStatuses.make
+  = ClientStatus.makeStatuses
     $ Map.fromList [ (DeviceId 9, ClientStatus Online (Just (FamilyId 9)))
                    , (DeviceId 10, ClientStatus Online (Just (FamilyId 9)))
                    ]

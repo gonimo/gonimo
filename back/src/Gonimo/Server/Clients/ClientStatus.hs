@@ -7,7 +7,7 @@ module Gonimo.Server.Clients.ClientStatus ( ClientStatus(..)
                                           , ClientStatuses
                                           , clientDeviceStatus
                                           , clientFamily
-                                          , make
+                                          , makeStatuses
                                           , byFamilyId
                                           ) where
 
@@ -26,8 +26,8 @@ data ClientStatus = ClientStatus { _clientDeviceStatus :: DeviceStatus
 type ClientStatuses = IndexedTable FamilyId Map DeviceId ClientStatus
 
 -- | Create a new ClientStatuses indexed data structure from a raw Map
-make :: Map DeviceId ClientStatus -> ClientStatuses
-make clientStatuses' = fromRawTable _clientFamily clientStatuses'
+makeStatuses :: Map DeviceId ClientStatus -> ClientStatuses
+makeStatuses clientStatuses' = fromRawTable _clientFamily clientStatuses'
 
 
 -- | Serch entries by FamilyId
