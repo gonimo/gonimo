@@ -219,7 +219,7 @@ data Update
     --   'OnRemovedFamilyInvitation') or accepted/declined.
     --
     --   Accepted from online family members.
-  | OnRemovedFamilyInviation !FamilyId !InvitationId
+  | OnRemovedFamilyInvitation !FamilyId !InvitationId
 
     --   Account updates
   | OnNewAccountDevice          !AccountId !DeviceId

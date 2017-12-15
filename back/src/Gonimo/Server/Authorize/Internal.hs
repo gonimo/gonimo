@@ -81,7 +81,7 @@ denyUpdate auth@AuthRequest {..} update' =
                                                             && isAccountInOurFamily auth aid
                                                           )
     OnNewFamilyInvitation       _ _         -> pure Forbidden
-    OnRemovedFamilyInviation fid invId      -> denyUnless ( isOnlineInFamily clients' senderId fid
+    OnRemovedFamilyInvitation fid invId     -> denyUnless ( isOnlineInFamily clients' senderId fid
                                                             && onlineFamilyHasInvitation auth invId
                                                           )
     OnNewAccountDevice          _ _         -> pure Forbidden
