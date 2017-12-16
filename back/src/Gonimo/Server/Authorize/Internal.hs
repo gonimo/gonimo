@@ -9,13 +9,13 @@ module Gonimo.Server.Authorize.Internal where
 import           Control.Lens
 import           Data.Maybe
 import           Reflex
-import           Reflex.Host.App
+
 
 
 import           Gonimo.Prelude
-import           Gonimo.Server.Cache            (HasModel (..))
+import           Gonimo.Server.Cache            (Cache, HasModel (..))
 import qualified Gonimo.Server.Cache            as Cache
-import           Gonimo.Server.Clients.Internal (Clients (..))
+import           Gonimo.Server.Clients.Internal (Clients (..), HasClients(..))
 import           Gonimo.Server.Clients.ClientStatus
 import           Gonimo.Server.Error
 import           Gonimo.SocketAPI
@@ -26,16 +26,20 @@ import qualified Gonimo.Server.Cache.Invitations    as Invitations
 
 
 
+-- | Configuration for authorizations.
 data Config t
-  = Config { __clients :: Clients t
-           , _onAuthorize :: Event t (DeviceId, FromClient)
+  = Config { __clients :: Clients t -- ^ Available online clients
+           , _cache :: Cache t -- ^ Database cache for making decisions.
+           , _onAuthorize :: Event t (DeviceId, FromClient) -- ^ The requests to authorize.
            }
 
+-- | Requests will either be forbidden or passed through.
 data Authorize t
-  = Authorize { _onForbidden :: Event t (DeviceId, ToClient)
-              , _onAuthorized :: Event t (DeviceId, FromClient)
+  = Authorize { _onForbidden :: Event t (DeviceId, ToClient) -- ^ Forbidden responses.
+              , _onAuthorized :: Event t (DeviceId, FromClient) -- ^ Passed through legit requests.
               }
 
+-- | All data needed for deciding authorization of a request.
 data AuthRequest
   = AuthRequest { cache'   :: !Cache.Model
                 , clients' :: !ClientStatuses
@@ -43,8 +47,35 @@ data AuthRequest
                 , msg :: !FromClient
                 }
 
-make :: forall t m. MonadAppHost t m => Config t -> m (Authorize t)
-make _ = undefined
+-- | Authorize requests
+make :: forall t. Reflex t => Config t -> Authorize t
+make conf =
+  let
+    (_onForbidden, _onAuthorized) = fanEither . fmap doAuthorize $ onAuthRequest
+
+    onAuthRequest :: Event t AuthRequest
+    onAuthRequest = pushAlways mkAuthRequest (conf^.onAuthorize)
+
+    doAuthorize :: AuthRequest -> Either (DeviceId, ToClient) (DeviceId, FromClient)
+    doAuthorize auth = fromMaybe (Right $ toAuthorized auth)
+                       $ Left <$> mkForbidden auth
+
+    mkForbidden :: AuthRequest -> Maybe (DeviceId, ToClient)
+    mkForbidden = sequence . (senderId &&& denyClient)
+
+    toAuthorized :: AuthRequest -> (DeviceId, FromClient)
+    toAuthorized = senderId &&& msg
+
+    mkAuthRequest (devId, msg) = do
+      model' <- sample $ conf^.cache
+      clients'' <- sample $ conf^.statuses
+      pure $ AuthRequest model' clients'' devId msg
+  in
+    Authorize {..}
+
+-- Just ServerError if the request cannot be granted.
+denyClient :: AuthRequest -> Maybe ToClient
+denyClient = fmap (uncurry ServerError) . sequence . (msg &&& deny)
 
 -- | Tell what requests should be forbidden.
 --
@@ -190,3 +221,57 @@ isDeviceInOurFamily :: AuthRequest -> DeviceId -> Bool
 isDeviceInOurFamily auth@AuthRequest {..} devId = isJust $ do
   aid <- cache'^?devices.at devId._Just.to deviceAccountId
   guard (isAccountInOurFamily auth aid)
+
+-- * Lenses
+
+instance HasClients Config where
+  clients = _clients
+
+-- * Auto generated lenses
+class HasConfig a where
+  config :: Lens' (a t) (Config t)
+
+  _clients :: Lens' (a t) (Clients t)
+  _clients = config . go
+    where
+      go :: Lens' (Config t) (Clients t)
+      go f config' = (\_clients' -> config' { __clients = _clients' }) <$> f (__clients config')
+
+
+  cache :: Lens' (a t) (Cache t)
+  cache = config . go
+    where
+      go :: Lens' (Config t) (Cache t)
+      go f config' = (\cache' -> config' { _cache = cache' }) <$> f (_cache config')
+
+
+  onAuthorize :: Lens' (a t) (Event t (DeviceId, FromClient))
+  onAuthorize = config . go
+    where
+      go :: Lens' (Config t) (Event t (DeviceId, FromClient))
+      go f config' = (\onAuthorize' -> config' { _onAuthorize = onAuthorize' }) <$> f (_onAuthorize config')
+
+
+instance HasConfig Config where
+  config = id
+
+class HasAuthorize a where
+  authorize :: Lens' (a t) (Authorize t)
+
+  onForbidden :: Lens' (a t) (Event t (DeviceId, ToClient))
+  onForbidden = authorize . go
+    where
+      go :: Lens' (Authorize t) (Event t (DeviceId, ToClient))
+      go f authorize' = (\onForbidden' -> authorize' { _onForbidden = onForbidden' }) <$> f (_onForbidden authorize')
+
+
+  onAuthorized :: Lens' (a t) (Event t (DeviceId, FromClient))
+  onAuthorized = authorize . go
+    where
+      go :: Lens' (Authorize t) (Event t (DeviceId, FromClient))
+      go f authorize' = (\onAuthorized' -> authorize' { _onAuthorized = onAuthorized' }) <$> f (_onAuthorized authorize')
+
+
+instance HasAuthorize Authorize where
+  authorize = id
+
