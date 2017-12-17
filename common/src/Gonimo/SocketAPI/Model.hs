@@ -170,8 +170,6 @@ data DeviceStatus =
   BabyStation
   -- | Device is just online.
   | Online
-  -- | Device is offline, and therefore not accessible in any way.
-  | Offline
   deriving (Generic, Show)
 
 instance FromJSON DeviceStatus

@@ -1,5 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 {-|
 Module      : Gonimo.Server.Clients.Internal
 Description : Types and internal functions for "Gonimo.Server.Clients"
@@ -7,45 +8,82 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Clients.Internal where
 
-import Reflex as Reflex
-import Reflex.Host.App as App
-import           Data.Map (Map)
-import qualified Data.Map as Map
-import Reflex.Behavior
-import Control.Concurrent
+import           Control.Concurrent
+import           Data.Map                           (Map)
+import qualified Data.Map                           as Map
+import           Reflex                             as Reflex
+import           Reflex.Behavior
+import           Reflex.Host.App                    as App
 
 
 
-import Gonimo.Prelude
-import Gonimo.Server.Session (Session)
-import qualified Gonimo.Server.Session as Session
-import qualified Gonimo.Server.Config as Server
-import Gonimo.SocketAPI
-import Gonimo.SocketAPI.Model
-import Gonimo.Server.Clients.ClientStatus
-
-
+import           Gonimo.Prelude
+import           Gonimo.Server.Cache                (Cache)
+import           Gonimo.Server.Clients.ClientStatus as Client
+import qualified Gonimo.Server.Config               as Server
+import           Gonimo.Server.Session              (Session)
+import qualified Gonimo.Server.Session              as Session
+import           Gonimo.SocketAPI
+import           Gonimo.SocketAPI.Model
 
 data Config t
   = Config { _serverConfig :: Server.Config
-           , _onSend :: Event t (DeviceId, ToClient)
+           , _cache        :: Cache t
+           , _onSend       :: Event t [(DeviceId, ToClient)]
            }
 
 data Clients t
-  = Clients { _onReceived       :: Event t (DeviceId, FromClient)
-              -- | A device came online:
-            , _onCreatedClient  :: Event t (DeviceId, Session)
-              -- | A device went offline:
-            , _onRemovedClient  :: Event t DeviceId
-            , _statuses     :: Behavior t ClientStatuses
+  = Clients {
+              -- | A message was received.
+              _onReceived      :: Event t (DeviceId, FromClient)
+              -- | A device came online.
+            , _onCreatedClient :: Event t DeviceId
+              -- | A device went offline.
+            , _onRemovedClient :: Event t DeviceId
+            , _statuses        :: Behavior t ClientStatuses
             }
 
 data Impl t
   = Impl { __clients      :: Clients t
+         , _onNewSession  :: Event t (DeviceId, Session)
          , _sessionConfig :: Session.Config
          , _sessions      :: Behavior t (Map DeviceId Session)
          }
 
+-- | Build client status map based on create/remove events and received status updates.
+-- TODO:
+--   - If a device goes offline it must no longer be associated with its family!
+--   - If a devices' current family gets deleted - this must be handled!
+makeStatuses :: MonadAppHost t m => Config t -> Impl t -> m (Behavior t ClientStatuses)
+makeStatuses conf impl' = do
+    foldp id emptyStatuses $ mergeWith (.) [ newStatus    <$> impl'^.onCreatedClient
+                                           , removeStatus <$> impl'^.onRemovedClient
+                                           , push updateStatus $ conf'^.onSend
+                                           ]
+  where
+    emptyStatuses = Client.makeStatuses Map.empty
+
+    newStatus :: DeviceId -> ClientStatuses -> ClientStatuses
+    newStatus devId = at devId .~ Just def
+
+    removeStatus :: DeviceId -> ClientStatuses -> ClientStatuses
+    removeStatus devId = at devId .~ Nothing
+
+    updateStatus :: (DeviceId, ToClient) -> PushM t (Maybe (ClientStatuses -> ClientStatuses))
+    updateStatus (_, msg)
+      = case msg of
+          UpdateServer (OnChangedDeviceStatus devId fid newStatus')
+            -> pure $ Just $ at devId .~ Just (ClientStatus newStatus' (Just fid))
+          UpdateServer (OnRemovedFamilyMember fid aid)
+            -> runMaybeT $ do
+            model' <- sample $ conf^.cache
+            let byAccountId = Devices.byAccountId model'
+            devices <- MaybeT . pure $ byAccountId ^. at aid
+            pure $ \statuses ->
+              let byFamilyId' = Client.byFamilyId statuses
+              onlineDevices <- 
+              foldr (.) id
+          _ -> pure Nothing
 
 
 -- | Create new sessions/ delete obsolete ones.
@@ -53,20 +91,34 @@ data Impl t
 -- And also send SessionStolen messages to devices in case their session just got stolen.
 makeSessions :: MonadAppHost t m => Impl t -> m (Behavior t (Map DeviceId Session))
 makeSessions impl' = do
-    sessions' <- foldp id Map.empty $ mergeWith (.) [ uncurry Map.insert <$> impl'^.onCreatedClient
+    sessions' <- foldp id Map.empty $ mergeWith (.) [ uncurry Map.insert <$> impl'^.onNewSession
                                                     , Map.delete <$> impl'^.onRemovedClient
                                                     ]
-    let stealSession = second (const StoleSession) <$> impl'^.onCreatedClient
-    App.performEvent_ $ attachWith sendMessage' sessions' stealSession
+    let stealSession = (, StoleSession) <$> impl'^.onCreatedClient
+    App.performEvent_ $ attachWith sendMessageAsync sessions' stealSession
     pure sessions'
 
 -- | Handle onSend events by calling 'sendMessage''.
-sendMessage :: MonadAppHost t m => Impl t -> Event t (DeviceId, ToClient) -> m ()
-sendMessage impl' onSend' = App.performEvent_ $ attachWith sendMessage' (impl'^.sessions) onSend'
+sendMessages :: MonadAppHost t m => Impl t -> Event t [(DeviceId, ToClient)] -> m ()
+sendMessages impl' onSend'
+  = App.performEvent_ $ attachWith sendMessagesAsync (impl'^.sessions) onSend'
+
+-- | Send multiple messages asynchronously.
+sendMessagesAsync :: MonadIO m => Map DeviceId Session -> [(DeviceId, ToClient)] -> m ()
+sendMessagesAsync sessions'
+  = liftIO . void . forkIO . traverse_ (sendMessage' sessions')
+
+sendMessageAsync :: MonadIO m => Map DeviceId Session -> (DeviceId, ToClient) -> m ()
+sendMessageAsync sessions' toClient' = liftIO . void . forkIO $ sendMessage' sessions' toClient'
+
+
 
 -- | Send a message asynchronously to a given device.
-sendMessage' :: MonadIO m => Map DeviceId Session -> (DeviceId, ToClient) -> m ()
-sendMessage' sessions' (destination, msg) = liftIO . void . forkIO $ do
+-- | Helper function for sending messages.
+--
+--   This function would block the reflex network until the message got sent, so you should in general not use it directly. Use 'sendMessageAsync' or 'sendMessagesAsync'
+sendMessage' :: Map DeviceId Session -> (DeviceId, ToClient) -> IO ()
+sendMessage' sessions' (destination, msg) = do
   let
     mSendMessage :: Maybe (ToClient -> IO ())
     mSendMessage = sessions'^?at destination._Just.Session.sendMessage
@@ -88,10 +140,17 @@ class HasConfig a where
       go f config' = (\serverConfig' -> config' { _serverConfig = serverConfig' }) <$> f (_serverConfig config')
 
 
-  onSend :: Lens' (a t) (Event t (DeviceId, ToClient))
+  cache :: Lens' (a t) (Cache t)
+  cache = config . go
+    where
+      go :: Lens' (Config t) (Cache t)
+      go f config' = (\cache' -> config' { _cache = cache' }) <$> f (_cache config')
+
+
+  onSend :: Lens' (a t) (Event t [ (DeviceId, ToClient) ])
   onSend = config . go
     where
-      go :: Lens' (Config t) (Event t (DeviceId, ToClient))
+      go :: Lens' (Config t) (Event t [ (DeviceId, ToClient) ])
       go f config' = (\onSend' -> config' { _onSend = onSend' }) <$> f (_onSend config')
 
 
@@ -108,10 +167,10 @@ class HasClients a where
       go f clients' = (\onReceived' -> clients' { _onReceived = onReceived' }) <$> f (_onReceived clients')
 
 
-  onCreatedClient :: Lens' (a t) (Event t (DeviceId, Session))
+  onCreatedClient :: Lens' (a t) (Event t DeviceId)
   onCreatedClient = clients . go
     where
-      go :: Lens' (Clients t) (Event t (DeviceId, Session))
+      go :: Lens' (Clients t) (Event t DeviceId)
       go f clients' = (\onCreatedClient' -> clients' { _onCreatedClient = onCreatedClient' }) <$> f (_onCreatedClient clients')
 
 
@@ -140,6 +199,13 @@ class HasImpl a where
     where
       go :: Lens' (Impl t) (Clients t)
       go f impl' = (\_clients' -> impl' { __clients = _clients' }) <$> f (__clients impl')
+
+
+  onNewSession :: Lens' (a t) (Event t (DeviceId, Session))
+  onNewSession = impl . go
+    where
+      go :: Lens' (Impl t) (Event t (DeviceId, Session))
+      go f impl' = (\onNewSession' -> impl' { _onNewSession = onNewSession' }) <$> f (_onNewSession impl')
 
 
   sessionConfig :: Lens' (a t) Session.Config
