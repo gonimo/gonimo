@@ -36,12 +36,15 @@ library
                   , Gonimo.Db.Entities
                   , Gonimo.Db.PersistFields
                   -- , Gonimo.Server
+                  , Gonimo.Server.Authorize
                   , Gonimo.Server.Authorize.Internal
+                  , Gonimo.Server.Cache
                   , Gonimo.Server.Cache.Devices
                   , Gonimo.Server.Cache.FamilyAccounts
                   , Gonimo.Server.Cache.IndexedTable
                   , Gonimo.Server.Cache.Internal
                   , Gonimo.Server.Cache.Invitations
+                  , Gonimo.Server.Clients
                   , Gonimo.Server.Clients.Internal
                   , Gonimo.Server.Clients.ClientStatus
                   , Gonimo.Server.Config
