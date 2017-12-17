@@ -72,3 +72,4 @@ library
                       , transformers
                       , transformers-base
                       , vector
+                      , data-default
