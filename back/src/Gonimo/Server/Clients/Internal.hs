@@ -16,8 +16,6 @@ import qualified Data.Set                           as Set
 import           Reflex                             as Reflex
 import           Reflex.Behavior
 import           Reflex.Host.App                    as App
-import           Data.Maybe
-
 
 
 import           Gonimo.Prelude
@@ -59,7 +57,7 @@ makeStatuses :: forall t m. MonadAppHost t m => Config t -> Impl t -> m (Behavio
 makeStatuses conf impl' = do
     foldp id emptyStatuses $ mergeWith (.) [ newStatus    <$> impl'^.onCreatedClient
                                            , removeStatus <$> impl'^.onRemovedClient
-                                           , push updateStatus $ conf^.onSend
+                                           , push updateStatus $ impl'^.onReceived
                                            ]
   where
     emptyStatuses = Client.makeStatuses Map.empty
@@ -70,19 +68,21 @@ makeStatuses conf impl' = do
     removeStatus :: DeviceId -> ClientStatuses -> ClientStatuses
     removeStatus devId = at devId .~ Nothing
 
-    updateStatus :: [(DeviceId, ToClient)] -> PushM t (Maybe (ClientStatuses -> ClientStatuses))
-    updateStatus msgs = runMaybeT $ do
-      model' <- lift . sample $ conf^.cache
-      let updates = mapMaybe (updateStatusSingle model') msgs
-      guard (not . null $ updates)
-      pure $ foldr (.) id updates
+    -- updateStatus :: [(DeviceId, ToClient)] -> PushM t (Maybe (ClientStatuses -> ClientStatuses))
+    -- updateStatus msgs = runMaybeT $ do
+    --   model' <- lift . sample $ conf^.cache
+    --   let updates = mapMaybe (updateStatusSingle model') msgs
+    --   guard (not . null $ updates)
+    --   pure $ foldr (.) id updates
+    updateStatus :: (DeviceId, FromClient) -> PushM t (Maybe (ClientStatuses -> ClientStatuses))
+    updateStatus msg = updateStatus' <$> sample (conf^.cache) <*> pure msg
 
-    updateStatusSingle :: Model -> (DeviceId, ToClient) -> Maybe (ClientStatuses -> ClientStatuses)
-    updateStatusSingle model' (_, msg)
+    updateStatus' :: Model -> (DeviceId, FromClient) -> Maybe (ClientStatuses -> ClientStatuses)
+    updateStatus' model' (_, msg)
       = case msg of
-          UpdateClient (OnChangedDeviceStatus devId fid newStatus')
+          UpdateServer (OnChangedDeviceStatus devId fid newStatus')
             -> pure $ at devId .~ Just (ClientStatus newStatus' (Just fid))
-          UpdateClient (OnRemovedFamilyMember fid aid)
+          UpdateServer (OnRemovedFamilyMember fid aid)
             -> do
             let byAccountId = Devices.byAccountId $ model'^.devices
             devices' <- byAccountId ^. at aid
