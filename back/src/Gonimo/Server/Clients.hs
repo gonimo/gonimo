@@ -17,50 +17,41 @@ module Gonimo.Server.Clients ( -- * Types & Classes
 
 
 import           Control.Monad.Fix
-import           Data.Map                       (Map)
-import qualified Data.Map                       as Map
 import qualified Network.HTTP.Types.Status      as Http
 import qualified Network.Wai                    as Wai
 import qualified Network.Wai.Handler.WebSockets as Wai
 import qualified Network.WebSockets             as WS
-import           Reflex                         as Reflex
 import           Reflex.Host.App                as App
 
-
-
 import           Gonimo.Prelude
-import           Gonimo.Server.Authorize        (Authorize, HasAuthorize (..))
+import           Gonimo.Server.Authorize        (HasAuthorize (..))
 import qualified Gonimo.Server.Authorize        as Authorize
 import           Gonimo.Server.Clients.Internal
-import qualified Gonimo.Server.Config           as Server
-import           Gonimo.Server.Session          (HasSession, Session)
 import qualified Gonimo.Server.Session          as Session
-import           Gonimo.SocketAPI
-import           Gonimo.SocketAPI.APIVersion    (APIVersion)
 import qualified Gonimo.SocketAPI.APIVersion    as APIVersion
-import           Gonimo.SocketAPI.Model
+
 
 
 
 make :: forall t m. MonadAppHost t m => Config t -> m (Session.Config, Clients t)
-make conf = build $ \impl -> do
+make conf = build $ \impl' -> do
     (onReceived', fireOnReceived) <- newExternalEvent
     (onNewSession', fireOnNewSession) <- newExternalEvent
     (onRemovedClient', fireOnRemovedClient) <- newExternalEvent
 
-    sessions' <- makeSessions impl
+    sessions' <- makeSessions impl'
 
-    statuses' <- makeStatuses impl
+    statuses' <- makeStatuses conf impl'
 
     let auth = Authorize.make
-               $ Authorize.Config { Authorize.__clients = impl^.clients
+               $ Authorize.Config { Authorize.__clients = impl'^.clients
                                   , Authorize._cache    = conf^.cache
                                   , Authorize._onAuthorize = onReceived'
                                   }
 
-    sendMessages impl $ mconcat [ fmap (:[]) (auth^.onForbidden)
-                                , conf^.onSend
-                                ]
+    sendMessages impl' $ mconcat [ fmap (:[]) (auth^.onForbidden)
+                                 , conf^.onSend
+                                 ]
 
 
     pure $ Impl { __clients = Clients { _onReceived = auth^.onAuthorized
@@ -69,7 +60,7 @@ make conf = build $ \impl -> do
                                       , _statuses = statuses'
                                       }
                 , _onNewSession = onNewSession'
-                , _sessionConfig = Session.Config { Session._serverConfig = config^.serverConfig
+                , _sessionConfig = Session.Config { Session._serverConfig = conf^.serverConfig
                                                   , Session._receiveMessage = void . fireOnReceived
                                                   , Session._authenticated = void . fireOnNewSession
                                                   , Session._quit = void . fireOnRemovedClient
@@ -78,7 +69,7 @@ make conf = build $ \impl -> do
                 }
 
   where
-    build :: m (Impl t) -> m (Session.Config, Clients t)
+    build :: (Impl t -> m (Impl t)) -> m (Session.Config, Clients t)
     build = fmap (_sessionConfig &&& __clients) . mfix
 
 -- | Serve our clients.
@@ -86,16 +77,16 @@ make conf = build $ \impl -> do
 --   Incoming WebSocket requests are handled and sessions opened for each client.
 --   Once the client authenticated it will be visible in 'Clients'.
 serve :: Session.Config -> Wai.Application
-serve config req respond =
+serve conf req respond =
   let
-    mVersion = (pathInfo req)^?_Cons._Just._1.to APIVersion.fromText
+    mVersion = (Wai.pathInfo req)^?_Cons._1.to APIVersion.fromText._Just
 
     wsResponse = do
       version <- mVersion
-      Wai.websocketsApp WS.defaultConnectionOptions (Session.make config version) req
+      Wai.websocketsApp WS.defaultConnectionOptions (Session.make conf version) req
 
     errorResponse :: Wai.Response
-    errorResponse = if isWebSocketsReq req
+    errorResponse = if Wai.isWebSocketsReq req
                     then Wai.responseLBS (Http.Status 400 "No valid API version selected!") [] ""
                     else Wai.responseLBS (Http.Status 400 "WebSocket Only Server") [] ""
   in
