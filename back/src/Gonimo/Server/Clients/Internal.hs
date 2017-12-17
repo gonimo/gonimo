@@ -28,12 +28,16 @@ import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Model
 import qualified Gonimo.Server.Cache.Devices        as Devices
 
+-- | Clients configuration.
 data Config t
-  = Config { _serverConfig :: Server.Config
+  = Config { _serverConfig :: Server.Config -- ^ Server config for creating a session config.
+             -- | Database cache for information retrieval for maintainng '_statuses'
            , _cache        :: Cache t
+             -- | Send messages to devices.
            , _onSend       :: Event t [(DeviceId, ToClient)]
            }
 
+-- | Created Clients: Receive messages, get notified about new clients, check their status.
 data Clients t
   = Clients {
               -- | A message was received.
@@ -42,9 +46,11 @@ data Clients t
             , _onCreatedClient :: Event t DeviceId
               -- | A device went offline.
             , _onRemovedClient :: Event t DeviceId
+              -- | Check what devices are online in which families.
             , _statuses        :: Behavior t ClientStatuses
             }
 
+-- | Internal implemntation data.
 data Impl t
   = Impl { __clients      :: Clients t
          , _onNewSession  :: Event t (DeviceId, Session)
