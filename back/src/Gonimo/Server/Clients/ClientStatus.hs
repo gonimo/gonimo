@@ -12,18 +12,24 @@ module Gonimo.Server.Clients.ClientStatus ( ClientStatus(..)
                                           ) where
 
 
+import           Control.Lens
+import           Data.Default
 import           Data.Map                         (Map)
-import Control.Lens
+import           Data.Set                         (Set)
 
 import           Gonimo.Server.Cache.IndexedTable as Table
 import           Gonimo.SocketAPI.Model
 
 
 data ClientStatus = ClientStatus { _clientDeviceStatus :: DeviceStatus
-                                 , _clientFamily :: Maybe FamilyId
+                                 , _clientFamily       :: Maybe FamilyId
                                  }
 
 type ClientStatuses = IndexedTable FamilyId Map DeviceId ClientStatus
+
+
+instance Default ClientStatus where
+  def = ClientStatus Online Nothing
 
 -- | Create a new ClientStatuses indexed data structure from a raw Map
 makeStatuses :: Map DeviceId ClientStatus -> ClientStatuses
@@ -31,7 +37,7 @@ makeStatuses clientStatuses' = fromRawTable _clientFamily clientStatuses'
 
 
 -- | Serch entries by FamilyId
-byFamilyId :: ClientStatuses -> Map FamilyId [DeviceId]
+byFamilyId :: ClientStatuses -> Map FamilyId (Set DeviceId)
 byFamilyId = getIndex
 
 -- Lenses for ClientStatus:

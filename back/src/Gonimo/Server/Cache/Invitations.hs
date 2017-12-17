@@ -11,6 +11,7 @@ module Gonimo.Server.Cache.Invitations ( Invitations
 
 
 import           Data.Map                         (Map)
+import           Data.Set                         (Set)
 
 import           Gonimo.Server.Cache.IndexedTable as Table
 import           Gonimo.SocketAPI.Model
@@ -29,9 +30,9 @@ make invitations' = fromRawTable (Just . invitationFamilyId) receiverIndexed
 
 
 -- | Serch entries by FamilyId
-byFamilyId :: Invitations -> Map FamilyId [InvitationId]
+byFamilyId :: Invitations -> Map FamilyId (Set InvitationId)
 byFamilyId = getIndex
 
 
-byReceiverId :: Invitations -> Map AccountId [InvitationId]
+byReceiverId :: Invitations -> Map AccountId (Set InvitationId)
 byReceiverId = getIndex . Table.getInner

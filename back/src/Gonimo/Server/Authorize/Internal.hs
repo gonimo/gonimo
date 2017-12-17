@@ -141,7 +141,7 @@ hasClaimedInvitation cache' senderId' invId = isJust $ do
   aid <- cache'^?devices.at senderId'._Just.to deviceAccountId
   let byReceiverId =  Invitations.byReceiverId (cache'^.invitations)
   invitations' <- byReceiverId^.at aid
-  guard (invId `elem` invitations')
+  invitations'^.at invId
 
 -- | Is the invitation claimed already?
 isInvitationClaimed :: Cache.Model -> InvitationId -> Bool
@@ -154,7 +154,7 @@ familyHasInvitation AuthRequest {..} invId = isJust $ do
   ourFamily <- clients'^? at senderId . _Just . clientFamily . _Just
   let byFamilyId' = Invitations.byFamilyId (cache'^.invitations)
   invitations' <- byFamilyId' ^. at ourFamily
-  guard (invId `elem` invitations')
+  invitations'^.at invId
 
 -- | Auth check whether a device is currently online in a given family.
 isOnlineInFamily :: ClientStatuses -> DeviceId -> FamilyId -> Bool
@@ -174,7 +174,7 @@ onlineFamilyHasInvitation AuthRequest{..} invId = isJust $ do
     ourFamily <- clients'^? at senderId . _Just . clientFamily . _Just
     let byFamilyId' = Invitations.byFamilyId (cache'^.invitations)
     invIds <- byFamilyId' ^. at ourFamily
-    guard (invId `elem` invIds)
+    invIds^.at invId
 
 -- | The device already claimed the invitation?
 deviceOwnsInvitation :: Cache.Model -> DeviceId -> InvitationId -> Bool

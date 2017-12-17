@@ -6,6 +6,7 @@ Copyright   : (c) Robert Klotzner, 2017
 module Gonimo.Server.Cache.Devices where
 
 import           Data.Map                         (Map)
+import           Data.Set                         (Set)
 
 import           Gonimo.Server.Cache.IndexedTable as Table
 import           Gonimo.SocketAPI.Model
@@ -19,5 +20,5 @@ make devices' = fromRawTable (Just . deviceAccountId) devices'
 
 
 -- | Search entries by Secret
-byAccountId :: Devices -> Map AccountId [DeviceId]
+byAccountId :: Devices -> Map AccountId (Set DeviceId)
 byAccountId = getIndex

@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE GADTs       #-}
 {-|
 Module      : Gonimo.Server.Clients.Internal
 Description : Types and internal functions for "Gonimo.Server.Clients"
@@ -11,20 +12,23 @@ module Gonimo.Server.Clients.Internal where
 import           Control.Concurrent
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
+import qualified Data.Set                           as Set
 import           Reflex                             as Reflex
 import           Reflex.Behavior
 import           Reflex.Host.App                    as App
+import           Data.Maybe
 
 
 
 import           Gonimo.Prelude
-import           Gonimo.Server.Cache                (Cache)
+import           Gonimo.Server.Cache                (Cache, Model, devices)
 import           Gonimo.Server.Clients.ClientStatus as Client
 import qualified Gonimo.Server.Config               as Server
 import           Gonimo.Server.Session              (Session)
 import qualified Gonimo.Server.Session              as Session
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Model
+import qualified Gonimo.Server.Cache.Devices        as Devices
 
 data Config t
   = Config { _serverConfig :: Server.Config
@@ -51,14 +55,11 @@ data Impl t
          }
 
 -- | Build client status map based on create/remove events and received status updates.
--- TODO:
---   - If a device goes offline it must no longer be associated with its family!
---   - If a devices' current family gets deleted - this must be handled!
-makeStatuses :: MonadAppHost t m => Config t -> Impl t -> m (Behavior t ClientStatuses)
+makeStatuses :: forall t m. MonadAppHost t m => Config t -> Impl t -> m (Behavior t ClientStatuses)
 makeStatuses conf impl' = do
     foldp id emptyStatuses $ mergeWith (.) [ newStatus    <$> impl'^.onCreatedClient
                                            , removeStatus <$> impl'^.onRemovedClient
-                                           , push updateStatus $ conf'^.onSend
+                                           , push updateStatus $ conf^.onSend
                                            ]
   where
     emptyStatuses = Client.makeStatuses Map.empty
@@ -69,21 +70,34 @@ makeStatuses conf impl' = do
     removeStatus :: DeviceId -> ClientStatuses -> ClientStatuses
     removeStatus devId = at devId .~ Nothing
 
-    updateStatus :: (DeviceId, ToClient) -> PushM t (Maybe (ClientStatuses -> ClientStatuses))
-    updateStatus (_, msg)
+    updateStatus :: [(DeviceId, ToClient)] -> PushM t (Maybe (ClientStatuses -> ClientStatuses))
+    updateStatus msgs = runMaybeT $ do
+      model' <- lift . sample $ conf^.cache
+      let updates = mapMaybe (updateStatusSingle model') msgs
+      guard (not . null $ updates)
+      pure $ foldr (.) id updates
+
+    updateStatusSingle :: Model -> (DeviceId, ToClient) -> Maybe (ClientStatuses -> ClientStatuses)
+    updateStatusSingle model' (_, msg)
       = case msg of
-          UpdateServer (OnChangedDeviceStatus devId fid newStatus')
-            -> pure $ Just $ at devId .~ Just (ClientStatus newStatus' (Just fid))
-          UpdateServer (OnRemovedFamilyMember fid aid)
-            -> runMaybeT $ do
-            model' <- sample $ conf^.cache
-            let byAccountId = Devices.byAccountId model'
-            devices <- MaybeT . pure $ byAccountId ^. at aid
-            pure $ \statuses ->
-              let byFamilyId' = Client.byFamilyId statuses
-              onlineDevices <- 
-              foldr (.) id
-          _ -> pure Nothing
+          UpdateClient (OnChangedDeviceStatus devId fid newStatus')
+            -> pure $ at devId .~ Just (ClientStatus newStatus' (Just fid))
+          UpdateClient (OnRemovedFamilyMember fid aid)
+            -> do
+            let byAccountId = Devices.byAccountId $ model'^.devices
+            devices' <- byAccountId ^. at aid
+
+            pure $ \statuses' ->
+              let
+                byFamilyId' = Client.byFamilyId statuses'
+                familyDevices' = byFamilyId' ^. at fid . _Just
+                hitDevices = Set.toList $ Set.intersection devices' familyDevices'
+                removeFamily hitDevice = at hitDevice . _Just . clientFamily .~ Nothing
+
+                removeFamilies = foldr (.) id . map removeFamily $ hitDevices
+              in
+                statuses' & removeFamilies
+          _ -> mzero
 
 
 -- | Create new sessions/ delete obsolete ones.

@@ -7,6 +7,7 @@ module Gonimo.Server.Cache.FamilyAccounts where
 
 
 import           Data.Map                         (Map)
+import           Data.Set                         (Set)
 
 import           Gonimo.Server.Cache.IndexedTable as Table
 import           Gonimo.SocketAPI.Model
@@ -22,11 +23,11 @@ make accounts' = fromRawTable (Just . familyAccountFamilyId) inner
 
 
 -- | Search entries by AccountId
-byAccountId :: FamilyAccounts -> Map AccountId [FamilyAccountId]
+byAccountId :: FamilyAccounts -> Map AccountId (Set FamilyAccountId)
 byAccountId = getIndex . Table.getInner
 
 -- | Serch entries by FamilyId
-byFamilyId :: FamilyAccounts -> Map FamilyId [FamilyAccountId]
+byFamilyId :: FamilyAccounts -> Map FamilyId (Set FamilyAccountId)
 byFamilyId = getIndex
 
 -- | Get all account family members
