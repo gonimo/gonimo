@@ -8,7 +8,7 @@ Module      : Gonimo.Server.Cache.IndexedTable
 Description : An indexed table is a map with an additional lookup (the index).
 Copyright   : (c) Robert Klotzner, 2017
 
-This module provides indexed tables, where you can lookup values not only by a key, but also by some property of the value - the index. Think of data base indeces.
+This module provides indexed tables, where you can lookup values not only by a key, but also by some property of the value - the index. Think of database indeces.
 
 If you need multiple indeces, you can nest 'IndexedTable', for an example checkout "Gonimo.Server.Cache.FamilyAccounts".
 -}
@@ -65,19 +65,6 @@ getInner :: IndexedTable index c key val -> c key val
 getInner = _table
 
 -- | Search a key by index.
--- TODO: Data.Map is too strict! If you do an fmap over it, the whole tree will
--- be rebuilt when accessing any value. The values are kept lazy, but the whole
--- tree will be built! This means a search by index is in effect a linear
--- search, making the whole indexed map idea non sensical.
--- Solution: Either don't use a Set but lists internaly or just returen a Set or use some data structure like this:
---
--- @@@
---   data LazyMap key val newval
---      = LazyMap { strictMap :: Map key val
---                , modifier :: (val -> newval)
---                }
--- @@@
--- It is a shame that Map is built this way, Haskell's lazyness would be really awesome here.
 getIndex :: IndexedTable index c key val -> Map index (Set key)
 getIndex = _byIndex
 
