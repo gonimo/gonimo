@@ -195,18 +195,6 @@ data Update
     --   Not accepted from clients, gets updated automatically by the server.
   | OnChangedFamilyLastAccessed !FamilyId !UTCTime
 
-    -- | A new member joined the family (has accepted an invitation).
-    --
-    --   Not accepted from clients, gets sent by server on invitation acceptance
-    --   to all clients that have a non 'Offline ''DeviceStatus' in the
-    --   concerned family.
-  | OnNewFamilyMember           !FamilyId !AccountId
-
-    -- | A family member left the family.
-    --
-    --   Accepted from all not offline family members.
-  | OnRemovedFamilyMember       !FamilyId !AccountId
-
     -- | A new invitation for the family was created.
     --
     --   Not accepted from clients, but sent by the server if a client issued
@@ -224,6 +212,7 @@ data Update
     --   Account updates
   | OnNewAccountDevice          !AccountId !DeviceId
   | OnRemovedAccountDevice      !AccountId !DeviceId
+
     -- | A new invitation got claimed by the account.
     --
     --   Not accepted from clients. Clients will receive this message when the
@@ -235,7 +224,15 @@ data Update
     --   Not accepted from clients, clients have to create new families with
     --   'MakeFamily' or accept invitations for becoming members of new
     --   families.
-  | OnNewAccountFamily          !AccountId !FamilyId
+    --
+    --   Gets send to the concerned account and all members of the family who
+    --   are online.
+  | OnNewFamilyAccount          !FamilyId !AccountId
+
+    -- | A family member left the family.
+    --
+    --   Accepted from all not offline family members.
+  | OnRemovedFamilyAccount      !FamilyId !AccountId
 
     --   Device updates
 
