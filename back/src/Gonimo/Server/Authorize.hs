@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-|
 Module      : Gonimo.Server.Authorize
-Description : Short description
+Description : Authorization Layer.
 Copyright   : (c) Robert Klotzner, 2017
 Authorizes incoming requests.
 -}
