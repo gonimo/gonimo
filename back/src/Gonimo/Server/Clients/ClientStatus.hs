@@ -40,6 +40,13 @@ makeStatuses clientStatuses' = fromRawTable _clientFamily clientStatuses'
 byFamilyId :: ClientStatuses -> Map FamilyId (Set DeviceId)
 byFamilyId = getIndex
 
+-- Manual lens stuff:
+
+
+-- | A type that contains clientStatuses ...
+class HasClientStatuses a where
+  clientStatuses :: Lens' a ClientStatuses
+
 -- Lenses for ClientStatus:
 
 clientDeviceStatus :: Lens' ClientStatus DeviceStatus
@@ -47,5 +54,4 @@ clientDeviceStatus f clientStatus' = (\clientDeviceStatus' -> clientStatus' { _c
 
 clientFamily :: Lens' ClientStatus (Maybe FamilyId)
 clientFamily f clientStatus' = (\clientFamily' -> clientStatus' { _clientFamily = clientFamily' }) <$> f (_clientFamily clientStatus')
-
 
