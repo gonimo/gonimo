@@ -62,15 +62,15 @@ getUser aid' = runMaybeT $ do
 -- | Make an account join a family
 --
 --   Also takes care of setting associated device names.
-joinFamily :: Predicates -> API.FamilyAccount -> ReaderT SqlBackend IO ()
-joinFamily predPool = joinFamily' predPool . toDb
+joinFamily :: Predicates -> API.FamilyAccount -> ReaderT SqlBackend IO API.FamilyAccountId
+joinFamily predPool = fmap fromDb . joinFamily' predPool . toDb
 
 -- | Make an account join a family
 --
 --   Also takes care of setting associated device names.
-joinFamily' :: Predicates -> Db.FamilyAccount -> ReaderT SqlBackend IO ()
+joinFamily' :: Predicates -> Db.FamilyAccount -> ReaderT SqlBackend IO Db.FamilyAccountId
 joinFamily' predPool familyAccount' = do
-  Db.insert_  familyAccount'
+  famAid <- Db.insert  familyAccount'
 
   let getAccountDevices accountId' = Db.selectList [ Db.DeviceAccountId ==. accountId' ] []
 
@@ -87,6 +87,7 @@ joinFamily' predPool familyAccount' = do
   fixedDevices <- flip evalStateT filtered $ traverse fixDeviceName brokenDevices
   let myReplace (Entity k v) = Db.replace k v
   traverse_ myReplace fixedDevices
+  pure famAid
 
 
 fixDeviceName :: (MonadState (V.Vector Text) m, MonadIO m)
