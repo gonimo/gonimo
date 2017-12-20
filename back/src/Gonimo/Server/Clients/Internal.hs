@@ -50,7 +50,7 @@ data Clients t
             , _statuses        :: Behavior t ClientStatuses
             }
 
--- | Internal implemntation data.
+-- | Internal implementation data.
 data Impl t
   = Impl { __clients      :: Clients t
          , _onNewSession  :: Event t (DeviceId, Session)
