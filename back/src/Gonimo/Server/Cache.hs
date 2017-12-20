@@ -19,6 +19,8 @@ module Gonimo.Server.Cache ( -- * Types and classes
                              Cache
                            , Model(..)
                            , HasModel(..)
+                           , ModelDump(..)
+                           , HasModelDump(..)
                              -- * Functions
                            , make
                            ) where
@@ -42,3 +44,6 @@ make conf = do
                                       , const <$> conf^.onLoadModel
                                       ]
 
+-- | Get the Account id of a given device.
+-- getDeviceAccountId :: HasModel a => DeviceId -> a -> Maybe AccountId
+-- getDeviceAccountId devId m = m ^? devices . at devId . _Just . to deviceAccountId
