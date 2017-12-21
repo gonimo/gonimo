@@ -80,11 +80,11 @@ updateServerSpec = do
       deny (mkUpdate 9 (OnChangedFamilyName (FamilyId 9) "New Name")) `shouldBe` Nothing
   describe "OnRemovedFamilyMember" $ do
     it "fails for non family members" $ do
-      deny (mkUpdate 1 (OnRemovedFamilyMember (FamilyId 9) (AccountId 9))) `shouldBe` Just Forbidden
+      deny (mkUpdate 1 (OnRemovedFamilyAccount (FamilyId 9) (AccountId 9))) `shouldBe` Just Forbidden
     it "fails for family members that are not online" $ do
-      deny (mkUpdate 8 (OnRemovedFamilyMember (FamilyId 9) (AccountId 9))) `shouldBe` Just Forbidden
+      deny (mkUpdate 8 (OnRemovedFamilyAccount (FamilyId 9) (AccountId 9))) `shouldBe` Just Forbidden
     it "succeeds for family members (that are online)" $ do
-      deny (mkUpdate 9 (OnRemovedFamilyMember (FamilyId 9) (AccountId 10))) `shouldBe` Nothing
+      deny (mkUpdate 9 (OnRemovedFamilyAccount (FamilyId 9) (AccountId 10))) `shouldBe` Nothing
   describe "OnRemovedFamilyInvitation" $ do
     it "fails non family members" $ do
       deny (mkUpdate 1 (OnRemovedFamilyInvitation (FamilyId 9) (InvitationId 1))) `shouldBe` Just Forbidden

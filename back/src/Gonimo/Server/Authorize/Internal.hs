@@ -40,6 +40,8 @@ data Authorize t
               }
 
 -- | All data needed for deciding authorization of a request.
+--   TODO: This ended up to be the same thing as needed in processing general
+--   requests, so we should use 'Request' from "Gonimo.Server.Handler.Internal"
 data AuthRequest
   = AuthRequest { cache'   :: !Cache.Model
                 , clients' :: !ClientStatuses
@@ -81,8 +83,7 @@ denyUpdate auth@AuthRequest {..} update' =
   case update' of
     OnChangedFamilyName         fid _       -> denyUnless (isOnlineInFamily clients' senderId fid)
     OnChangedFamilyLastAccessed _ _         -> pure Forbidden
-    OnNewFamilyMember           _ _         -> pure Forbidden
-    OnRemovedFamilyMember fid aid           -> denyUnless ( isOnlineInFamily clients' senderId fid
+    OnRemovedFamilyAccount      fid aid     -> denyUnless ( isOnlineInFamily clients' senderId fid
                                                             && isAccountInOurFamily auth aid
                                                           )
     OnNewFamilyInvitation       _ _         -> pure Forbidden
@@ -92,7 +93,7 @@ denyUpdate auth@AuthRequest {..} update' =
     OnNewAccountDevice          _ _         -> pure Forbidden
     OnRemovedAccountDevice      _ _         -> pure Forbidden
     OnNewAccountInvitation      _ _         -> pure Forbidden
-    OnNewAccountFamily          _ _         -> pure Forbidden
+    OnNewFamilyAccount          _ _         -> pure Forbidden
     OnChangedDeviceName         devId _     -> denyUnless ( senderId == devId
                                                             || isOnlineInSameFamily clients' senderId devId
                                                           )

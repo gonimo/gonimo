@@ -5,6 +5,7 @@ Copyright   : (c) Robert Klotzner, 2017
 -}
 module Gonimo.Server.Clients.ClientStatus ( ClientStatus(..)
                                           , ClientStatuses
+                                          , HasClientStatuses(..)
                                           , clientDeviceStatus
                                           , clientFamily
                                           , makeStatuses

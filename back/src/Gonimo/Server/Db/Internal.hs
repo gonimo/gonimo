@@ -73,27 +73,6 @@ data Result
   | Loaded ModelDump
   deriving Eq
 
--- | Convert a 'Result' to a 'ModelDump'.
---
---   Note it is not possible to define a (law abiding) Lens:
---
--- > Lens' Result ModelDump
---
---   so we can't just simply provide an instance for 'HasModelDump'.
-toModelDump :: Result -> ModelDump
-toModelDump resp
-  = case resp of
-      MadeFamily (fid, family') (faid, famacc)
-        -> mempty & dumpedFamilies .~ [(fid, family')]
-                  & dumpedFamilyAccounts .~ [(faid, famacc)]
-      MadeInvitation invId inv
-        -> mempty & dumpedInvitations .~ [(invId, inv)]
-      MadeFamilyAccount faid famacc
-        -> mempty & dumpedFamilyAccounts .~ [(faid, famacc)]
-      Wrote
-        -> mempty
-      Loaded dump
-        -> dump
 
 data Config r t
   = Config { _serverConfig :: Server.Config

@@ -88,7 +88,7 @@ makeStatuses conf impl' = do
       = case msg of
           UpdateServer (OnChangedDeviceStatus devId fid newStatus')
             -> pure $ at devId .~ Just (ClientStatus newStatus' (Just fid))
-          UpdateServer (OnRemovedFamilyMember fid aid)
+          UpdateServer (OnRemovedFamilyAccount fid aid)
             -> do
             let byAccountId = Devices.byAccountId $ model'^.devices
             devices' <- byAccountId ^. at aid

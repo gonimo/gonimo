@@ -11,8 +11,14 @@ db query events are handled by this module.
 module Gonimo.Server.Db ( -- * Types and classes
                               Db(..)
                             , HasDb(..)
+                            , ModelDump(..)
+                            , HasModelDump(..)
+                            , Command(..)
+                            , Result(..)
+                            , Request(..)
                             -- * Functions
                             , make
+                            , toModelDump
                             ) where
 
 
@@ -50,6 +56,28 @@ make conf =  do
     void . liftIO . forkIO $ processRequests conf queue (void . fireOnResponse)
 
     pure $ Db {..}
+
+-- | Convert a 'Result' to a 'ModelDump'.
+--
+--   Note it is not possible to define a (law abiding) Lens:
+--
+-- > Lens' Result ModelDump
+--
+--   so we can't just simply provide an instance for 'HasModelDump'.
+toModelDump :: Result -> ModelDump
+toModelDump resp
+  = case resp of
+      MadeFamily (fid, family') (faid, famacc)
+        -> mempty & dumpedFamilies .~ [(fid, family')]
+                  & dumpedFamilyAccounts .~ [(faid, famacc)]
+      MadeInvitation invId inv
+        -> mempty & dumpedInvitations .~ [(invId, inv)]
+      MadeFamilyAccount faid famacc
+        -> mempty & dumpedFamilyAccounts .~ [(faid, famacc)]
+      Wrote
+        -> mempty
+      Loaded dump
+        -> dump
 
 -- | Queue requests for execution by 'processRequests'.
 queueRequests :: TQueue (Request a) -> [Request a] -> IO ()
