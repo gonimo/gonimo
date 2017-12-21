@@ -12,14 +12,15 @@ import           Control.Monad.IO.Class           (MonadIO)
 import           Database.Persist.Class           (Key, PersistRecordBackend)
 import qualified Database.Persist.Class           as Db
 import           Database.Persist.Sql             (SqlBackend)
-import           Reflex hiding (Request)
+import           Reflex hiding (Request, Response)
+import           Generics.Deriving.Base             (Generic)
+import           Generics.Deriving.Monoid
 
 import qualified Gonimo.Database.Effects.Servant  as Db
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error              (ServerError)
 import           Gonimo.SocketAPI.Model
 import qualified Gonimo.Server.Config as Server
-import qualified Gonimo.Server.Cache as Cache
 
 
 
@@ -30,29 +31,87 @@ data Command
   = -- | Make a new family for the given account.
     MakeFamily AccountId
     -- | Create a new invitation for the given family.
-  | MakeInvitation FamilyId
-    -- | Load an invitation by the givne secret.
-  | LoadInvitation Secret
+    --
+    --   The given 'DeviceId' is the inviting device.
+  | MakeInvitation DeviceId FamilyId
     -- | Join a family with an account
   | MakeFamilyAccount FamilyId AccountId (Maybe InvitationDelivery)
-    -- | Load all data an account might want to access. (Devices, Families, accounts and devices in those families.)
-  | LoadAccount AccountId
-    -- | Generic write to the db, no response expected.
-  | Write [ReaderT SqlBackend IO ()]
+    -- | Load some data.
+  | Load (ReaderT SqlBackend IO ModelDump)
+    -- | Generic write to the db, when data is persisted you'll receive a 'Wrote'.
+  | Write (ReaderT SqlBackend IO ())
 
-data Request = Request { _requester :: DeviceId -- ^ Used for error reporting.
-                       , _command :: Command -- ^ The actual command to execute.
-                       }
+data Request r = Request { _requester :: r -- ^ User defined data for tracking db query results.
+                         , _command :: Command -- ^ The actual command to execute.
+                         }
 
-data Config t
+-- | The response to a database 'Command'.
+data Result
+    -- | Conceptually a 'MadeFamily' result consists of a made family and a
+    --   'MadeFamilyAccount' result.
+    --
+    --   This is because we don't allow families with no members so a new family
+    --   will always also have a 'FamilyAccount' entry.
+    --
+    --   This means a 'MakeFamily' command could also trigger two results, one
+    --   alternative MadeFamily only containing the family id and the family and
+    --   a 'MadeFamilyAccount'. This would require 'onResponse' to be of type
+    --
+    -- > Event t [(a, Either ServerError Result)]
+    --
+    --   instead of the simple
+    --
+    -- > Event t (a, Either ServerError Result)
+    --
+    --   so both results can be delivered. At the moment this seems to make
+    --   implementations more complex, so we will live with this conceptual
+    --   redundance for now.
+  = MadeFamily (FamilyId, Family) (FamilyAccountId, FamilyAccount)
+  | MadeInvitation InvitationId Invitation
+  | MadeFamilyAccount FamilyAccountId FamilyAccount
+  | Wrote
+  | Loaded ModelDump
+  deriving Eq
+
+-- | Convert a 'Result' to a 'ModelDump'.
+--
+--   Note it is not possible to define a (law abiding) Lens:
+--
+-- > Lens' Result ModelDump
+--
+--   so we can't just simply provide an instance for 'HasModelDump'.
+toModelDump :: Result -> ModelDump
+toModelDump resp
+  = case resp of
+      MadeFamily (fid, family') (faid, famacc)
+        -> mempty & dumpedFamilies .~ [(fid, family')]
+                  & dumpedFamilyAccounts .~ [(faid, famacc)]
+      MadeInvitation invId inv
+        -> mempty & dumpedInvitations .~ [(invId, inv)]
+      MadeFamilyAccount faid famacc
+        -> mempty & dumpedFamilyAccounts .~ [(faid, famacc)]
+      Wrote
+        -> mempty
+      Loaded dump
+        -> dump
+
+data Config r t
   = Config { _serverConfig :: Server.Config
-           , _onRequest :: Event t [Request]
+           , _onRequest :: Event t [Request r]
            }
 
-data Db t
-  = Db { _onResponse :: Event t Cache.ModelDump
-       , _onError :: Event t (Request, ServerError)
+data Db r t
+  = Db { _onResponse :: Event t (r, Either ServerError Result)
        }
+
+-- | Type for database loads.
+data ModelDump
+  = ModelDump { _dumpedFamilies       :: [(FamilyId, Family)]
+              , _dumpedInvitations    :: [(InvitationId, Invitation)]
+              , _dumpedAccounts       :: [(AccountId, Account)]
+              , _dumpedFamilyAccounts :: [(FamilyAccountId, FamilyAccount)]
+              , _dumpedDevices        :: [(DeviceId, Device)]
+              } deriving (Generic, Eq)
 
 type UpdateT entity m a = StateT entity (MaybeT m) a
 
@@ -82,28 +141,33 @@ updateRecord noSuchRecord recordId f = do
       let f' = stateToDb f
       updateRecord' (noSuchRecord recordId) recordId' f'
 
--- Lenses stuff:
+-- Instances:
 
-instance Server.HasConfig (Config t) where
+instance Server.HasConfig (Config a t) where
   config = serverConfig
+
+instance Monoid ModelDump where
+  mempty = memptydefault
+  mappend = mappenddefault
+
+
 
 -- Lenses auto generated:
 
-
 class HasRequest a where
-  request :: Lens' a Request
+  request :: Lens' (a r) (Request r)
 
-  requester :: Lens' a DeviceId
+  requester :: Lens' (a r) r
   requester = request . go
     where
-      go :: Lens' Request DeviceId
+      go :: Lens' (Request r) r
       go f request' = (\requester' -> request' { _requester = requester' }) <$> f (_requester request')
 
 
-  command :: Lens' a Command
+  command :: Lens' (a r) Command
   command = request . go
     where
-      go :: Lens' Request Command
+      go :: Lens' (Request r) Command
       go f request' = (\command' -> request' { _command = command' }) <$> f (_command request')
 
 
@@ -111,19 +175,19 @@ instance HasRequest Request where
   request = id
 
 class HasConfig a where
-  config :: Lens' (a t) (Config t)
+  config :: Lens' (a r t) (Config r t)
 
-  serverConfig :: Lens' (a t) Server.Config
+  serverConfig :: Lens' (a r t) Server.Config
   serverConfig = config . go
     where
-      go :: Lens' (Config t) Server.Config
+      go :: Lens' (Config r t) Server.Config
       go f config' = (\serverConfig' -> config' { _serverConfig = serverConfig' }) <$> f (_serverConfig config')
 
 
-  onRequest :: Lens' (a t) (Event t [Request])
+  onRequest :: Lens' (a r t) (Event t [Request r])
   onRequest = config . go
     where
-      go :: Lens' (Config t) (Event t [Request])
+      go :: Lens' (Config r t) (Event t [Request r])
       go f config' = (\onRequest' -> config' { _onRequest = onRequest' }) <$> f (_onRequest config')
 
 
@@ -131,22 +195,57 @@ instance HasConfig Config where
   config = id
 
 class HasDb a where
-  db :: Lens' (a t) (Db t)
+  db :: Lens' (a r t) (Db r t)
 
-  onResponse :: Lens' (a t) (Event t Cache.ModelDump)
+  onResponse :: Lens' (a r t) (Event t (r, Either ServerError Result))
   onResponse = db . go
     where
-      go :: Lens' (Db t) (Event t Cache.ModelDump)
+      go :: Lens' (Db r t) (Event t (r, Either ServerError Result))
       go f db' = (\onResponse' -> db' { _onResponse = onResponse' }) <$> f (_onResponse db')
-
-
-  onError :: Lens' (a t) (Event t (Request, ServerError))
-  onError = db . go
-    where
-      go :: Lens' (Db t) (Event t (Request, ServerError))
-      go f db' = (\onError' -> db' { _onError = onError' }) <$> f (_onError db')
 
 
 instance HasDb Db where
   db = id
+
+
+class HasModelDump a where
+  modelDump :: Lens' a ModelDump
+
+  dumpedFamilies :: Lens' a ([ (FamilyId, Family) ])
+  dumpedFamilies = modelDump . go
+    where
+      go :: Lens' ModelDump ([ (FamilyId, Family) ])
+      go f modelDump' = (\dumpedFamilies' -> modelDump' { _dumpedFamilies = dumpedFamilies' }) <$> f (_dumpedFamilies modelDump')
+
+
+  dumpedInvitations :: Lens' a ([ (InvitationId, Invitation) ])
+  dumpedInvitations = modelDump . go
+    where
+      go :: Lens' ModelDump ([ (InvitationId, Invitation) ])
+      go f modelDump' = (\dumpedInvitations' -> modelDump' { _dumpedInvitations = dumpedInvitations' }) <$> f (_dumpedInvitations modelDump')
+
+
+  dumpedAccounts :: Lens' a ([ (AccountId, Account) ])
+  dumpedAccounts = modelDump . go
+    where
+      go :: Lens' ModelDump ([ (AccountId, Account) ])
+      go f modelDump' = (\dumpedAccounts' -> modelDump' { _dumpedAccounts = dumpedAccounts' }) <$> f (_dumpedAccounts modelDump')
+
+
+  dumpedFamilyAccounts :: Lens' a ([ (FamilyAccountId, FamilyAccount) ])
+  dumpedFamilyAccounts = modelDump . go
+    where
+      go :: Lens' ModelDump ([ (FamilyAccountId, FamilyAccount) ])
+      go f modelDump' = (\dumpedFamilyAccounts' -> modelDump' { _dumpedFamilyAccounts = dumpedFamilyAccounts' }) <$> f (_dumpedFamilyAccounts modelDump')
+
+
+  dumpedDevices :: Lens' a ([ (DeviceId, Device) ])
+  dumpedDevices = modelDump . go
+    where
+      go :: Lens' ModelDump ([ (DeviceId, Device) ])
+      go f modelDump' = (\dumpedDevices' -> modelDump' { _dumpedDevices = dumpedDevices' }) <$> f (_dumpedDevices modelDump')
+
+
+instance HasModelDump ModelDump where
+  modelDump = id
 

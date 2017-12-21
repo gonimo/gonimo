@@ -31,6 +31,7 @@ import Reflex.Behavior
 import Control.Monad.Fix
 
 import Gonimo.Server.Cache.Internal
+import Gonimo.Server.Db.Internal (ModelDump(..), HasModelDump(..))
 
 
 make :: (MonadFix m, MonadHold t m, Reflex t) => Config t -> m (Cache t)

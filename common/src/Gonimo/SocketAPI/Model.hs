@@ -24,7 +24,7 @@ import           Data.Text.Encoding     (decodeUtf8, encodeUtf8)
 type DbKey = Int64
 
 -- Account:
-newtype Account = Account {accountCreated :: UTCTime} deriving (Generic)
+newtype Account = Account {accountCreated :: UTCTime} deriving (Generic, Eq)
 newtype AccountId = AccountId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey)
 
 -- User:
@@ -43,7 +43,7 @@ data Family = Family { familyName              :: !FamilyName
                      , familyCreated           :: !UTCTime
                      , familyLastAccessed      :: !UTCTime
                      , familyLastUsedBabyNames :: ![Text]
-                     } deriving (Generic, Show)
+                     } deriving (Generic, Show, Eq)
 
 instance FromJSON Family
 instance ToJSON Family
@@ -76,7 +76,7 @@ data FamilyAccount
                   , familyAccountFamilyId  :: !FamilyId
                   , familyAccountJoined    :: !UTCTime
                   , familyAccountInvitedBy :: !(Maybe InvitationDelivery)
-                  } deriving (Generic)
+                  } deriving (Generic, Eq)
 
 instance FromJSON FamilyAccount
 instance ToJSON FamilyAccount
@@ -93,7 +93,7 @@ data Device
            , deviceLastAccessed :: !UTCTime
            , deviceUserAgent    :: !Text
            }
-  deriving (Generic)
+  deriving (Generic, Eq)
 
 instance FromJSON Device
 instance ToJSON Device

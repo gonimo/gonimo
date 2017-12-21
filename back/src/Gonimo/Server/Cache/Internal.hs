@@ -11,9 +11,9 @@ module Gonimo.Server.Cache.Internal where
 import           Control.Lens
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
-import           Generics.Deriving.Base             (Generic)
-import           Generics.Deriving.Monoid
-import           Reflex
+
+
+import           Reflex hiding (Response, Request)
 
 
 
@@ -26,6 +26,7 @@ import qualified Gonimo.Server.Cache.IndexedTable   as Table
 import           Gonimo.Server.Cache.Invitations    (Invitations)
 import qualified Gonimo.Server.Cache.Invitations    as Invitations
 import           Gonimo.SocketAPI.Model
+import           Gonimo.Server.Db.Internal (ModelDump (..), HasModelDump (..))
 
 
 
@@ -72,18 +73,6 @@ type Families = Map FamilyId Family
 type Accounts = Map AccountId Account
 
 
--- | Used for loading new data into the cache.
-data ModelDump
-  = ModelDump { _dumpedFamilies       :: [(FamilyId, Family)]
-              , _dumpedInvitations    :: [(InvitationId, Invitation)]
-              , _dumpedAccounts       :: [(AccountId, Account)]
-              , _dumpedFamilyAccounts :: [(FamilyAccountId, FamilyAccount)]
-              , _dumpedDevices        :: [(DeviceId, Device)]
-              } deriving Generic
-
-instance Monoid ModelDump where
-  mempty = memptydefault
-  mappend = mappenddefault
 
 -- | Model not holding any data.
 emptyModel :: Model
@@ -231,45 +220,4 @@ class HasModel a where
 
 instance HasModel Model where
   model = id
-
-class HasModelDump a where
-  modelDump :: Lens' a ModelDump
-
-  dumpedFamilies :: Lens' a ([ (FamilyId, Family) ])
-  dumpedFamilies = modelDump . go
-    where
-      go :: Lens' ModelDump ([ (FamilyId, Family) ])
-      go f modelDump' = (\dumpedFamilies' -> modelDump' { _dumpedFamilies = dumpedFamilies' }) <$> f (_dumpedFamilies modelDump')
-
-
-  dumpedInvitations :: Lens' a ([ (InvitationId, Invitation) ])
-  dumpedInvitations = modelDump . go
-    where
-      go :: Lens' ModelDump ([ (InvitationId, Invitation) ])
-      go f modelDump' = (\dumpedInvitations' -> modelDump' { _dumpedInvitations = dumpedInvitations' }) <$> f (_dumpedInvitations modelDump')
-
-
-  dumpedAccounts :: Lens' a ([ (AccountId, Account) ])
-  dumpedAccounts = modelDump . go
-    where
-      go :: Lens' ModelDump ([ (AccountId, Account) ])
-      go f modelDump' = (\dumpedAccounts' -> modelDump' { _dumpedAccounts = dumpedAccounts' }) <$> f (_dumpedAccounts modelDump')
-
-
-  dumpedFamilyAccounts :: Lens' a ([ (FamilyAccountId, FamilyAccount) ])
-  dumpedFamilyAccounts = modelDump . go
-    where
-      go :: Lens' ModelDump ([ (FamilyAccountId, FamilyAccount) ])
-      go f modelDump' = (\dumpedFamilyAccounts' -> modelDump' { _dumpedFamilyAccounts = dumpedFamilyAccounts' }) <$> f (_dumpedFamilyAccounts modelDump')
-
-
-  dumpedDevices :: Lens' a ([ (DeviceId, Device) ])
-  dumpedDevices = modelDump . go
-    where
-      go :: Lens' ModelDump ([ (DeviceId, Device) ])
-      go f modelDump' = (\dumpedDevices' -> modelDump' { _dumpedDevices = dumpedDevices' }) <$> f (_dumpedDevices modelDump')
-
-
-instance HasModelDump ModelDump where
-  modelDump = id
 

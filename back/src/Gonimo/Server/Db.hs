@@ -12,81 +12,76 @@ module Gonimo.Server.Db ( -- * Types and classes
                               Db(..)
                             , HasDb(..)
                             -- * Functions
-                            , runDb
-                            , mayRunDb
-                            , generateSecret
+                            , make
                             ) where
 
 
 import           Control.Concurrent
 import           Control.Concurrent.STM
-import           Control.Concurrent.STM.TQueue
 import           Control.Lens
-import           Control.Logging.Extended
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Reader
-import           Data.Text                     (Text)
 import           Data.Time.Clock
-import           Database.Persist.Sql          (SqlBackend, runSqlPool)
-import           Reflex                        hiding (Request)
 import           Reflex.Host.App               as App
 
 import           Gonimo.Prelude
-import           Gonimo.Server.Cache           (HasModelDump (..))
-import qualified Gonimo.Server.Cache           as Cache
-import           Gonimo.Server.Config          (runDb)
+import           Gonimo.Server.Config          (runDb, generateSecret)
 import qualified Gonimo.Server.Config          as Server
 import qualified Gonimo.Server.Db.Account      as Account
 import qualified Gonimo.Server.Db.Family       as Family
+import qualified Gonimo.Server.Db.Invitation       as Invitation
 import           Gonimo.Server.Db.Internal
 import           Gonimo.Server.Error
 import           Gonimo.Server.NameGenerator
-import           Gonimo.SocketAPI.Model        (Secret (..))
 import           Gonimo.SocketAPI.Model        as API
 
-make :: forall t m. MonadAppHost t m => Config t -> m (Db t)
+-- | Make a new 'Db' for handling database requests.
+--
+--   NOTE: Not this function spawns a thread which will run throughout the entire
+--   lifetime of the program. This is fine for our purposes right now, but in
+--   case you want to use this function for some short-lived purpose, this
+--   should be fixed.
+make :: forall a t m. MonadAppHost t m => Config a t -> m (Db a t)
 make conf =  do
-    (errorResponse, fireErrorResponse) <- newExternalEvent
+    (_onResponse, fireOnResponse) <- newExternalEvent
     -- STM is a bit of an overkill, but if offers everything we need in an easy way. (Blocking read/write queue)
     queue <- liftIO newTQueueIO
 
     App.performEvent_ $ liftIO . queueRequests queue <$> conf ^. onRequest
-    liftIO . forkIO $ processRequests conf queue (void . fireErrorResponse)
+    void . liftIO . forkIO $ processRequests conf queue (void . fireOnResponse)
 
-    let (_onError, _onResponse) = fanEither errorResponse
     pure $ Db {..}
 
-queueRequests :: TQueue Request -> [Request] -> IO ()
+-- | Queue requests for execution by 'processRequests'.
+queueRequests :: TQueue (Request a) -> [Request a] -> IO ()
 queueRequests queue reqs = atomically $ traverse_ (writeTQueue queue) reqs
 
-processRequests :: Server.HasConfig conf => conf -> TQueue Request
-                -> (Either (Request, ServerError) Cache.ModelDump -> IO ())
-                -> IO ()
+-- | Process requests queued by 'queueRequests'.
+processRequests :: forall a conf. Server.HasConfig conf
+  => conf -> TQueue (Request a)
+  -> ((a, Either ServerError Result) -> IO ())
+  -> IO ()
 processRequests conf queue sendResult = forever $ do
   next <- atomically $ readTQueue queue
   let
-    -- Avoid empty messages:
-    sendResult' msg = fromMaybe (pure ()) $ do
-      success <- msg ^? _Right
-      guard (success /= mempty)
-      pure $ sendResult msg
-
-    process :: IO Cache.ModelDump
+    process :: IO Result
     process =
       case next^.command of
-        MakeFamily aid -> makeFamily conf aid
-        MakeInvitation fid -> makeInvitation conf fid
-        LoadInvitation secret -> loadInvitation conf secret
-        MakeFamilyAccount fid aid invDelivery -> makeFamilyAccount conf fid aid invDelivery
-        LoadAccount aid -> loadAccount conf aid
-        Write action -> const mempty <$> runDb conf action
+        MakeFamily aid                     -> makeFamily conf aid
+        MakeInvitation devId fid           -> makeInvitation conf devId fid
+        MakeFamilyAccount fid aid delivery -> makeFamilyAccount conf fid aid delivery
+        Load action                        -> Loaded      <$> runDb conf action
+        Write action                       -> const Wrote <$> runDb conf action
 
-    safeProcess :: IO (Either (Request, ServerError) Cache.ModelDump)
-    safeProcess = left (next,) <$> try process
+    safeProcess :: IO (a, Either ServerError Result)
+    safeProcess = (next^.requester,) <$> try process
 
-  sendResult' =<< safeProcess
+  sendResult =<< safeProcess
 
-makeFamily :: Server.HasConfig c => c -> AccountId -> IO Cache.ModelDump
+-- | Family creation.
+--
+--   As families with no members are not allowed, a FamilyAccount with the given
+--   'AccountId' will be created too.
+makeFamily :: Server.HasConfig c => c -> AccountId -> IO Result
 makeFamily conf aid = do
   now <- getCurrentTime
   let predPool = conf ^. Server.predicates
@@ -109,5 +104,39 @@ makeFamily conf aid = do
     }
 
     famAid <- Account.joinFamily predPool familyAccount'
-    pure $ mempty & dumpedFamilies       .~ [(fid, family')]
-                  & dumpedFamilyAccounts .~ [(famAid, familyAccount')]
+    pure $ MadeFamily (fid, family') (famAid, familyAccount')
+
+-- | Create a new invitation for a given family.
+makeInvitation :: Server.HasConfig c => c -> DeviceId -> FamilyId -> IO Result
+makeInvitation conf senderId' fid = do
+  now <- getCurrentTime
+  isecret <- generateSecret conf
+  let inv = Invitation {
+      invitationSecret = isecret
+    , invitationFamilyId = fid
+    , invitationCreated = now
+    , invitationDelivery = OtherDelivery
+    , invitationSenderId = senderId'
+    , invitationReceiverId = Nothing
+  }
+  iid <- runDb conf $ Invitation.insert inv
+  pure $ MadeInvitation iid inv
+
+
+-- | Pair an account with a family by creating the corresponding 'FamilyAccount' entry.
+makeFamilyAccount
+  :: Server.HasConfig c
+  => c -> FamilyId -> AccountId -> Maybe InvitationDelivery
+  -> IO Result
+makeFamilyAccount conf fid aid delivery = do
+  let predPool = conf ^. Server.predicates
+  now <- getCurrentTime
+  runDb conf $ do
+      let famAccount = FamilyAccount {
+          familyAccountAccountId = aid
+        , familyAccountFamilyId = fid
+        , familyAccountJoined = now
+        , familyAccountInvitedBy = delivery
+        }
+      famAccId <- Account.joinFamily predPool famAccount
+      pure $ MadeFamilyAccount famAccId famAccount
