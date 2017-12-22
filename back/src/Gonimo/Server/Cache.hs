@@ -16,7 +16,9 @@ is actually needed by clients, external code should make use of 'onLoadData' for
 ensuring needed data is cached.
 -}
 module Gonimo.Server.Cache ( -- * Types and classes
-                             Cache
+                             Config(..)
+                           , HasConfig(..)
+                           , Cache
                            , Model(..)
                            , HasModel(..)
                            , ModelDump(..)

@@ -21,6 +21,7 @@ import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error              (ServerError)
 import           Gonimo.SocketAPI.Model
 import qualified Gonimo.Server.Config as Server
+import Gonimo.Lib.RequestResponse
 
 
 
@@ -41,9 +42,11 @@ data Command
     -- | Generic write to the db, when data is persisted you'll receive a 'Wrote'.
   | Write (ReaderT SqlBackend IO ())
 
-data Request r = Request { _requester :: r -- ^ User defined data for tracking db query results.
-                         , _command :: Command -- ^ The actual command to execute.
-                         }
+type Request r = RequestResponse r Command
+
+-- | Lens for tetting the command out of a Request.
+command :: Lens' (RequestResponse r Command) Command
+command = payload
 
 -- | The response to a database 'Command'.
 data Result
@@ -73,14 +76,19 @@ data Result
   | Loaded ModelDump
   deriving Eq
 
+type Response r = RequestResponse r (Either ServerError Result)
+
+-- | Lens for accessing the result of the response.
+result :: Lens' (RequestResponse r Result) Result
+result = payload
 
 data Config r t
   = Config { _serverConfig :: Server.Config
            , _onRequest :: Event t [Request r]
            }
 
-data Db r t
-  = Db { _onResponse :: Event t (r, Either ServerError Result)
+newtype Db r t
+  = Db { _onResponse :: Event t (Response r)
        }
 
 -- | Type for database loads.
@@ -130,28 +138,7 @@ instance Monoid ModelDump where
   mappend = mappenddefault
 
 
-
 -- Lenses auto generated:
-
-class HasRequest a where
-  request :: Lens' (a r) (Request r)
-
-  requester :: Lens' (a r) r
-  requester = request . go
-    where
-      go :: Lens' (Request r) r
-      go f request' = (\requester' -> request' { _requester = requester' }) <$> f (_requester request')
-
-
-  command :: Lens' (a r) Command
-  command = request . go
-    where
-      go :: Lens' (Request r) Command
-      go f request' = (\command' -> request' { _command = command' }) <$> f (_command request')
-
-
-instance HasRequest Request where
-  request = id
 
 class HasConfig a where
   config :: Lens' (a r t) (Config r t)
@@ -176,10 +163,10 @@ instance HasConfig Config where
 class HasDb a where
   db :: Lens' (a r t) (Db r t)
 
-  onResponse :: Lens' (a r t) (Event t (r, Either ServerError Result))
+  onResponse :: Lens' (a r t) (Event t (Response r))
   onResponse = db . go
     where
-      go :: Lens' (Db r t) (Event t (r, Either ServerError Result))
+      go :: Lens' (Db r t) (Event t (Response r))
       go f db' = (\onResponse' -> db' { _onResponse = onResponse' }) <$> f (_onResponse db')
 
 

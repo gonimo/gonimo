@@ -9,13 +9,18 @@ Copyright   : (c) Robert Klotzner, 2017
 db query events are handled by this module.
 -}
 module Gonimo.Server.Db ( -- * Types and classes
-                              Db(..)
+                              Config(..)
+                            , HasConfig(..)
+                            , Db(..)
                             , HasDb(..)
                             , ModelDump(..)
                             , HasModelDump(..)
                             , Command(..)
-                            , Result(..)
-                            , Request(..)
+                            , Result
+                            , Request
+                            , Response
+                            , command
+                            , result
                             -- * Functions
                             , make
                             , toModelDump
@@ -36,9 +41,9 @@ import qualified Gonimo.Server.Db.Account      as Account
 import qualified Gonimo.Server.Db.Family       as Family
 import qualified Gonimo.Server.Db.Invitation       as Invitation
 import           Gonimo.Server.Db.Internal
-import           Gonimo.Server.Error
 import           Gonimo.Server.NameGenerator
 import           Gonimo.SocketAPI.Model        as API
+import Gonimo.Lib.RequestResponse
 
 -- | Make a new 'Db' for handling database requests.
 --
@@ -86,7 +91,7 @@ queueRequests queue reqs = atomically $ traverse_ (writeTQueue queue) reqs
 -- | Process requests queued by 'queueRequests'.
 processRequests :: forall a conf. Server.HasConfig conf
   => conf -> TQueue (Request a)
-  -> ((a, Either ServerError Result) -> IO ())
+  -> (Response a -> IO ())
   -> IO ()
 processRequests conf queue sendResult = forever $ do
   next <- atomically $ readTQueue queue
@@ -100,8 +105,8 @@ processRequests conf queue sendResult = forever $ do
         Load action                        -> Loaded      <$> runDb conf action
         Write action                       -> const Wrote <$> runDb conf action
 
-    safeProcess :: IO (a, Either ServerError Result)
-    safeProcess = (next^.requester,) <$> try process
+    safeProcess :: IO (Response a)
+    safeProcess = RequestResponse (next^.requester) <$> try process
 
   sendResult =<< safeProcess
 

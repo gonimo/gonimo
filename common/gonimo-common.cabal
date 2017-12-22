@@ -41,6 +41,8 @@ library
                  , Gonimo.I18N
                  , Gonimo.Constants
 
+                 , Gonimo.Lib.RequestResponse
+
                  , Reflex.Behavior
 
   default-extensions: ConstraintKinds
