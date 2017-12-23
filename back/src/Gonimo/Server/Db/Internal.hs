@@ -28,12 +28,12 @@ import Gonimo.Lib.RequestResponse
 
 
 data Config r t
-  = Config { _serverConfig :: Server.Config
-           , _onRequest :: Event t [Request r]
+  = Config { _serverConfig :: Server.Config -- ^ "Server.Config" needed for accessing the database.
+           , _onRequest :: Event t [Request r] -- ^ Keep the requests coming.
            }
 
 newtype Db r t
-  = Db { _onResponse :: Event t (Response r)
+  = Db { _onResponse :: Event t (Response r) -- ^ Responses to the incoming requests as they come in.
        }
 
 -- | Type for database loads.
@@ -98,22 +98,33 @@ data Result
 -- | Either we have a valid 'Result' or an error.
 type ErrorResult = Either ServerError Result
 
+-- | Response corresponding to a certain request.
+--
+--   A response contains the requester of the triggering request and either a
+--   'ServerError' or if successful the 'Result' of the request.
 type Response r = RequestResponse r ErrorResult
 
 -- | 'Request' constructor.
 request :: r -> Command -> Request r
 request r c = RequestResponse r c
 
--- | Lens for accessing the result of the response.
-result :: Traversal' (RequestResponse r ErrorResult) Result
-result = payload . _Right
 
+
+-- | Lens for accessing the response, being either a 'ServerError' or a proper 'Result'.
 errorResult :: Lens' (RequestResponse r ErrorResult) ErrorResult
 errorResult = payload
+
+-- | Traversal for accessing the result of the response directly.
+result :: Traversal' (RequestResponse r ErrorResult) Result
+result = payload . _Right
 
 type UpdateT entity m a = StateT entity (MaybeT m) a
 
 -- | Update db entity as specified by the given UpdateT - on Nothing, no update occurs.
+--
+--   This function is used by the Db.* modules for providing update
+--   functionality. This can now actually be considered obsolete, as we do
+--   updates via the cache these days.
 updateRecord' :: ( PersistRecordBackend record SqlBackend
                 , MonadIO m, MonadBase IO m )
                 => ServerError -> Key record

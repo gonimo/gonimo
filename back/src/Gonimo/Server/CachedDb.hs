@@ -7,7 +7,7 @@ Module      : Gonimo.Server.CachedDb
 Description : Database with cache.
 Copyright   : (c) Robert Klotzner, 2017
 
-This is a wrapper around 'Gonimo.Server.CachedDb' which provides a data cache
+This is a wrapper around 'Gonimo.Server.Db.Db' which provides a data cache
 for the database. This module takes care of keeping database and cache in sync.
 -}
 module Gonimo.Server.CachedDb ( -- * Types
@@ -15,12 +15,15 @@ module Gonimo.Server.CachedDb ( -- * Types
                               , HasConfig(..)
                               , CachedDb(..)
                               , HasCachedDb(..)
+                              -- ** Updates
                               , Update(..)
-                              , Delete(..)
                               , UpdateRequest
                               , updateRequest
+                              -- ** Deletes
+                              , Delete(..)
                               , DeleteRequest
                               , deleteRequest
+                              -- * Functions
                               , make
                               ) where
 

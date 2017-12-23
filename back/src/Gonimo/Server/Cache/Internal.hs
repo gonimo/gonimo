@@ -31,7 +31,7 @@ import           Gonimo.Server.Db.Internal (ModelDump (..), HasModelDump (..))
 
 
 data Config t
-  = Config { -- | Load new data into the model it is assumed to come from the database.
+  = Config { -- | Load new data into the model. It is assumed to come from the database.
              --
              --   In order to have a consistent cache that works efficiently
              --   with the database, ids in the dump that are already present in

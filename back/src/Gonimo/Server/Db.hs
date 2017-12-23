@@ -15,12 +15,16 @@ module Gonimo.Server.Db ( -- * Types and classes
                             , HasDb(..)
                             , ModelDump(..)
                             , HasModelDump(..)
+                            -- ** Requests and Commands
                             , Command(..)
-                            , Result
                             , Request
                             , request
-                            , Response
                             , command
+                            -- ** Responses and Results
+                            , Result(..)
+                            , Response
+                            , ErrorResult
+                            , errorResult
                             , result
                             -- * Functions
                             , make

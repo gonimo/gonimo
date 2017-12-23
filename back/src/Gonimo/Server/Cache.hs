@@ -3,15 +3,15 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-|
 Module      : Gonimo.Server.Cache
-Description : Short description
+Description : Database cache.
 Copyright   : (c) Robert Klotzner, 2017
 
 Database cache needed for consistency and performance. The database cannot be
 kept in sync with the reflex network efficiently, so in order for the clients to
-hava a consistent view on the data we need to cache the data the clients hold in
+hava a consistent view on the data we need to cache the data, the clients hold in
 memory.
 
-This cache is based on models it does not know nothing about views and what data
+This cache is based on models, it does not know nothing about views and what data
 is actually needed by clients, external code should make use of 'onLoadData' for
 ensuring needed data is cached.
 -}
