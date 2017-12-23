@@ -35,7 +35,6 @@ library
                   , Control.Logging.Extended
                   , Gonimo.Db.Entities
                   , Gonimo.Db.PersistFields
-                  -- , Gonimo.Server
                   , Gonimo.Server.Authorize
                   , Gonimo.Server.Authorize.Internal
                   , Gonimo.Server.Cache
@@ -44,11 +43,14 @@ library
                   , Gonimo.Server.Cache.IndexedTable
                   , Gonimo.Server.Cache.Internal
                   , Gonimo.Server.Cache.Invitations
+                  , Gonimo.Server.CachedDb
+                  , Gonimo.Server.CachedDb.Internal
                   , Gonimo.Server.Clients
-                  , Gonimo.Server.Clients.Internal
                   , Gonimo.Server.Clients.ClientStatus
+                  , Gonimo.Server.Clients.Internal
                   , Gonimo.Server.Config
                   , Gonimo.Server.Config.Internal
+                  , Gonimo.Server.Db
                   , Gonimo.Server.Db.Account
                   , Gonimo.Server.Db.Device
                   , Gonimo.Server.Db.Family
