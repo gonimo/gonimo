@@ -85,13 +85,13 @@ type DbResponse r = Db.Response (r, Model -> Model)
 -- @
 data Update
   = forall table index m.
-  ( At (m index table) -- ^ We need to be able to index the table
-  , Ord index -- ^ For this the index needs Ord
-  , Index (m index table) ~ index -- ^ Convenient alias
-  , IxValue (m index table) ~ table -- ^ Convenient alias
-  , IsDbType index -- ^ Ok index also needs to be a DbType
-  , IsDbType table -- ^ Same goes for table
-  , DbType index ~ Db.Key (DbType table) -- ^ And the key must match the table for db access.
+  ( At (m index table) -- We need to be able to index the table
+  , Ord index -- For this the index needs Ord
+  , Index (m index table) ~ index -- Convenient alias
+  , IxValue (m index table) ~ table -- Convenient alias
+  , IsDbType index -- Ok index also needs to be a DbType
+  , IsDbType table -- Same goes for table
+  , DbType index ~ Db.Key (DbType table) -- And the key must match the table for db access.
   , Db.PersistRecordBackend (DbType table) SqlBackend
   )
   => Update { -- | Get the table in the model
@@ -105,13 +105,13 @@ data Update
 -- | A 'Delete' operation that will operate on the cache and the data base.
 data Delete
   = forall table index m.
-  ( At (m index table) -- ^ We need to be able to index the table
-  , Ord index -- ^ For this the index needs Ord
-  , Index (m index table) ~ index -- ^ Convenient alias
-  , IxValue (m index table) ~ table -- ^ Convenient alias
-  , IsDbType index -- ^ Ok index also needs to be a DbType
+  ( At (m index table) -- We need to be able to index the table
+  , Ord index -- For this the index needs Ord
+  , Index (m index table) ~ index -- Convenient alias
+  , IxValue (m index table) ~ table -- Convenient alias
+  , IsDbType index -- Ok index also needs to be a DbType
   , Db.PersistRecordBackend (DbType table) SqlBackend
-  , DbType index ~ Db.Key (DbType table) -- ^ And the key must match the table for db access.
+  , DbType index ~ Db.Key (DbType table) -- And the key must match the table for db access.
   )
   => Delete { -- | Get the table in the model
               _deleteTable :: Lens' Cache.Model (m index table)
