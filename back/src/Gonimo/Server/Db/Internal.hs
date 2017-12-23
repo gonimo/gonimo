@@ -27,6 +27,24 @@ import Gonimo.Lib.RequestResponse
 
 
 
+data Config r t
+  = Config { _serverConfig :: Server.Config
+           , _onRequest :: Event t [Request r]
+           }
+
+newtype Db r t
+  = Db { _onResponse :: Event t (Response r)
+       }
+
+-- | Type for database loads.
+data ModelDump
+  = ModelDump { _dumpedFamilies       :: [(FamilyId, Family)]
+              , _dumpedInvitations    :: [(InvitationId, Invitation)]
+              , _dumpedAccounts       :: [(AccountId, Account)]
+              , _dumpedFamilyAccounts :: [(FamilyAccountId, FamilyAccount)]
+              , _dumpedDevices        :: [(DeviceId, Device)]
+              } deriving (Generic, Eq)
+
 -- | Commands to be performed by the db.
 data Command
   = -- | Make a new family for the given account.
@@ -76,29 +94,22 @@ data Result
   | Loaded ModelDump
   deriving Eq
 
-type Response r = RequestResponse r (Either ServerError Result)
+
+-- | Either we have a valid 'Result' or an error.
+type ErrorResult = Either ServerError Result
+
+type Response r = RequestResponse r ErrorResult
+
+-- | 'Request' constructor.
+request :: r -> Command -> Request r
+request r c = RequestResponse r c
 
 -- | Lens for accessing the result of the response.
-result :: Lens' (RequestResponse r Result) Result
-result = payload
+result :: Traversal' (RequestResponse r ErrorResult) Result
+result = payload . _Right
 
-data Config r t
-  = Config { _serverConfig :: Server.Config
-           , _onRequest :: Event t [Request r]
-           }
-
-newtype Db r t
-  = Db { _onResponse :: Event t (Response r)
-       }
-
--- | Type for database loads.
-data ModelDump
-  = ModelDump { _dumpedFamilies       :: [(FamilyId, Family)]
-              , _dumpedInvitations    :: [(InvitationId, Invitation)]
-              , _dumpedAccounts       :: [(AccountId, Account)]
-              , _dumpedFamilyAccounts :: [(FamilyAccountId, FamilyAccount)]
-              , _dumpedDevices        :: [(DeviceId, Device)]
-              } deriving (Generic, Eq)
+errorResult :: Lens' (RequestResponse r ErrorResult) ErrorResult
+errorResult = payload
 
 type UpdateT entity m a = StateT entity (MaybeT m) a
 

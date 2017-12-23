@@ -1,40 +1,53 @@
+{-# LANGUAGE GADTs           #-}
+{-# LANGUAGE RankNTypes      #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections   #-}
 {-|
 Module      : Gonimo.Server.CachedDb
-Description : Short description
+Description : Database with cache.
 Copyright   : (c) Robert Klotzner, 2017
-Here is a longer description of this module, containing some
-commentary with @some markup@.
+
+This is a wrapper around 'Gonimo.Server.CachedDb' which provides a data cache
+for the database. This module takes care of keeping database and cache in sync.
 -}
 module Gonimo.Server.CachedDb ( -- * Types
                                 Config(..)
                               , HasConfig(..)
                               , CachedDb(..)
                               , HasCachedDb(..)
+                              , Update(..)
+                              , Delete(..)
+                              , UpdateRequest
+                              , updateRequest
+                              , DeleteRequest
+                              , deleteRequest
                               , make
                               ) where
 
 
-import Reflex
-import Reflex.Host.App
-import qualified Database.Persist as Db
-import Control.Lens
-import Control.Monad.Fix
+import           Control.Lens
+import           Control.Monad.Fix
+import           Control.Monad.Reader
+import qualified Database.Persist                as Db
+import           Database.Persist.Sql            (SqlBackend)
+import           Reflex
+import           Reflex.Host.App
 
-import Gonimo.Server.Db.IsDb
-import  Gonimo.Server.Cache (Cache, Model, ModelDump)
-import qualified Gonimo.Server.Cache as Cache
-import  Gonimo.Server.Db (Db)
-import qualified Gonimo.Server.Db as Db
-import qualified Gonimo.Server.Config as Server
-import Gonimo.Lib.RequestResponse
-import Gonimo.Server.Error
-
-import Gonimo.Server.CachedDb.Internal
+import           Gonimo.Lib.RequestResponse
+import           Gonimo.Prelude
+import           Gonimo.Server.Cache             (Cache, Model, ModelDump)
+import qualified Gonimo.Server.Cache             as Cache
+import           Gonimo.Server.CachedDb.Internal
+import qualified Gonimo.Server.Db                as Db
+import           Gonimo.Server.Db.IsDb
+import           Gonimo.Server.Error
 
 
 
+-- | Make a 'CachedDb'.
+--
+--  Note this calls 'Db.make' which forks a thread in the background that is
+--  never killed. This needs to be changed if usage is short lived!
 make :: forall r t m. (Reflex t, MonadAppHost t m) => Config r t -> m (CachedDb r t)
 make conf =  build $ \impl' -> do
     let
@@ -72,25 +85,27 @@ make conf =  build $ \impl' -> do
     build = fmap __cachedDb . mfix
 
 makeCacheLoads :: Db.Response r -> ModelDump
-makeCacheLoads = (^. Db.result . to Db.toModelDump)
+makeCacheLoads = fromMaybe mempty . (^? Db.result . to Db.toModelDump)
 
 makeDbUpdates :: Model -> [UpdateRequest r] -> [DbRequest r]
 makeDbUpdates model' = map (makeDbUpdate model')
 
-makeDbUpdate :: Model -> UpdateRequest r -> DbRequest r
+makeDbUpdate :: forall r. Model -> UpdateRequest r -> DbRequest r
 makeDbUpdate model' (RequestResponse r upd@Update {..}) =
   let
-    mT = cache ^? _updateTable . at _updateIndex . _Just . to _updatePerform
+    mT = model' ^? _updateTable . at _updateIndex . _Just . to _updatePerform
+
+    c :: ReaderT SqlBackend IO ()
     c = Db.replace (toDb _updateIndex) . toDb =<< fromMaybeErr NotFound mT
   in
-    RequestResponse (r, makeCacheUpdate upd) (Write c)
+    RequestResponse (r, makeCacheUpdate upd) (Db.Write c)
 
 makeDbDelete :: DeleteRequest r -> DbRequest r
 makeDbDelete (RequestResponse r del@Delete {..}) =
   let
     c = Db.delete (toDb _deleteIndex)
   in
-    RequestResponse (r, makeCacheDelete del) (Write c)
+    RequestResponse (r, makeCacheDelete del) (Db.Write c)
 
 makeCacheUpdate :: Update -> Model -> Model
 makeCacheUpdate Update {..} = _updateTable . at _updateIndex . _Just %~ _updatePerform

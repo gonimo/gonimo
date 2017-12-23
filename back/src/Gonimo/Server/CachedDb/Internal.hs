@@ -11,6 +11,7 @@ module Gonimo.Server.CachedDb.Internal where
 import Control.Lens
 import Reflex
 import qualified Database.Persist as Db
+import           Database.Persist.Sql             (SqlBackend)
 
 
 import Gonimo.Server.Db.IsDb
@@ -22,11 +23,11 @@ import qualified Gonimo.Server.Config as Server
 import Gonimo.Lib.RequestResponse
 
 data Config r t
-  = Config { _onUpdate :: Event t [UpdateRequest r]
-           , _onDelete :: Event t [DeleteRequest r]
+  = Config { _onUpdate :: Event t [UpdateRequest r] -- ^ Update data in the database.
+           , _onDelete :: Event t [DeleteRequest r] -- ^ Delete entries in the database.
              -- | Take care on this one, you are bypassing the cache if you use a 'Write' directly!
-           , _onDbCommand :: Event t [Db.Request r]
-           , _serverConfig :: Server.Config
+           , _onDbCommand :: Event t [Db.Request r] -- ^ Create data or load data from the database.
+           , _serverConfig :: Server.Config -- ^ "Server.Config" needed for database access.
            }
 
 
@@ -34,16 +35,28 @@ data CachedDb r t
   = CachedDb { -- | On receiving a response the triggering request is executed
                --   and the cache will represent the changes in the next frame.
                _onResponse :: Event t (Db.Response r)
-             , _dbCache :: Cache t
+             , _dbCache :: Cache t -- ^ The database cached that is kept in sync automatically.
              }
 
+-- | Internal implementation.
 data Impl r t
   = Impl { __cachedDb :: CachedDb r t
          , _db :: Db (r, Model -> Model) t
          }
 
+-- | A request for updating data.
 type UpdateRequest r = RequestResponse r Update
-type DeleteRequest r = RequestResponse r Update
+
+-- | A request for deleting data.
+type DeleteRequest r = RequestResponse r Delete
+
+-- | Constructor for 'UpdateRequest'
+updateRequest :: r -> Update -> UpdateRequest r
+updateRequest r upd = RequestResponse r upd
+
+-- | Constructor for 'DeleteRequest'
+deleteRequest :: r -> Delete -> DeleteRequest r
+deleteRequest r del = RequestResponse r del
 
 -- | Internal DbRequest representation, for updating the model after the write succeeded.
 type DbRequest r = Db.Request (r, Model -> Model)
@@ -55,7 +68,7 @@ type DbResponse r = Db.Response (r, Model -> Model)
 --
 --   'Update' always updates a single row in a table.
 --
---   The model will be update in the following way:
+--   The model will be updated in the following way:
 --
 -- @
 --   model & (u ^.updateTable) . at (u ^. updateIndex) . Just %~ (u ^. updatePerform)
@@ -74,11 +87,12 @@ data Update
   = forall table index m.
   ( At (m index table) -- ^ We need to be able to index the table
   , Ord index -- ^ For this the index needs Ord
-  , IxValue (m index table) ~ index -- ^ Convenient alias
-  , Index (m index table) ~ table -- ^ Convenient alias
+  , Index (m index table) ~ index -- ^ Convenient alias
+  , IxValue (m index table) ~ table -- ^ Convenient alias
   , IsDbType index -- ^ Ok index also needs to be a DbType
   , IsDbType table -- ^ Same goes for table
   , DbType index ~ Db.Key (DbType table) -- ^ And the key must match the table for db access.
+  , Db.PersistRecordBackend (DbType table) SqlBackend
   )
   => Update { -- | Get the table in the model
               _updateTable :: Lens' Cache.Model (m index table)
@@ -93,9 +107,11 @@ data Delete
   = forall table index m.
   ( At (m index table) -- ^ We need to be able to index the table
   , Ord index -- ^ For this the index needs Ord
-  , IxValue (m index table) ~ index -- ^ Convenient alias
-  , Index (m index table) ~ table -- ^ Convenient alias
+  , Index (m index table) ~ index -- ^ Convenient alias
+  , IxValue (m index table) ~ table -- ^ Convenient alias
   , IsDbType index -- ^ Ok index also needs to be a DbType
+  , Db.PersistRecordBackend (DbType table) SqlBackend
+  , DbType index ~ Db.Key (DbType table) -- ^ And the key must match the table for db access.
   )
   => Delete { -- | Get the table in the model
               _deleteTable :: Lens' Cache.Model (m index table)

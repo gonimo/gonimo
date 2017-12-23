@@ -18,6 +18,7 @@ module Gonimo.Server.Db ( -- * Types and classes
                             , Command(..)
                             , Result
                             , Request
+                            , request
                             , Response
                             , command
                             , result
