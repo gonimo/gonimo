@@ -1,0 +1,7 @@
+packages:
+  common/
+  back/
+  front/
+
+package gonimo-back
+  flags: +dev
