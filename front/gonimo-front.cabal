@@ -199,13 +199,12 @@ executable gonimo-front
                     , jsaddle
                     , ghcjs-dom
                     , mtl
-  if !impl(ghcjs)
-     build-depends: wai-middleware-static
-                    , warp
-                    , websockets
-                    , jsaddle
-                    , wai-middleware-static
-                    , jsaddle-warp
+  -- if !impl(ghcjs)
+  --    build-depends: wai-middleware-static
+  --                   , warp
+  --                   , websockets
+  --                   , jsaddle
+  --                   , jsaddle-warp
                     
 
 executable gonimo-front-android
