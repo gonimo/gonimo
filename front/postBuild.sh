@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 dev=$1
 echo "And dev is ..... ${dev}"
-distPath=dist/build/gonimo-front/gonimo-front.jsexe
+if [[ -d ../dist-ghcjs ]]
+then
+    distPath=../dist-ghcjs/build/x86_64-linux/ghcjs-0.2.1/gonimo-front-0.1/build/gonimo-front/gonimo-front.jsexe
+else
+    distPath=dist/build/gonimo-front/gonimo-front.jsexe
+fi
+
 cp -a static/* ${distPath}/
 pushd ${distPath}
 rm index.html
@@ -45,7 +51,12 @@ else
     touch rts.js lib.js out.js all.js manifest.webapp out.stats
     popd
 fi
-gonimo-deploy md5sum ${distPath}
+if [[ ${dev} == "dev" ]]
+then
+	echo "Development build, skipping gonimo-deploy (for now)"
+else
+	gonimo-deploy md5sum ${distPath}
+fi
 #../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
 # Fix up index.html:
 pushd ${distPath}
