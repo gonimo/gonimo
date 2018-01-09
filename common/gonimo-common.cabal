@@ -66,7 +66,7 @@ library
                       , lens
                       , lifted-base
                       , mtl
-                      , reflex >= 0.5.0
+                      , reflex
                       , safe
                       , stm
                       , text
