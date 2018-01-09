@@ -51,12 +51,7 @@ else
     touch rts.js lib.js out.js all.js manifest.webapp out.stats
     popd
 fi
-if [[ ${dev} == "dev" ]]
-then
-	echo "Development build, skipping gonimo-deploy (for now)"
-else
-	gonimo-deploy md5sum ${distPath}
-fi
+gonimo-deploy md5sum ${distPath}
 #../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
 # Fix up index.html:
 pushd ${distPath}
