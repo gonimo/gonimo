@@ -6,9 +6,12 @@
 {-# LANGUAGE RecordWildCards #-}
 module Gonimo.Server where
 
+import Control.Logging (LogLevel)
 
 import           Gonimo.Server.Clients (Clients)
 import qualified Gonimo.Server.Clients as Clients
+import qualified Gonimo.Server.CachedDb as Db
+import qualified Gonimo.Server.Db.Invitation as Invitation
 
 
 
@@ -33,8 +36,13 @@ data Server t
            , _sessionConfig :: Session.Config
            }
 
+data Status
+  = Status { _sampledModel :: Cache.Model
+           , _clients :: ClientStatuses
+           }
+
 data Request
-  = Request { _sampledModel :: Cache.Model
+  = Request { __status :: Status
             , _clients :: ClientStatuses
             , _message :: FromClient
             , _senderId :: DeviceId
@@ -46,15 +54,23 @@ data Request
 --                     , _dbWrites :: Event t [ReaderT SqlBackend IO a]
 --                     }
 data RequestResult
-  = RequestResult = { _responses :: [(DeviceId, ToClient)]
-                    , _cacheUpdate :: Model -> Model
-                    , _dbWrites :: [ReaderT SqlBackend IO ()]
-                    }
+  = RequestResult { _responses  :: [(DeviceId, ToClient)]
+                  , _updates    :: [Db.UpdateRequest ServerRequester]
+                  , _deletes    :: [Db.DeleteRequest ServerRequester]
+                  , _dbRequests :: [Db.Request ServerRequester]
+                  , _logMessages   :: [LogLevel, Text]
+                  }
 
 instance Monoid RequestResult where
   mempty = RequestResult [] id []
   mappend (RequestResult r1 c1 db1) (RequestResult r2 c2 db2)
     = RequestResult (r1 <> r2) (c1 . c2) (db1 <> db2)
+
+type ServerRequester = [API.Update]
+
+-- Default requester if you don't need any additional information from a database response.
+defaultRequester :: ServerRequester
+defaultRequester = []
 
 -- Server:
 make :: forall t m. MonadAppHost t m => Config -> m ()
@@ -71,18 +87,16 @@ make config = build $ do
 processRequests :: forall t m. MonadAppHost t m => Server t -> RequestResult t
 processRequests server' = undefined
 
-processRequest :: Request -> IO RequestResult
+processRequest :: Request -> RequestResult
 processRequest req
   = case req^.message of
     Ping                     -> pure mempty
     MakeDevice _             -> pure mempty
     Authenticate _           -> pure mempty
-    MakeFamily               -> 
-    MakeInvitation fid       -> denyUnless (isOnlineInFamily clients' senderId fid)
-    -- If the device knows the secret it may access the invitation. Whether it is already
-    -- claimed, is checked at access:
-    ClaimInvitation _        -> mzero
-    AnswerInvitation invId _ -> denyUnless (deviceOwnsInvitation cache' senderId invId)
+    MakeFamily               -> makeFamily
+    MakeInvitation fid       -> makeInvitation fid
+    ClaimInvitation secret'  -> claimInvitation secret'
+    AnswerInvitation invId repl -> answerInvitation invId repl
     SendMessage toId _       -> denyUnless (isOnlineInSameFamily clients' senderId toId)
     UpdateServer update'     -> denyUpdate auth update'
     Get view'                -> denyView auth view'
@@ -116,6 +130,77 @@ performUpdate update =
 
     OnClaimedInvitation         _           ->
     OnChangedInvitationDelivery invId _     ->
+
+
+makeFamily :: Request -> RequestResult
+makeFamily req' = fromMaybe err $ do
+    aid <- req' ^? sampledModel . devices . at (req' ^. senderId) . _Just . to deviceAccountId
+    pure $ mempty & dbRequests .~ [Db.request defaultRequester (Db.MakeFamily aid)]
+  where
+    err = reportError req' InternalServerError "makeFamily: Could not find sending device!"
+
+makeInvitation :: Request -> FamilyId -> RequestResult
+makeInvitation req' fid =
+  let
+    command' = Db.MakeInvitation (req' ^. senderId) fid
+  in
+    mempty & dbRequests .~ [ Db.request defaultRequester command' ]
+
+claimInvitation :: Secret -> RequestResult
+claimInvitation secret' =
+  let
+    command' = Db.Load claimInvitation'
+    claimInvitation' = toDump <$> Invitation.claim secret'
+
+    toDump invData = mempty & dumpedInvitations .~ [invData]
+  in
+    mempty & dbRequests .~ [ Db.request defaultRequester command' ]
+
+answerInvitation :: Cache.Model -> InviationId -> InvitationReply -> RequestResult
+answerInvitation model' invId repl = do
+  let
+    deleteInv' = Db.Delete { Db._deleteTable = invitations
+                           , Db._deleteIndex = invId
+                           }
+  inv <- model' ^? invitations . at invId 
+  aid <- inv ^. to invitationReceiverId
+
+  let
+    let famId = invitationFamilyId inv
+    command' = MakeFamilyAccount  famId aid (Just $ invitationDelivery inv)
+
+    deleteRequester = [ OnRemovedFamilyInvitation famId invId
+                      , OnRemovedAccountInvitation aid invId
+                      ]
+
+  pure $ mempty & deletes .~ [ Db.deleteRequest deleteRequester deleteInv' ]
+                & dbRequests .~ [ Db.request defaultRequester command' ]
+
+-- | Handle database responses:
+handleDbResponse :: Request -> Db.ErrorResult -> RequestResult
+handleDbResponse req' (Left err) = reportError req' err "Some database command failed!"
+handleDbResponse req' (Right resp) =
+  case resp of
+    Db.MadeFamily (fid, _) (_, famAcc) ->
+      let
+        aid = familyAccountAccountId famAcc
+      in
+        mempty & responses .~ [(req' ^. senderId, API.UpdateClient (API.OnNewFamilyAccount fid aid))]
+    Db.MadeInvitation invId inv ->
+      mempty & responses .~ [()]
+
+-- | Send an error to the client and log a message.
+reportError :: Request -- ^ The request that failed.
+  -> ServerError -- ^ The error to report to the client.
+  -> Text -- ^ Log message
+  -> RequestResult
+reportError req err msg =
+  let
+    response = API.ServerError (req ^. senderId) err
+  in
+    mempty & responses .~ [response]
+           & logMessages .~ [ (LevelError, msg) ]
+    
 {--
 
 
