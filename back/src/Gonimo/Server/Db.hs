@@ -6,7 +6,9 @@ Module      : Gonimo.Server.Db
 Description : Server data base access.
 Copyright   : (c) Robert Klotzner, 2017
 
-db query events are handled by this module.
+Db query events are handled by this module. You most likely don't want to use
+this module directly but rather "Gonimo.Server.CachedDb" which provides an
+interface that automatically keeps the cache in sync.
 -}
 module Gonimo.Server.Db ( -- * Types and classes
                               Config(..)

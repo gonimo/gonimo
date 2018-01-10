@@ -56,13 +56,16 @@ data Command
     -- | Join a family with an account
   | MakeFamilyAccount FamilyId AccountId (Maybe InvitationDelivery)
     -- | Load some data.
+    --
+    --   'Load' gets used at least once for an actual write access by
+    --   claimInvitation logic. Keep that in mind when doing redesigns!
   | Load (ReaderT SqlBackend IO ModelDump)
     -- | Generic write to the db, when data is persisted you'll receive a 'Wrote'.
   | Write (ReaderT SqlBackend IO ())
 
 type Request r = RequestResponse r Command
 
--- | Lens for tetting the command out of a Request.
+-- | Lens for getting the command out of a 'Request'.
 command :: Lens' (RequestResponse r Command) Command
 command = payload
 
