@@ -25,9 +25,16 @@ import Gonimo.Lib.RequestResponse
 data Config r t
   = Config { _onUpdate :: Event t [UpdateRequest r] -- ^ Update data in the database.
            , _onDelete :: Event t [DeleteRequest r] -- ^ Delete entries in the database.
-             -- | Take care on this one, you are bypassing the cache if you use a 'Write' directly!
-           , _onDbCommand :: Event t [Db.Request r] -- ^ Create data or load data from the database.
-           , _serverConfig :: Server.Config -- ^ "Server.Config" needed for database access.
+
+             -- | Create data or load data from the database.
+             --
+             --   WARNING: Don't use 'Db.Write', as it bypasses the cache. For
+             --   updating and deleting values use '_onUpdate' and '_onDelete'!
+             --
+             --   All other 'Db.Command's are handled properly by means of
+             --   'Db.toModelDump'.
+           , _onDbCommand :: Event t [Db.Request r]
+           , _serverConfig :: Server.Config -- ^ 'Server.Config' needed for database access.
            }
 
 

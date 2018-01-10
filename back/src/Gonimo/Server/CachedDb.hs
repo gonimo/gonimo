@@ -11,6 +11,7 @@ This is a wrapper around 'Gonimo.Server.Db.Db' which provides a data cache
 for the database. This module takes care of keeping database and cache in sync.
 -}
 module Gonimo.Server.CachedDb ( -- * Types
+                                -- ** Top level interface
                                 Config(..)
                               , HasConfig(..)
                               , CachedDb(..)
@@ -23,6 +24,13 @@ module Gonimo.Server.CachedDb ( -- * Types
                               , Delete(..)
                               , DeleteRequest
                               , deleteRequest
+                              -- ** Raw db access
+                              , Db.Command(..)
+                              , Db.Result(..)
+                              , Db.Response
+                              , Db.ErrorResult
+                              , Db.request
+                              , Db.command
                               -- * Functions
                               , make
                               ) where
@@ -38,7 +46,7 @@ import           Reflex.Host.App
 
 import           Gonimo.Lib.RequestResponse
 import           Gonimo.Prelude
-import           Gonimo.Server.Cache             (Cache, Model, ModelDump)
+import           Gonimo.Server.Cache             (Model, ModelDump)
 import qualified Gonimo.Server.Cache             as Cache
 import           Gonimo.Server.CachedDb.Internal
 import qualified Gonimo.Server.Db                as Db
