@@ -31,15 +31,12 @@ import           Gonimo.Server.Db.Internal (ModelDump (..), HasModelDump (..))
 
 
 data Config t
-  = Config { -- | Load new data into the model. It is assumed to come from the database.
+  = Config { -- | Load new data into the model.
              --
-             --   In order to have a consistent cache that works efficiently
-             --   with the database, ids in the dump that are already present in
-             --   the cache will be ignored and the value in the cache
-             --   preserved. This way data from the database can be loaded which
-             --   might not be perfectly up to data, on the flip side you cannot
-             --   use this event for updating values in the cache - use
-             --   'onUpdate' for that.
+             --   Please beware that any entries already present in the cache
+             --   will be overriden with entries with the same id from the dump.
+             --   This should be fine if you take care of only updating the
+             --   cache after data has been written to the database.
              _onLoadData  :: Event t ModelDump
 
              -- | Update some data in the model.
@@ -86,21 +83,26 @@ emptyModel = Model { _families = Map.empty
 -- | Load a data dump into the model.
 --
 --   Load a dump into the model, if some id in the dump is already present in
---   the model, the data in the model will be preserved and not replaced in
---   order to ensure cache consistency. This also means, you can't use this
---   function for updating values in the model!
+--   the model, the data in the model will be overridden.
 loadDump :: ModelDump -> Model -> Model
-loadDump dump = (families       %~ loadOnlyNewMap (dump^.dumpedFamilies))
-              . (invitations    %~ loadOnlyNew (dump^.dumpedInvitations))
+loadDump dump = (families       %~ (Map.union . Map.fromList)  (dump^.dumpedFamilies))
+              . (invitations    %~ Table.loadData (dump^.dumpedInvitations))
               -- . (accounts       %~ loadOnlyNewMap (dump^.dumpedAccounts))
-              . (familyAccounts %~ loadOnlyNew (dump^.dumpedFamilyAccounts))
-              . (devices        %~ loadOnlyNew (dump^.dumpedDevices))
-  where
-    loadOnlyNew dumped table' = Table.loadData (filterDump table' dumped) table'
-    loadOnlyNewMap = Map.unionWith (const id) . Map.fromList
+              . familyAccounts  %~ Table.loadData (dump^.dumpedFamilyAccounts)
+              . devices         %~ Table.loadData (dump^.dumpedDevices)
 
-    filterDump :: At s => s -> [(Index s, b)] -> [(Index s, b)]
-    filterDump table' = filter (isNothing . (table'^.) . at . fst)
+-- -- Old implementation filtering out already present data:
+-- loadDump dump = (families       %~ loadOnlyNewMap (dump^.dumpedFamilies))
+--               . (invitations    %~ loadOnlyNew (dump^.dumpedInvitations))
+--               -- . (accounts       %~ loadOnlyNewMap (dump^.dumpedAccounts))
+--               . (familyAccounts %~ loadOnlyNew (dump^.dumpedFamilyAccounts))
+--               . (devices        %~ loadOnlyNew (dump^.dumpedDevices))
+--   where
+--     loadOnlyNew dumped table' = Table.loadData (filterDump table' dumped) table'
+--     loadOnlyNewMap = Map.unionWith (const id) . Map.fromList
+
+--     filterDump :: At s => s -> [(Index s, b)] -> [(Index s, b)]
+--     filterDump table' = filter (isNothing . (table'^.) . at . fst)
 
 {-
 loadFamilyData :: (Server.HasConfig c , MonadAppHost t m)

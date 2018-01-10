@@ -14,6 +14,13 @@ memory.
 This cache is based on models, it does not know nothing about views and what data
 is actually needed by clients, external code should make use of 'onLoadData' for
 ensuring needed data is cached.
+
+TODO: Statement about consistency still correct? We order db access and delay
+  Update messages to the client until they are written to the db. So we know
+  exactly which updates happened after a read and which happened before. Therefore
+  the cache is no longer needed for consistency. It is still useful for
+  authentication and stuff, but this opens the possibility of just clearing the
+  cache completely from time to time, which would not have been possible before.
 -}
 module Gonimo.Server.Cache ( -- * Types and classes
                              Config(..)
