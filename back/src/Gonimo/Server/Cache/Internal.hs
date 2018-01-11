@@ -88,8 +88,8 @@ loadDump :: ModelDump -> Model -> Model
 loadDump dump = (families       %~ (Map.union . Map.fromList)  (dump^.dumpedFamilies))
               . (invitations    %~ Table.loadData (dump^.dumpedInvitations))
               -- . (accounts       %~ loadOnlyNewMap (dump^.dumpedAccounts))
-              . familyAccounts  %~ Table.loadData (dump^.dumpedFamilyAccounts)
-              . devices         %~ Table.loadData (dump^.dumpedDevices)
+              . (familyAccounts  %~ Table.loadData (dump^.dumpedFamilyAccounts))
+              . (devices         %~ Table.loadData (dump^.dumpedDevices))
 
 -- -- Old implementation filtering out already present data:
 -- loadDump dump = (families       %~ loadOnlyNewMap (dump^.dumpedFamilies))
