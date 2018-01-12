@@ -20,7 +20,10 @@ import           Reflex.Host.App                    as App
 
 import           Gonimo.Prelude
 import           Gonimo.Server.Cache                (Cache, Model, devices)
-import           Gonimo.Server.Clients.ClientStatus as Client
+import           Gonimo.Server.Clients.ClientStatus (ClientStatuses)
+import qualified Gonimo.Server.Clients.ClientStatus as Statuses
+
+
 import qualified Gonimo.Server.Config               as Server
 import           Gonimo.Server.Session              (Session)
 import qualified Gonimo.Server.Session              as Session
@@ -66,7 +69,7 @@ makeStatuses conf impl' = do
                                            , push updateStatus $ impl'^.onReceived
                                            ]
   where
-    emptyStatuses = Client.makeStatuses Map.empty
+    emptyStatuses = Statuses.makeStatuses Map.empty
 
     newStatus :: DeviceId -> ClientStatuses -> ClientStatuses
     newStatus devId = at devId .~ Just def
@@ -86,8 +89,10 @@ makeStatuses conf impl' = do
     updateStatus' :: Model -> (DeviceId, FromClient) -> Maybe (ClientStatuses -> ClientStatuses)
     updateStatus' model' (_, msg)
       = case msg of
-          UpdateServer (OnChangedDeviceStatus devId fid newStatus')
-            -> pure $ at devId .~ Just (ClientStatus newStatus' (Just fid))
+          UpdateServer (OnChangedDeviceStatus devId newStatus')
+            -> pure $ Statuses.updateStatus devId newStatus'
+          UpdateServer (OnSelectedFamily devId newFamId)
+            -> pure $ Statuses.updateFamily devId newFamId
           UpdateServer (OnRemovedFamilyAccount fid aid)
             -> do
             let byAccountId = Devices.byAccountId $ model'^.devices
@@ -95,10 +100,10 @@ makeStatuses conf impl' = do
 
             pure $ \statuses' ->
               let
-                byFamilyId' = Client.byFamilyId statuses'
+                byFamilyId' = Statuses.byFamilyId statuses'
                 familyDevices' = byFamilyId' ^. at fid . _Just
                 hitDevices = Set.toList $ Set.intersection devices' familyDevices'
-                removeFamily hitDevice = at hitDevice . _Just . clientFamily .~ Nothing
+                removeFamily hitDevice = at hitDevice . _Just . Statuses.clientFamily .~ Nothing
 
                 removeFamilies = foldr (.) id . map removeFamily $ hitDevices
               in
