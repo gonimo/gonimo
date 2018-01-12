@@ -10,6 +10,8 @@ module Gonimo.Server.Clients.ClientStatus ( ClientStatus(..)
                                           , clientFamily
                                           , makeStatuses
                                           , byFamilyId
+                                          , updateStatus
+                                          , updateFamily
                                           ) where
 
 
@@ -20,6 +22,7 @@ import           Data.Set                         (Set)
 
 import           Gonimo.Server.Cache.IndexedTable as Table
 import           Gonimo.SocketAPI.Model
+import           Gonimo.Prelude
 
 
 data ClientStatus = ClientStatus { _clientDeviceStatus :: DeviceStatus
@@ -27,6 +30,28 @@ data ClientStatus = ClientStatus { _clientDeviceStatus :: DeviceStatus
                                  }
 
 type ClientStatuses = IndexedTable FamilyId Map DeviceId ClientStatus
+
+-- | Update the device status.
+--
+--   This function won't alter the family of the client and will create the
+--   ClientStatus entry with an empty '_clientFamily' if there was no entry
+--   before.
+updateStatus :: DeviceId -> DeviceStatus -> ClientStatuses -> ClientStatuses
+updateStatus devId newStatus = at devId %~ updateStatus'
+  where
+    getFamily mOld = mOld ^? _Just . clientFamily . _Just
+    updateStatus' = Just . ClientStatus newStatus . getFamily
+
+-- | Update the current family of the client.
+--
+--   '_clientDeviceStatus' won't be altered by this function. If no
+--   'ClientStatus' entry with the given 'DeviceId' existed before it will be
+--   created with '_clientDeviceStatus' set to a plain 'Online'.
+updateFamily :: DeviceId -> Maybe FamilyId -> ClientStatuses -> ClientStatuses
+updateFamily devId newFamily = at devId %~ updateFamily'
+  where
+    getStatus mOld = fromMaybe Online $ mOld ^? _Just . clientDeviceStatus
+    updateFamily' = Just . flip ClientStatus newFamily . getStatus
 
 
 instance Default ClientStatus where

@@ -247,14 +247,34 @@ data Update
     --   Automatically sent on changes by the server, not accepted by clients.
   | OnChangedDeviceLastAccessed !DeviceId !UTCTime
 
-    -- | Clients have an online status ('DeviceStatus') for a given family.
+    -- | Clients have an associated family, which they can choose from their
+    --   associated families.
     --
-    --   Accepted from the client itself for updating the server. If the device
-    --   was online in another family before, the members fo this family will
-    --   receive an 'OnChangedDeviceStatus' with 'Offline' status, the now
-    --   selected family will receive an 'OnChangedDeviceStatus' message of
-    --   'Online'.
-  | OnChangedDeviceStatus       !DeviceId !FamilyId !DeviceStatus
+    --   Accepted from Clients, so they can switch between families they are a
+    --   member of. Once a family got selected via 'OnSelectedFamily' the device
+    --   will appear as online to other family members of this family. Also its
+    --   'DeviceStatus' will be visible to those members. Communication is only
+    --   allowed between devices that selected the same family. We say they are
+    --   online in the same family, meaning they can see and interact with each
+    --   other.
+
+    --   On reception of 'OnSelectedFamily the server will send a new
+    --   'OnSelectedFamily message to clients of the previously selected family
+    --   (if any) with no 'FamilyId' ('Nothing'), signalling to those clients
+    --   that the device is no longer online. The members of the now selected
+    --   family will basically get he original 'OnSelectedFamily message from the client
+    --   forwarded.
+    --
+    --   If a client goes offline, the server will also send a 'OnSelectedFamily
+    --   message to the members of its previusly selected family.
+  | OnSelectedFamily       !DeviceId !(Maybe FamilyId)
+
+    -- | Clients have an online status ('DeviceStatus'), which they can change.
+    --
+    --   Accepted from clients for setting their own 'DeviceStatus', forwarded
+    --   by the server to members of the currently selected family (see
+    --   'OnSelectedFamily).
+  | OnChangedDeviceStatus !DeviceId  !DeviceStatus
 
     --   Invitation updates
 

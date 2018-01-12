@@ -98,9 +98,12 @@ denyUpdate auth@AuthRequest {..} update' =
                                                             || isOnlineInSameFamily clients' senderId devId
                                                           )
     OnChangedDeviceLastAccessed _ _         -> pure Forbidden
-    OnChangedDeviceStatus       devId fid _ -> denyUnless ( senderId == devId
-                                                            && isFamilyMember cache' senderId fid
+    OnSelectedFamily       devId mFid       -> denyUnless ( senderId == devId
+                                                            && case mFid of
+                                                                 Nothing -> True
+                                                                 Just fid -> isFamilyMember cache' senderId fid
                                                           )
+    OnChangedDeviceStatus       devId _     -> denyUnless ( senderId == devId )
     OnClaimedInvitation         _           -> pure Forbidden
     OnChangedInvitationDelivery invId _     -> denyUnless (onlineFamilyHasInvitation auth invId)
 

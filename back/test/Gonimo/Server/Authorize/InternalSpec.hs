@@ -101,9 +101,20 @@ updateServerSpec = do
       deny (mkUpdate 9 (OnChangedDeviceName (DeviceId 8) "Heinzi")) `shouldBe` Just Forbidden
   describe "OnChangedDeviceStatus" $ do
     it "fails for all other devices" $ do
-      deny (mkUpdate 8 (OnChangedDeviceStatus (DeviceId 9) (FamilyId 9) Online)) `shouldBe` Just Forbidden
+      deny (mkUpdate 8 (OnChangedDeviceStatus (DeviceId 9) Online)) `shouldBe` Just Forbidden
     it "works for the device itself" $ do
-      deny (mkUpdate 9 (OnChangedDeviceStatus (DeviceId 9) (FamilyId 9) Online)) `shouldBe` Nothing
+      deny (mkUpdate 9 (OnChangedDeviceStatus (DeviceId 9)  Online)) `shouldBe` Nothing
+
+  describe "OnSelectedFamily" $ do
+    it "fails for all other devices" $ do
+      deny (mkUpdate 8 (OnSelectedFamily (DeviceId 9) (Just $ FamilyId 9))) `shouldBe` Just Forbidden
+    it "works for the device itself" $ do
+      deny (mkUpdate 9 (OnSelectedFamily (DeviceId 9) (Just $ FamilyId 9))) `shouldBe` Nothing
+    it "fails for foreign families" $ do
+      deny (mkUpdate 9 (OnSelectedFamily (DeviceId 9) (Just $ FamilyId 1))) `shouldBe` Just Forbidden
+    it "works for no family" $ do
+      deny (mkUpdate 9 (OnSelectedFamily (DeviceId 9) Nothing)) `shouldBe` Nothing
+
   describe "OnChangedInvitationDelivery" $ do
     it "fails for non online family devices" $ do
       deny (mkUpdate 8 (OnChangedInvitationDelivery (InvitationId 1) OtherDelivery)) `shouldBe` Just Forbidden
@@ -162,7 +173,9 @@ mkRequest client msg = AuthRequest myCache myClients (DeviceId client) msg
 myCache :: Cache.Model
 myCache
   = Cache.Model
-    { _families = Map.fromList [(FamilyId 9, Family (parseFamilyName "Family9") timeStamp timeStamp [])]
+    { _families = Map.fromList [ (FamilyId 9, Family (parseFamilyName "Family9") timeStamp timeStamp [])
+                               , (FamilyId 1, Family (parseFamilyName "Family1") timeStamp timeStamp [])
+                               ]
     , _invitations = Invitations.make
                      $ Map.fromList [ (InvitationId 1, Invitation (Secret "haha") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) Nothing)
                                     , (InvitationId 2, Invitation (Secret "haha1") (FamilyId 9) timeStamp (EmailInvitation "test@test.com")  (DeviceId 9) (Just (AccountId 2)))
