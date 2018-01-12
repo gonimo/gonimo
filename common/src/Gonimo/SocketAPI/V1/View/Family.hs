@@ -50,7 +50,7 @@ data DeviceView
   = DeviceView { _deviceViewName :: !Text
                , _deviceViewLastAccessed :: !UTCTime
                , _deviceViewUserAgent :: !Text
-               , _deviceViewStatus :: !DeviceStatus
+               , _deviceViewStatus :: !(Maybe DeviceStatus)
                } deriving (Generic, Show)
 
 instance FromJSON DeviceView
@@ -64,7 +64,7 @@ data InvitationView
   = InvitationView { _invitationViewSecret   :: !Secret
                    , _invitationViewCreated  :: !UTCTime
                    , _invitationViewDelivery :: !InvitationDelivery
-                   , _invitationViewSenderId :: !(Maybe AccountId)
+                   , _invitationViewSenderId :: !AccountId
                    , _invitationViewClaimed  :: !Bool
                    } deriving (Generic, Show)
 
