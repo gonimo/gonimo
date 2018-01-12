@@ -30,8 +30,10 @@ module Gonimo.Server.Cache ( -- * Types and classes
                            , HasModel(..)
                            , ModelDump(..)
                            , HasModelDump(..)
-                             -- * Functions
+                             -- * Creation
                            , make
+                            -- * Common tasks
+                           , getFamilyDevices
                            ) where
 
 import Reflex
@@ -41,6 +43,10 @@ import Control.Monad.Fix
 
 import Gonimo.Server.Cache.Internal
 import Gonimo.Server.Db.Internal (ModelDump(..), HasModelDump(..))
+import Gonimo.SocketAPI.Model
+import qualified Data.Set as Set
+import qualified Gonimo.Server.Cache.FamilyAccounts as FamilyAccounts
+import qualified Gonimo.Server.Cache.Devices        as Devices
 
 
 make :: (MonadFix m, MonadHold t m, Reflex t) => Config t -> m (Cache t)
@@ -53,6 +59,18 @@ make conf = do
                                       , loadDump <$> conf^.onLoadData
                                       , const <$> conf^.onLoadModel
                                       ]
+
+
+-- | Get all devices belonging to a single family.
+getFamilyDevices :: FamilyId -> Model -> [DeviceId]
+getFamilyDevices fid model' =
+  let
+    accounts' :: [AccountId]
+    accounts' = FamilyAccounts.getAccounts fid  (model' ^. familyAccounts)
+
+    byAccountId' = model' ^. devices . to Devices.byAccountId
+  in
+    concatMap (\aid -> byAccountId' ^. at aid . non Set.empty . to Set.toList) accounts'
 
 -- | Get the Account id of a given device.
 -- getDeviceAccountId :: HasModel a => DeviceId -> a -> Maybe AccountId
