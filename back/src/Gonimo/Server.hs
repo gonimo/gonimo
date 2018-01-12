@@ -11,6 +11,7 @@ import Control.Logging (LogLevel)
 import           Gonimo.Server.Clients (Clients)
 import qualified Gonimo.Server.Clients as Clients
 import qualified Gonimo.Server.CachedDb as Db
+import qualified Gonimo.Server.Cache as Cache
 import qualified Gonimo.Server.Db.Invitation as Invitation
 
 
@@ -43,7 +44,6 @@ data Status
 
 data Request
   = Request { __status :: Status
-            , _clients :: ClientStatuses
             , _message :: FromClient
             , _senderId :: DeviceId
             }
@@ -53,27 +53,96 @@ data Request
 --                     , _cacheUpdate :: Cache.Config t
 --                     , _dbWrites :: Event t [ReaderT SqlBackend IO a]
 --                     }
+
+-- | Super type for 'RequestResult' which does not allow for db queries.
+--
+--   This type is produced by 'DbResponseHandler' in response to db results
+--   triggered by the db accessing entries of 'RequestResult', like '_updates'
+--   or '_dbRequests'. This type exists, because we don't want to allow db
+--   results to trigger further db queries.
+data DbRequestResult
+  = DbRequestResult { _responses   :: [(DeviceId, ToClient)]
+                    , _logMessages :: [LogLevel, Text]
+                    }
+
+-- | The result of a processed request.
+--
+--   The result of a processed request can either be direct '_responses' or
+--   '_logMessages' or db queries (e.b. '_deletes') which trigger a further
+--   'DbRequestResult' by means of their 'DbResponseHandler'.
 data RequestResult
-  = RequestResult { _responses  :: [(DeviceId, ToClient)]
-                  , _updates    :: [Db.UpdateRequest ServerRequester]
-                  , _deletes    :: [Db.DeleteRequest ServerRequester]
-                  , _dbRequests :: [Db.Request ServerRequester]
-                  , _logMessages   :: [LogLevel, Text]
+  = RequestResult { __dbRequestResult :: DbRequestResult
+                  , _updates    :: [Db.UpdateRequest DbResponseHandler]
+                  , _deletes    :: [Db.DeleteRequest DbResponseHandler]
+                  , _dbRequests :: [Db.Request DbResponseHandler]
                   }
 
+instance Monoid DbRequestResult where
+  mempty = DbRequestResult [] []
+  mappend (DbRequestResult r1 l1) (DbRequestResult r2 l2)
+    = DbRequestResult (r1 <> r2) (l1 <> l2)
+
 instance Monoid RequestResult where
-  mempty = RequestResult [] id []
-  mappend (RequestResult r1 c1 db1) (RequestResult r2 c2 db2)
-    = RequestResult (r1 <> r2) (c1 . c2) (db1 <> db2)
+  mempty = RequestResult mempty [] [] []
+  mappend (RequestResult db1 u1 d1 r1) (RequestResult db1 u1 d1 r1)
+    = RequestResult (db1 <> db2) (u1 <> u2) (d1 <> d2) (r1 <> r2)
 
-type ServerRequester = [API.Update]
+type DbResponseHandler = Status -> Db.ErrorResult -> DbRequestResult
+type DbResultHandler   = Status -> Db.Result -> DbRequestResult
 
--- Default requester if you don't need any additional information from a database response.
-defaultRequester :: ServerRequester
-defaultRequester = []
+
+fromDbResultHandler :: Request -- ^ The original request processed.
+  -> Text -- ^ Error message to log in case of a database error.
+  -> DbResultHandler -- ^ Handler for handling the success case.
+  -> DbResponseHandler
+fromDbResultHandler req errMsg h status' errResult
+  = case errResult of
+      Left err -> DbRequestResult { _responses   = [ (req ^. senderId, ServerError (req ^. message) err) ]
+                                  , _logMessages = [ (LevelError, errMsg <> ", error: " <> (T.pack . show) err) ]
+                                  }
+      Right r  -> h status' r
+
+-- | Default 'DbResponseHandler' if you don't need any additional information
+--   from a database response.
+mkDefaultDbHandler :: Request -- ^ The original request processed.
+  -> Text -- ^ Error message to log in case of a database error.
+  -> DbResponseHandler
+mkDefaultDbHandler req errMsg = fromDbResultHandler req errMsg $ \status' result' ->
+        case result' of
+          Db.MadeFamily (fid, _) (_, famAcc) ->
+            let
+              aid = familyAccountAccountId famAcc
+            in
+              mempty & responses .~ [(req ^. senderId, API.UpdateClient (API.OnNewFamilyAccount fid aid))]
+          Db.MadeInvitation invId inv ->
+            let
+              fid = invitationFamilyId inv
+
+              receivers = Statuses.getFamilyClients fid (result' ^. clients )
+
+              msg = API.UpdateClient (API.OnNewFamilyInvitation fid invId)
+            in
+              mempty & responses .~ map (,msg) receivers
+          Db.MadeFamilyAccount _ famAcc ->
+            let
+              fid = familyAccountFamilyId famAcc
+              aid = familyAccountAccountId fammAcc
+
+              famReceivers = Statuses.getFamilyClients fid (result' ^. clients )
+              -- TODO: Get clients of the concerned account.
+              msg = API.UpdateClient (API.OnNewFamilyAccount fid aid)
+            in
+              undefined
+
+-- | Get all clients of a given account.
+--
+--   That is all devices that are online for a given account.
+--   TODO: Implement
+getAccountClients :: AccountId -> Status -> [DeviceId]
+getAccountClients aid status' = _
 
 -- Server:
-make :: forall t m. MonadAppHost t m => Config -> m ()
+make :: forall t m. MonadAppHost t m => Config -> m Session.Config
 make config = build $ do
     (_sessionConfig, __clients) <- Clients.make clientConfig
     RequestResult _onSend cacheConfig <- processRequests
@@ -90,25 +159,32 @@ processRequests server' = undefined
 processRequest :: Request -> RequestResult
 processRequest req
   = case req^.message of
-    Ping                     -> pure mempty
-    MakeDevice _             -> pure mempty
-    Authenticate _           -> pure mempty
-    MakeFamily               -> makeFamily
-    MakeInvitation fid       -> makeInvitation fid
-    ClaimInvitation secret'  -> claimInvitation secret'
+    Ping                        -> pure mempty
+    MakeDevice _                -> pure mempty
+    Authenticate _              -> pure mempty
+    MakeFamily                  -> makeFamily
+    MakeInvitation fid          -> makeInvitation fid
+    ClaimInvitation secret'     -> claimInvitation secret'
     AnswerInvitation invId repl -> answerInvitation invId repl
-    SendMessage toId _       -> denyUnless (isOnlineInSameFamily clients' senderId toId)
-    UpdateServer update'     -> denyUpdate auth update'
-    Get view'                -> denyView auth view'
+    SendMessage toId msg        -> mempty & responses .~ [(toId, ReceiveMessage (req^.senderId) msg)]
+    UpdateServer update'        -> performUpdate req update'
+    Get view'                   -> denyView auth view'
 -- Cache handling:
 -- On authentication, load all data the device has access to: Account, Devices, Families, Accounts & Devices in those families, invitations from those families & claimed invitations. Don't assume those data is loaded in cache, but check and load everything that is not there. Important: Don't load anything that is already there, that would make the cache inconsistent!
 -- When selecting a family everything is already there - no loading required.
 -- That's a good compromise on performance and implementation complexity. A db access on authentication is required anyway, and if we restrict the numbers of devices per account/ accounts per family, families per account this should work well.
-performUpdate :: Update -> Model -> Model
-performUpdate update =
+performUpdate :: Request -> Update -> RequestResult t
+performUpdate req update =
   case update of
-    OnChangedFamilyName         fid name       ->
-    OnChangedFamilyLastAccessed fid t         ->
+    OnChangedFamilyName         fid name
+      -> let
+           requester = (req ^. senderId, [])
+      in mempty & updates .~ [ updateRequest Db.Update { Db._updateTable = families
+                                                       , Db._updateIndex = fid
+                                                       , Db._updatePerform = \fam -> fam { _familyName = name }
+                                                       }
+                             ]
+OnChangedFamilyLastAccessed fid t         ->
     OnNewFamilyMember           fid aid         ->
     OnRemovedFamilyMember fid aid           ->
 
@@ -134,47 +210,54 @@ performUpdate update =
 
 makeFamily :: Request -> RequestResult
 makeFamily req' = fromMaybe err $ do
-    aid <- req' ^? sampledModel . devices . at (req' ^. senderId) . _Just . to deviceAccountId
-    pure $ mempty & dbRequests .~ [Db.request defaultRequester (Db.MakeFamily aid)]
+    let sender = req ^. senderId
+    aid <- req' ^? sampledModel . devices . at sender . _Just . to deviceAccountId
+    pure $ mempty & dbRequests .~ [Db.request (defaultRequester sender) (Db.MakeFamily aid)]
   where
     err = reportError req' InternalServerError "makeFamily: Could not find sending device!"
 
 makeInvitation :: Request -> FamilyId -> RequestResult
 makeInvitation req' fid =
   let
-    command' = Db.MakeInvitation (req' ^. senderId) fid
+    let sender = req ^. senderId
+    command' = Db.MakeInvitation sender fid
   in
-    mempty & dbRequests .~ [ Db.request defaultRequester command' ]
+    mempty & dbRequests .~ [ Db.request (defaultRequester sender) command' ]
 
-claimInvitation :: Secret -> RequestResult
-claimInvitation secret' =
+claimInvitation :: Request -> Secret -> RequestResult
+claimInvitation req secret' =
   let
+    let sender = req ^. senderId
     command' = Db.Load claimInvitation'
     claimInvitation' = toDump <$> Invitation.claim secret'
 
     toDump invData = mempty & dumpedInvitations .~ [invData]
   in
-    mempty & dbRequests .~ [ Db.request defaultRequester command' ]
+    mempty & dbRequests .~ [ Db.request (defaultRequester sender) command' ]
 
-answerInvitation :: Cache.Model -> InviationId -> InvitationReply -> RequestResult
-answerInvitation model' invId repl = do
+answerInvitation :: Request -> Cache.Model -> InviationId -> InvitationReply -> RequestResult
+answerInvitation req model' invId repl = do
   let
+    let sender = req ^. senderId
     deleteInv' = Db.Delete { Db._deleteTable = invitations
                            , Db._deleteIndex = invId
                            }
-  inv <- model' ^? invitations . at invId 
+  inv <- model' ^? invitations . at invId
   aid <- inv ^. to invitationReceiverId
 
   let
     let famId = invitationFamilyId inv
-    command' = MakeFamilyAccount  famId aid (Just $ invitationDelivery inv)
+    joinFamily' = case repl of
+      InvitationReject -> []
+      InvitationAccept -> [ MakeFamilyAccount  famId aid (Just $ invitationDelivery inv) ]
 
-    deleteRequester = [ OnRemovedFamilyInvitation famId invId
-                      , OnRemovedAccountInvitation aid invId
-                      ]
+    deleteRequester = (sender, [ OnRemovedFamilyInvitation famId invId
+                               , OnRemovedAccountInvitation aid invId
+                               ]
+                      )
 
   pure $ mempty & deletes .~ [ Db.deleteRequest deleteRequester deleteInv' ]
-                & dbRequests .~ [ Db.request defaultRequester command' ]
+                & dbRequests .~ map (Db.request (defaultRequester sender)) joinFamily'
 
 -- | Handle database responses:
 handleDbResponse :: Request -> Db.ErrorResult -> RequestResult
