@@ -123,30 +123,20 @@ mkDefaultDbHandler req errMsg = fromDbResultHandler req errMsg $ \status' result
             let
               aid = familyAccountAccountId famAcc
             in
-              mempty & responses .~ [(req ^. senderId, API.UpdateClient (API.OnNewFamilyAccount fid aid))]
-          Db.MadeInvitation invId inv ->
+              sendMessageAccount status' aid $ API.UpdateClient (API.OnNewFamilyAccount fid aid)
+          Db.MadeInvitation invId inv -> 
             let
               fid = invitationFamilyId inv
-
-              receivers = Statuses.getFamilyClients fid (status' ^. clients )
-
               msg = API.UpdateClient (API.OnNewFamilyInvitation fid invId)
             in
-              mempty & responses .~ map (, msg) receivers
+              sendMessageFamily status' fid msg
           Db.MadeFamilyAccount _ famAcc ->
             let
               fid = familyAccountFamilyId famAcc
               aid = familyAccountAccountId fammAcc
-
-              famReceivers = Statuses.getFamilyClients fid (status' ^. clients )
-
-              accountReceivers = getAccountClients aid status'
-
-              receivers = famReceivers <> accountReceivers
-
               msg = API.UpdateClient (API.OnNewFamilyAccount fid aid)
             in
-              mempty & responses .~ map (, msg) receivers
+              sendMessageFamily status' fid msg <> sendMessageAccount status' aid msg
           Db.Wrote -> mempty
           Db.Loaded _ -> mempty
 
@@ -158,19 +148,18 @@ mkDeleteInvitationDbResultHandler invId inv status' _ =
 
       famMsg = API.Update (API.OnRemovedFamilyInvitation famId invId)
       accMsg = API.Update (API.OnRemovedAccountInvitation aid invId)
-
-      byFamId' = status' ^. clients . to Statuses.byFamilyId
-      famReceivers = byFamId' ^. at famId . non Set.empty . to Set.toList
-
-      accReceivers = fromMaybe [] $ getAccountClients status' <$> mAid
-
-      responses' = map (, famMsg) famReceivers <> map (, accMsg) accReceivers
+      mSendAccount = case mAid of
+                       Nothing -> mempty
+                       Just aid -> sendMessageAccount status' aid accMsg
     in
-      mempty & responses .~ responses'
+      sendMessageFamily status' famId famMsg <> mSendAccount
 
 -- | Get all clients of a given account.
 --
 --   That is all devices that are online for a given account.
+--
+--   You can use this function if you have a message for all clients (online
+--   devices) of a given account.
 getAccountClients :: AccountId -> Status -> [DeviceId]
 getAccountClients aid status' =
   let
@@ -179,6 +168,32 @@ getAccountClients aid status' =
     isOnline = map (\devId -> isJust $ status' ^. clients . at devId) devIds
   in
     map snd . filter fst $ zip isOnline devIds
+
+-- | Get all clients that have selected a given family.
+--
+--   If you have a message that should be sent to all online members of a given
+--   family you should use this function.
+getFamilyClients :: FamilyId -> Status -> [DeviceId]
+getFamilyClients fid status' = Statuses.getFamilyClient fid (status' ^. clients)
+
+
+-- | Send a message to all online family members (that have the current family selected).
+sendMessageFamily :: (HasDbRequestResult r, Monoid r, HasStatus s)
+                  => s -> FamilyId -> ToClient -> r
+sendMessageFamily status' fid msg =
+  let
+    receivers = getFamilyClients fid status'
+  in
+    mempty & responses .~ map (, msg) receivers
+
+-- | Send a message to all clients of a given account.
+sendMessageAccount :: (HasDbRequestResult r, Monoid r, HasStatus s)
+                   => s -> AccountId -> ToClient -> r
+sendMessageAccount status' aid msg =
+  let
+    receivers = getAccountClients aid status'
+  in
+    mempty & responses .~ map (, msg) receivers
 
 -- Server:
 make :: forall t m. MonadAppHost t m => Config -> m Session.Config
