@@ -12,6 +12,7 @@ module Gonimo.Server.Clients.ClientStatus ( ClientStatus(..)
                                           , byFamilyId
                                           , updateStatus
                                           , updateFamily
+                                          , getFamilyClients
                                           ) where
 
 
@@ -19,6 +20,7 @@ import           Control.Lens
 import           Data.Default
 import           Data.Map                         (Map)
 import           Data.Set                         (Set)
+import qualified Data.Set                         as Set
 
 import           Gonimo.Server.Cache.IndexedTable as Table
 import           Gonimo.SocketAPI.Model
@@ -65,6 +67,10 @@ makeStatuses clientStatuses' = fromRawTable _clientFamily clientStatuses'
 -- | Serch entries by FamilyId
 byFamilyId :: ClientStatuses -> Map FamilyId (Set DeviceId)
 byFamilyId = getIndex
+
+-- | Concenience function for getting all online devices of a given family.
+getFamilyClients :: FamilyId -> ClientStatuses -> [DeviceId]
+getFamilyClients fid statuses' =  byFamilyId statuses' ^. at fid . non Set.empty . to Set.toList
 
 -- Manual lens stuff:
 
