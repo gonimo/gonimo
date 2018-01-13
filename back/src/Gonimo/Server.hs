@@ -43,10 +43,14 @@ data Status
            }
 
 data Request
-  = Request { __status :: Status
-            , _message :: FromClient
+  = Request { _message :: FromClient
             , _senderId :: DeviceId
             }
+
+data RequestInfo
+  = RequestInfo { _infoStatus :: Status
+                , _infoRequest :: Request
+                }
 
 -- data RequestResult t
 --   = RequestResult = { _responses :: Event t [(DeviceId, ToClient)]
@@ -91,20 +95,26 @@ type DbResponseHandler = Status -> Db.ErrorResult -> DbRequestResult
 type DbResultHandler   = Status -> Db.Result -> DbRequestResult
 
 
-fromDbResultHandler :: Request -- ^ The original request processed.
+fromDbResultHandler :: HasRequest r
+  => r -- ^ The original request processed.
   -> Text -- ^ Error message to log in case of a database error.
   -> DbResultHandler -- ^ Handler for handling the success case.
   -> DbResponseHandler
 fromDbResultHandler req errMsg h status' errResult
   = case errResult of
       Left err -> DbRequestResult { _responses   = [ (req ^. senderId, ServerError (req ^. message) err) ]
-                                  , _logMessages = [ (LevelError, errMsg <> ", error: " <> (T.pack . show) err) ]
+                                  , _logMessages = [ (LevelError, fullErrMsg) ]
                                   }
       Right r  -> h status' r
+  where
+    fullErrMsg = errMsg <> "\n  error: " <> (T.pack . show) err
+                 <> "\n  offending requeset: " <> (T.pack .show) (r ^. message)
+                 <> "\n  from client: " <> (T.pack . show)  (r ^. senderId)
 
 -- | Default 'DbResponseHandler' if you don't need any additional information
 --   from a database response.
-mkDefaultDbHandler :: Request -- ^ The original request processed.
+mkDefaultDbHandler :: HasRequest r
+  => r -- ^ The original request processed.
   -> Text -- ^ Error message to log in case of a database error.
   -> DbResponseHandler
 mkDefaultDbHandler req errMsg = fromDbResultHandler req errMsg $ \status' result' ->
@@ -118,28 +128,57 @@ mkDefaultDbHandler req errMsg = fromDbResultHandler req errMsg $ \status' result
             let
               fid = invitationFamilyId inv
 
-              receivers = Statuses.getFamilyClients fid (result' ^. clients )
+              receivers = Statuses.getFamilyClients fid (status' ^. clients )
 
               msg = API.UpdateClient (API.OnNewFamilyInvitation fid invId)
             in
-              mempty & responses .~ map (,msg) receivers
+              mempty & responses .~ map (, msg) receivers
           Db.MadeFamilyAccount _ famAcc ->
             let
               fid = familyAccountFamilyId famAcc
               aid = familyAccountAccountId fammAcc
 
-              famReceivers = Statuses.getFamilyClients fid (result' ^. clients )
-              -- TODO: Get clients of the concerned account.
+              famReceivers = Statuses.getFamilyClients fid (status' ^. clients )
+
+              accountReceivers = getAccountClients aid status'
+
+              receivers = famReceivers <> accountReceivers
+
               msg = API.UpdateClient (API.OnNewFamilyAccount fid aid)
             in
-              undefined
+              mempty & responses .~ map (, msg) receivers
+          Db.Wrote -> mempty
+          Db.Loaded _ -> mempty
+
+mkDeleteInvitationDbResultHandler :: InvitationId -> Invitation -> DbResultHandler
+mkDeleteInvitationDbResultHandler invId inv status' _ =
+    let
+      famId = invitationFamilyId inv
+      mAid = inv ^. to invitationReceiverId
+
+      famMsg = API.Update (API.OnRemovedFamilyInvitation famId invId)
+      accMsg = API.Update (API.OnRemovedAccountInvitation aid invId)
+
+      byFamId' = status' ^. clients . to Statuses.byFamilyId
+      famReceivers = byFamId' ^. at famId . non Set.empty . to Set.toList
+
+      accReceivers = fromMaybe [] $ getAccountClients status' <$> mAid
+
+      responses' = map (, famMsg) famReceivers <> map (, accMsg) accReceivers
+    in
+      mempty & responses .~ responses'
 
 -- | Get all clients of a given account.
 --
 --   That is all devices that are online for a given account.
---   TODO: Implement
 getAccountClients :: AccountId -> Status -> [DeviceId]
-getAccountClients aid status' = _
+getAccountClients aid status' =
+  let
+    byAccountId' = status' ^. sampledModel . devices . to byAccountId
+    devIds = byAccountId' ^. at aid . to Set.toList
+    isOnline = map (\devId -> isJust $ status' ^. clients . at devId) devIds
+  in
+    map snd . filter fst $ zip isOnline devIds
 
 -- Server:
 make :: forall t m. MonadAppHost t m => Config -> m Session.Config
@@ -156,16 +195,16 @@ make config = build $ do
 processRequests :: forall t m. MonadAppHost t m => Server t -> RequestResult t
 processRequests server' = undefined
 
-processRequest :: Request -> RequestResult
+processRequest :: RequestInfo -> RequestResult
 processRequest req
   = case req^.message of
     Ping                        -> pure mempty
     MakeDevice _                -> pure mempty
     Authenticate _              -> pure mempty
     MakeFamily                  -> makeFamily
-    MakeInvitation fid          -> makeInvitation fid
-    ClaimInvitation secret'     -> claimInvitation secret'
-    AnswerInvitation invId repl -> answerInvitation invId repl
+    MakeInvitation fid          -> makeInvitation req fid
+    ClaimInvitation secret'     -> claimInvitation req secret'
+    AnswerInvitation invId repl -> answerInvitation req invId repl
     SendMessage toId msg        -> mempty & responses .~ [(toId, ReceiveMessage (req^.senderId) msg)]
     UpdateServer update'        -> performUpdate req update'
     Get view'                   -> denyView auth view'
@@ -173,7 +212,7 @@ processRequest req
 -- On authentication, load all data the device has access to: Account, Devices, Families, Accounts & Devices in those families, invitations from those families & claimed invitations. Don't assume those data is loaded in cache, but check and load everything that is not there. Important: Don't load anything that is already there, that would make the cache inconsistent!
 -- When selecting a family everything is already there - no loading required.
 -- That's a good compromise on performance and implementation complexity. A db access on authentication is required anyway, and if we restrict the numbers of devices per account/ accounts per family, families per account this should work well.
-performUpdate :: Request -> Update -> RequestResult t
+performUpdate :: RequestInfo -> Update -> RequestResult t
 performUpdate req update =
   case update of
     OnChangedFamilyName         fid name
@@ -208,23 +247,23 @@ OnChangedFamilyLastAccessed fid t         ->
     OnChangedInvitationDelivery invId _     ->
 
 
-makeFamily :: Request -> RequestResult
-makeFamily req' = fromMaybe err $ do
+makeFamily :: RequestInfo -> RequestResult
+makeFamily req = fromMaybe err $ do
     let sender = req ^. senderId
-    aid <- req' ^? sampledModel . devices . at sender . _Just . to deviceAccountId
-    pure $ mempty & dbRequests .~ [Db.request (defaultRequester sender) (Db.MakeFamily aid)]
+    aid <- req ^? sampledModel . devices . at sender . _Just . to deviceAccountId
+    pure $ mempty & dbRequests .~ [Db.request (mkDefaultDbHandler req "makeFamily failed") (Db.MakeFamily aid)]
   where
     err = reportError req' InternalServerError "makeFamily: Could not find sending device!"
 
-makeInvitation :: Request -> FamilyId -> RequestResult
-makeInvitation req' fid =
+makeInvitation :: HasRequest r => r -> FamilyId -> RequestResult
+makeInvitation req fid =
   let
     let sender = req ^. senderId
     command' = Db.MakeInvitation sender fid
   in
-    mempty & dbRequests .~ [ Db.request (defaultRequester sender) command' ]
+    mempty & dbRequests .~ [ Db.request (mkDefaultDbHandler req "makeInvitation failed") command' ]
 
-claimInvitation :: Request -> Secret -> RequestResult
+claimInvitation :: HasRequest r => r -> Secret -> RequestResult
 claimInvitation req secret' =
   let
     let sender = req ^. senderId
@@ -233,31 +272,36 @@ claimInvitation req secret' =
 
     toDump invData = mempty & dumpedInvitations .~ [invData]
   in
-    mempty & dbRequests .~ [ Db.request (defaultRequester sender) command' ]
+    mempty & dbRequests .~ [ Db.request (mkDefaultDbHandler req "claimInvitation failed") command' ]
 
-answerInvitation :: Request -> Cache.Model -> InviationId -> InvitationReply -> RequestResult
-answerInvitation req model' invId repl = do
-  let
-    let sender = req ^. senderId
-    deleteInv' = Db.Delete { Db._deleteTable = invitations
-                           , Db._deleteIndex = invId
-                           }
-  inv <- model' ^? invitations . at invId
+answerInvitation :: RequestInfo -> InviationId -> InvitationReply -> RequestResult
+answerInvitation req invId repl = fromMaybe invNotFound $ do
+  inv <- req ^. sampledModel ^? invitations . at invId
   aid <- inv ^. to invitationReceiverId
 
   let
-    let famId = invitationFamilyId inv
+    sender = req ^. senderId
+    deleteInv' = Db.Delete { Db._deleteTable = invitations
+                           , Db._deleteIndex = invId
+                           }
+
+    famId = invitationFamilyId inv
     joinFamily' = case repl of
       InvitationReject -> []
-      InvitationAccept -> [ MakeFamilyAccount  famId aid (Just $ invitationDelivery inv) ]
+      InvitationAccept -> [ MakeFamilyAccount famId aid (Just $ invitationDelivery inv) ]
 
-    deleteRequester = (sender, [ OnRemovedFamilyInvitation famId invId
-                               , OnRemovedAccountInvitation aid invId
-                               ]
-                      )
+    deleteHandler = fromDbResultHandler req "Deleting invitation failed for answerInvitation"
+                    $ mkDeleteInvitationDbResultHandler invId inv
 
-  pure $ mempty & deletes .~ [ Db.deleteRequest deleteRequester deleteInv' ]
-                & dbRequests .~ map (Db.request (defaultRequester sender)) joinFamily'
+    joinHandler = mkDefaultDbHandler req "answerInvitation, joinFamily failed"
+
+  pure $ mempty & deletes .~ [ Db.deleteRequest deleteHandler deleteInv' ]
+                & dbRequests .~ map (Db.request joinHandler) joinFamily'
+  where
+    err = API.ServerError (req ^. message) NoSuchInvitation
+    invNotFound = mempty & responses .~ [(req ^. senderId, err)]
+                         & logMessages .~ [LevelError, "Invitation requested by client (answerInvitation) was not found in cache or was not claimed before! (should never happen!)"]
+
 
 -- | Handle database responses:
 handleDbResponse :: Request -> Db.ErrorResult -> RequestResult
