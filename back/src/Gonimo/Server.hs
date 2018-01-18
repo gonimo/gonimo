@@ -66,7 +66,7 @@ data RequestInfo
 --   results to trigger further db queries.
 data DbRequestResult
   = DbRequestResult { _responses   :: [(DeviceId, ToClient)]
-                    , _logMessages :: [LogLevel, Text]
+                    , _logMessages :: [(LogLevel, Text)]
                     }
 
 -- | The result of a processed request.
@@ -232,29 +232,64 @@ performUpdate req update =
   case update of
     OnChangedFamilyName         fid name
       -> let
-           requester = (req ^. senderId, [])
-      in mempty & updates .~ [ updateRequest Db.Update { Db._updateTable = families
-                                                       , Db._updateIndex = fid
-                                                       , Db._updatePerform = \fam -> fam { _familyName = name }
-                                                       }
-                             ]
-OnChangedFamilyLastAccessed fid t         ->
-    OnNewFamilyMember           fid aid         ->
-    OnRemovedFamilyMember fid aid           ->
+           fullHandler = fromDbResultHandler req "Updating family name failed" handler
+           handler status' _ = sendMessageFamily status' fid (API.Update update)
 
+           updateCmd = Db.Update { Db._updateTable = families
+                                 , Db._updateIndex = fid
+                                 , Db._updatePerform = \fam -> fam { _familyName = name }
+                                 }
+         in
+           mempty & updates .~ [ updateRequest fullHandler updateCmd ]
+    OnChangedFamilyLastAccessed fid t
+      -> mempty & logMessages .~ [ (LevelError, "OnChangedFamilyLastAccessed received from client!") ]
+    OnNewFamilyMember           fid aid
+      -> mempty & logMessages .~ [ (LevelError, "OnNewFamilyMember received from client!") ]
+    OnRemovedFamilyMember fid aid
+      -> let
+           fullHandler = fromDbResultHandler req "Removing family member failed" handler
+           handler status' _ = sendMessageFamily status' fid (API.Update update)
+           mId = FamilyAccounts.findByFamilyAndAccountId fid aid (req ^. sampledModel . familyAccounts)
 
-    OnNewFamilyInvitation       fid invId         ->
-    OnRemovedFamilyInviation fid invId      ->
+           mkDeleteCmd id' = Db.Delete { Db._deleteTable = familyAccount
+                                       , Db._deleteIndex = id'
+                                       }
+         in
+           mempty & updates .~ fromMaybe [] (deleteRequest fullHandler . mkDeleteCmd <$> mId)
 
-
-    OnNewAccountDevice          aid devId         ->
-    OnRemovedAccountDevice      aid devId         ->
-    OnNewAccountInvitation      aid invid         ->
-    OnNewAccountFamily          aid fid         ->
+    OnNewFamilyInvitation fid invId
+      -> mempty & logMessages .~ [ (LevelError, "OnNewFamilyInvitation received from client!") ]
+    OnRemovedFamilyInviation fid invId
+      -> let
+           fullHandler = fromDbResultHandler req "Removing family invitation failed" handler
+           handler status' _ = sendMessageFamily status' fid (API.Update update)
+           deleteCmd = Db.Delete { Db._deleteTable = invitations
+                                 , Db._deleteIndex = invId
+                                 }
+         in
+           mempty & updates .~ [deleteRequest fullHandler deleteCmd]
+    OnNewAccountDevice          aid devId
+      -> mempty & logMessages .~ [ (LevelError, "OnNewAccountDevice received from client!") ]
+    OnRemovedAccountDevice      aid devId
+      -> mempty & logMessages .~ [ (LevelError, "OnRemovedAccountDevice not yet implemented!") ]
+    OnNewAccountInvitation      aid invid
+      -> mempty & logMessages .~ [ (LevelError, "OnNewAccountInvitation received from client!") ]
+    OnNewAccountFamily          aid fid
+      -> mempty & logMessages .~ [ (LevelError, "OnNewAccountFamily received from client!") ]
     OnChangedDeviceName         devId name     ->
+      -> let
+           fullHandler = fromDbResultHandler req "Updating device name failed" handler
+           handler status' _ = sendMessageFamily status' fid (API.Update update)
 
+           updateCmd = Db.Update { Db._updateTable = devices
+                                 , Db._updateIndex = devId
+                                 , Db._updatePerform = \dev -> dev { _deviceName = name }
+                                 }
+         in
+           mempty & updates .~ [ updateRequest fullHandler updateCmd ]
 
-    OnChangedDeviceLastAccessed devId t         ->
+    OnChangedDeviceLastAccessed devId t
+      -> mempty & logMessages .~ [ (LevelError, "OnChangedDeviceLastAccessed received from client!") ]
     OnChangedDeviceStatus       devId fid status ->
 
 

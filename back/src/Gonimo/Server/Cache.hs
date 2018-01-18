@@ -62,6 +62,8 @@ make conf = do
 
 
 -- | Get all devices belonging to a single family.
+--
+--   TODO: Function really needed? For getting a receiver list you should check ClientStatuses!
 getFamilyDevices :: FamilyId -> Model -> [DeviceId]
 getFamilyDevices fid model' =
   let
