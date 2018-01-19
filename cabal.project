@@ -7,3 +7,5 @@ package gonimo-back
   flags: +dev
 package gonimo-common
   flags: +dev
+package gonimo-front
+  flags: +dev
