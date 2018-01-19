@@ -24,6 +24,10 @@ import           System.Random          (getStdRandom, randomR)
 
 import           Paths_gonimo_back
 
+type FamilyNames = Vector FamilyName
+
+type Predicates  = Vector Text
+
 loadFamilies :: IO FamilyNames
 loadFamilies = do
   fileName <- getDataFileName "data/families.txt"

@@ -24,7 +24,6 @@ import           Data.Text.Encoding     (decodeUtf8, encodeUtf8)
 
 import           GHC.Generics           (Generic)
 import           Control.Monad          (MonadPlus, mzero)
-import           Data.Vector                    (Vector)
 import qualified Data.Text      as T
 import           Data.Text      (Text)
 import           Control.Lens
@@ -113,14 +112,13 @@ instance ToJSON FamilyName where
   toJSON = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
 
-type FamilyNames = Vector FamilyName
 
-type Predicates  = Vector Text
-
-type EmailAddress = Text
 
 
 --------------------------------------------------
+
+type EmailAddress = Text
+
 data InvitationDelivery = EmailInvitation EmailAddress
                         | OtherDelivery
                         deriving (Read, Show, Eq, Ord, Generic)
