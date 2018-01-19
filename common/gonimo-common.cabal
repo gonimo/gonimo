@@ -52,15 +52,11 @@ library
                       , containers
                       , text
                       , time
-                      , vector
                       , errors
                       , safe
                       , transformers
                       , transformers-base
                       , lifted-base
-                      , stm
-                      , async
                       , lens
-                      , mtl
                       , vector
                       , data-default
