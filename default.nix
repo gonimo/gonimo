@@ -29,8 +29,7 @@
   };
 
   overrides = self: super: {
-    reflex-host = self.callPackage ./reflex-host.nix {};
-    gonimo-deploy = self.callPackage ./gonimo-deploy.nix {};
+    # reflex-host = self.callPackage ./reflex-host.nix {};
   #       lens = self.callHackage "lens" "4.15.4" {};
   #       free = self.callCabal2nix "free" (pkgs.fetchFromGitHub {
   #         owner = "ekmett";
@@ -40,9 +39,13 @@
   #       }) {};
   };
 
+  withHoogle = false;
+
   tools = ghc : with ghc; [
     # ghc-mod
-    gonimo-deploy
+    # gonimo-deploy has the very heavy conduit dependency - makes nix-shell build a lot of stuff.
+    # We get rid of it for now:
+    # (pkgs.haskellPackages.callPackage ./gonimo-deploy.nix {})
   ];
 
   shells = {

@@ -51,18 +51,20 @@ else
     touch rts.js lib.js out.js all.js manifest.webapp out.stats
     popd
 fi
-gonimo-deploy md5sum ${distPath}
-#../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
-# Fix up index.html:
-pushd ${distPath}
-# Necessary, see above:
-touch rts.js lib.js out.js all.js manifest.webapp
-ln index-*.html index.html
+
 if [[ ${dev} == "dev" ]]
 then
-    echo "Development build. no gzip"
+    echo "Development build. no gonimo-deploy for now and no gzip!"
 else
+    gonimo-deploy md5sum ${distPath}
+
+    #../../gonimo-deploy/dist/build/gonimo-deploy/gonimo-deploy md5sum ${distPath}
+    # Fix up index.html:
+    pushd ${distPath}
+    # Necessary, see above:
+    touch rts.js lib.js out.js all.js manifest.webapp
+    ln index-*.html index.html
     gzip -f -9 all-*.min.js
+    popd
 fi
-popd
 
