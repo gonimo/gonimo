@@ -5,3 +5,5 @@ packages:
 
 package gonimo-back
   flags: +dev
+package gonimo-common
+  flags: +dev
