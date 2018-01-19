@@ -14,6 +14,7 @@ module Gonimo.Prelude ( MaybeT(..)
                       , module Control.Exception
                       , module Control.Lens
                       , module Data.Default
+                      , module Arrow
                       ) where
 
 import Control.Monad.Trans.Maybe (MaybeT(..))
