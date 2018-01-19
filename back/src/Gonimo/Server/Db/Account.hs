@@ -26,7 +26,7 @@ import           Control.Monad.Base              (MonadBase)
 import qualified Gonimo.Database.Effects.Servant  as Db
 import qualified Gonimo.Db.Entities               as Db
 import qualified Gonimo.Server.NameGenerator      as Gen
-import qualified Gonimo.SocketAPI.Model           as API
+import qualified Gonimo.SocketAPI.Types           as API
 import           Gonimo.Server.NameGenerator (Predicates)
 import Gonimo.Server.Db.IsDb
 import           Gonimo.Database.Effects.Servant

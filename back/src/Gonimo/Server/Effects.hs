@@ -50,7 +50,7 @@ import           Gonimo.Server.Subscriber.Types
 import           Gonimo.Server.Subscriber
 import           System.Random                  (StdGen)
 
-import           Gonimo.Types            (Secret (..), FamilyName(..), Predicates, FamilyNames)
+import           Gonimo.Types            (Secret (..), FamilyName(..))
 import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
 import           Database.Persist.Sql            (runSqlPool)
 import           Data.Pool                               (Pool)
@@ -66,6 +66,7 @@ import           Control.Monad.Trans.Control    (defaultRestoreT)
 import           Control.Concurrent.Async            (Async)
 import qualified Control.Concurrent.Async            as Async
 import qualified Gonimo.Server.NameGenerator   as Gen
+import           Gonimo.Server.NameGenerator   (Predicates, FamilyNames)
 import           Gonimo.SocketAPI (ServerRequest)
 import           Gonimo.Server.Messenger (MessengerVar)
 import           Data.Text (Text)

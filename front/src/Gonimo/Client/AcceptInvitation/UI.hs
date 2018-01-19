@@ -59,7 +59,7 @@ ui' secret invInfo = do
           el "tbody" $ do
             el "tr" $ do
               el "td" $ trText Family_Name
-              el "td" $ text (Gonimo.familyName . invitationInfoFamily $ invInfo)
+              el "td" $ text (Gonimo.familyNameName . invitationInfoFamily $ invInfo)
             el "tr" $ do
               el "td" $ trText Inviting_Device
               el "td" $ text (invitationInfoSendingDevice invInfo)

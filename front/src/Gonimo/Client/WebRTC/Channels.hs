@@ -11,7 +11,7 @@ module Gonimo.Client.WebRTC.Channels where
 import Gonimo.Client.Prelude
 
 import           Control.Concurrent
-import           Control.Lens
+
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
 -- Workaround until issue https://github.com/ghcjs/jsaddle-dom/issues/3 is resolved:

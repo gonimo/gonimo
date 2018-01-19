@@ -120,7 +120,7 @@ currentFamilyName :: forall t. Reflex t => DefiniteFamily t -> Dynamic t Text
 currentFamilyName df =
     let
       getFamilyName :: FamilyId -> Map FamilyId API.Family -> Text
-      getFamilyName fid families' = families'^.at fid._Just.to API.familyName . to Gonimo.familyName
+      getFamilyName fid families' = families'^.at fid._Just.to API.familyName . to Gonimo.familyNameName
     in
       zipDynWith getFamilyName (df^.definiteSelected) (df^.definiteFamilies)
 

@@ -11,7 +11,7 @@ import Data.Map (Map)
 import Control.Monad
 import Gonimo.Client.Prelude
 import qualified Gonimo.Types as Gonimo
-import Data.Default
+
 import qualified Data.Set as Set
 import Gonimo.I18N
 import Gonimo.Client.Server (Server, HasServer)
@@ -67,7 +67,7 @@ currentFamilyName :: forall t. Reflex t => Loaded t -> Dynamic t Text
 currentFamilyName loaded =
     let
       getFamilyName :: API.FamilyId -> Map API.FamilyId API.Family -> Text
-      getFamilyName fid families' = families'^.at fid._Just.to API.familyName . to Gonimo.familyName
+      getFamilyName fid families' = families'^.at fid._Just.to API.familyName . to Gonimo.familyNameName
     in
       zipDynWith getFamilyName (loaded^.selectedFamily) (loaded^.families)
 

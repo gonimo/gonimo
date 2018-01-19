@@ -8,16 +8,14 @@ module Gonimo.Client.Parent.Connections where
 
 import Gonimo.Client.Prelude
 
-import           Control.Lens
+
 import           Data.Map                        (Map)
 import qualified Data.Map                        as Map
 import qualified GHCJS.DOM.AudioBufferSourceNode as AudioNode
 import           GHCJS.DOM.Types                 (MediaStream, MonadJSM,
                                                   liftJSM)
 import           Reflex.Dom.Core
-
 import qualified Gonimo.Client.NavBar              as NavBar
-
 import           Gonimo.Client.Util                (boostMediaStreamVolume,
                                                     getVolumeInfo, loadSound,
                                                     startVibraAlert,

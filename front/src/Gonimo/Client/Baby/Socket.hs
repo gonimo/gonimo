@@ -8,7 +8,7 @@ module Gonimo.Client.Baby.Socket where
 
 import Gonimo.Client.Prelude
 
-import           Control.Lens
+
 import           Data.Map                          (Map)
 import qualified Data.Set                          as Set
 import qualified Gonimo.SocketAPI                  as API

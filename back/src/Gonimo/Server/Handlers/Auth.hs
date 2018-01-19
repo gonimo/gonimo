@@ -129,7 +129,7 @@ sendInvitationR (API.SendInvitation iid d@(EmailInvitation email)) = do
     let secret = API.invitationSecret newInv
     return (secret, famName, devName)
   baseURL <- getFrontendURL
-  sendEmail $ makeInvitationEmail baseURL secret email (Server.familyName famName) devName
+  sendEmail $ makeInvitationEmail baseURL secret email (Server.familyNameName famName) devName
 
 sendInvitationR (API.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 

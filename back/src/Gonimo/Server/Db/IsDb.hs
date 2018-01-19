@@ -9,7 +9,7 @@ module Gonimo.Server.Db.IsDb where
 import           Database.Persist.Sql
 import           Control.Monad.State.Strict (StateT(..))
 
-import Gonimo.SocketAPI.Model as API
+import Gonimo.SocketAPI.Types as API
 import Gonimo.Db.Entities as Db
 
 -- | Types that have a representation in the db.

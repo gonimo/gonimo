@@ -8,7 +8,7 @@ module Gonimo.Client.Baby.Internal where
 
 import Gonimo.Client.Prelude
 
-import           Control.Lens
+
 import qualified GHCJS.DOM                         as DOM
 import qualified GHCJS.DOM.MediaStream             as MediaStream
 import qualified GHCJS.DOM.MediaStreamTrack        as MediaStreamTrack

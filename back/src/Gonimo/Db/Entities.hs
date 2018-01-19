@@ -19,7 +19,7 @@ import           Data.Text             (Text)
 import           Data.Time             (UTCTime)
 import           GHC.Generics          (Generic)
 
-import           Gonimo.Types.Extended   hiding (FamilyName, familyName)
+import           Gonimo.Types.Extended   hiding (FamilyName)
 import qualified Gonimo.Types.Extended   as Server
 
 share [mkPersist (sqlSettings { mpsGeneric = False }),  mkMigrate "migrateAll"] [persistLowerCase|

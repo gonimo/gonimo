@@ -21,7 +21,8 @@ import Control.Arrow
 import           Gonimo.Server.Db.Internal  (UpdateT, updateRecord)
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error        (ServerError (NoSuchFamily))
-import           Gonimo.SocketAPI.Model
+import           Gonimo.SocketAPI.Types
+import           Gonimo.Types
 import qualified Gonimo.Db.Entities         as Db
 import Gonimo.Database.Effects.Servant
 

@@ -181,7 +181,7 @@ renderFamilySelector _ family' selected' = do
     el "div" $ do
       makeClickable . elAttr' "a" (addBtnAttrs "")
         $ dynText
-          $ (Gonimo.familyName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
+          $ (Gonimo.familyNameName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
 createFamily :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool

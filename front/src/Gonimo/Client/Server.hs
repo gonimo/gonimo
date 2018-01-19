@@ -10,7 +10,7 @@ module Gonimo.Client.Server ( Config
 import Gonimo.SocketAPI (ServerRequest(..), ServerResponse)
 import Reflex
 import Reflex.Dom.Class
-import Reflex.Dom.Time
+
 import Control.Lens
 import qualified Data.Aeson as Aeson
 import GHCJS.DOM.Types (MonadJSM)

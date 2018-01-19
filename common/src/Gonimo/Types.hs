@@ -85,7 +85,7 @@ instance ToJSON Coffee where
 
 data FamilyName
   = FamilyName { familyMemberName :: !Text
-               , familyName :: !Text
+               , familyNameName :: !Text
                } deriving (Show, Generic, Eq)
 
 parseFamilyName :: Text -> FamilyName
