@@ -192,7 +192,6 @@ executable gonimo-front
                     , containers
                     , text
                     , time
-                    , vector
                     , errors
                     , data-default
                     , reflex-dom-core
