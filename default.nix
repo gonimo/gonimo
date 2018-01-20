@@ -7,7 +7,7 @@
     gonimo-front = ./front;
   };
 
-  android.front = {
+  android.gonimo-front = {
     executableName = "gonimo-front-android";
     applicationId = "org.gonimo.gonimo";
     displayName = "Gonimo";
