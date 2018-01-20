@@ -21,15 +21,65 @@ custom-setup
     setup-depends: base >=4.8 && <4.10
                  , Cabal >= 1.18 && < 1.25
                  , process
-                 -- , bytestring
-                 -- , conduit
-                 -- , conduit-extra
-                 -- , containers
-                 -- , directory
-                 -- , filepath
-                 -- , pureMD5
-                 -- , shake
-                 -- , stringsearch
+
+executable gonimo-front
+  if impl(ghc)
+     buildable: False
+  ghc-options: -optl-fuse-ld=gold
+  ld-options:  -fuse-ld=gold
+  if flag(dev) 
+      cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
+      ghc-options:   -Wall -threaded
+      ghcjs-options: -debug
+  else
+      cpp-options:   -DGHCJS_BROWSER
+      ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
+      ghcjs-options:       -dedupe
+  main-is:            GonimoFront.hs
+  hs-source-dirs:      app
+  default-language:    Haskell2010
+
+  default-extensions: ConstraintKinds
+                    , DataKinds
+                    , DeriveGeneric
+                    , GADTs
+                    , GeneralizedNewtypeDeriving
+                    , OverloadedStrings
+                    , PolyKinds
+                    , TypeFamilies
+                    , TypeOperators
+                    , ScopedTypeVariables
+                    , FlexibleContexts
+
+  build-depends:      base >=4.8 && <5.0
+                    , gonimo-front
+                    
+
+-- executable gonimo-front-warp
+--   -- if impl(ghcjs)
+--   buildable: False
+--   ghc-options: -optl-fuse-ld=gold
+--   ld-options:  -fuse-ld=gold
+--   if flag(dev) 
+--       cpp-options:   -DDEVELOPMENT
+--       ghc-options:   -Wall -threaded
+--   else
+--       ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
+--   main-is:            Warp.hs
+--   hs-source-dirs:      app
+--   default-language:    Haskell2010
+
+--   default-extensions: 
+
+--   build-depends:      base >=4.8 && <4.10
+--                     , gonimo-front
+--                     , reflex-dom
+--                     , warp
+--                     , wai-middleware-static
+--                     , jsaddle
+--                     , jsaddle-warp
+--                     , websockets
+--                     , jsaddle-dom
 
 library
   hs-source-dirs:      src
@@ -40,7 +90,7 @@ library
       cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
       ghc-options:   -Wall -fwarn-tabs -O0 -debug
   else
-      ghc-options:   -Wall -Werror -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -fno-warn-deprecations -O2
+      ghc-options:   -Wall  -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -fno-warn-deprecations -O2
       ghcjs-options: -dedupe
       cpp-options:   -DGHCJS_BROWSER
 
@@ -55,7 +105,7 @@ library
                     , FlexibleContexts
                     , GADTs
   build-depends:      aeson
-                    , base >=4.8 && <4.10
+                    , base >=4.8 && <5.0
                     , Cabal
                     , errors
                     , bytestring
@@ -139,100 +189,20 @@ library
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Util
+                    , Gonimo.Client.JS.OYD
+                    , Gonimo.Client.JS.Audio
+                    , Gonimo.Client.JS.Volume
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.WebRTC.Channels
                     , Gonimo.DOM.Navigator.MediaDevices
                     , Gonimo.DOM.Navigator.MediaDevices.Internal
                     , Gonimo.DOM.Navigator.MediaDevices.Types
                     , Gonimo.DOM.Window.Internal
+                    , Gonimo.DOM.Window
                     , Gonimo.SocketAPI.Translations
 
 
 
-executable gonimo-front
-  if impl(ghc)
-    buildable: False
-  ghc-options: -optl-fuse-ld=gold
-  ld-options:  -fuse-ld=gold
-  if flag(dev) 
-      cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
-      ghc-options:   -Wall -threaded
-      ghcjs-options: -debug
-  else
-      cpp-options:   -DGHCJS_BROWSER
-      ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
-      ghcjs-options:       -dedupe
-  main-is:            GonimoFront.hs
-  hs-source-dirs:      app
-  default-language:    Haskell2010
-
-  default-extensions: ConstraintKinds
-                    , DataKinds
-                    , DeriveGeneric
-                    , GADTs
-                    , GeneralizedNewtypeDeriving
-                    , OverloadedStrings
-                    , PolyKinds
-                    , TypeFamilies
-                    , TypeOperators
-                    , ScopedTypeVariables
-                    , FlexibleContexts
-
-  build-depends:      base >=4.8 && <4.10
-                    , aeson
-                    , reflex
-                    , containers
-                    , safe
-                    , text
-                    , lens
-                    , gonimo-common
-                    , gonimo-front
-                    , aeson
-                    , attoparsec
-                    , base64-bytestring
-                    , bytestring >= 0.10.6.0
-                    , containers
-                    , text
-                    , time
-                    , errors
-                    , data-default
-                    , reflex-dom-core
-                    , jsaddle
-                    , ghcjs-dom
-                    , mtl
-  -- if !impl(ghcjs)
-  --    build-depends: wai-middleware-static
-  --                   , warp
-  --                   , websockets
-  --                   , jsaddle
-  --                   , jsaddle-warp
-                    
-
-executable gonimo-front-warp
-  if impl(ghcjs)
-    buildable: False
-  ghc-options: -optl-fuse-ld=gold
-  ld-options:  -fuse-ld=gold
-  if flag(dev) 
-      cpp-options:   -DDEVELOPMENT
-      ghc-options:   -Wall -threaded
-  else
-      ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
-  main-is:            Warp.hs
-  hs-source-dirs:      app
-  default-language:    Haskell2010
-
-  default-extensions: 
-
-  build-depends:      base >=4.8 && <4.10
-                    , gonimo-front
-                    , reflex-dom
-                    , warp
-                    , wai-middleware-static
-                    , jsaddle
-                    , jsaddle-warp
-                    , websockets
-                    , jsaddle-dom
 
 executable gonimo-front-android
   if impl(ghcjs)
@@ -242,15 +212,14 @@ executable gonimo-front-android
   if flag(dev) 
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall -threaded
-      ghcjs-options: -debug
   else
-      ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
+      ghc-options:      -Werror -threaded -O2 -rtsopts -with-rtsopts=-N -Wall
   main-is:            Mobile.hs
   hs-source-dirs:      app
   default-language:    Haskell2010
 
   default-extensions: 
 
-  build-depends:      base >=4.8 && <4.10
+  build-depends:      base >=4.8 && <5.0
                     , gonimo-front
                     , reflex-dom
