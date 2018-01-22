@@ -2,6 +2,7 @@ packages:
   common/
   back/
   front/
+  front-warp/
 
 package gonimo-back
   flags: +dev

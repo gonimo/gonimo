@@ -55,31 +55,6 @@ executable gonimo-front
                     , gonimo-front
                     
 
--- executable gonimo-front-warp
---   -- if impl(ghcjs)
---   buildable: False
---   ghc-options: -optl-fuse-ld=gold
---   ld-options:  -fuse-ld=gold
---   if flag(dev) 
---       cpp-options:   -DDEVELOPMENT
---       ghc-options:   -Wall -threaded
---   else
---       ghc-options:        -O2 -rtsopts -with-rtsopts=-N -Wall
---   main-is:            Warp.hs
---   hs-source-dirs:      app
---   default-language:    Haskell2010
-
---   default-extensions: 
-
---   build-depends:      base >=4.8 && <4.10
---                     , gonimo-front
---                     , reflex-dom
---                     , warp
---                     , wai-middleware-static
---                     , jsaddle
---                     , jsaddle-warp
---                     , websockets
---                     , jsaddle-dom
 
 library
   hs-source-dirs:      src
@@ -200,26 +175,3 @@ library
                     , Gonimo.DOM.Window.Internal
                     , Gonimo.DOM.Window
                     , Gonimo.SocketAPI.Translations
-
-
-
-
-executable gonimo-front-android
-  if impl(ghcjs)
-    buildable: False
-  ghc-options: -optl-fuse-ld=gold
-  ld-options:  -fuse-ld=gold
-  if flag(dev) 
-      cpp-options:   -DDEVELOPMENT
-      ghc-options:   -Wall -threaded
-  else
-      ghc-options:      -Werror -threaded -O2 -rtsopts -with-rtsopts=-N -Wall
-  main-is:            Mobile.hs
-  hs-source-dirs:      app
-  default-language:    Haskell2010
-
-  default-extensions: 
-
-  build-depends:      base >=4.8 && <5.0
-                    , gonimo-front
-                    , reflex-dom
