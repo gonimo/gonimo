@@ -23,8 +23,6 @@ custom-setup
                  , process
 
 executable gonimo-front
-  if impl(ghc)
-     buildable: False
   ghc-options: -optl-fuse-ld=gold
   ld-options:  -fuse-ld=gold
   if flag(dev) 
@@ -65,7 +63,7 @@ library
       cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
       ghc-options:   -Wall -fwarn-tabs -O0 -debug
   else
-      ghc-options:   -Wall  -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -fno-warn-deprecations -O2
+      ghc-options:   -Wall  -O0 -fwarn-tabs -fno-warn-unused-imports -fno-warn-redundant-constraints -fno-warn-deprecations
       ghcjs-options: -dedupe
       cpp-options:   -DGHCJS_BROWSER
 

@@ -3,10 +3,8 @@ dev=$1
 echo "And dev is ..... ${dev}"
 if [[ -d ../dist-ghcjs ]]
 then
-    newBuild=true
     distPath=../dist-ghcjs/build/x86_64-linux/ghcjs-0.2.1/gonimo-front-0.1/build/gonimo-front/gonimo-front.jsexe
 else
-    newBuild=false
     distPath=dist/build/gonimo-front/gonimo-front.jsexe
 fi
 
@@ -69,10 +67,4 @@ else
     gzip -f -9 all-*.min.js
     popd
 
-    # For compatibility with current nix deployment. Yeah, it is a hack ...
-    if [[ ${newBuild} == true ]]
-    then
-        mkdir -p dist/build/gonimo-front
-        ln -s ${distPath} dist/build/gonimo-front/
-    fi
 fi
