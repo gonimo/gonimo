@@ -2,6 +2,10 @@ compiler: ghcjs
 packages:
   common/
   front/
+  front-ghcjs
 
 package gonimo-front
+  flags: +dev
+
+package gonimo-front-ghcjs
   flags: +dev

@@ -3,12 +3,12 @@ dev=$1
 echo "And dev is ..... ${dev}"
 if [[ -d ../dist-ghcjs ]]
 then
-    distPath=../dist-ghcjs/build/x86_64-linux/ghcjs-0.2.1/gonimo-front-0.1/build/gonimo-front/gonimo-front.jsexe
+    distPath=../dist-ghcjs/build/x86_64-linux/ghcjs-0.2.1/gonimo-front-ghcjs-0.1/build/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe
 else
-    distPath=dist/build/gonimo-front/gonimo-front.jsexe
+    distPath=dist/build/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe
 fi
 
-cp -a static/* ${distPath}/
+cp -a ../front/static/* ${distPath}/
 pushd ${distPath}
 rm index.html
 mv index-ghcjs.html index.html

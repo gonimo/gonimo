@@ -19,7 +19,7 @@ finishBuild _ _ _ localBuildInfo = do
   print flav
   let script = case flav of
                  GHCJS -> "./postBuild.sh"
-                 _ -> "./postBuildGhc.sh"
+                 _ -> error "This script no longer supports ghc, only ghcjs is supported."
 
   let unFlagName = \(FlagName s) -> s
   let flagStrings = unFlagName . fst <$> (filter ((=="dev") . unFlagName . fst) . filter snd) flags

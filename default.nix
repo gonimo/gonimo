@@ -7,6 +7,7 @@
     gonimo-front = ./front;
     gonimo-front-android = ./front-android;
     gonimo-front-warp = ./front-warp;
+    gonimo-front-ghcjs = ./front-ghcjs;
   };
 
   android.gonimo-front-android = {
@@ -58,6 +59,6 @@
 
   shells = {
     ghc = ["gonimo-common" "gonimo-back" "gonimo-front" "gonimo-front-warp" ];
-    ghcjs = ["gonimo-common" "gonimo-front"];
+    ghcjs = ["gonimo-common" "gonimo-front" "gonimo-front-ghcjs" ];
   };
 })
