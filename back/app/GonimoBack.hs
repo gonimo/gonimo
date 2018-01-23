@@ -8,7 +8,6 @@ import           Database.Persist.Sqlite
 import           Gonimo.Server.Subscriber
 import           Network.Wai
 import           Network.Wai.Handler.Warp
-import           Network.Wai.Middleware.Static
 
 import           Control.Exception             (Exception)
 import           Control.Monad.IO.Class        (MonadIO)
@@ -33,6 +32,7 @@ import           System.Environment            (lookupEnv)
 import           System.IO
 import           System.Directory
 import           System.FilePath (splitFileName)
+import           Network.Wai.Middleware.Static
 #endif
 
 data StartupError
