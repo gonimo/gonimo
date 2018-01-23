@@ -12,8 +12,9 @@ echo "And distPath is .... ${distPath}"
 #     distPath=dist/build/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe
 # fi
 
+staticFiles=../front/static
 
-cp -a ../front/static/* ${distPath}/
+cp -a ${staticFiles}/* ${distPath}/
 pushd ${distPath}
 rm index.html
 mv index-ghcjs.html index.html
