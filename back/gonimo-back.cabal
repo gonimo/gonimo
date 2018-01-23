@@ -171,7 +171,9 @@ executable gonimo-back
                     , safe
                     , warp
                     , http-types
--- Only needed for development:
+  if flag(dev) 
+    build-depends:    directory
+                    , filepath
                     , wai-middleware-static 
 
 

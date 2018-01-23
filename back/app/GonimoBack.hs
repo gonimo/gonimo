@@ -29,6 +29,12 @@ import           Network.HTTP.Types.Status
 import           Safe                          (readMay)
 import           System.Environment            (lookupEnv)
 
+#ifdef DEVELOPMENT
+import           System.IO
+import           System.Directory
+import           System.FilePath (splitFileName)
+#endif
+
 data StartupError
   = NO_GONIMO_FRONTEND_URL
   | NO_GONIMO_BACK_PORT deriving (Generic, Eq, Show, Typeable)
@@ -37,6 +43,7 @@ instance Exception StartupError
 runGonimoLoggingT :: MonadIO m => LoggingT m a -> m a
 runGonimoLoggingT = runStdoutLoggingT
 
+#ifdef DEVELOPMENT
 devMain :: IO ()
 devMain = do
   subscriber' <- atomically $ makeSubscriber
@@ -55,7 +62,10 @@ devMain = do
   , configFrontendURL = "http://localhost:8081/index.html"
   , configRandom = generator
   }
+  checkAndFixCurrentDirectory
   run 8081 . addDevServer $ serve runGonimoLoggingT config
+
+#else
 
 prodMain :: IO ()
 prodMain = do
@@ -83,6 +93,8 @@ prodMain = do
   }
   run port . checkOrigin (T.pack frontendURL) $ serve runGonimoLoggingT config
 
+#endif
+
 main :: IO ()
 #ifdef DEVELOPMENT
 main = devMain
@@ -90,9 +102,22 @@ main = devMain
 main = prodMain
 #endif
 
+#ifdef DEVELOPMENT
 addDevServer :: Application -> Application
-addDevServer = staticPolicy $ addBase "../front/devRoot" <|> addSlash
+addDevServer = staticPolicy $ addBase "../front-ghcjs/devRoot" <|> addSlash
 
+-- Yeah this is a hack ...
+-- for convenience so we can run gonimo-back both in gonimo and gonimo/back folders.
+checkAndFixCurrentDirectory :: IO ()
+checkAndFixCurrentDirectory = do
+  wd <- getCurrentDirectory
+  let (_, fileName) = splitFileName wd
+  case fileName of
+    "back" -> pure ()
+    "gonimo" -> setCurrentDirectory "./back"
+    _ -> hPutStrLn stderr "Warning, you have to run gonimo-back from either gonimo or the gonimo/back directory!"
+
+#else
 checkOrigin :: Text -> Application -> Application
 checkOrigin frontendURL app req sendResponse = do
   let
@@ -104,3 +129,4 @@ checkOrigin frontendURL app req sendResponse = do
     Just origin -> if T.isPrefixOf (T.decodeUtf8 origin) frontendURL || origin == "file://" -- Support native app!
                       then app req sendResponse
                       else deny "Wrong origin - you nasty boy!"
+#endif
