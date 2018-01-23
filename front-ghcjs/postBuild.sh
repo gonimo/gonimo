@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-dev=$1
+dev=$2
 echo "And dev is ..... ${dev}"
-if [[ -d ../dist-ghcjs ]]
-then
-    distPath=../dist-ghcjs/build/x86_64-linux/ghcjs-0.2.1/gonimo-front-ghcjs-0.1/build/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe
-else
-    distPath=dist/build/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe
-fi
+
+distPath="${1}/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe"
+
+echo "And distPath is .... ${distPath}"
+# if [[ -d ../dist-ghcjs ]]
+# then
+#     distPath=../dist-ghcjs/build/x86_64-linux/ghcjs-0.2.1/gonimo-front-ghcjs-0.1/build/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe
+# else
+#     distPath=dist/build/gonimo-front-ghcjs/gonimo-front-ghcjs.jsexe
+# fi
+
 
 cp -a ../front/static/* ${distPath}/
 pushd ${distPath}

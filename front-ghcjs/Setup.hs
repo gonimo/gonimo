@@ -15,6 +15,7 @@ finishBuild ::  Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO
 finishBuild _ _ _ localBuildInfo = do
   let flags = configConfigurationsFlags . configFlags $ localBuildInfo
   let (CompilerId flav _) = compilerInfoId . compilerInfo . compiler $ localBuildInfo
+
   putStrLn "Found flavour: "
   print flav
   let script = case flav of
@@ -31,9 +32,10 @@ finishBuild _ _ _ localBuildInfo = do
   -- runProgramInvocation normal prog
 
   -- Now this works and the above does not ... (It used to be the other way round ...)
-  _ <- system $ script <> " " <> mconcat flagStrings
+  _ <- system $ script <> " " <> buildDir localBuildInfo <> " " <> mconcat flagStrings
   pure ()
   -- _ <- system "cp -a static/* dist/build/gonimo-front/gonimo-front.jsexe/"
+
 
 cleanBuild ::  Args -> BuildFlags -> IO HookedBuildInfo
 cleanBuild _ _ = do
