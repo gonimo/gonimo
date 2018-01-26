@@ -15,7 +15,9 @@ import           Control.Error.Safe     (rightZ)
 
 import           Data.Aeson.Types       (FromJSON (..), FromJSON, ToJSON (..),
                                          ToJSON (..), Value (String),
-                                         defaultOptions, genericToJSON, genericToEncoding)
+                                         defaultOptions, genericToJSON, genericToEncoding, typeMismatch)
+import Data.Aeson
+import Control.Applicative ((<|>))
 
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
@@ -26,7 +28,7 @@ import           GHC.Generics           (Generic)
 import           Control.Monad          (MonadPlus, mzero)
 import qualified Data.Text      as T
 import           Data.Text      (Text)
-import           Control.Lens
+import           Control.Lens hiding ((.=))
 
 data DeviceType = NoBaby
                 | Baby Text
@@ -107,11 +109,28 @@ writeFamilyName (FamilyName mN fN) =
   then mN
   else mN <> ", " <> fN
 
-instance FromJSON FamilyName
-instance ToJSON FamilyName where
-  toJSON = genericToJSON defaultOptions
-  toEncoding = genericToEncoding defaultOptions
+-- Custom instances necessary for backwards compatiblity (familyName got changed to familyNameName).
+-- Roadmap:
+--  - [x] Encode like it used to be ("familyName") and accept both: ("familyName" & "familyNameName")
+--  - [ ] Use new encoding, still accept both
+--  - [ ] use generic impl again.
+instance FromJSON FamilyName where
+  parseJSON (Object v) = try1 <|> try2
+    where
+      try1 = FamilyName
+        <$> v .: "familyMemberName"
+        <*> v .: "familyName"
+      try2 = FamilyName
+        <$> v .: "familyMemberName"
+        <*> v .: "familyNameName"
+  parseJSON invalid    = typeMismatch "FamilyName" invalid
 
+
+instance ToJSON FamilyName where
+  -- toJSON = genericToJSON defaultOptions
+  toJSON name = object [ "familyName" .= familyNameName name, "familyMemberName" .= familyMemberName name  ]
+  -- toEncoding = genericToEncoding defaultOptions
+  toEncoding name = pairs ( "familyName" .= familyNameName name <> "familyMemberName" .= familyMemberName name  )
 
 
 
