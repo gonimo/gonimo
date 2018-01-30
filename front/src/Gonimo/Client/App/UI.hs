@@ -157,6 +157,8 @@ checkBrowser = do
     -- isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
     isFirefox <- getBrowserProperty "gecko"
     browserVersion <- getBrowserVersion
+    let major :: Double -> Int
+        major = floor
     let warnMessage = if isiOS
                       then Just $ do
                         el "h1" $ trText IOS_support_is_in_the_works
@@ -172,8 +174,9 @@ checkBrowser = do
                         elAttr "a" ("class" =: "link" <> "href" =: "https://blog.gonimo.com")
                           $ text "blog"
                         trText To_stay_up_to_date_on_the_progress
-                      else if (isFirefox && browserVersion < 52.0)
-                              || (isChrome && browserVersion < 55.0)
+                      else if (isFirefox &&  browserVersion < 52.0) ||
+                              (isChrome  && (browserVersion < 55.0  ||
+                                            major browserVersion == 61))
                            then  Just $ do
                              el "h1" $ trText Please_upgrade_your_browser
                              el "br" blank
