@@ -14,7 +14,8 @@ echo "And distPath is .... ${distPath}"
 
 staticFiles=../front/static
 
-cp -a ${staticFiles}/* ${distPath}/
+cp -R ${staticFiles}/* ${distPath}/
+chmod -R u+w ${distPath}
 pushd ${distPath}
 rm index.html
 mv index-ghcjs.html index.html
