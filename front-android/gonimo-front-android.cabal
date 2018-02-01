@@ -36,3 +36,7 @@ executable gonimo-front-android
   build-depends:      base >=4.8 && <5.0
                     , gonimo-front
                     , reflex-dom
+                    , android-activity
+                    , jsaddle
+                    , data-default
+                    , ghcjs-dom
