@@ -156,6 +156,7 @@ checkBrowser = do
     isChrome <- (||) <$> getBrowserProperty "chrome" <*> getBrowserProperty "chromium"
     -- isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
     isFirefox <- getBrowserProperty "gecko"
+    isAndroid <- getBrowserProperty "android"
     browserVersion <- getBrowserVersion
     let major :: Double -> Int
         major = floor
@@ -175,8 +176,10 @@ checkBrowser = do
                           $ text "blog"
                         trText To_stay_up_to_date_on_the_progress
                       else if (isFirefox &&  browserVersion < 52.0) ||
-                              (isChrome  && (browserVersion < 55.0  ||
-                                            major browserVersion == 61))
+                              (isChrome  && ( browserVersion < 55.0  ||
+                                              (isAndroid && major browserVersion == 61)
+                                            )
+                              )
                            then  Just $ do
                              el "h1" $ trText Please_upgrade_your_browser
                              el "br" blank
