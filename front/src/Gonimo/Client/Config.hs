@@ -2,7 +2,9 @@
 module Gonimo.Client.Config where
 
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Monoid
+import Data.Maybe (isJust)
 
 secure :: Bool
 secure = False
@@ -11,6 +13,19 @@ prefix :: Text
 prefix = if secure
          then "wss://"
          else "ws://"
+
+httpProtocol :: Text
+httpProtocol = if secure then "https://" else "http://"
+
+gonimoFrontHost :: Maybe Text
+gonimoFrontHost = if T.isInfixOf "localhost" gonimoBackServer
+                  then Nothing
+                  else Just $ "app" <> T.dropWhile (/= '.') gonimoBackServer
+
+gonimoFrontPath :: Text
+gonimoFrontPath = if isJust gonimoFrontHost
+                  then "/"
+                  else "/index.html"
 
 gonimoBackServer :: Text
 gonimoBackServer = "localhost:8081"

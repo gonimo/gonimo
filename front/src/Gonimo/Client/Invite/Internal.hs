@@ -19,10 +19,12 @@ import qualified GHCJS.DOM.Location   as Location
 import           GHCJS.DOM.Types      (MonadJSM)
 import           Network.HTTP.Types   (urlEncode)
 import           Reflex.Dom.Core
+import           Data.Maybe           (fromMaybe)
 
 import           Gonimo.SocketAPI.Types   (FamilyId, InvitationId)
 import qualified Gonimo.SocketAPI     as API
 import qualified Gonimo.SocketAPI.Types     as API
+import Gonimo.Client.Config (httpProtocol, gonimoFrontHost, gonimoFrontPath)
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -78,12 +80,16 @@ invite config = mdo
 
 getBaseLink :: (MonadJSM m) => m Text
 getBaseLink = do
+  -- Don't use own url in general, you'll get file:/// uris in the app version:
   doc  <- DOM.currentDocumentUnchecked
   location <- Document.getLocationUnsafe doc
-  protocol <- Location.getProtocol location
-  host <- Location.getHost location
-  pathName <- Location.getPathname location
-  pure $ protocol <> "//" <> host <> pathName
+  -- protocol <- Location.getProtocol location
+  ownHost <- Location.getHost location
+  let
+    protocol = httpProtocol
+    host = fromMaybe ownHost gonimoFrontHost
+    pathName = gonimoFrontPath
+  pure $ protocol <> host <> pathName
 
 makeInvitationLink :: Text -> API.Invitation -> Text
 makeInvitationLink baseURL inv =
