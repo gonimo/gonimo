@@ -15,6 +15,9 @@
     applicationId = "org.gonimo.gonimo";
     displayName = "Gonimo";
     assets = ./front/static;
+    activityAttributes = ''
+      android:launchMode="singleInstance"
+    '';
     intentFilters = ''
       <intent-filter>
           <action android:name="android.intent.action.VIEW"/>
