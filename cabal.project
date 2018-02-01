@@ -10,3 +10,5 @@ package gonimo-common
   flags: +dev
 package gonimo-front
   flags: +dev
+package gonimo-front-warp
+  flags: +dev

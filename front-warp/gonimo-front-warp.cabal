@@ -40,4 +40,6 @@ executable gonimo-front-warp
                     , jsaddle-warp
                     , websockets
                     , jsaddle-dom
+                    , directory
+                    , filepath
 
