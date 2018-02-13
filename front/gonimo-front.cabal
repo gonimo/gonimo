@@ -67,6 +67,8 @@ library
      build-depends: ghcjs-base
 
   exposed-modules:    Gonimo.Client.Storage
+                    , Gonimo.Client.Account
+                    , Gonimo.Client.Account.Internal
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.Internal
                     , Gonimo.Client.AcceptInvitation.UI
