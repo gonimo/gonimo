@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP   #-}
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.Util ( module OYD
                           , module Audio
@@ -19,34 +19,30 @@ module Gonimo.Client.Util ( module OYD
                           , registerTriggerFullScreen
                           ) where
 
-import           Control.Concurrent.MVar
-import           Language.Javascript.JSaddle                       (JSVal,
-                                                                    MonadJSM,
-                                                                    eval,
-                                                                    jsg,
-                                                                    liftJSM)
-import Control.Lens
 
-import qualified Language.Javascript.JSaddle                       as JS
-import GHCJS.DOM.MediaStream             as MediaStream
-import GHCJS.DOM.AudioBufferSourceNode (AudioBufferSourceNode(..))
-import           GHCJS.DOM.Types                   (MediaStreamTrack, RTCPeerConnection)
-import qualified GHCJS.DOM.Types               as JS hiding (JSM)
-import GHCJS.Types (nullRef)
+import           Control.Lens
+import           Language.Javascript.JSaddle (JSVal, MonadJSM, liftJSM)
+
+import qualified Language.Javascript.JSaddle as JS
+
+
+import           GHCJS.DOM.Types             (MediaStreamTrack,
+                                              RTCPeerConnection)
+import qualified GHCJS.DOM.Types             as JS hiding (JSM)
+import           GHCJS.Types                 (nullRef)
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam
-import GHCJS.DOM.Types                   (AudioContext(..), nullableToMaybe)
-import Gonimo.Client.Prelude
-import Reflex.Dom.Core
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import Data.Map.Strict (Map)
+import           Data.Map.Strict             (Map)
+import qualified Data.Text                   as T
+import qualified Data.Text.IO                as T
+import           GHCJS.DOM.Types             (nullableToMaybe)
 
 
-import Gonimo.Client.JS.OYD as OYD
-import Gonimo.Client.JS.Audio as Audio
-import Gonimo.Client.JS.Volume as Volume
+import           Gonimo.Client.JS.Audio      as Audio
+import           Gonimo.Client.JS.OYD        as OYD
+import           Gonimo.Client.JS.Volume     as Volume
+import           Gonimo.Client.Prelude
 
 
 
@@ -83,7 +79,7 @@ getTransmissionInfo conn callBack track = liftJSM $ do
     , "               var base = null;"
     , "               if (typeof baselineReport.get != 'undefined')"
     , "                 base=baselineReport.get(now.id);"
-    , ""    
+    , ""
     , "               if (base) {"
     , "                   packets += now.packetsReceived - base.packetsReceived;"
     , "               }"
@@ -143,7 +139,7 @@ crossNullableToMaybe jsVal = do
       val <- liftJSM $ nullableToMaybe jsVal
 #endif
       pure val
-  
+
 
 newtype Vibrator = Vibrator JSVal
 
@@ -228,31 +224,31 @@ showJSException e = liftJSM $ do
 -- | Like `fromPromiseM` but if you have a pure value to return on error
 -- instead of an action.
 fromPromise :: forall m a. MonadJSM m => a -> JS.JSM a -> m a
-fromPromise onException = fromPromiseM (pure onException)
+fromPromise onException' = fromPromiseM (pure onException')
 
 -- | Run a computation which is a promise catching the rejected case.
 -- The second parameter is expected to be a promise, if it gets rejected by
 -- means of `PromiseRejected` being thrown then it is caught, the exception is
 -- printed to the console and the first parameter gets evaluated.
 fromPromiseM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
-fromPromiseM onException action = liftJSM $ action `JS.catch` handleException
+fromPromiseM onException' action = liftJSM $ action `JS.catch` handleException
   where
     handleException :: JS.PromiseRejected -> JS.JSM a
     handleException (JS.PromiseRejected e) = do
       liftIO . T.putStrLn =<< showJSException e
-      onException
+      onException'
 
 -- | Like fromJSFuncM but for a pure default value.
 fromJSFunc :: forall m a. MonadJSM m => a -> JS.JSM a -> m a
-fromJSFunc onException = fromJSFuncM (pure onException)
+fromJSFunc onException' = fromJSFuncM (pure onException')
 
 -- | Run a JS function catching JSException.
 -- If an exception occurs it gets printed to the console and the 'onException'
 -- parameter gets evaluatedas result.
 fromJSFuncM :: forall m a. MonadJSM m => JS.JSM a -> JS.JSM a -> m a
-fromJSFuncM onException action = liftJSM $ action `JS.catch` handleException
+fromJSFuncM onException' action = liftJSM $ action `JS.catch` handleException
   where
     handleException :: JS.JSException -> JS.JSM a
     handleException (JS.JSException e) = do
       liftIO . T.putStrLn =<< showJSException e
-      onException
+      onException'
