@@ -1,30 +1,20 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP   #-}
 {-# LANGUAGE GADTs #-}
 module Gonimo.Client.JS.OYD where
 
-import           Control.Concurrent.MVar
-import           Language.Javascript.JSaddle                       (JSVal,
-                                                                    MonadJSM,
-                                                                    eval,
-                                                                    jsg,
-                                                                    liftJSM)
-import Control.Lens
 
-import qualified Language.Javascript.JSaddle                       as JS
-import GHCJS.DOM.MediaStream             as MediaStream
-import GHCJS.DOM.AudioBufferSourceNode (AudioBufferSourceNode(..))
-import           GHCJS.DOM.Types                   (MediaStreamTrack, RTCPeerConnection)
-import qualified GHCJS.DOM.Types               as JS hiding (JSM)
-import GHCJS.Types (nullRef)
+import           GHCJS.DOM.MediaStream       as MediaStream
+import           Language.Javascript.JSaddle (MonadJSM, liftJSM)
+import qualified Language.Javascript.JSaddle as JS
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam
-import GHCJS.DOM.Types                   (AudioContext(..), nullableToMaybe)
-import Gonimo.Client.Prelude
-import Reflex.Dom.Core
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import Data.Map.Strict (Map)
+import qualified Data.Text                   as T
+
+import           Gonimo.Client.Prelude
+
+
+
 
 
 -- | TODO: We should check for a stream with no audio track here too!
