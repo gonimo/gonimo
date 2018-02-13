@@ -67,6 +67,12 @@ instance ToJSON Secret where
   toJSON (Secret bs) = String . decodeUtf8 . Base64.encode $ bs
   toEncoding (Secret bs) = toEncoding $ (decodeUtf8 . Base64.encode) bs
 
+-- | TODO: More type safety for InvitationSecret, roadmap:
+--   1. [x] Introduce type synonym InvitationSecret
+--   2. [ ] Use InvitationSecret everywhere instead of Secret (where applicable)
+--   3. [ ] Make it a newtype and fix breaking code
+type InvitationSecret = Secret
+
 -- Other auth methods might be added later on, like oauth bearer tokens:
 data AuthToken = GonimoSecret Secret
                | PlaceHolder____
