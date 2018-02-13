@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP   #-}
 {-# LANGUAGE GADTs #-}
 -- Common imports and definitions for frontend ...
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -6,20 +6,25 @@ module Gonimo.Client.Prelude ( MonadFix
                              , module GonimoPrelude
                              , module I18N
                              , GonimoM
+                             , module Reflex.Dom.Class
+                             , module Reflex
                              ) where
 
-import           Control.Monad.Fix         (MonadFix)
-import           Control.Monad.Trans.Class (lift)
-import           Control.Monad.Trans.Maybe (MaybeT)
+import           Control.Monad.Fix          (MonadFix)
+import           Control.Monad.Trans.Class  (lift)
+import           Control.Monad.Trans.Maybe  (MaybeT)
 #ifndef __GHCJS__
-import           GHCJS.DOM.Types           (MonadJSM (..))
+import           GHCJS.DOM.Types            (MonadJSM (..))
 #else
-import           GHCJS.DOM.Types           (MonadJSM)
+import           GHCJS.DOM.Types            (MonadJSM)
 #endif
-import           Gonimo.Prelude as GonimoPrelude
+import           Control.Monad.Reader.Class
+import           Gonimo.Client.I18N         as I18N (GonimoEnv, trDynText,
+                                                     trText)
+import           Gonimo.Prelude             as GonimoPrelude
+import           Reflex
+import           Reflex.Dom.Class hiding (Alt)
 import           Reflex.Dom.Core
-import           Gonimo.Client.I18N as I18N (GonimoEnv, trText, trDynText)
-import Control.Monad.Reader.Class
 
 
 type GonimoM t m = ( DomBuilder t m , PostBuild t m , TriggerEvent t m
