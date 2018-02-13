@@ -1,11 +1,14 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE RecordWildCards #-}
-module Gonimo.Client.Reflex.Dom.WebSocket ( Config(..)
+module Gonimo.Client.Reflex.Dom.WebSocket ( -- * Types & Classes
+                                            Config(..)
                                           , WebSocket
                                           , HasConfig(..)
                                           , HasWebSocket(..)
                                           , CloseParams(..)
-                                          , create
+                                          -- * Creation
+                                          , make
+                                          -- * Closing connections
                                           , closeCode
                                           , closeReason
                                           ) where
@@ -17,8 +20,8 @@ import Control.Lens
 -- | Build up a websocket
 -- - Connections get re-established on `configOnClose`.
 -- - Messages from `configOnSend` will simply get dropped when socket is not ready.
-create :: forall t m . WebSocketM t m => Text -> Config t -> m (WebSocket t)
-create url c = mdo
+make :: forall t m . WebSocketM t m => Text -> Config t -> m (WebSocket t)
+make url c = mdo
     let webSocket' = WebSocket {..}
 
     _events <- newTriggerEvents

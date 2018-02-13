@@ -4,7 +4,8 @@ module Gonimo.Client.Server ( Config
                             , Server
                             , HasConfig(..)
                             , HasServer(..)
-                            , create
+                            , make
+                            , request
                             ) where
 
 import Gonimo.SocketAPI (ServerRequest(..), ServerResponse)
@@ -38,6 +39,80 @@ data Server t
            , _close :: Event t ()
            }
 
+
+instance Reflex t => Default (Config t) where
+  def = Config never
+
+make :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
+                      , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
+                      )
+          => Text -> Config t -> m (Server t)
+make url conf = mdo
+  let
+    server' = Server { _open = ws^.WS.onOpen
+                     , _response = decodedResponse
+                     , _closeRequested = killConn
+                     , _close = const () <$> ws^.WS.onClose
+                     -- , _socket = ws
+                     }
+
+  (requests, killConn) <- handlePingPong (conf^.configRequest) decodedResponse
+
+  let
+    wsConfig :: WS.Config t
+    wsConfig = def
+               & WS.configOnSend .~ encodedRequests
+               & WS.configOnClose .~ reqClose
+               & WS.configCloseTimeout .~ Just 4 -- Try with 4 seconds.
+
+    encodedRequests = fmap (T.decodeUtf8 . BL.toStrict . Aeson.encode) <$> requests
+
+    decodedResponse = decodeResponse <$> ws^.WS.onReceive
+    reqClose = const (WS.CloseParams 4000 "Server did not respond.") <$> killConn
+
+  ws <- WS.make url wsConfig
+
+  pure server'
+
+
+
+decodeResponse :: Text -> ServerResponse
+decodeResponse = fromMaybe (error "Decoding Server Response Failed!")
+                 . Aeson.decodeStrict
+                 . T.encodeUtf8
+
+
+-- We need to handle ping/pong at the application level so the client can detect a broken connection.
+-- Otherwise if the client has no data to send, but just waits for data (baby station), a broken connection will never be detected and the baby is unreachable - this is bad!
+
+-- Example: Connection broken for a minute - server closes TCP/IP connection in
+-- the meantime, connection is back up again - Client won't get any requests
+-- because it still holds on to the dead connection. By sending a ping message
+-- periodically, the death will be detected (within minutes - see TCP timeout
+-- behavour) and a close followed by a reconnection can take place.
+
+-- See also: https://blog.stephencleary.com/2009/05/detection-of-half-open-dropped.html
+-- TCP timeout behaviour: http://www.pcvr.nl/tcpip/tcp_time.htm
+handlePingPong :: forall t m. ( MonadFix m, MonadHold t m, MonadJSM m, MonadJSM (Performable m)
+                              , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
+                              )
+                  => Event t [ServerRequest] -> Event t ServerResponse -> m (Event t [ServerRequest], Event t ())
+handlePingPong inRequest inResponse = do
+  now <- liftIO $ getCurrentTime
+  tick <- tickLossy webSocketPingInterval now
+  let req = const [ReqPing] <$> tick
+  shallKill <- hold False $ leftmost [ const False <$> inResponse
+                                     , const True <$> tick
+                                     ]
+  let killConn = fmap (const ()) . ffilter id . tag shallKill $ tick
+  let outRequest = req <> inRequest
+  pure (outRequest, killConn)
+-- | Synonym for configRequest.
+--   Consider configRequest as deprecated.
+request :: HasConfig a => Lens' (a t) (Event t [ServerRequest])
+request = configRequest
+
+-- Auto generated lens stuff:
 class HasConfig a where
   config :: Lens' (a t) (Config t)
 
@@ -81,74 +156,6 @@ instance HasServer Server where
   server = id
 
 
-instance Reflex t => Default (Config t) where
-  def = Config never
-
-
-create :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
-                      , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
-                      )
-          => Text -> Config t -> m (Server t)
-create url conf = mdo
-  let
-    server' = Server { _open = ws^.WS.onOpen
-                     , _response = decodedResponse
-                     , _closeRequested = killConn
-                     , _close = const () <$> ws^.WS.onClose
-                     -- , _socket = ws
-                     }
-
-  (requests, killConn) <- handlePingPong (conf^.configRequest) decodedResponse
-
-  let
-    wsConfig :: WS.Config t
-    wsConfig = def
-               & WS.configOnSend .~ encodedRequests
-               & WS.configOnClose .~ reqClose
-               & WS.configCloseTimeout .~ Just 4 -- Try with 4 seconds.
-
-    encodedRequests = fmap (T.decodeUtf8 . BL.toStrict . Aeson.encode) <$> requests
-
-    decodedResponse = decodeResponse <$> ws^.WS.onReceive
-    reqClose = const (WS.CloseParams 4000 "Server did not respond.") <$> killConn
-
-  ws <- WS.create url wsConfig
-
-  pure server'
-
-
-
-decodeResponse :: Text -> ServerResponse
-decodeResponse = fromMaybe (error "Decoding Server Response Failed!")
-                 . Aeson.decodeStrict
-                 . T.encodeUtf8
-
-
--- We need to handle ping/pong at the application level so the client can detect a broken connection.
--- Otherwise if the client has no data to send, but just waits for data (baby station), a broken connection will never be detected and the baby is unreachable - this is bad!
-
--- Example: Connection broken for a minute - server closes TCP/IP connection in
--- the meantime, connection is back up again - Client won't get any requests
--- because it still holds on to the dead connection. By sending a ping message
--- periodically, the death will be detected (within minutes - see TCP timeout
--- behavour) and a close followed by a reconnection can take place.
-
--- See also: https://blog.stephencleary.com/2009/05/detection-of-half-open-dropped.html
--- TCP timeout behaviour: http://www.pcvr.nl/tcpip/tcp_time.htm
-handlePingPong :: forall t m. ( MonadFix m, MonadHold t m, MonadJSM m, MonadJSM (Performable m)
-                              , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
-                              )
-                  => Event t [ServerRequest] -> Event t ServerResponse -> m (Event t [ServerRequest], Event t ())
-handlePingPong inRequest inResponse = do
-  now <- liftIO $ getCurrentTime
-  tick <- tickLossy webSocketPingInterval now
-  let req = const [ReqPing] <$> tick
-  shallKill <- hold False $ leftmost [ const False <$> inResponse
-                                     , const True <$> tick
-                                     ]
-  let killConn = fmap (const ()) . ffilter id . tag shallKill $ tick
-  let outRequest = req <> inRequest
-  pure (outRequest, killConn)
 
 
 
