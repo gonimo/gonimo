@@ -59,3 +59,4 @@ library
                       , lifted-base
                       , lens
                       , data-default
+                      , generic-deriving
