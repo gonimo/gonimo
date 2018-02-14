@@ -1,47 +1,65 @@
 {-# LANGUAGE RecursiveDo #-}
 
-module Gonimo.Client.Server ( Config
-                            , Server
+module Gonimo.Client.Server ( Config(..)
+                            , Server(..)
                             , HasConfig(..)
                             , HasServer(..)
                             , make
-                            , request
                             ) where
 
-import Gonimo.SocketAPI (ServerRequest(..), ServerResponse)
-import Reflex
-import Reflex.Dom.Class
+import           Gonimo.SocketAPI                   (ServerRequest (..),
+                                                     ServerResponse)
+import           Reflex
+import           Reflex.Dom.Class
 
-import Control.Lens
-import qualified Data.Aeson as Aeson
-import GHCJS.DOM.Types (MonadJSM)
-import qualified Data.ByteString.Lazy as BL
+import           Control.Lens
+import           Control.Monad.Fix
+import           Control.Monad.IO.Class
+import qualified Data.Aeson                         as Aeson
+import qualified Data.ByteString.Lazy               as BL
+import           Data.Default
+import           Data.Maybe                         (fromMaybe)
+import           Data.Monoid
+import           Data.Text                          (Text)
+import qualified Data.Text.Encoding                 as T
+import           Data.Time.Clock
+import           Generics.Deriving.Base             (Generic)
+import           Generics.Deriving.Monoid
+import           GHCJS.DOM.Types                    (MonadJSM)
+
 import qualified Gonimo.Client.Reflex.Dom.WebSocket as WS
-import Data.Text (Text)
-import qualified Data.Text.Encoding as T
-import Data.Maybe (fromMaybe)
-import Data.Time.Clock
-import Control.Monad.Fix
-import Data.Monoid
-import Control.Monad.IO.Class
-import Gonimo.Constants
-import Data.Default
+import           Gonimo.Constants
 
 data Config t
-  = Config { _configRequest :: Event t [ServerRequest]
-           }
+  = Config { _onRequest :: Event t [ServerRequest]
+           } deriving (Generic)
 
 
 data Server t
-  = Server { _open :: Event t ()
-           , _response :: Event t ServerResponse
-           , _closeRequested :: Event t ()
-           , _close :: Event t ()
+  = Server { -- | Connection is opened - we are not authenticated yet.
+             _onOpen           :: Event t ()
+
+             -- | Responses received from the server.
+           , _onResponse       :: Event t ServerResponse
+
+             -- | We requested a connection close.
+             --
+             --   This usually happens on ping timeouts. You can use this event
+             --   for informing the user about connection problems.
+           , _onCloseRequested :: Event t ()
+
+             -- | Connection actually got closed.
+           , _onClose          :: Event t ()
+
            }
 
 
 instance Reflex t => Default (Config t) where
   def = Config never
+
+instance Reflex t => Monoid (Config t) where
+  mempty = memptydefault
+  mappend = mappenddefault
 
 make :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
@@ -49,14 +67,14 @@ make :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performab
           => Text -> Config t -> m (Server t)
 make url conf = mdo
   let
-    server' = Server { _open = ws^.WS.onOpen
-                     , _response = decodedResponse
-                     , _closeRequested = killConn
-                     , _close = const () <$> ws^.WS.onClose
+    server' = Server { _onOpen = ws^.WS.onOpen
+                     , _onResponse = decodedResponse
+                     , _onCloseRequested = killConn
+                     , _onClose = const () <$> ws^.WS.onClose
                      -- , _socket = ws
                      }
 
-  (requests, killConn) <- handlePingPong (conf^.configRequest) decodedResponse
+  (requests, killConn) <- handlePingPong (conf^.onRequest) decodedResponse
 
   let
     wsConfig :: WS.Config t
@@ -107,20 +125,16 @@ handlePingPong inRequest inResponse = do
   let killConn = fmap (const ()) . ffilter id . tag shallKill $ tick
   let outRequest = req <> inRequest
   pure (outRequest, killConn)
--- | Synonym for configRequest.
---   Consider configRequest as deprecated.
-request :: HasConfig a => Lens' (a t) (Event t [ServerRequest])
-request = configRequest
 
 -- Auto generated lens stuff:
 class HasConfig a where
   config :: Lens' (a t) (Config t)
 
-  configRequest :: Lens' (a t) (Event t [ServerRequest])
-  configRequest = config . go
+  onRequest :: Lens' (a t) (Event t [ServerRequest])
+  onRequest = config . go
     where
       go :: Lens' (Config t) (Event t [ServerRequest])
-      go f cfg' = (\configRequest' -> cfg' { _configRequest = configRequest' }) <$> f (_configRequest  cfg')
+      go f cfg' = (\onRequest' -> cfg' { _onRequest = onRequest' }) <$> f (_onRequest  cfg')
 
 instance HasConfig Config where
   config = id
@@ -128,29 +142,29 @@ instance HasConfig Config where
 class HasServer a where
   server :: Lens' (a t) (Server t)
 
-  open :: Lens' (a t) (Event t ())
-  open = server . go
+  onOpen :: Lens' (a t) (Event t ())
+  onOpen = server . go
     where
       go :: Lens' (Server t) (Event t ())
-      go f cfg' = (\open' -> cfg' { _open = open' }) <$> f (_open  cfg')
+      go f cfg' = (\onOpen' -> cfg' { _onOpen = onOpen' }) <$> f (_onOpen  cfg')
 
-  response :: Lens' (a t) (Event t ServerResponse)
-  response = server . go
+  onResponse :: Lens' (a t) (Event t ServerResponse)
+  onResponse = server . go
     where
       go :: Lens' (Server t) (Event t ServerResponse)
-      go f cfg' = (\response' -> cfg' { _response = response' }) <$> f (_response  cfg')
+      go f cfg' = (\onResponse' -> cfg' { _onResponse = onResponse' }) <$> f (_onResponse  cfg')
 
-  closeRequested :: Lens' (a t) (Event t ())
-  closeRequested = server . go
+  onCloseRequested :: Lens' (a t) (Event t ())
+  onCloseRequested = server . go
     where
       go :: Lens' (Server t) (Event t ())
-      go f cfg' = (\closeRequested' -> cfg' { _closeRequested = closeRequested' }) <$> f (_closeRequested  cfg')
+      go f cfg' = (\onCloseRequested' -> cfg' { _onCloseRequested = onCloseRequested' }) <$> f (_onCloseRequested  cfg')
 
-  close :: Lens' (a t) (Event t ())
-  close = server . go
+  onClose :: Lens' (a t) (Event t ())
+  onClose = server . go
     where
       go :: Lens' (Server t) (Event t ())
-      go f cfg' = (\close' -> cfg' { _close = close' }) <$> f (_close  cfg')
+      go f cfg' = (\onClose' -> cfg' { _onClose = onClose' }) <$> f (_onClose  cfg')
 
 instance HasServer Server where
   server = id

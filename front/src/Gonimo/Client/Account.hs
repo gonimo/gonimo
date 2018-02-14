@@ -20,10 +20,10 @@ module Gonimo.Client.Account ( -- * Interface
 
 
 
-import Gonimo.Client.Prelude
-import Gonimo.Client.Account.Internal
-import Gonimo.Client.Account.API as API
-import Gonimo.Client.Server (HasServer)
+import           Gonimo.Client.Account.API      as API
+import           Gonimo.Client.Account.Internal
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Server           (HasServer)
 
 
 
@@ -37,7 +37,7 @@ import Gonimo.Client.Server (HasServer)
 make :: (Reflex t, MonadHold t m, MonadFix m, HasConfig c, HasServer c) => c t -> m (FullAccount t)
 make conf = do
   _claimedInvitations <- makeClaimedInvitations conf
-
+  _subscriberConfig   <- subscribeInvitationClaims conf
   let
     _serverConfig = makeServerConfig conf
 

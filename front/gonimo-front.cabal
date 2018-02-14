@@ -82,6 +82,7 @@ library
                     , Gonimo.Client.App.UI.I18N
                     , Gonimo.Client.Auth
                     , Gonimo.Client.Auth.I18N
+                    , Gonimo.Client.Auth.API
                     , Gonimo.Client.Baby
                     , Gonimo.Client.Baby.Internal
                     , Gonimo.Client.Baby.Socket
@@ -128,6 +129,7 @@ library
                     , Gonimo.Client.Server
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Subscriber
+                    , Gonimo.Client.Subscriber.API
                     , Gonimo.Client.Util
                     , Gonimo.Client.JS.OYD
                     , Gonimo.Client.JS.Audio

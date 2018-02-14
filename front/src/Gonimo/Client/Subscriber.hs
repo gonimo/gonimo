@@ -1,44 +1,61 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-module Gonimo.Client.Subscriber where
+{-# LANGUAGE TupleSections       #-}
+module Gonimo.Client.Subscriber ( module Gonimo.Client.Subscriber.API
+                                , FullConfig
+                                , _config
+                                , _server
+                                , _auth
+                                , make
+                                , SubscriptionsDyn
+                                , subscribeKeys
+                                )where
 
-import Reflex.Dom.Core
-import Control.Monad.Fix (MonadFix)
+import           Control.Monad.Fix      (MonadFix)
+import           Reflex.Dom.Core
 
-import Data.Map (Map)
+import           Data.Map               (Map)
 
-import qualified Data.Set as Set
-import Data.Set (Set)
+import           Data.Set               (Set)
+import qualified Data.Set               as Set
 
-import qualified Gonimo.SocketAPI as API
-import Control.Lens
+import           Gonimo.Client.Auth.API (Auth)
+import qualified Gonimo.Client.Auth.API as Auth
+import           Gonimo.Client.Server   (Server)
+import qualified Gonimo.Client.Server   as Server
+import qualified Gonimo.SocketAPI       as API
 
-import Gonimo.Client.Reflex (buildMap)
+
+import           Control.Lens
+
+import           Gonimo.Client.Reflex   (buildMap)
+import           Gonimo.Client.Subscriber.API
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
-data Config t
-  = Config { _configSubscriptions :: Dynamic t (Set API.ServerRequest)
-           , _configResponse :: Event t API.ServerResponse -- push subscriptions on Authenticated
-           , _configAuthenticated :: Event t ()
+data FullConfig t
+  = Config { __config :: Config t
+           , __server :: Server t
+           , __auth   :: Auth t
            }
 
-data Subscriber t
-  = Subscriber { _request :: Event t [ API.ServerRequest ]
-               }
 
-subscriber :: forall m t. (HasWebView m, MonadWidget t m)
-              => Config t -> m (Subscriber t)
-subscriber config = do
+-- | We simply provide configuration for Server.
+type FullSubscriber t = Server.Config t
+
+make :: forall m t. ( HasWebView m, MonadWidget t m, HasConfig c
+                          , Server.HasServer c, Auth.HasAuth c)
+           => c t -> m (FullSubscriber t)
+make conf = do
   let
-    requests = API.ReqSetSubscriptions . Set.toList <$> config^.configSubscriptions
-  pure $ Subscriber { _request = mconcat
-                      . map (fmap (:[]))
-                      $ [ tag (current requests) $ config^.configAuthenticated
-                        , updated requests
-                        ]
-                    }
+    requests = API.ReqSetSubscriptions . Set.toList <$> conf^.subscriptions
+
+  pure $ FullSubscriber { Server._request = mconcat
+                          . map (fmap (:[]))
+                          $ [ tag (current requests) $ conf^.onAuthenticated
+                            , updated requests
+                            ]
+                        }
 
 subscribeKeys :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
                  => Dynamic t [key] -> (key -> API.ServerRequest) -> Event t (key, val)
@@ -48,21 +65,17 @@ subscribeKeys keys mkKeyRequest gotNewKeyVal = do
     resultMap <- buildMap keys gotNewKeyVal
     pure (getValsSubs, resultMap)
 
--- Lenses for Config t:
+-- Auto generated lenses:
 
-configSubscriptions :: Lens' (Config t) (Dynamic t (Set API.ServerRequest))
-configSubscriptions f config' = (\configSubscriptions' -> config' { _configSubscriptions = configSubscriptions' }) <$> f (_configSubscriptions config')
+-- Lenses for FullConfig t:
 
-configResponse :: Lens' (Config t) (Event t API.ServerResponse)
-configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+_config :: Lens' (FullConfig t) (Config t)
+_config f fullConfig' = (\_config' -> fullConfig' { __config = _config' }) <$> f (__config fullConfig')
 
-configAuthenticated :: Lens' (Config t) (Event t ())
-configAuthenticated f config' = (\configAuthenticated' -> config' { _configAuthenticated = configAuthenticated' }) <$> f (_configAuthenticated config')
+_server :: Lens' (FullConfig t) (Server t)
+_server f fullConfig' = (\_server' -> fullConfig' { __server = _server' }) <$> f (__server fullConfig')
 
-
--- Lenses for Subscriber t:
-
-request :: Lens' (Subscriber t) (Event t [ API.ServerRequest ])
-request f subscriber' = (\request' -> subscriber' { _request = request' }) <$> f (_request subscriber')
+_auth :: Lens' (FullConfig t) (Auth t)
+_auth f fullConfig' = (\_auth' -> fullConfig' { __auth = _auth' }) <$> f (__auth fullConfig')
 
 

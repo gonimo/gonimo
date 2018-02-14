@@ -1,6 +1,19 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Gonimo.Client.Auth where
+module Gonimo.Client.Auth ( -- * User interface
+                            module Gonimo.Client.Auth.API
+                            -- * Other types and classes
+                          , FullAuth(..)
+                          , serverConfig
+                          , _auth
+                            -- * Creation
+                          , make
+                          -- * Utility functions
+                          -- TODO: Those should really not belong here - right?!
+                          , connectionLossScreen
+                          , loadingDots
+                          ) where
 
 import Reflex
 import Reflex.Dom.Core
@@ -25,56 +38,50 @@ import Control.Monad.IO.Class
 import Gonimo.Client.Prelude
 import Gonimo.Client.Auth.I18N
 import Gonimo.I18N
+import Gonimo.Client.Auth.API
+import Gonimo.Client.Server as Server hiding (make)
 
 -- data AuthCommand = AuthCreateDevice
 
-data Config t
-  = Config { _configResponse :: Event t API.ServerResponse
-           , _configServerOpen :: Event t ()
-           , _configServerClose :: Event t ()
-           , _configServerCloseRequested :: Event t ()
-           }
+data FullAuth t
+  = FullAuth { _serverConfig :: Server.Config t
+             , __auth :: Auth t
+             }
 
-data Auth t
-  = Auth { _request :: Event t [ API.ServerRequest ]
-         , _authData :: Dynamic t (Maybe API.AuthData)
-         , _authenticated :: Event t () -- TODO: Now redundant, because of isOnline.
-         , _isOnline :: Dynamic t Bool
-         }
-
-auth :: forall t m. (HasWebView m, MonadWidget t m) => Dynamic t Locale -> Config t -> m (Auth t)
-auth locDyn config = do
-  (makeDeviceEvent, authDataDyn) <- makeAuthData config
-  let authenticateEvent = authenticate config authDataDyn
+make :: forall c t m. (HasWebView m, MonadWidget t m, Server.HasServer c, HasConfig c)
+  => Dynamic t Locale -> c t -> m (FullAuth t)
+make locDyn conf = do
+  (makeDeviceEvent, _authData) <- makeAuthData conf
+  let authenticateEvent = authenticate conf _authData
   performEvent_
-    $ handleStolenSession <$> attach (current locDyn) (config^.configResponse)
+    $ handleStolenSession <$> attach (current locDyn) (conf^.Server.onResponse)
   let
-    authenticated' :: Event t ()
-    authenticated' = do
+    _onAuthenticated :: Event t ()
+    _onAuthenticated = do
       let handleAuthenticated resp = pure $ case resp of
             API.ResAuthenticated -> Just ()
             _                    -> Nothing
-      push handleAuthenticated $ config^.configResponse
-  isOnline' <- fmap uniqDyn
+      push handleAuthenticated $ conf^.Server.onResponse
+  _isOnline <- fmap uniqDyn
                . holdDyn False
-               $ leftmost [ const False <$> config^.configServerClose
-                          , const False <$> config^.configServerCloseRequested
-                          , const True <$> authenticated'
+               $ leftmost [ const False <$> conf^.Server.onClose
+                          , const False <$> conf^.Server.onCloseRequested
+                          , const True <$> _onAuthenticated
                           ]
+  let _onRequest = mconcat
+                   . map (fmap (:[]))
+                   $ [ makeDeviceEvent
+                     , authenticateEvent
+                     ]
 
-  pure $ Auth { _request = mconcat
-                               . map (fmap (:[]))
-                               $ [ makeDeviceEvent
-                                 , authenticateEvent
-                                 ]
-              , _authData = authDataDyn
-              , _authenticated = authenticated'
-              , _isOnline = isOnline'
-              }
 
-makeAuthData :: forall t m. (HasWebView m, MonadWidget t m)
-  => Config t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
-makeAuthData config = do
+  pure $ FullAuth { _serverConfig = Server.Config {..}
+                  , __auth = Auth {..}
+                  }
+
+makeAuthData :: forall c t m. (HasWebView m, MonadWidget t m, Server.HasServer c)
+  => c t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
+makeAuthData conf = do
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     userAgentString <- getUserAgentString
 
@@ -85,7 +92,7 @@ makeAuthData config = do
           if isNothing cAuth
           then pure . Just . API.ReqMakeDevice . Just $ userAgentString
           else pure Nothing
-    let makeDeviceEvent = push (const makeDevice) $ config^.configServerOpen
+    let makeDeviceEvent = push (const makeDevice) $ conf^.Server.onOpen
 
     performEvent_
       $ writeAuthData storage <$> updated authDataDyn
@@ -93,7 +100,7 @@ makeAuthData config = do
     pure (makeDeviceEvent, authDataDyn)
   where
     serverAuth :: Event t API.AuthData
-    serverAuth = push (pure . fromServerResponse) $ config^.configResponse
+    serverAuth = push (pure . fromServerResponse) $ conf^.Server.onResponse
 
     fromServerResponse :: API.ServerResponse -> Maybe API.AuthData
     fromServerResponse resp = case resp of
@@ -101,11 +108,11 @@ makeAuthData config = do
       _ -> Nothing
 
 
-authenticate :: forall t. Reflex t => Config t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
-authenticate config authDataDyn =
+authenticate :: forall c t. (Reflex t, HasServer c) => c t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
+authenticate conf authDataDyn =
   let
     authDataList = leftmost
-                    [ tag (current authDataDyn) $ config^.configServerOpen
+                    [ tag (current authDataDyn) $ conf^.Server.onOpen
                     , updated authDataDyn
                     ]
     authData' = push pure authDataList
@@ -166,33 +173,14 @@ loadingDots = do
   pure $ T.replicate <$> dotCount <*> pure "."
 
 
--- Lenses for Config t:
+-- Auto generated lenses:
 
-configResponse :: Lens' (Config t) (Event t API.ServerResponse)
-configResponse f config' = (\configResponse' -> config' { _configResponse = configResponse' }) <$> f (_configResponse config')
+-- Lenses for FullAuth t:
 
-configServerOpen :: Lens' (Config t) (Event t ())
-configServerOpen f config' = (\configServerOpen' -> config' { _configServerOpen = configServerOpen' }) <$> f (_configServerOpen config')
+serverConfig :: Lens' (FullAuth t) (Server.Config t)
+serverConfig f fullAuth' = (\serverConfig' -> fullAuth' { _serverConfig = serverConfig' }) <$> f (_serverConfig fullAuth')
 
-configServerClose :: Lens' (Config t) (Event t ())
-configServerClose f config' = (\configServerClose' -> config' { _configServerClose = configServerClose' }) <$> f (_configServerClose config')
-
-configServerCloseRequested :: Lens' (Config t) (Event t ())
-configServerCloseRequested f config' = (\configServerCloseRequested' -> config' { _configServerCloseRequested = configServerCloseRequested' }) <$> f (_configServerCloseRequested config')
-
-
--- Lenses for Auth t:
-
-request :: Lens' (Auth t) (Event t [ API.ServerRequest ])
-request f auth' = (\request' -> auth' { _request = request' }) <$> f (_request auth')
-
-authData :: Lens' (Auth t) (Dynamic t (Maybe API.AuthData))
-authData f auth' = (\authData' -> auth' { _authData = authData' }) <$> f (_authData auth')
-
-authenticated :: Lens' (Auth t) (Event t ())
-authenticated f auth' = (\authenticated' -> auth' { _authenticated = authenticated' }) <$> f (_authenticated auth')
-
-isOnline :: Lens' (Auth t) (Dynamic t Bool)
-isOnline f auth' = (\isOnline' -> auth' { _isOnline = isOnline' }) <$> f (_isOnline auth')
+_auth :: Lens' (FullAuth t) (Auth t)
+_auth f fullAuth' = (\_auth' -> fullAuth' { __auth = _auth' }) <$> f (__auth fullAuth')
 
 

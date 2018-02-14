@@ -7,6 +7,8 @@ module Gonimo.Client.Account.Internal where
 
 
 import qualified Data.Map                  as Map
+import qualified Data.Set                  as Set
+
 
 import           Gonimo.Client.Account.API
 import           Gonimo.Client.Prelude
@@ -15,6 +17,9 @@ import qualified Gonimo.Client.Server      as Server
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Types    (InvitationInfo)
 import           Gonimo.Types              (InvitationSecret)
+import qualified Gonimo.Client.Subscriber.API as Subscriber
+
+
 
 
 
@@ -26,8 +31,15 @@ data FullConfig t
 
 data FullAccount t
   = FullAccount { __account     :: Account t
-                -- | Commands going to the server.
-                , _serverConfig :: Server.Config t
+
+                  -- | For subscribing important commands.
+                  --
+                  --   We subscribe important commands to ensure they will be
+                  --   delivered even on connection problems.
+                , _subscriberConfig :: Subscriber.Config t
+
+                  -- | Commands going to the server.
+                , _serverConfig :: Subscriber.Config t
                 }
 
 makeClaimedInvitations
@@ -45,16 +57,27 @@ makeClaimedInvitations conf =
                                     , Map.delete <$> onAnsweredInvitation
                                     ]
 
-makeServerConfig :: (Reflex t, HasConfig c) => c t -> Server.Config t
-makeServerConfig conf =
+answerInvitations :: (Reflex t, HasConfig c) => c t -> Server.Config t
+answerInvitations conf =
   let
-    onClaim  = map ReqClaimInvitation <$> conf^.onClaimInvitation
     onAnswer = map (uncurry ReqAnswerInvitation) <$> conf^.onAnswerInvitation
-
   in
-    def & Server.request .~ mconcat [ onClaim
-                                    , onAnswer
-                                    ]
+    mempty & Server.request .~ onAnswer
+
+subscribeInvitationClaims :: (Reflex t, HasConfig c) => c t -> Subscriber.Config t
+subscribeInvitationClaims conf = do
+    invitationsToClaim <- foldDyn id Set.empty
+                          $ mergeWith (.) [ Set.insert <$> conf ^. onClaimInvitation
+                                          , Set.delete . fst <$> conf ^. onAnswerInvitation
+                                          ]
+
+    pure $ mempty & configSubscriptions .~ makeSubscriptions invitationsToClaim
+
+  where
+    makeSubscriptions :: Set InvitationSecret -> Set ServerRequest
+    makeSubscriptions = Set.fromList . map ReqClaimInvitation . Set.toList 
+
+
 
 instance Server.HasConfig FullAccount where
   config = serverConfig
