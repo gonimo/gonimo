@@ -43,7 +43,7 @@ data AcceptInvitation t
                      }
 
 
-fromApp :: Reflex t => App.Config t -> Config t
+fromApp :: Reflex t => App.Model t -> Config t
 fromApp c = Config { _configResponse = c^.Server.onResponse
                    , _configAuthenticated = c^.Auth.onAuthenticated
                    }

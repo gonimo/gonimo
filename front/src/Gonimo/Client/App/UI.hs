@@ -33,11 +33,11 @@ import qualified Gonimo.SocketAPI               as API
 
 
 ui :: forall m t. GonimoM t m
-      => Config t -> m (App t)
-ui config = mdo
+      => Model t -> m (App t)
+ui model = mdo
   checkBrowser
   family <- Family.family
-            $ (Family.fromApp config) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
+            $ (Family.fromApp model) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
                                                                               , familyUI^.Family.uiSelectFamily
                                                                               ]
                                       & Family.configCreateFamily .~ familyUI^.Family.uiCreateFamily
@@ -48,15 +48,15 @@ ui config = mdo
   -- let navCreateFamily = push (pure . (^?_Left)) navEv
   -- let navSelectFamily = push (pure . (^?_Right)) navEv
 
-  msgBox <- MessageBox.ui $ MessageBox.fromApp config
+  msgBox <- MessageBox.ui $ MessageBox.fromApp model
 
   let msgSwitchFamily = push (\actions -> case actions of
                                 [MessageBox.SelectFamily fid] -> pure $ Just fid
                                 _ -> pure Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
                              ) (msgBox ^. MessageBox.action)
 
-  accept <- AcceptInvitation.ui $ AcceptInvitation.fromApp config
-  (app, familyUI) <- runLoaded config family
+  accept <- AcceptInvitation.ui $ AcceptInvitation.fromApp model
+  (app, familyUI) <- runLoaded model family
 
   pure $ app & request %~ (<> (  family^.Family.request
                               <> accept^.AcceptInvitation.request
@@ -68,21 +68,21 @@ ui config = mdo
 
 
 runLoaded :: forall m t. GonimoM t m
-      => Config t -> Family.Family t -> m (App t, Family.UI t)
-runLoaded config family = do
+      => Model t -> Family.Family t -> m (App t, Family.UI t)
+runLoaded model family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
   evReady <- waitForJust
-             $ zipDynWith mkFuncPair (config^.Auth.authData) (family^.Family.families)
+             $ zipDynWith mkFuncPair (model^.Auth.authData) (family^.Family.families)
   familyGotCreated <- hold False $ push (\res ->
                                             case res of
                                               API.ResCreatedFamily _ -> pure $ Just True
                                               _ -> pure Nothing
-                                        ) (config^.onResponse)
+                                        ) (model^.onResponse)
 
   let onReady dynAuthFamilies =
         fromMaybeDyn
           (do
-              Auth.connectionLossScreen config
+              Auth.connectionLossScreen model
               startUI <- Family.uiStart
               let subs = constDyn Set.empty
               pure (App subs never never, startUI)
@@ -90,7 +90,7 @@ runLoaded config family = do
           (\selected -> do
               let loaded = Loaded (fst <$> dynAuthFamilies) (snd <$> dynAuthFamilies) selected
               familyCreated <- sample familyGotCreated
-              loadedUI config loaded familyCreated
+              loadedUI model loaded familyCreated
           )
           (family^.Family.selectedFamily)
   let notReady' = do
@@ -104,10 +104,10 @@ runLoaded config family = do
 
 
 loadedUI :: forall m t. GonimoM t m
-      => Config t -> Loaded t -> Bool -> m (App t, Family.UI t)
-loadedUI config loaded familyCreated = mdo
-    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.onResponse
-                                                            , DeviceList._configAuthData = config^.Auth.authData
+      => Model t -> Loaded t -> Bool -> m (App t, Family.UI t)
+loadedUI model loaded familyCreated = mdo
+    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = model^.onResponse
+                                                            , DeviceList._configAuthData = model^.Auth.authData
                                                             , DeviceList._configFamilyId = loaded^.selectedFamily
                                                             }
     initialRole <- getInitialRole
@@ -133,13 +133,13 @@ loadedUI config loaded familyCreated = mdo
     renderCenter deviceList familyCreated' mRole =
       case mRole of
           Nothing -> do
-            Auth.connectionLossScreen config
-            (def,) <$> Family.ui config loaded familyCreated'
+            Auth.connectionLossScreen model
+            (def,) <$> Family.ui model loaded familyCreated'
           Just Family.RoleBaby -> do
-            Auth.connectionLossScreen config
-            (, def) <$> Baby.ui config loaded deviceList
+            Auth.connectionLossScreen model
+            (, def) <$> Baby.ui model loaded deviceList
           -- Parent renders connection loss screen itself. (Should not be rendered when there is an alarm.)
-          Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList
+          Just Family.RoleParent -> (,def) <$> Parent.ui model loaded deviceList
 
     getInitialRole = do
       isAutoStart <- Baby.readAutoStart

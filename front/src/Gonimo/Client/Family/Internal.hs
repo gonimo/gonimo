@@ -75,7 +75,7 @@ data DefiniteFamily t
 instance Reflex t => Default (UI t) where
   def = UI never never never never never never never
 
-fromApp :: Reflex t => App.Config t -> Config t
+fromApp :: Reflex t => App.Model t -> Config t
 fromApp c = Config { _configResponse = c^.onResponse
                    , _configAuthData = c^.Auth.authData
                    , _configSelectFamily = never

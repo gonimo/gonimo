@@ -30,7 +30,7 @@ import           Gonimo.Types                     (_Baby)
 
 
 ui :: forall m t. GonimoM t m
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
+            => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
   connections' <- C.connections $ C.Config { C._configResponse = appConfig^.onResponse
                                            , C._configAuthData = loaded^.App.authData
@@ -113,7 +113,7 @@ ui appConfig loaded deviceList = mdo
                     }
 
 manageUi :: forall m t. GonimoM t m
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
+            => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
 manageUi _ loaded deviceList connections' = do
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
       let openStreams = connections'^.C.streams
@@ -131,7 +131,7 @@ manageUi _ loaded deviceList connections' = do
       pure (navBar', devicesUI, inviteRequested)
 
 viewUi :: forall m t. GonimoM t m
-            => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t
+            => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t
             -> Dynamic t Bool -> m (C.VideoView t)
 viewUi _ loaded deviceList connections isShown = do
   let streams = connections^.C.streams

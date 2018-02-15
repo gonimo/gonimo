@@ -20,13 +20,13 @@ import qualified Gonimo.Types             as Gonimo
 
 
 
-data Config t
-  = Config { __server  :: Server t
-           , __account :: Account t
-           , __auth    :: Auth t
+data Model t
+  = Model { __server  :: Server t
+          , __account :: Account t
+          , __auth    :: Auth t
             -- | Is also in the Reader environment for translation convenience.
-           , _gonimoLocale :: Dynamic t Locale
-           }
+          , _gonimoLocale :: Dynamic t Locale
+          }
 
 data Loaded t
   = Loaded { _authData       :: Dynamic t API.AuthData
@@ -34,6 +34,15 @@ data Loaded t
            , _selectedFamily :: Dynamic t API.FamilyId
            }
 
+-- | TODO: Rename to ModelConfig.
+--
+--   UI modules will simply return polymorphic values like Account.HasConfig or
+--   Server.HasConfig. ModelConfig implements all those classes, so by requiring
+--   Monoid UI modules can easily build up the ModelConfig. By leaving the value
+--   polymorphic we don't loose modularity, because each UI module will only
+--   require the properties it wants to set. This way on can easily test a UI
+--   module which only needs Server.HasConfig by forcint the return value to be
+--   Server.Config.
 data App t
   = App { _subscriptions :: SubscriptionsDyn t
           -- TODO: Should be Server.Config
@@ -46,13 +55,13 @@ data Screen t
            , _screenGoHome :: Event t ()
            }
 
-instance HasServer Config where
+instance HasServer Model where
   server = _server
 
-instance HasAccount Config where
+instance HasAccount Model where
   account = _account
 
-instance HasAuth Config where
+instance HasAuth Model where
   auth = _auth
 
 instance (Reflex t) => Default (App t) where
@@ -95,17 +104,17 @@ babyNames loaded =
 
 -- Lenses for Config t:
 
-_server :: Lens' (Config t) (Server t)
-_server f config' = (\_server' -> config' { __server = _server' }) <$> f (__server config')
+_server :: Lens' (Model t) (Server t)
+_server f model' = (\_server' -> model' { __server = _server' }) <$> f (__server model')
 
-_account :: Lens' (Config t) (Account t)
-_account f config' = (\_account' -> config' { __account = _account' }) <$> f (__account config')
+_account :: Lens' (Model t) (Account t)
+_account f model' = (\_account' -> model' { __account = _account' }) <$> f (__account model')
 
-_auth :: Lens' (Config t) (Auth t)
-_auth f config' = (\_auth' -> config' { __auth = _auth' }) <$> f (__auth config')
+_auth :: Lens' (Model t) (Auth t)
+_auth f model' = (\_auth' -> model' { __auth = _auth' }) <$> f (__auth model')
 
-gonimoLocale :: Lens' (Config t) (Dynamic t Locale)
-gonimoLocale f config' = (\gonimoLocale' -> config' { _gonimoLocale = gonimoLocale' }) <$> f (_gonimoLocale config')
+gonimoLocale :: Lens' (Model t) (Dynamic t Locale)
+gonimoLocale f model' = (\gonimoLocale' -> model' { _gonimoLocale = gonimoLocale' }) <$> f (_gonimoLocale model')
 
 
 

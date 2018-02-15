@@ -57,7 +57,7 @@ uiStart = do
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
       pure $ UI never userWantsFamily never never never never langSelected
 
-ui :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool -> m (UI t)
+ui :: forall m t. GonimoM t m => App.Model t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
@@ -183,7 +183,7 @@ renderFamilySelector _ family' selected' = do
           $ (Gonimo.familyNameName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
-createFamily :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool
+createFamily :: forall m t. GonimoM t m => App.Model t -> App.Loaded t -> Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
   let response' = appConfig^.onResponse
@@ -229,7 +229,7 @@ createFamily appConfig loaded familyGotCreated = mdo
   pure (createFamilyEv, reqs)
 
 -- Dialog to configure family when a new one get's created:
-createFamily' :: forall m t. GonimoM t m => App.Config t -> App.Loaded t
+createFamily' :: forall m t. GonimoM t m => App.Model t -> App.Loaded t
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily' appConfig loaded = mdo
   let showNameEdit = const "isFamilyNameEdit" <$> invite^.Invite.uiGoBack

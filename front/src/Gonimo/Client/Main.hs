@@ -62,11 +62,11 @@ app = build $ \appModel -> do
              <> Server.Config (app'^.request)
 
 
-  pure $ Config { __auth            = fullAuth^.Auth._auth
-                , __account         = fullAccount^.Account._account
-                , __server          = server'
-                , App._gonimoLocale = currentLocale
-                }
+  pure $ Model { __auth            = fullAuth^.Auth._auth
+               , __account         = fullAccount^.Account._account
+               , __server          = server'
+               , App._gonimoLocale = currentLocale
+               }
 
   where
     build = void . mfix
