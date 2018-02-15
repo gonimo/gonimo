@@ -2,8 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 module Gonimo.Client.Subscriber ( module Gonimo.Client.Subscriber.API
-                                , Deps (..)
-                                , HasDeps
+                                , Model (..)
+                                , HasModel
                                 , _server
                                 , _auth
                                 , make
@@ -33,8 +33,8 @@ import           Gonimo.Client.Subscriber.API
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
-data Deps t
-  = Deps { __server :: Server t
+data Model t
+  = Model { __server :: Server t
          , __auth   :: Auth t
          }
 
@@ -43,18 +43,18 @@ data Deps t
 type FullSubscriber t = Server.Config t
 
 -- | Constraint on needed dependencies.
-type HasDeps d = (Server.HasServer d, Auth.HasAuth d)
+type HasModel d = (Server.HasServer d, Auth.HasAuth d)
 
 make :: forall c d m t. ( HasWebView m, MonadWidget t m, HasConfig c
-                          , HasDeps d)
+                          , HasModel d)
            => d t -> c t -> m (FullSubscriber t)
-make deps conf = do
+make model conf = do
   let
     requests = API.ReqSetSubscriptions . Set.toList <$> conf^.subscriptions
 
   pure $ Server.Config { Server._onRequest = mconcat
                           . map (fmap (:[]))
-                          $ [ tag (current requests) $ deps^.Auth.onAuthenticated
+                          $ [ tag (current requests) $ model^.Auth.onAuthenticated
                             , updated requests
                             ]
                         }
@@ -69,12 +69,12 @@ subscribeKeys keys mkKeyRequest gotNewKeyVal = do
 
 -- Auto generated lenses:
 
--- Lenses for Deps t:
+-- Lenses for Model t:
 
-_server :: Lens' (Deps t) (Server t)
+_server :: Lens' (Model t) (Server t)
 _server f fullConfig' = (\_server' -> fullConfig' { __server = _server' }) <$> f (__server fullConfig')
 
-_auth :: Lens' (Deps t) (Auth t)
+_auth :: Lens' (Model t) (Auth t)
 _auth f fullConfig' = (\_auth' -> fullConfig' { __auth = _auth' }) <$> f (__auth fullConfig')
 
 

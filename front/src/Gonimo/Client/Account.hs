@@ -8,7 +8,7 @@ At the moment this is only about managing of claimed invitations.
 module Gonimo.Client.Account ( -- * Interface
                                module API
                                -- * Types
-                             , Deps(..)
+                             , Model(..)
                              , _server
                              , FullAccount(..)
                              , _account
@@ -32,10 +32,10 @@ import           Gonimo.Client.Prelude
 --   from the server (ReqGetClaimedInvitations), so we only provide the ones of
 --   the current session. If you restart gonimo, your claimed invitations are no
 --   longer visible.
-make :: (Reflex t, MonadHold t m, MonadFix m, HasDeps d, HasConfig c)
+make :: (Reflex t, MonadHold t m, MonadFix m, HasModel d, HasConfig c)
   => d t -> c t -> m (FullAccount t)
-make deps conf = do
-  _claimedInvitations <- makeClaimedInvitations deps
+make model conf = do
+  _claimedInvitations <- makeClaimedInvitations model
   _subscriberConfig   <- subscribeInvitationClaims conf
   let
     _serverConfig = answerInvitations conf

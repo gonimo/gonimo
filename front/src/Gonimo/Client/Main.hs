@@ -34,27 +34,27 @@ import           Gonimo.I18N
 
 
 app :: forall x. Widget x ()
-app = build $ \appDeps -> do
+app = build $ \appModel -> do
   liftIO $ putStrLn "Loaded - yeah!"
 
-  let runApp = flip runReaderT (GonimoEnv (appDeps ^. gonimoLocale)) $ ui appDeps
+  let runApp = flip runReaderT (GonimoEnv (appModel ^. gonimoLocale)) $ ui appModel
   -- Little hack for now: We simply delay the UI a bit, so we avoid "blocked on MVar".
   app' <- appSwitchPromptly =<< dyn (pure runApp)
 
-  fullAuth <- Auth.make (appDeps ^. gonimoLocale) appDeps
+  fullAuth <- Auth.make (appModel ^. gonimoLocale) appModel
 
   let accountConfig
         = Account.Config { Account._onClaimInvitation = never
                          , Account._onAnswerInvitation = never
                          }
-  fullAccount <- Account.make appDeps accountConfig
+  fullAccount <- Account.make appModel accountConfig
 
-  subscriberServerConfig <- Subscriber.make appDeps
+  subscriberServerConfig <- Subscriber.make appModel
                             $ Subscriber.Config (app'^.subscriptions)
 
   initLang      <- readLocale
   currentLocale <- holdDyn initLang $ app'^.selectLang
-  performEvent_ $ writeLocale <$> updated (appDeps ^. gonimoLocale)
+  performEvent_ $ writeLocale <$> updated (appModel ^. gonimoLocale)
 
   server' <- Server.make Config.gonimoBackWSURL
              $ fullAuth^.Auth.serverConfig

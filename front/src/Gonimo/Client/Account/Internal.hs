@@ -20,11 +20,11 @@ import           Gonimo.SocketAPI.Types       (InvitationInfo)
 import           Gonimo.Types                 (InvitationSecret)
 
 
-data Deps t
-  = Deps { __server :: Server t
+data Model t
+  = Model { __server :: Server t
          }
 
-type HasDeps d = Server.HasServer d
+type HasModel d = Server.HasServer d
 
 data FullAccount t
   = FullAccount { __account         :: Account t
@@ -40,15 +40,15 @@ data FullAccount t
                 }
 
 makeClaimedInvitations
-  :: forall d t m. (Reflex t, MonadHold t m, MonadFix m, HasDeps d)
+  :: forall d t m. (Reflex t, MonadHold t m, MonadFix m, HasModel d)
   => d t -> m (Dynamic t ClaimedInvitations)
-makeClaimedInvitations deps =
+makeClaimedInvitations model =
   let
     onClaimedInvitation :: Event t (InvitationSecret, InvitationInfo)
-    onClaimedInvitation = fmapMaybe (^?_ResClaimedInvitation) $ deps ^. Server.onResponse
+    onClaimedInvitation = fmapMaybe (^?_ResClaimedInvitation) $ model ^. Server.onResponse
 
     onAnsweredInvitation :: Event t InvitationSecret
-    onAnsweredInvitation = fmapMaybe (^?_ResAnsweredInvitation._1) $ deps ^. Server.onResponse
+    onAnsweredInvitation = fmapMaybe (^?_ResAnsweredInvitation._1) $ model ^. Server.onResponse
   in
     foldDyn id Map.empty $ leftmost [ uncurry Map.insert <$> onClaimedInvitation
                                     , Map.delete <$> onAnsweredInvitation
@@ -86,7 +86,7 @@ instance Server.HasConfig FullAccount where
 instance Subscriber.HasConfig FullAccount where
   config = subscriberConfig
 
-instance Server.HasServer Deps where
+instance Server.HasServer Model where
   server = _server
 
 instance HasAccount FullAccount where
@@ -95,9 +95,9 @@ instance HasAccount FullAccount where
 -- Auto generated lenses:
 
 
--- Lenses for Deps t:
+-- Lenses for Model t:
 
-_server :: Lens' (Deps t) (Server t)
+_server :: Lens' (Model t) (Server t)
 _server f fullConfig' = (\_server' -> fullConfig' { __server = _server' }) <$> f (__server fullConfig')
 
 

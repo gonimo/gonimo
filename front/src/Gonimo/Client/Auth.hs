@@ -51,22 +51,22 @@ data FullAuth t
 
 make :: forall d t m. (HasWebView m, MonadWidget t m, Server.HasServer d)
   => Dynamic t Locale -> d t -> m (FullAuth t)
-make locDyn deps = do
-  (makeDeviceEvent, _authData) <- makeAuthData deps
-  let authenticateEvent = authenticate deps _authData
+make locDyn model = do
+  (makeDeviceEvent, _authData) <- makeAuthData model
+  let authenticateEvent = authenticate model _authData
   performEvent_
-    $ handleStolenSession <$> attach (current locDyn) (deps^.Server.onResponse)
+    $ handleStolenSession <$> attach (current locDyn) (model^.Server.onResponse)
   let
     _onAuthenticated :: Event t ()
     _onAuthenticated = do
       let handleAuthenticated resp = pure $ case resp of
             API.ResAuthenticated -> Just ()
             _                    -> Nothing
-      push handleAuthenticated $ deps^.Server.onResponse
+      push handleAuthenticated $ model^.Server.onResponse
   _isOnline <- fmap uniqDyn
                . holdDyn False
-               $ leftmost [ const False <$> deps^.Server.onClose
-                          , const False <$> deps^.Server.onCloseRequested
+               $ leftmost [ const False <$> model^.Server.onClose
+                          , const False <$> model^.Server.onCloseRequested
                           , const True <$> _onAuthenticated
                           ]
   let _onRequest = mconcat
@@ -82,7 +82,7 @@ make locDyn deps = do
 
 makeAuthData :: forall d t m. (HasWebView m, MonadWidget t m, Server.HasServer d)
   => d t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
-makeAuthData deps = do
+makeAuthData model = do
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     userAgentString <- getUserAgentString
 
@@ -93,7 +93,7 @@ makeAuthData deps = do
           if isNothing cAuth
           then pure . Just . API.ReqMakeDevice . Just $ userAgentString
           else pure Nothing
-    let makeDeviceEvent = push (const makeDevice) $ deps^.Server.onOpen
+    let makeDeviceEvent = push (const makeDevice) $ model^.Server.onOpen
 
     performEvent_
       $ writeAuthData storage <$> updated authDataDyn
@@ -101,7 +101,7 @@ makeAuthData deps = do
     pure (makeDeviceEvent, authDataDyn)
   where
     serverAuth :: Event t API.AuthData
-    serverAuth = push (pure . fromServerResponse) $ deps^.Server.onResponse
+    serverAuth = push (pure . fromServerResponse) $ model^.Server.onResponse
 
     fromServerResponse :: API.ServerResponse -> Maybe API.AuthData
     fromServerResponse resp = case resp of
@@ -110,10 +110,10 @@ makeAuthData deps = do
 
 
 authenticate :: forall d t. (Reflex t, HasServer d) => d t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
-authenticate deps authDataDyn =
+authenticate model authDataDyn =
   let
     authDataList = leftmost
-                    [ tag (current authDataDyn) $ deps^.Server.onOpen
+                    [ tag (current authDataDyn) $ model^.Server.onOpen
                     , updated authDataDyn
                     ]
     authData' = push pure authDataList
