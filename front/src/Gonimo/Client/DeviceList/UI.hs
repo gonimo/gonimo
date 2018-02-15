@@ -1,7 +1,7 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections       #-}
 module Gonimo.Client.DeviceList.UI where
 
 import           Control.Lens
@@ -10,7 +10,7 @@ import qualified Data.List                         as List
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Maybe                        (isJust)
-import           Data.Monoid
+import           Data.Maybe
 import           Data.Set                          (Set)
 import qualified Data.Set                          as Set
 import           Data.Text                         (Text)
@@ -21,23 +21,24 @@ import           Data.Time.Format                  (defaultTimeLocale,
 import           Data.Time.LocalTime               (TimeZone,
                                                     getCurrentTimeZone,
                                                     utcToLocalTime)
-import           Gonimo.SocketAPI.Types                (AccountId, DeviceId)
+import           Reflex.Dom.Core
+
 import qualified Gonimo.SocketAPI                  as API
+import           Gonimo.SocketAPI.Types            (AccountId, DeviceId)
 import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (DeviceType (..), _Baby)
-import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types           as App
 import           Gonimo.Client.ConfirmationButton  (confirmationEl)
 import           Gonimo.Client.DeviceList.Internal
+import           Gonimo.Client.DeviceList.UI.I18N
 import           Gonimo.Client.EditStringButton    (editDeviceName)
-import           Gonimo.Client.Reflex.Dom          (makeClickable, addBtnAttrs)
-import           Gonimo.Client.WebRTC.Channel     (ReceivingState (..), Channel)
-import qualified Gonimo.Client.WebRTC.Channel     as Channel
-import Gonimo.Client.Util
-import Data.Maybe
-import Gonimo.Client.Prelude
-import Gonimo.Client.DeviceList.UI.I18N
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom          (addBtnAttrs, makeClickable)
+import           Gonimo.Client.Util
+import           Gonimo.Client.WebRTC.Channel      (Channel,
+                                                    ReceivingState (..))
+import qualified Gonimo.Client.WebRTC.Channel      as Channel
 
 
 ui :: forall m t. GonimoM t m

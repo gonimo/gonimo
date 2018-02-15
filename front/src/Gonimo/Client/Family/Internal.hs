@@ -1,37 +1,36 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.Family.Internal where
 
-import Reflex.Dom.Core
-import Data.Monoid
-import Data.Text (Text)
-import Gonimo.SocketAPI.Types (FamilyId)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Data.Set ((\\))
-import qualified Gonimo.SocketAPI.Types as API
-import qualified Gonimo.SocketAPI as API
-import Control.Lens
-import qualified GHCJS.DOM.Window as Window
-import qualified Gonimo.Client.Storage as GStorage
-import qualified Gonimo.Client.Storage.Keys as GStorage
-import qualified GHCJS.DOM as DOM
-import Data.Foldable (traverse_)
-import Safe (headMay)
-import Control.Monad.Fix (MonadFix)
-import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
-import Control.Applicative
-import Data.Default (Default(..))
-import qualified Gonimo.Types                     as Gonimo
-import Gonimo.Client.Prelude
-import Gonimo.Client.Server hiding (Config)
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad.Fix          (MonadFix)
+import           Control.Monad.Trans.Maybe  (MaybeT (..), runMaybeT)
+import           Data.Default               (Default (..))
+import           Data.Foldable              (traverse_)
+import           Data.Map                   (Map)
+import qualified Data.Map                   as Map
+import           Data.Set                   ((\\))
+import qualified Data.Set                   as Set
+import           Data.Text                  (Text)
+import qualified GHCJS.DOM                  as DOM
+import qualified GHCJS.DOM.Window           as Window
+import           Reflex.Dom.Core
+import           Safe                       (headMay)
 
-import Gonimo.Client.Subscriber (SubscriptionsDyn)
-import qualified Gonimo.Client.App.Types as App
-import qualified Gonimo.Client.Auth as Auth
-import Gonimo.I18N
+import qualified Gonimo.Client.App.Types    as App
+import qualified Gonimo.Client.Auth         as Auth
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Server       hiding (Config)
+import qualified Gonimo.Client.Storage      as GStorage
+import qualified Gonimo.Client.Storage.Keys as GStorage
+import           Gonimo.Client.Subscriber   (SubscriptionsDyn)
+import           Gonimo.I18N
+import qualified Gonimo.SocketAPI           as API
+import           Gonimo.SocketAPI.Types     (FamilyId)
+import qualified Gonimo.SocketAPI.Types     as API
+import qualified Gonimo.Types               as Gonimo
 
 
 type FamilyMap = Map FamilyId API.Family
@@ -39,30 +38,30 @@ type FamilyMap = Map FamilyId API.Family
 data GonimoRole = RoleBaby | RoleParent deriving (Eq, Ord)
 
 data Config t
-  = Config { _configResponse :: Event t API.ServerResponse
-           , _configAuthData :: Dynamic t (Maybe API.AuthData)
-           , _configSelectFamily :: Event t FamilyId
+  = Config { _configResponse      :: Event t API.ServerResponse
+           , _configAuthData      :: Dynamic t (Maybe API.AuthData)
+           , _configSelectFamily  :: Event t FamilyId
            , _configAuthenticated :: Event t ()
            , _configCreateFamily  :: Event t ()
-           , _configLeaveFamily  :: Event t ()
-           , _configSetName :: Event t Text
+           , _configLeaveFamily   :: Event t ()
+           , _configSetName       :: Event t Text
            }
 
 data Family t
-  = Family { _families :: Dynamic t (Maybe FamilyMap)
+  = Family { _families       :: Dynamic t (Maybe FamilyMap)
            , _selectedFamily :: Dynamic t (Maybe FamilyId)
-           , _subscriptions :: SubscriptionsDyn t
-           , _request :: Event t [ API.ServerRequest ]
+           , _subscriptions  :: SubscriptionsDyn t
+           , _request        :: Event t [ API.ServerRequest ]
            }
 
 data UI t
   = UI { _uiSelectFamily :: Event t FamilyId
-       , _uiCreateFamily  :: Event t ()
+       , _uiCreateFamily :: Event t ()
        , _uiLeaveFamily  :: Event t ()
-       , _uiSetName :: Event t Text
+       , _uiSetName      :: Event t Text
        , _uiRoleSelected :: Event t GonimoRole
-       , _uiRequest :: Event t [ API.ServerRequest ]
-       , _uiSelectLang :: Event t Locale
+       , _uiRequest      :: Event t [ API.ServerRequest ]
+       , _uiSelectLang   :: Event t Locale
        }
 
 data CreateFamilyResult = CreateFamilyCancel | CreateFamilyOk | CreateFamilySetName !Text
@@ -77,11 +76,11 @@ instance Reflex t => Default (UI t) where
   def = UI never never never never never never never
 
 fromApp :: Reflex t => App.Config t -> Config t
-fromApp c = Config { _configResponse = c^.server.response
-                   , _configAuthData = c^.App.auth^.Auth.authData
+fromApp c = Config { _configResponse = c^.onResponse
+                   , _configAuthData = c^.Auth.authData
                    , _configSelectFamily = never
                    , _configSetName = never
-                   , _configAuthenticated = c^.App.auth.Auth.authenticated
+                   , _configAuthenticated = c^.Auth.onAuthenticated
                    , _configCreateFamily = never
                    , _configLeaveFamily = never
                    }
@@ -219,7 +218,7 @@ makeFamilies config' = do
      let
        handleGotFamilies resp = case resp of
          API.ResGotFamilies _ fids -> pure . Just $ fids
-         _ -> pure Nothing
+         _                         -> pure Nothing
        gotFamiliesEvent = push handleGotFamilies (config'^.configResponse)
 
        fidsToSubscriptions = foldr Set.insert Set.empty . map API.ReqGetFamily
@@ -274,35 +273,35 @@ _CreateFamilyCancel = prism' (\() -> CreateFamilyCancel) go
   where
     go c = case c of
       CreateFamilyCancel -> Just ()
-      _ -> Nothing
+      _                  -> Nothing
 
 _CreateFamilyOk :: Prism' CreateFamilyResult ()
 _CreateFamilyOk = prism' (\() -> CreateFamilyOk) go
   where
     go c = case c of
       CreateFamilyOk -> Just ()
-      _ -> Nothing
+      _              -> Nothing
 
 _CreateFamilySetName :: Prism' CreateFamilyResult Text
 _CreateFamilySetName = prism' (\t -> CreateFamilySetName t) go
   where
     go c = case c of
       CreateFamilySetName t -> Just $ t
-      _ -> Nothing
+      _                     -> Nothing
 
 _RoleParent :: Prism' GonimoRole ()
 _RoleParent = prism' (\() -> RoleParent) go
   where
     go c = case c of
       RoleParent -> Just ()
-      _ -> Nothing
+      _          -> Nothing
 
 _RoleBaby :: Prism' GonimoRole ()
 _RoleBaby = prism' (\() -> RoleBaby) go
   where
     go c = case c of
       RoleBaby -> Just ()
-      _ -> Nothing
+      _        -> Nothing
 
 
 

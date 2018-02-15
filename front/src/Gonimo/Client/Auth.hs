@@ -12,6 +12,7 @@ module Gonimo.Client.Auth ( -- * User interface
                           -- * Utility functions
                           -- TODO: Those should really not belong here - right?!
                           , connectionLossScreen
+                          , connectionLossScreen'
                           , loadingDots
                           ) where
 
@@ -48,24 +49,24 @@ data FullAuth t
              , __auth :: Auth t
              }
 
-make :: forall c t m. (HasWebView m, MonadWidget t m, Server.HasServer c, HasConfig c)
-  => Dynamic t Locale -> c t -> m (FullAuth t)
-make locDyn conf = do
-  (makeDeviceEvent, _authData) <- makeAuthData conf
-  let authenticateEvent = authenticate conf _authData
+make :: forall d t m. (HasWebView m, MonadWidget t m, Server.HasServer d)
+  => Dynamic t Locale -> d t -> m (FullAuth t)
+make locDyn deps = do
+  (makeDeviceEvent, _authData) <- makeAuthData deps
+  let authenticateEvent = authenticate deps _authData
   performEvent_
-    $ handleStolenSession <$> attach (current locDyn) (conf^.Server.onResponse)
+    $ handleStolenSession <$> attach (current locDyn) (deps^.Server.onResponse)
   let
     _onAuthenticated :: Event t ()
     _onAuthenticated = do
       let handleAuthenticated resp = pure $ case resp of
             API.ResAuthenticated -> Just ()
             _                    -> Nothing
-      push handleAuthenticated $ conf^.Server.onResponse
+      push handleAuthenticated $ deps^.Server.onResponse
   _isOnline <- fmap uniqDyn
                . holdDyn False
-               $ leftmost [ const False <$> conf^.Server.onClose
-                          , const False <$> conf^.Server.onCloseRequested
+               $ leftmost [ const False <$> deps^.Server.onClose
+                          , const False <$> deps^.Server.onCloseRequested
                           , const True <$> _onAuthenticated
                           ]
   let _onRequest = mconcat
@@ -79,9 +80,9 @@ make locDyn conf = do
                   , __auth = Auth {..}
                   }
 
-makeAuthData :: forall c t m. (HasWebView m, MonadWidget t m, Server.HasServer c)
-  => c t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
-makeAuthData conf = do
+makeAuthData :: forall d t m. (HasWebView m, MonadWidget t m, Server.HasServer d)
+  => d t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
+makeAuthData deps = do
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     userAgentString <- getUserAgentString
 
@@ -92,7 +93,7 @@ makeAuthData conf = do
           if isNothing cAuth
           then pure . Just . API.ReqMakeDevice . Just $ userAgentString
           else pure Nothing
-    let makeDeviceEvent = push (const makeDevice) $ conf^.Server.onOpen
+    let makeDeviceEvent = push (const makeDevice) $ deps^.Server.onOpen
 
     performEvent_
       $ writeAuthData storage <$> updated authDataDyn
@@ -100,7 +101,7 @@ makeAuthData conf = do
     pure (makeDeviceEvent, authDataDyn)
   where
     serverAuth :: Event t API.AuthData
-    serverAuth = push (pure . fromServerResponse) $ conf^.Server.onResponse
+    serverAuth = push (pure . fromServerResponse) $ deps^.Server.onResponse
 
     fromServerResponse :: API.ServerResponse -> Maybe API.AuthData
     fromServerResponse resp = case resp of
@@ -108,11 +109,11 @@ makeAuthData conf = do
       _ -> Nothing
 
 
-authenticate :: forall c t. (Reflex t, HasServer c) => c t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
-authenticate conf authDataDyn =
+authenticate :: forall d t. (Reflex t, HasServer d) => d t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
+authenticate deps authDataDyn =
   let
     authDataList = leftmost
-                    [ tag (current authDataDyn) $ conf^.Server.onOpen
+                    [ tag (current authDataDyn) $ deps^.Server.onOpen
                     , updated authDataDyn
                     ]
     authData' = push pure authDataList
@@ -143,8 +144,8 @@ getUserAgentString = do
   Navigator.getUserAgent navigator
 
 
-connectionLossScreen :: forall m t. GonimoM t m
-  => Auth t -> m ()
+connectionLossScreen :: forall a m t. (GonimoM t m, HasAuth a)
+  => a t -> m ()
 connectionLossScreen auth' = do
   _ <- dyn $ connectionLossScreen' . not <$> auth'^.isOnline
   pure ()
@@ -172,7 +173,8 @@ loadingDots = do
   let dotCount = mod <$> tickCount <*> pure 8
   pure $ T.replicate <$> dotCount <*> pure "."
 
-
+instance HasAuth FullAuth where
+  auth = _auth
 -- Auto generated lenses:
 
 -- Lenses for FullAuth t:

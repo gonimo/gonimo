@@ -2,8 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 module Gonimo.Client.Subscriber ( module Gonimo.Client.Subscriber.API
-                                , FullConfig
-                                , _config
+                                , Deps (..)
+                                , HasDeps
                                 , _server
                                 , _auth
                                 , make
@@ -33,26 +33,28 @@ import           Gonimo.Client.Subscriber.API
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
-data FullConfig t
-  = Config { __config :: Config t
-           , __server :: Server t
-           , __auth   :: Auth t
-           }
+data Deps t
+  = Deps { __server :: Server t
+         , __auth   :: Auth t
+         }
 
 
 -- | We simply provide configuration for Server.
 type FullSubscriber t = Server.Config t
 
-make :: forall m t. ( HasWebView m, MonadWidget t m, HasConfig c
-                          , Server.HasServer c, Auth.HasAuth c)
-           => c t -> m (FullSubscriber t)
-make conf = do
+-- | Constraint on needed dependencies.
+type HasDeps d = (Server.HasServer d, Auth.HasAuth d)
+
+make :: forall c d m t. ( HasWebView m, MonadWidget t m, HasConfig c
+                          , HasDeps d)
+           => d t -> c t -> m (FullSubscriber t)
+make deps conf = do
   let
     requests = API.ReqSetSubscriptions . Set.toList <$> conf^.subscriptions
 
-  pure $ FullSubscriber { Server._request = mconcat
+  pure $ Server.Config { Server._onRequest = mconcat
                           . map (fmap (:[]))
-                          $ [ tag (current requests) $ conf^.onAuthenticated
+                          $ [ tag (current requests) $ deps^.Auth.onAuthenticated
                             , updated requests
                             ]
                         }
@@ -67,15 +69,12 @@ subscribeKeys keys mkKeyRequest gotNewKeyVal = do
 
 -- Auto generated lenses:
 
--- Lenses for FullConfig t:
+-- Lenses for Deps t:
 
-_config :: Lens' (FullConfig t) (Config t)
-_config f fullConfig' = (\_config' -> fullConfig' { __config = _config' }) <$> f (__config fullConfig')
-
-_server :: Lens' (FullConfig t) (Server t)
+_server :: Lens' (Deps t) (Server t)
 _server f fullConfig' = (\_server' -> fullConfig' { __server = _server' }) <$> f (__server fullConfig')
 
-_auth :: Lens' (FullConfig t) (Auth t)
+_auth :: Lens' (Deps t) (Auth t)
 _auth f fullConfig' = (\_auth' -> fullConfig' { __auth = _auth' }) <$> f (__auth fullConfig')
 
 

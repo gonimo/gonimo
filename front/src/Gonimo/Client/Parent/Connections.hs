@@ -1,20 +1,21 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.Parent.Connections where
 
-import Gonimo.Client.Prelude
+import           Gonimo.Client.Prelude
 
 
-import           Data.Map                        (Map)
-import qualified Data.Map                        as Map
-import qualified GHCJS.DOM.AudioBufferSourceNode as AudioNode
-import           GHCJS.DOM.Types                 (MediaStream, MonadJSM,
-                                                  liftJSM)
-import           Reflex.Dom.Core
+import           Data.Map                          (Map)
+import qualified Data.Map                          as Map
+import qualified GHCJS.DOM.AudioBufferSourceNode   as AudioNode
+import           GHCJS.DOM.Types                   (MediaStream, MonadJSM,
+                                                    liftJSM)
+import qualified Language.Javascript.JSaddle.Value as JS
+
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Util                (boostMediaStreamVolume,
                                                     getVolumeInfo, loadSound,
@@ -23,18 +24,17 @@ import           Gonimo.Client.Util                (boostMediaStreamVolume,
 import           Gonimo.Client.WebRTC.Channel      (Channel)
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
 import qualified Gonimo.Client.WebRTC.Channels     as Channels
-import           Gonimo.SocketAPI.Types                (DeviceId)
 import qualified Gonimo.SocketAPI                  as API
+import           Gonimo.SocketAPI.Types            (DeviceId)
 import qualified Gonimo.SocketAPI.Types            as API
 import           Gonimo.Types                      (Secret)
-import qualified Language.Javascript.JSaddle.Value as JS
 
 data Config t
-  = Config  { _configResponse :: Event t API.ServerResponse
-            , _configAuthData :: Dynamic t API.AuthData
-            , _configConnectBaby :: Event t DeviceId
+  = Config  { _configResponse       :: Event t API.ServerResponse
+            , _configAuthData       :: Dynamic t API.AuthData
+            , _configConnectBaby    :: Event t DeviceId
             , _configDisconnectBaby :: Event t DeviceId
-            , _configDisconnectAll :: Event t ()
+            , _configDisconnectAll  :: Event t ()
             }
 
 data Connections t
@@ -48,12 +48,12 @@ data Connections t
 
 
 data StreamData t
-  = StreamData { _stream :: MediaStream
+  = StreamData { _stream      :: MediaStream
                , _volumeLevel :: Event t Double
                }
 
 data VideoView t
-  = VideoView { _videoViewNavBar :: NavBar.NavBar t
+  = VideoView { _videoViewNavBar         :: NavBar.NavBar t
               , _videoViewDisconnectBaby :: Event t DeviceId
               , _videoViewDisconnectAll  :: Event t ()
               }
@@ -200,7 +200,7 @@ pTraverseCache cache f inStreams = do
       mR <- traverse (JS.strictEqual sourceStream) (inStreams^.at k)
       case mR of
         Nothing -> pure False
-        Just r -> pure r
+        Just r  -> pure r
   reallyCachedBool <- Map.traverseWithKey checkReallyCached possiblyCached
   let
     reallyCached :: Map k (MediaStream, StreamData t)

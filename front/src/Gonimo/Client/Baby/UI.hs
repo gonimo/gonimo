@@ -1,7 +1,6 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE GADTs #-}
 module Gonimo.Client.Baby.UI where
 
 import           Control.Lens
@@ -10,7 +9,6 @@ import           Control.Monad.IO.Class
 import           Data.Foldable
 import qualified Data.Map.Strict                   as Map
 import           Data.Maybe                        (fromMaybe)
-import           Data.Monoid
 import           Data.Text                         (Text)
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified GHCJS.DOM.Types                   as JS
@@ -26,7 +24,7 @@ import           Gonimo.Client.EditStringButton    (editStringEl)
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server
+import           Gonimo.Client.Server              hiding (Config)
 import           Gonimo.Client.Util
 import           Gonimo.DOM.Navigator.MediaDevices
 import           Gonimo.I18N
@@ -38,7 +36,7 @@ ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
                            , _configEnableAutoStart = leftmost [ui'^.uiEnableAutoStart, disableAutostart]
-                           , _configResponse = appConfig^.server.response
+                           , _configResponse = appConfig^.onResponse
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = startMonitor
                            , _configStopMonitor  = leftmost [ui'^.uiGoHome, ui'^.uiStopMonitor]
@@ -89,7 +87,7 @@ ui appConfig loaded deviceList = mdo
                       , App._screenGoHome = leftmost [ui'^.uiGoHome, errorGoHome]
                       }
   where
-    renderCenter baby' ScreenStart = uiStart loaded deviceList baby'
+    renderCenter baby' ScreenStart   = uiStart loaded deviceList baby'
     renderCenter baby' ScreenRunning = uiRunning loaded deviceList baby'
 
 uiStart :: forall m t. GonimoM t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t
@@ -100,7 +98,7 @@ uiStart loaded deviceList  baby' = do
         navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
 
         _ <- widgetHold (pure ()) $ showAutostartInfo <$> updated (baby'^.autoStartEnabled)
-  
+
         newBabyName <-
           setBabyNameForm loaded baby'
         _ <- dyn $ renderVideo <$> baby'^.mediaStream
@@ -155,7 +153,7 @@ uiRunning loaded deviceList baby' =
           leaveConfirmation :: forall m1. GonimoM t m1 => m1 ()
           leaveConfirmation = do
               el "h3" $ trText Really_stop_baby_monitor
-              el "p" $ trText All_connected_devices_will_be_disconnected 
+              el "p" $ trText All_connected_devices_will_be_disconnected
 
         navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
 

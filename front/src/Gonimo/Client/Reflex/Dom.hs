@@ -18,7 +18,7 @@ import Control.Lens
 import GHCJS.DOM.Types (MediaStream, liftJSM, MonadJSM)
 import qualified Language.Javascript.JSaddle                       as JS
 import Data.Time.Clock
-import Gonimo.Client.Prelude
+import Gonimo.Client.Prelude hiding ((<>))
 import Gonimo.Client.Util
 import GHCJS.DOM.EventM (on)
 import qualified GHCJS.DOM.MediaStream             as MediaStream

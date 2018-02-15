@@ -1,7 +1,8 @@
-{-# LANGUAGE OverloadedStrings, RecursiveDo, ScopedTypeVariables #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Gonimo.Client.Main where
 
@@ -18,53 +19,57 @@ import qualified GHCJS.DOM.Window            as Window
 import qualified Language.Javascript.JSaddle as JS
 import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
                                               webSocketConfig_send)
-import qualified Gonimo.Client.App          as App
-import qualified Gonimo.Client.Auth         as Auth
-import qualified Gonimo.Client.Config       as Config
+
+import qualified Gonimo.Client.Account       as Account
+import           Gonimo.Client.App           as App
+import qualified Gonimo.Client.Auth          as Auth
+import qualified Gonimo.Client.Config        as Config
 import           Gonimo.Client.I18N
-import           Gonimo.Client.Server
-import qualified Gonimo.Client.Server       as Server
-import qualified Gonimo.Client.Storage      as GStorage
-import qualified Gonimo.Client.Storage.Keys as GStorage
-import qualified Gonimo.Client.Subscriber   as Subscriber
+import qualified Gonimo.Client.Server        as Server
+import qualified Gonimo.Client.Storage       as GStorage
+import qualified Gonimo.Client.Storage.Keys  as GStorage
+import qualified Gonimo.Client.Subscriber    as Subscriber
 import           Gonimo.I18N
 
--- import qualified GHCJS.DOM.Types as JS
+
 
 app :: forall x. Widget x ()
-app = mdo
+app = build $ \appDeps -> do
   liftIO $ putStrLn "Loaded - yeah!"
-  let serverRequests = auth^.Auth.request
-                    <> subscriber^.Subscriber.request
-                    <> app^.App.request
 
-  let serverConfig' = def & configRequest .~ serverRequests
+  let runApp = flip runReaderT (GonimoEnv (appDeps ^. gonimoLocale)) $ ui appDeps
+  -- Little hack for now: We simply delay the UI a bit, so we avoid "blocked on MVar".
+  app' <- appSwitchPromptly =<< dyn (pure runApp)
 
-  server' <- Server.create Config.gonimoBackWSURL serverConfig'
+  fullAuth <- Auth.make (appDeps ^. gonimoLocale) appDeps
 
-  let authConfig = Auth.Config { Auth._configResponse = server'^.response
-                               , Auth._configServerOpen = server'^.open
-                               , Auth._configServerClose = const () <$> server'^.close
-                               , Auth._configServerCloseRequested = server'^.closeRequested
-                               }
-  auth <- Auth.auth currentLocale authConfig
+  let accountConfig
+        = Account.Config { Account._onClaimInvitation = never
+                         , Account._onAnswerInvitation = never
+                         }
+  fullAccount <- Account.make appDeps accountConfig
 
-  let subscriberConfig
-        = Subscriber.Config { Subscriber._configResponse = server'^.response
-                            , Subscriber._configSubscriptions = app^.App.subscriptions
-                            , Subscriber._configAuthenticated = auth^.Auth.authenticated
-                            }
-  subscriber <- Subscriber.subscriber subscriberConfig
+  subscriberServerConfig <- Subscriber.make appDeps
+                            $ Subscriber.Config (app'^.subscriptions)
 
-  let appConfig = App.Config { App.__server = server'
-                             , App._subscriber = subscriber
-                             , App._auth = auth
-                             }
-  app <- flip runReaderT (GonimoEnv currentLocale) $ App.ui appConfig
-  initLang <- readLocale
-  currentLocale <- holdDyn initLang $ app^.App.selectLang
-  performEvent_ $ writeLocale <$> updated currentLocale
-  pure ()
+  initLang      <- readLocale
+  currentLocale <- holdDyn initLang $ app'^.selectLang
+  performEvent_ $ writeLocale <$> updated (appDeps ^. gonimoLocale)
+
+  server' <- Server.make Config.gonimoBackWSURL
+             $ fullAuth^.Auth.serverConfig
+             <> subscriberServerConfig
+             <> Server.Config (app'^.request)
+
+
+  pure $ Config { __auth            = fullAuth^.Auth._auth
+                , __account         = fullAccount^.Account._account
+                , __server          = server'
+                , App._gonimoLocale = currentLocale
+                }
+
+  where
+    build = void . mfix
 
 main :: JS.JSM ()
 -- main = run 3709 $ mainWidget app

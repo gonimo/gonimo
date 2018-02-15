@@ -1,48 +1,59 @@
 module Gonimo.Client.App.Types where
 
-import Reflex
-import qualified Gonimo.SocketAPI as API
-import qualified Gonimo.SocketAPI.Types as API
-import Control.Lens
-import qualified Gonimo.Client.Auth as Auth
-import qualified Gonimo.Client.Subscriber as Subscriber
-import Gonimo.Client.Subscriber (SubscriptionsDyn)
-import Data.Map (Map)
-import Control.Monad
-import Gonimo.Client.Prelude
-import qualified Gonimo.Types as Gonimo
+import           Control.Lens
+import           Control.Monad
+import           Data.Map                 (Map)
+import qualified Data.Set                 as Set
 
-import qualified Data.Set as Set
-import Gonimo.I18N
-import Gonimo.Client.Server (Server, HasServer)
-import qualified Gonimo.Client.Server as Server
+import           Gonimo.Client.Account    (Account, HasAccount)
+import qualified Gonimo.Client.Account    as Account
+import           Gonimo.Client.Auth       (Auth, HasAuth)
+import qualified Gonimo.Client.Auth       as Auth
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Server     (HasServer, Server)
+import qualified Gonimo.Client.Server     as Server
+import           Gonimo.Client.Subscriber (SubscriptionsDyn)
+import           Gonimo.I18N
+import qualified Gonimo.SocketAPI         as API
+import qualified Gonimo.SocketAPI.Types   as API
+import qualified Gonimo.Types             as Gonimo
+
+
 
 data Config t
-  = Config { __server :: Server t
-           , _auth :: Auth.Auth t
-           , _subscriber :: Subscriber.Subscriber t
+  = Config { __server  :: Server t
+           , __account :: Account t
+           , __auth    :: Auth t
+            -- | Is also in the Reader environment for translation convenience.
+           , _gonimoLocale :: Dynamic t Locale
            }
 
 data Loaded t
-  = Loaded { _authData :: Dynamic t API.AuthData
-           , _families :: Dynamic t (Map API.FamilyId API.Family)
+  = Loaded { _authData       :: Dynamic t API.AuthData
+           , _families       :: Dynamic t (Map API.FamilyId API.Family)
            , _selectedFamily :: Dynamic t API.FamilyId
            }
 
 data App t
   = App { _subscriptions :: SubscriptionsDyn t
-        , _request :: Event t [ API.ServerRequest ]
-        , _selectLang :: Event t Locale
+          -- TODO: Should be Server.Config
+        , _request       :: Event t [ API.ServerRequest ]
+        , _selectLang    :: Event t Locale
         }
 
 data Screen t
-  = Screen { _screenApp :: App t
+  = Screen { _screenApp    :: App t
            , _screenGoHome :: Event t ()
            }
 
 instance HasServer Config where
   server = _server
 
+instance HasAccount Config where
+  account = _account
+
+instance HasAuth Config where
+  auth = _auth
 
 instance (Reflex t) => Default (App t) where
   def = App (constDyn Set.empty) never never
@@ -80,18 +91,25 @@ babyNames loaded =
       zipDynWith getBabyNames (loaded^.selectedFamily) (loaded^.families)
 
 
--- Config lenses:
+-- Auto generated lenses:
+
+-- Lenses for Config t:
 
 _server :: Lens' (Config t) (Server t)
 _server f config' = (\_server' -> config' { __server = _server' }) <$> f (__server config')
 
-auth :: Lens' (Config t) (Auth.Auth t)
-auth f config' = (\auth' -> config' { _auth = auth' }) <$> f (_auth config')
+_account :: Lens' (Config t) (Account t)
+_account f config' = (\_account' -> config' { __account = _account' }) <$> f (__account config')
 
-subscriber :: Lens' (Config t) (Subscriber.Subscriber t)
-subscriber f config' = (\subscriber' -> config' { _subscriber = subscriber' }) <$> f (_subscriber config')
+_auth :: Lens' (Config t) (Auth t)
+_auth f config' = (\_auth' -> config' { __auth = _auth' }) <$> f (__auth config')
 
--- Loaded lenses:
+gonimoLocale :: Lens' (Config t) (Dynamic t Locale)
+gonimoLocale f config' = (\gonimoLocale' -> config' { _gonimoLocale = gonimoLocale' }) <$> f (_gonimoLocale config')
+
+
+
+-- Lenses for Loaded t:
 
 authData :: Lens' (Loaded t) (Dynamic t API.AuthData)
 authData f loaded' = (\authData' -> loaded' { _authData = authData' }) <$> f (_authData loaded')
@@ -102,7 +120,8 @@ families f loaded' = (\families' -> loaded' { _families = families' }) <$> f (_f
 selectedFamily :: Lens' (Loaded t) (Dynamic t API.FamilyId)
 selectedFamily f loaded' = (\selectedFamily' -> loaded' { _selectedFamily = selectedFamily' }) <$> f (_selectedFamily loaded')
 
--- App lenses:
+
+-- Lenses for App t:
 
 subscriptions :: Lens' (App t) (SubscriptionsDyn t)
 subscriptions f app' = (\subscriptions' -> app' { _subscriptions = subscriptions' }) <$> f (_subscriptions app')
@@ -114,11 +133,10 @@ selectLang :: Lens' (App t) (Event t Locale)
 selectLang f app' = (\selectLang' -> app' { _selectLang = selectLang' }) <$> f (_selectLang app')
 
 
--- Screen lenses:
+-- Lenses for Screen t:
 
 screenApp :: Lens' (Screen t) (App t)
 screenApp f screen' = (\screenApp' -> screen' { _screenApp = screenApp' }) <$> f (_screenApp screen')
-
 
 screenGoHome :: Lens' (Screen t) (Event t ())
 screenGoHome f screen' = (\screenGoHome' -> screen' { _screenGoHome = screenGoHome' }) <$> f (_screenGoHome screen')

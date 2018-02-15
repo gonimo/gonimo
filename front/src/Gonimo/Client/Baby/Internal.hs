@@ -1,70 +1,70 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.Baby.Internal where
 
-import Gonimo.Client.Prelude
+import           Gonimo.Client.Prelude
 
 
+import           Control.Exception                 (try)
 import qualified GHCJS.DOM                         as DOM
+import qualified GHCJS.DOM.MediaDevices            as MediaDevices
 import qualified GHCJS.DOM.MediaStream             as MediaStream
 import qualified GHCJS.DOM.MediaStreamTrack        as MediaStreamTrack
 import qualified GHCJS.DOM.Navigator               as Navigator
-import qualified GHCJS.DOM.Window                  as Window
-import qualified Gonimo.Client.Storage             as GStorage
-import qualified Gonimo.Client.Storage.Keys        as GStorage
-import qualified Gonimo.SocketAPI                  as API
-import qualified Gonimo.SocketAPI.Types            as API
-import           Reflex.Dom.Core
-
-import           Control.Exception                 (try)
 import           GHCJS.DOM.Types                   (MediaStream,
-                                                    MonadJSM, MediaStreamConstraints(..))
+                                                    MediaStreamConstraints (..),
+                                                    MonadJSM)
 import qualified GHCJS.DOM.Types                   as JS hiding (askJSM, runJSM)
-import qualified GHCJS.DOM.MediaDevices            as MediaDevices
-import qualified Gonimo.Client.Baby.Socket         as Socket
-import           Gonimo.Client.Util                (getVolumeInfo, oyd)
-import           Gonimo.DOM.Navigator.MediaDevices
-import qualified Gonimo.Types                      as Gonimo
+import qualified GHCJS.DOM.Window                  as Window
 import qualified Language.Javascript.JSaddle.Monad as JS
 
+import qualified Gonimo.Client.Baby.Socket         as Socket
+import qualified Gonimo.Client.Storage             as GStorage
+import qualified Gonimo.Client.Storage.Keys        as GStorage
+import           Gonimo.Client.Util                (getVolumeInfo, oyd)
+import           Gonimo.DOM.Navigator.MediaDevices
+import qualified Gonimo.SocketAPI                  as API
+import qualified Gonimo.SocketAPI.Types            as API
+import qualified Gonimo.Types                      as Gonimo
+
 data Config t
-  = Config  { _configSelectCamera :: Event t Text
-            , _configEnableCamera :: Event t Bool
+  = Config  { _configSelectCamera    :: Event t Text
+            , _configEnableCamera    :: Event t Bool
             , _configEnableAutoStart :: Event t Bool
-            , _configResponse :: Event t API.ServerResponse
-            , _configAuthData :: Dynamic t API.AuthData
-            , _configStartMonitor  :: Event t ()
-            , _configStopMonitor  :: Event t ()
-            , _configSetBabyName :: Event t Text
-            , _configSelectedFamily :: Dynamic t API.FamilyId
-            , _configGetUserMedia :: Event t () -- Get a new media stream, usefull for error handling.
+            , _configResponse        :: Event t API.ServerResponse
+            , _configAuthData        :: Dynamic t API.AuthData
+            , _configStartMonitor    :: Event t ()
+            , _configStopMonitor     :: Event t ()
+            , _configSetBabyName     :: Event t Text
+            , _configSelectedFamily  :: Dynamic t API.FamilyId
+            , _configGetUserMedia    :: Event t () -- Get a new media stream, usefull for error handling.
             }
 
 data Baby t
-  = Baby { _videoDevices :: Dynamic t [MediaDeviceInfo]
-         , _selectedCamera :: Dynamic t (Maybe Text)
-         , _cameraEnabled :: Dynamic t Bool
+  = Baby { _videoDevices     :: Dynamic t [MediaDeviceInfo]
+         , _selectedCamera   :: Dynamic t (Maybe Text)
+         , _cameraEnabled    :: Dynamic t Bool
          , _autoStartEnabled :: Dynamic t Bool
-         , _mediaStream :: Dynamic t (Either JS.PromiseRejected MediaStream)
-         , _socket :: Socket.Socket t
-         , _name :: Dynamic t Text
-         , _request :: Event t [API.ServerRequest]
-         , _volumeLevel :: Event t Double
+         , _mediaStream      :: Dynamic t (Either JS.PromiseRejected MediaStream)
+         , _socket           :: Socket.Socket t
+         , _name             :: Dynamic t Text
+         , _request          :: Event t [API.ServerRequest]
+         , _volumeLevel      :: Event t Double
          }
 
 data UI t
-  = UI { _uiGoHome :: Event t ()
-       , _uiStartMonitor  :: Event t ()
-       , _uiStopMonitor  :: Event t ()
-       , _uiEnableCamera :: Event t Bool
+  = UI { _uiGoHome          :: Event t ()
+       , _uiStartMonitor    :: Event t ()
+       , _uiStopMonitor     :: Event t ()
+       , _uiEnableCamera    :: Event t Bool
        , _uiEnableAutoStart :: Event t Bool
-       , _uiSelectCamera  :: Event t Text
-       , _uiSetBabyName :: Event t Text
-       , _uiRequest :: Event t [API.ServerRequest]
+       , _uiSelectCamera    :: Event t Text
+       , _uiSetBabyName     :: Event t Text
+       , _uiRequest         :: Event t [API.ServerRequest]
        }
 
 

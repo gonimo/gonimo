@@ -1,11 +1,10 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
 module Gonimo.Client.Family.UI where
 
 import           Control.Applicative
 import           Control.Lens
-import           Data.Monoid
 import           Data.Text                         (Text)
 import           Reflex.Dom.Core
 
@@ -21,8 +20,8 @@ import qualified Gonimo.Client.Invite              as Invite
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server
-import           Gonimo.SocketAPI.Types                (FamilyId)
 import qualified Gonimo.SocketAPI                  as API
+import           Gonimo.SocketAPI.Types            (FamilyId)
 import qualified Gonimo.SocketAPI.Types            as API
 import qualified Gonimo.Types                      as Gonimo
 
@@ -90,9 +89,9 @@ ui appConfig loaded familyGotCreated = do
         firstCreation <- headE inviteRequested
         let inviteUI
               = Invite.ui loaded
-                $ Invite.Config { Invite._configResponse = appConfig^.server.response
+                $ Invite.Config { Invite._configResponse = appConfig^.onResponse
                                 , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                                , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
+                                , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
                                 , Invite._configCreateInvitation = never
                                 }
         dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
@@ -187,13 +186,13 @@ renderFamilySelector _ family' selected' = do
 createFamily :: forall m t. GonimoM t m => App.Config t -> App.Loaded t -> Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
-  let response' = appConfig^.server.response
+  let response' = appConfig^.onResponse
   let
     familyCreated :: Event t FamilyId
     familyCreated = push (\res ->
                               case res of
                                 API.ResCreatedFamily fid -> pure $ Just fid
-                                _ -> pure Nothing
+                                _                        -> pure Nothing
                            ) response'
   mFamilyId' :: Dynamic t (Maybe FamilyId) <- holdDyn Nothing $ leftmost [ Just <$> familyCreated
                                                                          , const Nothing <$> gotValidFamilyId'
@@ -247,9 +246,9 @@ createFamily' appConfig loaded = mdo
       firstCreation <- headE showInviteView
       let inviteUI
             = Invite.ui loaded
-            $ Invite.Config { Invite._configResponse = appConfig^.server.response
+            $ Invite.Config { Invite._configResponse = appConfig^.onResponse
                             , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                            , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
+                            , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
                             , Invite._configCreateInvitation = never
                             }
       dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation

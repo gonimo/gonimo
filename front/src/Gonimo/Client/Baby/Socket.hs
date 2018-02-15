@@ -1,29 +1,28 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.Baby.Socket where
 
-import Gonimo.Client.Prelude
+import           Gonimo.Client.Prelude
 
 
-import           Data.Map                          (Map)
-import qualified Data.Set                          as Set
-import qualified Gonimo.SocketAPI                  as API
-import qualified Gonimo.SocketAPI.Types            as API
-import           Reflex.Dom.Core
-
-import           GHCJS.DOM.Types                   (MediaStream, liftJSM, MonadJSM)
-import qualified GHCJS.DOM.MediaStream             as MediaStream
-import           GHCJS.DOM.MediaStreamTrack        (mute)
-import qualified Gonimo.Client.WebRTC.Channels     as Channels
-import           Gonimo.Client.WebRTC.Channel      (Channel)
-import           Gonimo.Types                      (Secret, DeviceType(..))
-import           Gonimo.Client.Subscriber          (SubscriptionsDyn)
+import           Data.Map                      (Map)
+import qualified Data.Set                      as Set
 import           GHCJS.DOM.EventM
-import qualified GHCJS.DOM.Types                   as JS
+import qualified GHCJS.DOM.MediaStream         as MediaStream
+import           GHCJS.DOM.MediaStreamTrack    (mute)
+import           GHCJS.DOM.Types               (MediaStream, MonadJSM, liftJSM)
+import qualified GHCJS.DOM.Types               as JS
+
+import           Gonimo.Client.Subscriber      (SubscriptionsDyn)
+import           Gonimo.Client.WebRTC.Channel  (Channel)
+import qualified Gonimo.Client.WebRTC.Channels as Channels
+import qualified Gonimo.SocketAPI              as API
+import qualified Gonimo.SocketAPI.Types        as API
+import           Gonimo.Types                  (DeviceType (..), Secret)
 
 data Config t
   = Config  { _configResponse :: Event t API.ServerResponse
@@ -33,8 +32,8 @@ data Config t
             }
 
 data Socket t
-  = Socket { _request :: Event t [ API.ServerRequest ]
-           , _channels :: Dynamic t (Channels.ChannelMap t)
+  = Socket { _request       :: Event t [ API.ServerRequest ]
+           , _channels      :: Dynamic t (Channels.ChannelMap t)
            , _subscriptions :: SubscriptionsDyn t
            }
 
@@ -94,8 +93,8 @@ handleMutedTracks triggerClose stream = do
   closeListener <- liftJSM . newListener $ liftIO triggerClose
   let addCloseListener (event', track) = liftJSM $ addListener track event' closeListener False
   traverse_ addCloseListener $ (,) <$> [mute] <*> tracks -- Previously also ended
-  
-  
+
+
 
 -- Lenses for Config t:
 

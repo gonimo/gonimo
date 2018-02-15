@@ -1,36 +1,35 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections       #-}
 module Gonimo.Client.App.UI where
 
 import           Control.Lens
-import           Data.Monoid
 import qualified Data.Set                       as Set
-import qualified Gonimo.Client.DeviceList       as DeviceList
-import           Gonimo.Client.Reflex
-import           Reflex.Dom.Core
-
 import qualified GHCJS.DOM                      as DOM
 import qualified GHCJS.DOM.Window               as Window
+import qualified Language.Javascript.JSaddle    as JS
+import           Reflex.Dom.Core
+
 import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import           Gonimo.Client.App.Internal
 import           Gonimo.Client.App.Types
 import           Gonimo.Client.App.UI.I18N
 import qualified Gonimo.Client.Auth             as Auth
 import qualified Gonimo.Client.Baby             as Baby
+import qualified Gonimo.Client.DeviceList       as DeviceList
 import qualified Gonimo.Client.Family           as Family
 import qualified Gonimo.Client.MessageBox       as MessageBox
 import qualified Gonimo.Client.Parent           as Parent
 import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server hiding (Config, config)
+import           Gonimo.Client.Server           hiding (Config, config)
 import qualified Gonimo.Client.Storage          as GStorage
 import qualified Gonimo.Client.Storage.Keys     as GStorage
 import           Gonimo.Client.Util             (getBrowserProperty,
                                                  getBrowserVersion)
 import qualified Gonimo.SocketAPI               as API
-import qualified Language.Javascript.JSaddle    as JS
 
 
 ui :: forall m t. GonimoM t m
@@ -73,17 +72,17 @@ runLoaded :: forall m t. GonimoM t m
 runLoaded config family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
   evReady <- waitForJust
-             $ zipDynWith mkFuncPair (config^.auth.Auth.authData) (family^.Family.families)
+             $ zipDynWith mkFuncPair (config^.Auth.authData) (family^.Family.families)
   familyGotCreated <- hold False $ push (\res ->
                                             case res of
                                               API.ResCreatedFamily _ -> pure $ Just True
                                               _ -> pure Nothing
-                                        ) (config^.server.response)
+                                        ) (config^.onResponse)
 
   let onReady dynAuthFamilies =
         fromMaybeDyn
           (do
-              Auth.connectionLossScreen $ config^.auth
+              Auth.connectionLossScreen config
               startUI <- Family.uiStart
               let subs = constDyn Set.empty
               pure (App subs never never, startUI)
@@ -107,8 +106,8 @@ runLoaded config family = do
 loadedUI :: forall m t. GonimoM t m
       => Config t -> Loaded t -> Bool -> m (App t, Family.UI t)
 loadedUI config loaded familyCreated = mdo
-    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.server.response
-                                                            , DeviceList._configAuthData = config^.auth.Auth.authData
+    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = config^.onResponse
+                                                            , DeviceList._configAuthData = config^.Auth.authData
                                                             , DeviceList._configFamilyId = loaded^.selectedFamily
                                                             }
     initialRole <- getInitialRole
@@ -134,10 +133,10 @@ loadedUI config loaded familyCreated = mdo
     renderCenter deviceList familyCreated' mRole =
       case mRole of
           Nothing -> do
-            Auth.connectionLossScreen $ config^.auth
+            Auth.connectionLossScreen config
             (def,) <$> Family.ui config loaded familyCreated'
           Just Family.RoleBaby -> do
-            Auth.connectionLossScreen $ config^.auth
+            Auth.connectionLossScreen config
             (, def) <$> Baby.ui config loaded deviceList
           -- Parent renders connection loss screen itself. (Should not be rendered when there is an alarm.)
           Just Family.RoleParent -> (,def) <$> Parent.ui config loaded deviceList
@@ -225,7 +224,7 @@ checkBrowser = do
           el "br" blank
           el "br" blank
           makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
-    
+
 
 readHideBrowserWarning :: JS.MonadJSM m => m Bool
 readHideBrowserWarning = do

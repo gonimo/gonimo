@@ -8,7 +8,7 @@ module Gonimo.Client.WebRTC.Channel where
 
 import Gonimo.Client.Prelude
 
-import           Control.Lens
+
 import           Control.Monad.Reader.Class
 import           GHCJS.DOM.EventM
 import           GHCJS.DOM.Enums                (MediaStreamTrackState(..))
@@ -24,8 +24,6 @@ import           Gonimo.SocketAPI.Types        (DeviceId)
 import qualified Gonimo.SocketAPI               as API
 import qualified Gonimo.SocketAPI.Types         as API
 import           Gonimo.Types                   (Secret)
-import           Reflex.Dom.Core
-
 import           GHCJS.DOM.Types                (Dictionary (..), MediaStream,
                                                  MonadJSM, RTCPeerConnection)
 import           Gonimo.Client.Config

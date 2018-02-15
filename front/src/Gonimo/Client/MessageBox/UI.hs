@@ -1,20 +1,20 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections       #-}
 module Gonimo.Client.MessageBox.UI where
 
-import Reflex.Dom.Core
-import Control.Lens
-import Data.Monoid
-import Data.Text (Text)
-import Gonimo.Client.MessageBox.Internal
-import qualified Gonimo.SocketAPI as API
-import Gonimo.Client.Reflex.Dom
-import Gonimo.SocketAPI.Types (InvitationReply(..))
-import Gonimo.Server.Error (ServerError(..))
-import Gonimo.Client.Prelude
-import qualified Gonimo.Client.MessageBox.UI.I18N as I18N
+import           Control.Lens
+import           Data.Text                         (Text)
+import           Reflex.Dom.Core
+
+import           Gonimo.Client.MessageBox.Internal
+import qualified Gonimo.Client.MessageBox.UI.I18N  as I18N
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Server.Error               (ServerError (..))
+import qualified Gonimo.SocketAPI                  as API
+import           Gonimo.SocketAPI.Types            (InvitationReply (..))
 
 ui :: forall m t. GonimoM t m
       => Config t -> m (MessageBox t)

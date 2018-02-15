@@ -28,6 +28,7 @@ gonimoFrontPath = if isJust gonimoFrontHost
                   else "/index.html"
 
 gonimoBackServer :: Text
+-- gonimoBackServer = "b00.alpha.gonimo.com"
 gonimoBackServer = "localhost:8081"
 
 gonimoBackWSURL :: Text

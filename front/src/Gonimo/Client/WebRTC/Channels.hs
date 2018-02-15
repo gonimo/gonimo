@@ -1,55 +1,55 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.WebRTC.Channels where
 
-import Gonimo.Client.Prelude
+import           Gonimo.Client.Prelude
 
 import           Control.Concurrent
 
-import           Data.Map                      (Map)
-import qualified Data.Map                      as Map
+import           Data.Map                          (Map)
+import qualified Data.Map                          as Map
 -- Workaround until issue https://github.com/ghcjs/jsaddle-dom/issues/3 is resolved:
 #ifdef __GHCJS__
-import           GHCJS.DOM.RTCPeerConnection   as RTCPeerConnection
+import           GHCJS.DOM.RTCPeerConnection       as RTCPeerConnection
 #else
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
-import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection
+import           JSDOM.Generated.RTCPeerConnection as RTCPeerConnection
 #endif
-import           Gonimo.SocketAPI.Types            (DeviceId)
-import qualified Gonimo.SocketAPI              as API
-import qualified Gonimo.SocketAPI.Types        as API
-import           Gonimo.Types                  (Secret)
-import           Reflex.Dom.Core
-
-import           GHCJS.DOM.Types               (MediaStream, MediaStreamTrack,
-                                                MonadJSM, RTCIceCandidate(..), RTCIceCandidateInit(..))
-
-
 import           Data.Maybe
-import           Debug.Trace                   (trace)
-import qualified Gonimo.SocketAPI.Translations as API
-import           Language.Javascript.JSaddle   (JSM, liftJSM)
+import           Debug.Trace                       (trace)
+import           GHCJS.DOM.EventM                  (on)
+import qualified GHCJS.DOM.MediaStream             as MediaStream
+import           GHCJS.DOM.MediaStreamTrack        (getMuted, mute, unmute)
+import           GHCJS.DOM.Types                   (MediaStream,
+                                                    MediaStreamTrack, MonadJSM,
+                                                    RTCIceCandidate (..),
+                                                    RTCIceCandidateInit (..))
+import           Language.Javascript.JSaddle       (JSM, liftJSM)
 
-
-import           GHCJS.DOM.EventM              (on)
-import qualified GHCJS.DOM.MediaStream         as MediaStream
-import           GHCJS.DOM.MediaStreamTrack    (getMuted, mute, unmute)
-import           Gonimo.Client.Reflex          (buildDynMap)
-import           Gonimo.Client.Util            (getTransmissionInfo, fromPromiseM)
-import           Gonimo.Client.WebRTC.Channel  (Channel (..), ChannelEvent (..),
-                                                CloseEvent (..), RTCEvent (..),
-                                                ReceivingState (..),
-                                                audioReceivingState,
-                                                closeRequested, rtcConnection,
-                                                theirStream,
-                                                videoReceivingState)
-import qualified Gonimo.Client.WebRTC.Channel  as Channel
+import           Gonimo.Client.Reflex              (buildDynMap)
+import           Gonimo.Client.Util                (fromPromiseM,
+                                                    getTransmissionInfo)
+import           Gonimo.Client.WebRTC.Channel      (Channel (..),
+                                                    ChannelEvent (..),
+                                                    CloseEvent (..),
+                                                    RTCEvent (..),
+                                                    ReceivingState (..),
+                                                    audioReceivingState,
+                                                    closeRequested,
+                                                    rtcConnection, theirStream,
+                                                    videoReceivingState)
+import qualified Gonimo.Client.WebRTC.Channel      as Channel
+import qualified Gonimo.SocketAPI                  as API
+import qualified Gonimo.SocketAPI.Translations     as API
+import           Gonimo.SocketAPI.Types            (DeviceId)
+import qualified Gonimo.SocketAPI.Types            as API
+import           Gonimo.Types                      (Secret)
 
 
 type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
@@ -60,16 +60,16 @@ data ChannelSelector = AllChannels | OnlyChannel (DeviceId, Secret)
 
 -- Channels encapsulate RTCPeerConnections and combine them with a signalling channel.
 data Config t
-  = Config  { _configResponse :: Event t API.ServerResponse
-            , _configOurId :: Dynamic t DeviceId
+  = Config  { _configResponse        :: Event t API.ServerResponse
+            , _configOurId           :: Dynamic t DeviceId
             , _configBroadcastStream :: Dynamic t (Maybe MediaStream)
-            , _configCreateChannel :: Event t (DeviceId, Secret)
-            , _configCloseChannel :: Event t ChannelSelector
+            , _configCreateChannel   :: Event t (DeviceId, Secret)
+            , _configCloseChannel    :: Event t ChannelSelector
             }
 
 data Channels t
-  = Channels { _channelMap :: Dynamic t (ChannelMap t)
-             , _request :: Event t [ API.ServerRequest ]
+  = Channels { _channelMap    :: Dynamic t (ChannelMap t)
+             , _request       :: Event t [ API.ServerRequest ]
              , _remoteStreams :: Dynamic t StreamMap -- Useful to have this separate for rendering. (Don't reload videos on every change to map.)
              }
 
@@ -188,7 +188,7 @@ handleConnectionStateUpdate chans chanEv = do
     updateStat :: Int -> ReceivingState -> ReceivingState
     updateStat mStat oldState = case (mStat, oldState) of
       (0, StateNotReceiving) -> oldState
-      (_, StateNotReceiving)  -> StateReceiving 0
+      (_, StateNotReceiving) -> StateReceiving 0
       (0, StateUnreliable)   -> oldState
       (_, StateUnreliable)   -> StateReceiving 0
       (0, StateReceiving n)  -> StateReceiving (n+1)
@@ -245,7 +245,7 @@ handleBroadcastStream config channels' = do
         pure $ do
           sequence_ $ removeStream <$> connections <*> oldStreams
           sequence_ $ addStream <$> connections <*> newStreams
-      
+
     performEvent_ $ pushAlways replaceStreams (updated $ config^.configBroadcastStream)
 
 handleCreateChannel :: ( MonadHold t m, MonadFix m, Reflex t, PerformEvent t m

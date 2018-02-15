@@ -1,17 +1,14 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE GADTs #-}
 module Gonimo.Client.Parent.UI where
 
 import           Control.Lens
 import           Data.Foldable
-import           Data.Monoid
-import           Reflex.Dom.Core
-
 import qualified Data.Map                         as Map
 import qualified Data.Set                         as Set
 import qualified GHCJS.DOM.MediaStream            as MediaStream
+import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types          as App
 import qualified Gonimo.Client.Auth               as Auth
@@ -27,7 +24,7 @@ import           Gonimo.Client.Server
 import           Gonimo.Client.WebRTC.Channel     (Channel, ReceivingState (..),
                                                    worstState)
 import qualified Gonimo.Client.WebRTC.Channel     as Channel
-import           Gonimo.SocketAPI.Types               (DeviceId)
+import           Gonimo.SocketAPI.Types           (DeviceId)
 import           Gonimo.Types                     (_Baby)
 
 
@@ -35,7 +32,7 @@ import           Gonimo.Types                     (_Baby)
 ui :: forall m t. GonimoM t m
             => App.Config t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
-  connections' <- C.connections $ C.Config { C._configResponse = appConfig^.server.response
+  connections' <- C.connections $ C.Config { C._configResponse = appConfig^.onResponse
                                            , C._configAuthData = loaded^.App.authData
                                            , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
                                            , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
@@ -61,7 +58,7 @@ ui appConfig loaded deviceList = mdo
                                                              ]
   let showInviteView = const "isInviteView" <$> inviteRequested
 
-  let showBroken = fmap not $ (||) <$> connections'^.C.brokenConnections <*> appConfig^.App.auth.Auth.isOnline
+  let showBroken = fmap not $ (||) <$> connections'^.C.brokenConnections <*> appConfig^.Auth.isOnline
 
   _ <- dyn $ Auth.connectionLossScreen' <$> showBroken
 
@@ -81,9 +78,9 @@ ui appConfig loaded deviceList = mdo
       firstCreation <- headE inviteRequested
       let inviteUI
             = Invite.ui loaded
-              $ Invite.Config { Invite._configResponse = appConfig^.server.response
+              $ Invite.Config { Invite._configResponse = appConfig^.onResponse
                               , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                              , Invite._configAuthenticated = appConfig^.App.auth.Auth.authenticated
+                              , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
                               , Invite._configCreateInvitation = never
                               }
       dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation

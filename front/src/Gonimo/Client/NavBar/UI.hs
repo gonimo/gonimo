@@ -3,17 +3,18 @@ module Gonimo.Client.NavBar.UI where
 import           Control.Lens
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
+import           Reflex.Dom.Core
+
 import qualified Gonimo.Client.App.Types           as App
 import qualified Gonimo.Client.DeviceList.Internal as DeviceList
+import           Gonimo.Client.EditStringButton    (editDeviceName,
+                                                    editFamilyName)
 import qualified Gonimo.Client.Family.Internal     as Family
 import           Gonimo.Client.NavBar.Internal
+import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Reflex.Dom.Core
-import           Data.Monoid
-import           Gonimo.Client.EditStringButton (editDeviceName, editFamilyName)
-import qualified Gonimo.SocketAPI as API
-import qualified Gonimo.SocketAPI.Types as API
-import Gonimo.Client.Prelude
+import qualified Gonimo.SocketAPI                  as API
+import qualified Gonimo.SocketAPI.Types            as API
 
 
 navBar :: forall m t. GonimoM t m

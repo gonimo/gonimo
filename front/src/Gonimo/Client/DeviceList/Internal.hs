@@ -1,27 +1,27 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
 module Gonimo.Client.DeviceList.Internal where
 
 import           Control.Lens
 import           Control.Monad.Fix        (MonadFix)
 import           Data.Map                 (Map)
-import           Data.Text                 (Text)
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromMaybe)
-import           Data.Monoid
 import           Data.Set                 (Set)
 import qualified Data.Set                 as Set
+import           Data.Text                (Text)
+import           Reflex.Dom.Core
+
+import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex     (buildMap)
 import           Gonimo.Client.Subscriber (subscribeKeys)
-import           Gonimo.SocketAPI.Types       (AccountId, DeviceId, FamilyId)
 import qualified Gonimo.SocketAPI         as API
+import           Gonimo.SocketAPI.Types   (AccountId, DeviceId, FamilyId)
 import qualified Gonimo.SocketAPI.Types   as API
 import           Gonimo.Types             (DeviceType)
-import           Reflex.Dom.Core
-import           Gonimo.Client.Prelude
-import           Data.Default
+
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 type NestedDeviceInfos t = Map AccountId (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
@@ -35,15 +35,15 @@ data Config t
            }
 
 data DeviceList t
-  = DeviceList { _deviceInfos :: Dynamic t (NestedDeviceInfos t)
+  = DeviceList { _deviceInfos   :: Dynamic t (NestedDeviceInfos t)
                , _onlineDevices :: Dynamic t (Map DeviceId DeviceType)
                , _subscriptions :: SubscriptionsDyn t
-               , _request :: Event t [ API.ServerRequest ]
+               , _request       :: Event t [ API.ServerRequest ]
                }
 
 data UI t
-  = UI { _uiRequest :: Event t [ API.ServerRequest ]
-       , _uiConnect :: Event t DeviceId
+  = UI { _uiRequest    :: Event t [ API.ServerRequest ]
+       , _uiConnect    :: Event t DeviceId
        , _uiDisconnect :: Event t DeviceId
        , _uiShowStream :: Event t DeviceId
        }
@@ -134,7 +134,7 @@ getMembersSubscription config =
 
     handleGotAccounts resp = case resp of
       API.ResGotFamilyMembers _ aids -> pure . Just $ aids
-      _ -> pure Nothing
+      _                              -> pure Nothing
     gotAccountsEvent = push handleGotAccounts (config^.configResponse)
   in
     (subs, gotAccountsEvent)

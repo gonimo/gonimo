@@ -1,31 +1,31 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
 module Gonimo.Client.Invite.UI where
 
-import Reflex.Dom.Core
-import Control.Lens
-import Control.Monad
-import Data.Monoid
-import Data.Text (Text)
-import Gonimo.SocketAPI.Types (InvitationId)
-import Gonimo.Client.Invite.Internal
-import Control.Monad.IO.Class (liftIO)
-import Data.Maybe (maybe)
-import qualified Data.Text.Encoding as T
-import Network.HTTP.Types (urlEncode)
-import Gonimo.Types (InvitationDelivery(..))
-import qualified Gonimo.SocketAPI as API
-import qualified Gonimo.SocketAPI.Types as API
-import Gonimo.Client.Reflex.Dom
-import qualified Gonimo.Client.App.Types as App
+import           Control.Lens
+import           Control.Monad
+import           Control.Monad.IO.Class        (liftIO)
+import           Control.Monad.Reader.Class
+import           Data.Maybe                    (maybe)
+import           Data.Text                     (Text)
+import qualified Data.Text.Encoding            as T
+import qualified GHCJS.DOM.Element             as Element
+import           Network.HTTP.Types            (urlEncode)
+import           Reflex.Dom.Core
+
+import qualified Gonimo.Client.App.Types       as App
+import           Gonimo.Client.I18N
+import           Gonimo.Client.Invite.Internal
 import           Gonimo.Client.Invite.UI.I18N
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Util
 import           Gonimo.I18N
-import qualified GHCJS.DOM.Element as Element
-import Gonimo.Client.Prelude
-import Gonimo.Client.I18N
-import Control.Monad.Reader.Class
+import qualified Gonimo.SocketAPI              as API
+import           Gonimo.SocketAPI.Types        (InvitationId)
+import qualified Gonimo.SocketAPI.Types        as API
+import           Gonimo.Types                  (InvitationDelivery (..))
 
 ui :: forall m t. GonimoM t m => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
@@ -150,7 +150,7 @@ showLinkInput invitationLink =
 
 
 copyClipboardScript :: forall t m. (DomBuilder t m) => m ()
-copyClipboardScript = el "script" $ text $ 
+copyClipboardScript = el "script" $ text $
        "copyTextFromId = function(id_) {\n"
     <> "    try\n"
     <> "    {\n"

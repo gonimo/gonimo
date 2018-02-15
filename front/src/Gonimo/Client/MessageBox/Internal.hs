@@ -1,7 +1,7 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.MessageBox.Internal where
 
 import           Control.Lens
@@ -9,9 +9,9 @@ import           Data.Text               (Text)
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types as App
-import           Gonimo.Client.Server hiding (Config)
-import           Gonimo.SocketAPI.Types      (FamilyId)
+import           Gonimo.Client.Server    hiding (Config)
 import qualified Gonimo.SocketAPI        as API
+import           Gonimo.SocketAPI.Types  (FamilyId)
 
 invitationQueryParam :: Text
 invitationQueryParam = "messageBox"
@@ -32,7 +32,7 @@ data Action
   | SelectFamily !FamilyId
 
 fromApp :: Reflex t => App.Config t -> Config t
-fromApp c = Config { _configMessage = (:[]) . ServerResponse <$> c^.server.response
+fromApp c = Config { _configMessage = (:[]) . ServerResponse <$> c^.onResponse
                    }
 
 -- Prisms:
@@ -42,14 +42,14 @@ _ServerRequest = prism' (\r -> ServerRequest r) go
   where
     go c = case c of
       ServerRequest r -> Just r
-      _ -> Nothing
+      _               -> Nothing
 
 _SelectFamily :: Prism' Action FamilyId
 _SelectFamily = prism' (\r -> SelectFamily r) go
   where
     go c = case c of
       SelectFamily r -> Just r
-      _ -> Nothing
+      _              -> Nothing
 
 -- Lenses for Config t:
 
