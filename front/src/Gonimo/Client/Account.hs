@@ -12,7 +12,6 @@ module Gonimo.Client.Account ( -- * Interface
                              , _server
                              , FullAccount(..)
                              , _account
-                             , serverConfig
                                -- * Creation
                              , make
                              ) where

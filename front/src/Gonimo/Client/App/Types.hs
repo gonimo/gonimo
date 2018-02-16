@@ -95,6 +95,14 @@ instance Subscriber.HasConfig ModelConfig where
 instance Server.HasConfig ModelConfig where
   config = serverConfig
 
+instance Flattenable ModelConfig where
+  flattenWith doSwitch ev
+    = ModelConfig
+      <$> flattenWith doSwitch (_accountConfig <$> ev)
+      <*> flattenWith doSwitch (_subscriberConfig <$> ev)
+      <*> flattenWith doSwitch (_serverConfig <$> ev)
+      <*> doSwitch never (_selectLanguage <$> ev)
+
 appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev
   = App { _subscriptions = join $ _subscriptions <$> ev

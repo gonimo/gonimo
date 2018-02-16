@@ -175,6 +175,11 @@ loadingDots = do
 
 instance HasAuth FullAuth where
   auth = _auth
+
+
+instance Server.HasConfig FullAuth where
+  config = serverConfig
+
 -- Auto generated lenses:
 
 -- Lenses for FullAuth t:

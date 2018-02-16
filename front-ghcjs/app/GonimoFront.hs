@@ -9,5 +9,5 @@ import qualified Gonimo.Client.Main as Gonimo
 
 
 main :: IO ()
-main = Gonimo.main
+main = Gonimo.main =<< Gonimo.mkEmptyConfig
 

@@ -25,6 +25,7 @@ import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server           hiding (Config, config)
+import qualified Gonimo.Client.Subscriber       as Subscriber
 import qualified Gonimo.Client.Storage          as GStorage
 import qualified Gonimo.Client.Storage.Keys     as GStorage
 import           Gonimo.Client.Util             (getBrowserProperty,
@@ -33,7 +34,7 @@ import qualified Gonimo.SocketAPI               as API
 
 
 ui :: forall m t. GonimoM t m
-      => Model t -> m (App t)
+      => Model t -> m (ModelConfig t)
 ui model = mdo
   checkBrowser
   family <- Family.family
@@ -55,17 +56,20 @@ ui model = mdo
                                 _ -> pure Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
                              ) (msgBox ^. MessageBox.action)
 
-  accept <- AcceptInvitation.ui $ AcceptInvitation.fromApp model
+  accept <- AcceptInvitation.ui model
   (app, familyUI) <- runLoaded model family
 
-  pure $ app & request %~ (<> (  family^.Family.request
-                              <> accept^.AcceptInvitation.request
-                              )
-                          )
-             & subscriptions %~ (<> family^.Family.subscriptions)
-             & subscriptions %~ (<> accept^.AcceptInvitation.subscriptions)
-             & selectLang .~ leftmost [app^.selectLang, familyUI^.Family.uiSelectLang ]
-
+  let oldServer = mempty & onRequest .~ ( app ^. request
+                                                 <> family ^. Family.request
+                                               )
+  let oldSubscriber = mempty & Subscriber.subscriptions .~ (family ^. Family.subscriptions)
+  let oldConfig = mempty
+                  & serverConfig .~ oldServer
+                  & subscriberConfig .~ oldSubscriber
+                  & selectLanguage .~ leftmost [ app^.selectLang
+                                               , familyUI^.Family.uiSelectLang
+                                               ]
+  pure $ oldConfig <> accept
 
 runLoaded :: forall m t. GonimoM t m
       => Model t -> Family.Family t -> m (App t, Family.UI t)

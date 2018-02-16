@@ -18,17 +18,14 @@ import           Control.Monad.IO.Class
 import qualified Data.Aeson                         as Aeson
 import qualified Data.ByteString.Lazy               as BL
 import           Data.Default
-import           Data.Maybe                         (fromMaybe)
-import           Data.Monoid
 import           Data.Text                          (Text)
 import qualified Data.Text.Encoding                 as T
 import           Data.Time.Clock
-import           Generics.Deriving.Base             (Generic)
-import           Generics.Deriving.Monoid
 import           GHCJS.DOM.Types                    (MonadJSM)
 
 import qualified Gonimo.Client.Reflex.Dom.WebSocket as WS
 import           Gonimo.Constants
+import           Gonimo.Client.Prelude
 
 data Config t
   = Config { _onRequest :: Event t [ServerRequest]
@@ -57,9 +54,16 @@ data Server t
 instance Reflex t => Default (Config t) where
   def = Config never
 
+instance Reflex t => Semigroup (Config t) where
+  (<>) = mappenddefault
+
 instance Reflex t => Monoid (Config t) where
   mempty = memptydefault
   mappend = mappenddefault
+
+instance Flattenable Config where
+  flattenWith doSwitch ev
+    = Config <$> doSwitch never (_onRequest <$> ev)
 
 make :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
