@@ -49,9 +49,13 @@ makeClaimedInvitations model =
 
     onAnsweredInvitation :: Event t InvitationSecret
     onAnsweredInvitation = fmapMaybe (^?_ResAnsweredInvitation._1) $ model ^. Server.onResponse
+
+    onError :: Event t InvitationSecret
+    onError = fmapMaybe (^?_ResError . _1 . _ReqAnswerInvitation . _1) $ model ^. Server.onResponse
   in
     foldDyn id Map.empty $ leftmost [ uncurry Map.insert <$> onClaimedInvitation
                                     , Map.delete <$> onAnsweredInvitation
+                                    , Map.delete <$> onError
                                     ]
 
 answerInvitations :: (Reflex t, HasConfig c) => c t -> Server.Config t
