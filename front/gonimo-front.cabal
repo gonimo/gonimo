@@ -67,22 +67,21 @@ library
   if impl(ghcjs)
      build-depends: ghcjs-base
 
-  exposed-modules:    Gonimo.Client.Storage
-                    , Gonimo.Client.Account
-                    , Gonimo.Client.Account.Internal
-                    , Gonimo.Client.Account.API
+  exposed-modules:    Gonimo.Client.Main
                     , Gonimo.Client.AcceptInvitation
-                    , Gonimo.Client.AcceptInvitation.Internal
                     , Gonimo.Client.AcceptInvitation.UI
                     , Gonimo.Client.AcceptInvitation.UI.I18N
+                    , Gonimo.Client.Account
+                    , Gonimo.Client.Account.API
+                    , Gonimo.Client.Account.Internal
                     , Gonimo.Client.App
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
                     , Gonimo.Client.App.UI.I18N
                     , Gonimo.Client.Auth
-                    , Gonimo.Client.Auth.I18N
                     , Gonimo.Client.Auth.API
+                    , Gonimo.Client.Auth.I18N
                     , Gonimo.Client.Baby
                     , Gonimo.Client.Baby.Internal
                     , Gonimo.Client.Baby.Socket
@@ -109,7 +108,9 @@ library
                     , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.Invite.UI
                     , Gonimo.Client.Invite.UI.I18N
-                    , Gonimo.Client.Main
+                    , Gonimo.Client.JS.Audio
+                    , Gonimo.Client.JS.OYD
+                    , Gonimo.Client.JS.Volume
                     , Gonimo.Client.MessageBox
                     , Gonimo.Client.MessageBox.Internal
                     , Gonimo.Client.MessageBox.UI
@@ -127,18 +128,17 @@ library
                     , Gonimo.Client.Reflex.Dom.WebSocket
                     , Gonimo.Client.Reflex.Dom.WebSocket.Internal
                     , Gonimo.Client.Server
+                    , Gonimo.Client.Storage
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Subscriber.API
                     , Gonimo.Client.Util
-                    , Gonimo.Client.JS.OYD
-                    , Gonimo.Client.JS.Audio
-                    , Gonimo.Client.JS.Volume
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.WebRTC.Channels
                     , Gonimo.DOM.Navigator.MediaDevices
                     , Gonimo.DOM.Navigator.MediaDevices.Internal
                     , Gonimo.DOM.Navigator.MediaDevices.Types
-                    , Gonimo.DOM.Window.Internal
                     , Gonimo.DOM.Window
+                    , Gonimo.DOM.Window.Internal
                     , Gonimo.SocketAPI.Translations
+                    , Reflex.Class.Extended
