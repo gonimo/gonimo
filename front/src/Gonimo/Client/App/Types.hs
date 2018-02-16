@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Gonimo.Client.App.Types where
 
 import           Control.Lens
@@ -17,8 +18,17 @@ import           Gonimo.I18N
 import qualified Gonimo.SocketAPI         as API
 import qualified Gonimo.SocketAPI.Types   as API
 import qualified Gonimo.Types             as Gonimo
+import qualified Gonimo.Client.Subscriber.API as Subscriber
 
 
+
+
+data ModelConfig t
+  = ModelConfig { _accountConfig :: Account.Config t
+                , _subscriberConfig :: Subscriber.Config t
+                , _serverConfig :: Server.Config t
+                , _selectLanguage :: Event t Locale
+                } deriving (Generic)
 
 data Model t
   = Model { __server  :: Server t
@@ -34,18 +44,17 @@ data Loaded t
            , _selectedFamily :: Dynamic t API.FamilyId
            }
 
--- | TODO: Rename to ModelConfig.
+-- | TODO: Get rid of this, it got replaced by ModelConfig.
 --
 --   UI modules will simply return polymorphic values like Account.HasConfig or
 --   Server.HasConfig. ModelConfig implements all those classes, so by requiring
---   Monoid UI modules can easily build up the ModelConfig. By leaving the value
+--   Monoid, UI modules can easily build up the ModelConfig. By leaving the value
 --   polymorphic we don't loose modularity, because each UI module will only
 --   require the properties it wants to set. This way on can easily test a UI
---   module which only needs Server.HasConfig by forcint the return value to be
+--   module which only needs Server.HasConfig by forcing the return value to be
 --   Server.Config.
 data App t
   = App { _subscriptions :: SubscriptionsDyn t
-          -- TODO: Should be Server.Config
         , _request       :: Event t [ API.ServerRequest ]
         , _selectLang    :: Event t Locale
         }
@@ -69,6 +78,22 @@ instance (Reflex t) => Default (App t) where
 
 instance (Reflex t) => Default (Screen t) where
   def = Screen def never
+
+instance Reflex t => Semigroup (ModelConfig t) where
+  (<>) = mappenddefault
+
+instance Reflex t => Monoid (ModelConfig t) where
+  mempty = memptydefault
+  mappend = (<>)
+
+instance Account.HasConfig ModelConfig where
+  config = accountConfig
+
+instance Subscriber.HasConfig ModelConfig where
+  config = subscriberConfig
+
+instance Server.HasConfig ModelConfig where
+  config = serverConfig
 
 appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev
@@ -102,7 +127,22 @@ babyNames loaded =
 
 -- Auto generated lenses:
 
--- Lenses for Config t:
+-- Lenses for ModelConfig t:
+
+accountConfig :: Lens' (ModelConfig t) (Account.Config t)
+accountConfig f modelConfig' = (\accountConfig' -> modelConfig' { _accountConfig = accountConfig' }) <$> f (_accountConfig modelConfig')
+
+subscriberConfig :: Lens' (ModelConfig t) (Subscriber.Config t)
+subscriberConfig f modelConfig' = (\subscriberConfig' -> modelConfig' { _subscriberConfig = subscriberConfig' }) <$> f (_subscriberConfig modelConfig')
+
+serverConfig :: Lens' (ModelConfig t) (Server.Config t)
+serverConfig f modelConfig' = (\serverConfig' -> modelConfig' { _serverConfig = serverConfig' }) <$> f (_serverConfig modelConfig')
+
+selectLanguage :: Lens' (ModelConfig t) (Event t Locale)
+selectLanguage f modelConfig' = (\selectLanguage' -> modelConfig' { _selectLanguage = selectLanguage' }) <$> f (_selectLanguage modelConfig')
+
+
+-- Lenses for Model t:
 
 _server :: Lens' (Model t) (Server t)
 _server f model' = (\_server' -> model' { __server = _server' }) <$> f (__server model')
