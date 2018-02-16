@@ -32,7 +32,7 @@ import           Data.Default
 import           Data.Foldable             (traverse_)
 import           Data.Maybe                as Maybe (catMaybes, fromMaybe,
                                                      isJust, isNothing,
-                                                     mapMaybe, maybe)
+                                                     mapMaybe, maybe, listToMaybe)
 import           Data.Semigroup            as Semigroup
 import           Data.Text                 (Text)
 import           Generics.Deriving.Base    (Generic)
