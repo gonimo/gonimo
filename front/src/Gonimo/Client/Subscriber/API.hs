@@ -6,7 +6,6 @@ Copyright   : (c) Robert Klotzner, 2018
 module Gonimo.Client.Subscriber.API where
 
 import           Data.Set (Set)
-import qualified Data.Set as Set
 
 import           Gonimo.Client.Prelude
 import qualified Gonimo.SocketAPI as API
@@ -22,7 +21,7 @@ data Config t
            } deriving (Generic)
 
 instance Reflex t => Default (Config t) where
-  def = Config (pure Set.empty)
+  def = mempty
 
 instance Reflex t => Semigroup (Config t) where
   (<>) = mappenddefault
@@ -46,3 +45,6 @@ class HasConfig a where
 instance HasConfig Config where
   config = id
 
+
+instance Flattenable Config where
+  flattenWith doSwitch ev = Config <$> flattenDynamic doSwitch (_subscriptions <$> ev)

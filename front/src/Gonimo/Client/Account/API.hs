@@ -54,8 +54,8 @@ type IsConfig c t = (HasConfig c, Monoid (c t), Flattenable c)
 instance Flattenable Config where
   flattenWith doSwitch ev
     = Config
-      <$> doSwitch (_onClaimInvitation <$> ev)
-      <*> doSwitch (_onAnswerInvitation <$> ev)
+      <$> doSwitch never (_onClaimInvitation <$> ev)
+      <*> doSwitch never (_onAnswerInvitation <$> ev)
 
 -- Auto generated lenses:
 

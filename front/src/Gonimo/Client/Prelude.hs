@@ -7,6 +7,7 @@ module Gonimo.Client.Prelude ( MonadFix
                              , module I18N
                              , GonimoM
                              , module Reflex.Dom.Class
+                             , module Reflex.Class.Extended
                              , module Reflex
                              ) where
 
@@ -24,6 +25,7 @@ import           Gonimo.Client.I18N         as I18N (GonimoEnv, trDynText,
 import           Gonimo.Prelude             as GonimoPrelude
 import           Reflex
 import           Reflex.Dom.Class hiding (Alt)
+import           Reflex.Class.Extended
 import           Reflex.Dom.Core
 
 
@@ -35,3 +37,4 @@ type GonimoM t m = ( DomBuilder t m , PostBuild t m , TriggerEvent t m
                    , HasWebView m
                    , MonadReader (GonimoEnv t) m
                    )
+
