@@ -86,6 +86,9 @@ instance Reflex t => Monoid (ModelConfig t) where
   mempty = memptydefault
   mappend = (<>)
 
+instance Reflex t => Default (ModelConfig t) where
+  def = mempty
+
 instance Account.HasConfig ModelConfig where
   config = accountConfig
 

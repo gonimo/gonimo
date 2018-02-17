@@ -17,6 +17,7 @@ import           Gonimo.Client.Account.API              (ClaimedInvitations,
                                                          HasAccount (..),
                                                          HasConfig (..))
 import qualified Gonimo.Client.Account.API              as Account
+import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
 import           Gonimo.SocketAPI.Types                 (InvitationInfo (..),
                                                          InvitationReply (..))
@@ -26,7 +27,7 @@ import qualified Gonimo.Types                           as Gonimo
 
 
 
-type HasModelConfig c t = Account.IsConfig c t
+type HasModelConfig c t = (IsConfig c t, Account.HasConfig c)
 
 ui :: forall m conf model t
       . (GonimoM t m, HasAccount model, HasModelConfig conf t)

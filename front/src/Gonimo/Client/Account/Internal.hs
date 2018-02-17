@@ -18,26 +18,27 @@ import qualified Gonimo.Client.Subscriber.API as Subscriber
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Types       (InvitationInfo)
 import           Gonimo.Types                 (InvitationSecret)
+import           Gonimo.Client.Model
 
 
 data Model t
   = Model { __server :: Server t
-         }
+          }
 
 type HasModel d = Server.HasServer d
 
-data FullAccount t
-  = FullAccount { __account         :: Account t
-
-                  -- | For subscribing important commands.
+data ModelConfig t
+  = ModelConfig { -- | For subscribing important commands.
                   --
                   --   We subscribe important commands to ensure they will be
                   --   delivered even on connection problems.
-                , _subscriberConfig :: Subscriber.Config t
+                  _subscriberConfig :: Subscriber.Config t
 
                   -- | Commands going to the server.
                 , _serverConfig     :: Server.Config t
                 }
+
+type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfig c)
 
 makeClaimedInvitations
   :: forall d t m. (Reflex t, MonadHold t m, MonadFix m, HasModel d)
@@ -58,15 +59,17 @@ makeClaimedInvitations model =
                                     , Map.delete <$> onError
                                     ]
 
-answerInvitations :: (Reflex t, HasConfig c) => c t -> Server.Config t
+answerInvitations :: (Reflex t, HasConfig c, IsConfig mconf t, Server.HasConfig mconf)
+  => c t -> mconf t
 answerInvitations conf =
   let
     onAnswer = map (uncurry ReqAnswerInvitation) <$> conf^.onAnswerInvitation
   in
     mempty & Server.onRequest .~ onAnswer
 
-subscribeInvitationClaims :: (Reflex t, HasConfig c, MonadHold t m, MonadFix m)
-                          => c t -> m (Subscriber.Config t)
+subscribeInvitationClaims :: (Reflex t, HasConfig c, MonadHold t m, MonadFix m
+                             , IsConfig mconf t, Subscriber.HasConfig mconf)
+                          => c t -> m (mconf t)
 subscribeInvitationClaims conf = do
     invitationsToClaim <- foldDyn id Set.empty
                           $ mergeWith (.) [ doAll Set.insert <$> conf ^. onClaimInvitation
@@ -84,17 +87,15 @@ subscribeInvitationClaims conf = do
 
 
 
-instance Server.HasConfig FullAccount where
+instance Server.HasConfig ModelConfig where
   config = serverConfig
 
-instance Subscriber.HasConfig FullAccount where
+instance Subscriber.HasConfig ModelConfig where
   config = subscriberConfig
 
 instance Server.HasServer Model where
   server = _server
 
-instance HasAccount FullAccount where
-  account = _account
 
 -- Auto generated lenses:
 
@@ -107,13 +108,11 @@ _server f fullConfig' = (\_server' -> fullConfig' { __server = _server' }) <$> f
 
 -- Lenses for FullAccount t:
 
-_account :: Lens' (FullAccount t) (Account t)
-_account f fullAccount' = (\_account' -> fullAccount' { __account = _account' }) <$> f (__account fullAccount')
 
-subscriberConfig :: Lens' (FullAccount t) (Subscriber.Config t)
-subscriberConfig f fullAccount' = (\subscriberConfig' -> fullAccount' { _subscriberConfig = subscriberConfig' }) <$> f (_subscriberConfig fullAccount')
+subscriberConfig :: Lens' (ModelConfig t) (Subscriber.Config t)
+subscriberConfig f modelConfig' = (\subscriberConfig' -> modelConfig' { _subscriberConfig = subscriberConfig' }) <$> f (_subscriberConfig modelConfig')
 
-serverConfig :: Lens' (FullAccount t) (Server.Config t)
-serverConfig f fullAccount' = (\serverConfig' -> fullAccount' { _serverConfig = serverConfig' }) <$> f (_serverConfig fullAccount')
+serverConfig :: Lens' (ModelConfig t) (Server.Config t)
+serverConfig f modelConfig' = (\serverConfig' -> modelConfig' { _serverConfig = serverConfig' }) <$> f (_serverConfig modelConfig')
 
 

@@ -10,8 +10,7 @@ module Gonimo.Client.Account ( -- * Interface
                                -- * Types
                              , Model(..)
                              , _server
-                             , FullAccount(..)
-                             , _account
+                             , ModelConfig
                                -- * Creation
                              , make
                              ) where
@@ -31,16 +30,15 @@ import           Gonimo.Client.Prelude
 --   from the server (ReqGetClaimedInvitations), so we only provide the ones of
 --   the current session. If you restart gonimo, your claimed invitations are no
 --   longer visible.
-make :: (Reflex t, MonadHold t m, MonadFix m, HasModel d, HasConfig c)
-  => d t -> c t -> m (FullAccount t)
+make :: (Reflex t, MonadHold t m, MonadFix m, HasModel d, HasConfig c, HasModelConfig mconf t)
+  => d t -> c t -> m (mconf t, Account t)
 make model conf = do
   _claimedInvitations <- makeClaimedInvitations model
-  _subscriberConfig   <- subscribeInvitationClaims conf
   let
-    _serverConfig = answerInvitations conf
+    serverConfig' = answerInvitations conf
 
-  _subscriberConfig <- subscribeInvitationClaims conf
+  subscriberConfig' <- subscribeInvitationClaims conf
 
-  pure $ FullAccount { __account = Account {..}
-                     , ..
-                     }
+  pure $ ( serverConfig' <> subscriberConfig'
+         , Account {..}
+         )

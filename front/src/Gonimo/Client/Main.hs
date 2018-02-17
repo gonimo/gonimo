@@ -59,11 +59,11 @@ app conf' = build $ \appModel -> do
 
   fullAuth <- Auth.make (appModel ^. gonimoLocale) appModel
 
-  fullAccount <- Account.make appModel $ conf ^. accountConfig <> app' ^. accountConfig
+  (accountConf, account') <- Account.make appModel
+                             $ conf <> app'
 
   subscriberServerConfig <- Subscriber.make appModel
-                            $ app' ^. subscriberConfig
-                            <> fullAccount ^. Subscriber.config
+                            $ app' <> accountConf
 
   initLang      <- readLocale
   currentLocale <- holdDyn initLang $ app'^.selectLanguage
@@ -73,11 +73,11 @@ app conf' = build $ \appModel -> do
              $ fullAuth^.Server.config
              <> subscriberServerConfig
              <> app' ^. serverConfig
-             <> fullAccount ^. Server.config
+             <> accountConf ^. Server.config
 
 
   pure $ Model { __auth            = fullAuth^.Auth._auth
-               , __account         = fullAccount^.Account._account
+               , __account         = account'
                , __server          = server'
                , App._gonimoLocale = currentLocale
                }

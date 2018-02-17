@@ -48,9 +48,6 @@ instance Reflex t => Monoid (Config t) where
   mempty = memptydefault
   mappend = (<>)
 
-type IsConfig c t = (HasConfig c, Monoid (c t), Flattenable c)
-
-
 instance Flattenable Config where
   flattenWith doSwitch ev
     = Config

@@ -52,7 +52,7 @@ data Server t
 
 
 instance Reflex t => Default (Config t) where
-  def = Config never
+  def = mempty
 
 instance Reflex t => Semigroup (Config t) where
   (<>) = mappenddefault
