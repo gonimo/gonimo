@@ -40,3 +40,6 @@ executable gonimo-front-android
                     , jsaddle
                     , data-default
                     , ghcjs-dom
+                    , aeson
+                    , bytestring
+                    , http-types
