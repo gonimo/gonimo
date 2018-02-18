@@ -43,3 +43,6 @@ executable gonimo-front-android
                     , aeson
                     , bytestring
                     , http-types
+                    , gonimo-common
+                    , utf8-string
+                    , lens
