@@ -60,9 +60,9 @@ ui model = mdo
   (app, familyUI) <- runLoaded model family
 
   let oldServer = mempty & onRequest .~ ( app ^. request
-                                                 <> family ^. Family.request
-                                               )
-  let oldSubscriber = mempty & Subscriber.subscriptions .~ (family ^. Family.subscriptions)
+                                          <> family ^. Family.request
+                                        )
+  let oldSubscriber = mempty & Subscriber.subscriptions .~ (family ^. Family.subscriptions <> app ^. subscriptions)
   let oldConfig = mempty
                   & serverConfig .~ oldServer
                   & subscriberConfig .~ oldSubscriber
