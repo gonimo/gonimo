@@ -10,6 +10,7 @@ import           Gonimo.Client.Prelude
 
 
 import           Control.Exception                 (try)
+import qualified Data.Text                         as T
 import qualified GHCJS.DOM                         as DOM
 import qualified GHCJS.DOM.MediaDevices            as MediaDevices
 import qualified GHCJS.DOM.MediaStream             as MediaStream
@@ -32,7 +33,7 @@ import qualified Gonimo.SocketAPI.Types            as API
 import qualified Gonimo.Types                      as Gonimo
 
 data Config t
-  = Config  { _configSelectCamera    :: Event t Text
+  = Config  { _configNextCamera      :: Event t ()
             , _configEnableCamera    :: Event t Bool
             , _configEnableAutoStart :: Event t Bool
             , _configResponse        :: Event t API.ServerResponse
@@ -41,13 +42,14 @@ data Config t
             , _configStopMonitor     :: Event t ()
             , _configSetBabyName     :: Event t Text
             , _configSelectedFamily  :: Dynamic t API.FamilyId
-            , _configGetUserMedia    :: Event t () -- Get a new media stream, usefull for error handling.
+            , _configGetUserMedia    :: Event t () -- Get a new media stream, useful for error handling.
             }
 
 data Baby t
-  = Baby { _videoDevices     :: Dynamic t [MediaDeviceInfo]
-         , _selectedCamera   :: Dynamic t (Maybe Text)
+  = Baby { _selectedCamera :: Dynamic t [Text] -- ^ Cycled list of cameras. The
+                                               --   first is the currently selected one.
          , _cameraEnabled    :: Dynamic t Bool
+         , _cameraCount      :: Int -- ^ How many cameras do we have?
          , _autoStartEnabled :: Dynamic t Bool
          , _mediaStream      :: Dynamic t (Either JS.PromiseRejected MediaStream)
          , _socket           :: Socket.Socket t
@@ -62,7 +64,7 @@ data UI t
        , _uiStopMonitor     :: Event t ()
        , _uiEnableCamera    :: Event t Bool
        , _uiEnableAutoStart :: Event t Bool
-       , _uiSelectCamera    :: Event t Text
+       , _uiSelectCamera    :: Event t ()
        , _uiSetBabyName     :: Event t Text
        , _uiRequest         :: Event t [API.ServerRequest]
        }
@@ -93,28 +95,28 @@ uiSwitchPromptlyDyn ev
 baby :: forall m t. GonimoM t m
         => Config t -> m (Baby t)
 baby config = mdo
-  badInit <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!
-  initDevices <- enumerateDevices
-  -- Get devicelist whenever stream changes - if only audio is requested the first time - the list will be empty.
-  gotDevices <- performEvent $ const enumerateDevices <$> gotNewValidStream
-  devices <- uniqDyn <$> holdDyn initDevices gotDevices
-  let
-    videoDevices' :: Dynamic t [MediaDeviceInfo]
-    videoDevices' = filter ((== VideoInput) . mediaDeviceKind) <$> devices
+  createStreamLabels <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!
+  devices <- fixEmptyLabels <$> enumerateDevices
+
+  let cameraCount' = length . filter ((== VideoInput) . mediaDeviceKind) $ devices
 
   selected <- handleCameraSelect config devices
+
   enabled  <- handleCameraEnable config mediaStream'
-  let mSelected = (\enabled' selected' -> if enabled' then selected' else Nothing)
+  let mSelected = (\enabled' selected' -> if enabled' then headMay selected' else Nothing)
                   <$> enabled <*> selected
 
-  gotNewStream <- performEvent $ uncurry (getConstrainedMediaStream mediaStream')
-                  <$> leftmost [ attach (current videoDevices') (updated mSelected)
-                               , attach (current videoDevices') (tag (current mSelected) $ config^.configGetUserMedia)
+  initialSelected <- sample $ current mSelected
+  goodInit <- getConstrainedMediaStream (pure createStreamLabels) devices initialSelected
+
+  gotNewStream <- performEvent $ getConstrainedMediaStream mediaStream' devices
+                  <$> leftmost [ updated mSelected
+                               , tag (current mSelected) $ config^.configGetUserMedia
                                ]
   let gotNewValidStream = fmapMaybeCheap (^?_Right) gotNewStream
   -- WARNING: Don't do that- -inifinte MonadFix loop will dawn on you!
   -- cSelected <- sample $ current selected
-  mediaStream' :: Dynamic t (Either JS.PromiseRejected MediaStream) <- holdDyn badInit gotNewStream
+  mediaStream' :: Dynamic t (Either JS.PromiseRejected MediaStream) <- holdDyn goodInit gotNewStream
 
   sockEnabled <- holdDyn Gonimo.NoBaby
                  $ leftmost [ Gonimo.Baby <$> tag (current babyName) (config^.configStartMonitor)
@@ -146,9 +148,9 @@ baby config = mdo
 
   volEvent <- flip getVolumeLevel sockEnabled $ fmap (^?_Right) mediaStream'
 
-  pure $ Baby { _videoDevices = videoDevices'
-              , _selectedCamera = selected
+  pure $ Baby { _selectedCamera = selected
               , _autoStartEnabled = autoStart
+              , _cameraCount = cameraCount'
               , _cameraEnabled = enabled
               , _mediaStream = mediaStream'
               , _socket = socket'
@@ -167,40 +169,40 @@ handleCameraEnable config mediaStream' = do
     let
       getStreamFailed = push pure $ either (const (Just False)) (const Nothing) <$> updated mediaStream'
 
-    enabled' <- holdDyn initVal $ leftmost [ getStreamFailed
-                                           , config^.configEnableCamera
-                                           ]
-    let
-      enabled = uniqDyn enabled'
+    enabled <- (holdUniqDyn <=< holdDyn initVal)
+               $ leftmost [ getStreamFailed
+                          , config^.configEnableCamera
+                          ]
     performEvent_
       $ GStorage.setItem storage GStorage.CameraEnabled <$> updated enabled
     pure enabled
 
-handleCameraSelect :: forall m t. GonimoM t m => Config t -> Dynamic t [MediaDeviceInfo] -> m (Dynamic t (Maybe Text))
+handleCameraSelect :: forall m t. GonimoM t m => Config t -> [MediaDeviceInfo] -> m (Dynamic t [Text])
 handleCameraSelect config devices = do
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
-    mLastCameraLabel <- GStorage.getItem storage GStorage.selectedCamera
+    mLastCamera <- GStorage.getItem storage GStorage.selectedCamera
 
     let
-      mLastUsedInfo :: Dynamic t (Maybe MediaDeviceInfo)
-      mLastUsedInfo
-        = case mLastCameraLabel of
-            Nothing
-              -> pure Nothing
-            Just lastCameraLabel
-              -> headMay . filter ((== lastCameraLabel) . mediaDeviceLabel) <$> devices -- Only if still valid!
+      videoDevices :: [Text]
+      videoDevices = map mediaDeviceLabel . filter ((== VideoInput) . mediaDeviceKind) $ devices
 
-    let initVal = runMaybeT $ mediaDeviceLabel <$> (MaybeT mLastUsedInfo <|> MaybeT (headMay <$> devices))
+      initiallySelected :: [Text]
+      initiallySelected = prependIfNotEqual mLastCamera . cycleDef [] $ videoDevices
 
-    (initEv, trigger) <- newTriggerEvent
-    liftIO $ trigger () -- We need to trigger a change for selecting the right MediaStream, we cannot sample current because this would result in a MonadFix loop.
-    let selectEvent = leftmost [Just <$> config^.configSelectCamera, tag (current initVal) initEv]
-    withoutInit <- holdDyn Nothing selectEvent
-    let selected = zipDynWith (<|>) withoutInit initVal
+      selectEvent = config^.configNextCamera
+
+    selected <- foldDyn (\() cs -> drop 1 cs) initiallySelected selectEvent
     performEvent_
-      $ traverse_ (GStorage.setItem storage GStorage.selectedCamera) <$> updated selected
-
+      $ traverse_ (GStorage.setItem storage GStorage.selectedCamera) <$> updated (listToMaybe <$> selected)
     pure selected
+
+  where
+    prependIfNotEqual :: Eq a => Maybe a -> [a] -> [a]
+    prependIfNotEqual _ [] = []
+    prependIfNotEqual Nothing xs = xs
+    prependIfNotEqual (Just a) xs@(x:_)
+      | a /= x = a:xs
+      | otherwise = xs
 
 getMediaDeviceByLabel :: Text -> [MediaDeviceInfo] -> Maybe MediaDeviceInfo
 getMediaDeviceByLabel label infos =
@@ -208,6 +210,16 @@ getMediaDeviceByLabel label infos =
     withLabel = filter ((== label) . mediaDeviceLabel) infos
   in
     headMay withLabel
+
+-- On Android with Webview we can't use id's because they change on every start
+-- and in addition the labels stay empty, so in order to identify cameras on
+-- Android we hope that the order in the list stays the same.
+fixEmptyLabels :: [MediaDeviceInfo] -> [MediaDeviceInfo]
+fixEmptyLabels = zipWith fixLabel [1 :: Int ..]
+  where
+    fixLabel num info = if mediaDeviceLabel info == ""
+                        then info { mediaDeviceLabel = "Device " <> T.pack (show num) }
+                        else info
 
 getInitialMediaStream :: forall m. MonadJSM m => m (Either JS.PromiseRejected MediaStream)
 getInitialMediaStream = do
@@ -289,8 +301,8 @@ getUserMedia' nav md = do
 
 -- Lenses for Config t:
 
-configSelectCamera :: Lens' (Config t) (Event t Text)
-configSelectCamera f config' = (\configSelectCamera' -> config' { _configSelectCamera = configSelectCamera' }) <$> f (_configSelectCamera config')
+configNextCamera :: Lens' (Config t) (Event t ())
+configNextCamera f config' = (\configNextCamera' -> config' { _configNextCamera = configNextCamera' }) <$> f (_configNextCamera config')
 
 configEnableCamera :: Lens' (Config t) (Event t Bool)
 configEnableCamera f config' = (\configEnableCamera' -> config' { _configEnableCamera = configEnableCamera' }) <$> f (_configEnableCamera config')
@@ -319,17 +331,16 @@ configSelectedFamily f config' = (\configSelectedFamily' -> config' { _configSel
 configGetUserMedia :: Lens' (Config t) (Event t ())
 configGetUserMedia f config' = (\configGetUserMedia' -> config' { _configGetUserMedia = configGetUserMedia' }) <$> f (_configGetUserMedia config')
 
-
 -- Lenses for Baby t:
 
-videoDevices :: Lens' (Baby t) (Dynamic t [MediaDeviceInfo])
-videoDevices f baby' = (\videoDevices' -> baby' { _videoDevices = videoDevices' }) <$> f (_videoDevices baby')
-
-selectedCamera :: Lens' (Baby t) (Dynamic t (Maybe Text))
+selectedCamera :: Lens' (Baby t) (Dynamic t [Text])
 selectedCamera f baby' = (\selectedCamera' -> baby' { _selectedCamera = selectedCamera' }) <$> f (_selectedCamera baby')
 
 cameraEnabled :: Lens' (Baby t) (Dynamic t Bool)
 cameraEnabled f baby' = (\cameraEnabled' -> baby' { _cameraEnabled = cameraEnabled' }) <$> f (_cameraEnabled baby')
+
+cameraCount :: Lens' (Baby t) Int
+cameraCount f baby' = (\cameraCount' -> baby' { _cameraCount = cameraCount' }) <$> f (_cameraCount baby')
 
 autoStartEnabled :: Lens' (Baby t) (Dynamic t Bool)
 autoStartEnabled f baby' = (\autoStartEnabled' -> baby' { _autoStartEnabled = autoStartEnabled' }) <$> f (_autoStartEnabled baby')
@@ -350,6 +361,7 @@ volumeLevel :: Lens' (Baby t) (Event t Double)
 volumeLevel f baby' = (\volumeLevel' -> baby' { _volumeLevel = volumeLevel' }) <$> f (_volumeLevel baby')
 
 
+
 -- Lenses for UI t:
 
 uiGoHome :: Lens' (UI t) (Event t ())
@@ -367,7 +379,7 @@ uiEnableCamera f uI' = (\uiEnableCamera' -> uI' { _uiEnableCamera = uiEnableCame
 uiEnableAutoStart :: Lens' (UI t) (Event t Bool)
 uiEnableAutoStart f uI' = (\uiEnableAutoStart' -> uI' { _uiEnableAutoStart = uiEnableAutoStart' }) <$> f (_uiEnableAutoStart uI')
 
-uiSelectCamera :: Lens' (UI t) (Event t Text)
+uiSelectCamera :: Lens' (UI t) (Event t ())
 uiSelectCamera f uI' = (\uiSelectCamera' -> uI' { _uiSelectCamera = uiSelectCamera' }) <$> f (_uiSelectCamera uI')
 
 uiSetBabyName :: Lens' (UI t) (Event t Text)
@@ -377,3 +389,7 @@ uiRequest :: Lens' (UI t) (Event t [API.ServerRequest])
 uiRequest f uI' = (\uiRequest' -> uI' { _uiRequest = uiRequest' }) <$> f (_uiRequest uI')
 
 
+
+cycleDef :: [a] -> [a] -> [a]
+cycleDef d [] = d
+cycleDef _ xs = cycle xs

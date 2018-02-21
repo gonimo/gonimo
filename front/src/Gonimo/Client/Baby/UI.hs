@@ -8,8 +8,8 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Foldable
 import qualified Data.Map.Strict                   as Map
-import           Data.Maybe                        (fromMaybe)
 import           Data.Text                         (Text)
+
 import           GHCJS.DOM.Types                   (MediaStream)
 import qualified GHCJS.DOM.Types                   as JS
 import           Reflex.Dom.Core
@@ -26,14 +26,14 @@ import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server              hiding (Config)
 import           Gonimo.Client.Util
-import           Gonimo.DOM.Navigator.MediaDevices
-import           Gonimo.I18N
+
+
 
 data BabyScreen = ScreenStart | ScreenRunning
 
 ui :: forall m t. GonimoM t m => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
-    baby' <- baby $ Config { _configSelectCamera = ui'^.uiSelectCamera
+    baby' <- baby $ Config { _configNextCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
                            , _configEnableAutoStart = leftmost [ui'^.uiEnableAutoStart, disableAutostart]
                            , _configResponse = appConfig^.onResponse
@@ -198,65 +198,18 @@ uiRunning loaded deviceList baby' =
                           )
 
 
-cameraSelect :: forall m t. GonimoM t m => Baby t -> m (Event t Text)
-cameraSelect baby' = do
-  evEv <- dyn $ cameraSelect' baby' <$> baby'^.videoDevices
-  switchPromptly never evEv
+cameraSelect :: forall m t. GonimoM t m => Baby t -> m (Event t ())
+cameraSelect baby' =
+  if baby'^.cameraCount > 1
+  then makeClickable . elAttr' "div" (addBtnAttrs "cam-switch") $ el "span" blank
+  else pure never
 
-cameraSelect' :: forall m t. GonimoM t m => Baby t -> [MediaDeviceInfo] -> m (Event t Text)
-cameraSelect' baby' videoDevices' =
-  case videoDevices' of
-    [] -> pure never
-    [_] -> pure never
-    _   -> mdo
-            clicked <-
-              makeClickable . elAttr' "div" (addBtnAttrs "cam-switch") $ el "span" blank
-
-            let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
-            droppedDown <- holdDyn False $ leftmost [ openClose
-                                                    , const False <$> selectedName
-                                                    ]
-            let
-              droppedDownClass :: Dynamic t Text
-              droppedDownClass = fmap (\opened -> if opened then "isDroppedDown " else "") droppedDown
-            let
-              dropDownClass :: Dynamic t Text
-              dropDownClass = pure "dropUp-container " <> droppedDownClass
-
-            selectedName <-
-              elDynClass "div" dropDownClass $ renderCameraSelectors cameras
-            pure selectedName
-  where
-    selectedCameraText = fromMaybe (i18n EN_GB Standard_Setting) <$> baby'^.selectedCamera
-
-    cameras = map mediaDeviceLabel videoDevices'
-
-    renderCameraSelectors :: [Text] -> m (Event t Text)
-    renderCameraSelectors cams =
-      elClass "div" "family-select" $
-        leftmost <$> traverse renderCameraSelector cams
-
-    renderCameraSelector :: Text -> m (Event t Text)
-    renderCameraSelector label = do
-        clicked <-
-          makeClickable
-          . elAttr' "div" (addBtnAttrs "") $ do
-              text label
-              dynText $ ffor selectedCameraText (\selected -> if selected == label then " ✔" else "")
-        pure $ const label <$> clicked
-
-enableCameraCheckbox :: forall m t. GonimoM t m => Baby t -> m (Event t Bool)
-enableCameraCheckbox baby' = do
-  evEv <- dyn $ enableCameraCheckbox' baby' <$> baby'^.videoDevices
-  switchPromptly never evEv
-
-
-enableCameraCheckbox' :: forall m t. GonimoM t m
-                => Baby t -> [MediaDeviceInfo] -> m (Event t Bool)
-enableCameraCheckbox' baby' videoDevices' =
-  case videoDevices' of
-    [] -> pure never -- No need to enable the camera when there is none!
-    _  -> myCheckBox  ("class" =: "cam-on ") (baby'^.cameraEnabled) $ text "\xf03d"
+enableCameraCheckbox :: forall m t. GonimoM t m
+                => Baby t -> m (Event t Bool)
+enableCameraCheckbox baby' =
+  if baby'^.cameraCount > 0
+  then myCheckBox  ("class" =: "cam-on ") (baby'^.cameraEnabled) $ text "\xf03d"
+  else pure never -- No need to enable the camera when there is none!
 
 enableAutoStartCheckbox :: forall m t. GonimoM t m
                 => Baby t -> m (Event t Bool)
