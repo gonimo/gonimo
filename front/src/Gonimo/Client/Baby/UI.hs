@@ -7,24 +7,25 @@ import           Control.Lens
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Foldable
-import qualified Data.Map.Strict                   as Map
-import           Data.Text                         (Text)
+import qualified Data.Map.Strict                  as Map
+import           Data.Text                        (Text)
+import qualified Data.Text.IO                     as T
 
-import           GHCJS.DOM.Types                   (MediaStream)
-import qualified GHCJS.DOM.Types                   as JS
+import           GHCJS.DOM.Types                  (MediaStream)
+import qualified GHCJS.DOM.Types                  as JS
 import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.App.Types           as App
+import qualified Gonimo.Client.App.Types          as App
 import           Gonimo.Client.Baby.Internal
-import qualified Gonimo.Client.Baby.Socket         as Socket
+import qualified Gonimo.Client.Baby.Socket        as Socket
 import           Gonimo.Client.Baby.UI.I18N
-import           Gonimo.Client.ConfirmationButton  (mayAddConfirmation)
-import qualified Gonimo.Client.DeviceList          as DeviceList
-import           Gonimo.Client.EditStringButton    (editStringEl)
-import qualified Gonimo.Client.NavBar              as NavBar
+import           Gonimo.Client.ConfirmationButton (mayAddConfirmation)
+import qualified Gonimo.Client.DeviceList         as DeviceList
+import           Gonimo.Client.EditStringButton   (editStringEl)
+import qualified Gonimo.Client.NavBar             as NavBar
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server              hiding (Config)
+import           Gonimo.Client.Server             hiding (Config)
 import           Gonimo.Client.Util
 
 
