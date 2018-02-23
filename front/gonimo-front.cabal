@@ -50,7 +50,6 @@ library
                     , gonimo-common
                     , reflex
                     , lens
-                    , dependent-map
                     , safe
                     , containers
                     , transformers
