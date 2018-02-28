@@ -4,9 +4,10 @@
 module Gonimo.Client.Auth ( -- * User interface
                             module Gonimo.Client.Auth.API
                             -- * Other types and classes
-                          , FullAuth(..)
-                          , serverConfig
-                          , _auth
+                          , Model
+                          , ModelConfig
+                          , HasModel
+                          , HasModelConfig
                             -- * Creation
                           , make
                           -- * Utility functions
@@ -41,16 +42,25 @@ import Gonimo.Client.Auth.I18N
 import Gonimo.I18N
 import Gonimo.Client.Auth.API
 import Gonimo.Client.Server as Server hiding (make)
+import           Gonimo.Client.Model
 
--- data AuthCommand = AuthCreateDevice
+-- | Simple data type fulfilling our 'HasModel' dependencies.
+type Model t = Server t
 
-data FullAuth t
-  = FullAuth { _serverConfig :: Server.Config t
-             , __auth :: Auth t
-             }
+-- | Our dependencies
+type HasModel model = Server.HasServer model
 
-make :: forall d t m. (HasWebView m, MonadWidget t m, Server.HasServer d)
-  => Dynamic t Locale -> d t -> m (FullAuth t)
+-- | Example datatype fulfilling 'HasModelConfig'.
+type ModelConfig t = Server.Config t
+
+-- | Configurations we provide for the model as inputs.
+type HasModelConfig c t = (IsConfig c t, Server.HasConfig c)
+
+make :: forall model mConf t m
+  . ( MonadHold t m, MonadJSM m, PerformEvent t m, MonadSample t m, MonadFix m, MonadJSM (Performable m)
+    , Server.HasServer model, HasModelConfig mConf t
+    )
+     => Dynamic t Locale -> model t -> m (mConf t, Auth t)
 make locDyn model = do
   (makeDeviceEvent, _authData) <- makeAuthData model
   let authenticateEvent = authenticate model _authData
@@ -63,24 +73,23 @@ make locDyn model = do
             API.ResAuthenticated -> Just ()
             _                    -> Nothing
       push handleAuthenticated $ model^.Server.onResponse
-  _isOnline <- fmap uniqDyn
-               . holdDyn False
+  _isOnline <- holdDynUniq False
                $ leftmost [ const False <$> model^.Server.onClose
                           , const False <$> model^.Server.onCloseRequested
                           , const True <$> _onAuthenticated
                           ]
-  let _onRequest = mconcat
-                   . map (fmap (:[]))
-                   $ [ makeDeviceEvent
-                     , authenticateEvent
-                     ]
+  let auth' = Auth {..}
+  let mConf = mempty & onRequest .~ mergeAsList [ makeDeviceEvent
+                                                , authenticateEvent
+                                                ]
 
 
-  pure $ FullAuth { _serverConfig = Server.Config {..}
-                  , __auth = Auth {..}
-                  }
+  pure (mConf, auth')
 
-makeAuthData :: forall d t m. (HasWebView m, MonadWidget t m, Server.HasServer d)
+makeAuthData :: forall d t m. (MonadHold t m, MonadJSM m, MonadSample t m, PerformEvent t m
+                              , MonadJSM (Performable m)
+                              , Server.HasServer d
+                              )
   => d t -> m (Event t API.ServerRequest, Dynamic t (Maybe API.AuthData))
 makeAuthData model = do
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
@@ -172,22 +181,3 @@ loadingDots = do
   tickCount :: Dynamic t Int <- count tick
   let dotCount = mod <$> tickCount <*> pure 8
   pure $ T.replicate <$> dotCount <*> pure "."
-
-instance HasAuth FullAuth where
-  auth = _auth
-
-
-instance Server.HasConfig FullAuth where
-  config = serverConfig
-
--- Auto generated lenses:
-
--- Lenses for FullAuth t:
-
-serverConfig :: Lens' (FullAuth t) (Server.Config t)
-serverConfig f fullAuth' = (\serverConfig' -> fullAuth' { _serverConfig = serverConfig' }) <$> f (_serverConfig fullAuth')
-
-_auth :: Lens' (FullAuth t) (Auth t)
-_auth f fullAuth' = (\_auth' -> fullAuth' { __auth = _auth' }) <$> f (__auth fullAuth')
-
-
