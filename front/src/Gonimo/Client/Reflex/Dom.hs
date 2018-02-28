@@ -33,7 +33,7 @@ renderVolumemeter volEvent = do
   where
     renderVolBarItem :: Dynamic t Double -> Double -> m ()
     renderVolBarItem currentVolume minVal = do
-      let isActive = uniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
+      isActive <- holdUniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
       let highVolume = if minVal > 0.6 then "high-volume " else ""
       elDynClass "div" ( pure "volBarItem " <> pure highVolume <> isActive) $ blank
 

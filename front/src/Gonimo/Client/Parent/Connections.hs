@@ -99,12 +99,15 @@ connections config = mdo
 
   playAlarmOnBrokenConnection channels'
 
+  unreliableConnections' <- areThereUnreliableConnections channels'
+  brokenConnections'     <- areThereBrokenConnections channels'
+
   pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
                      , _channelMap = kickSecret <$> channels'^.Channels.channelMap
                      , _origStreams = streams'
                      , _streams = boostedStreams
-                     , _unreliableConnections = areThereUnreliableConnections channels'
-                     , _brokenConnections = areThereBrokenConnections channels'
+                     , _unreliableConnections = unreliableConnections'
+                     , _brokenConnections = brokenConnections'
                      }
   where
     kickSecret :: forall v. Map (DeviceId, Secret) v -> Map DeviceId v
@@ -118,7 +121,7 @@ playAlarmOnBrokenConnection channels' = mdo
     alarmSound <- loadAlert
     newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only be played once!
     -- AudioNode.start alarmSound 0 0 1000000 -- 0 for duration does not work on Chrome at least! fs
-    let anyConnectionBroken = uniqDyn $ getAnyBrokenConnections <$> channels'^.Channels.channelMap
+    anyConnectionBroken <- holdUniqDyn $ getAnyBrokenConnections <$> channels'^.Channels.channelMap
 
     alarmSoundBeh <- hold alarmSound newAlertEv
     performEvent_ $ startStopSound <$> attach alarmSoundBeh (traceEventWith show (updated anyConnectionBroken))
@@ -142,11 +145,11 @@ playAlarmOnBrokenConnection channels' = mdo
         then AudioNode.start sound (Just 0) (Just 0) (Just 1000) -- 0 for duration does not work on Chrome at least! fs
         else AudioNode.stop  sound (Just 0)
 
-areThereBrokenConnections :: Reflex t => Channels.Channels t -> Dynamic t Bool
-areThereBrokenConnections = uniqDyn . fmap getAnyBrokenConnections . (^.Channels.channelMap)
+areThereBrokenConnections :: (Reflex t, MonadHold t m, MonadFix m) => Channels.Channels t -> m (Dynamic t Bool)
+areThereBrokenConnections = holdUniqDyn . fmap getAnyBrokenConnections . (^.Channels.channelMap)
 
-areThereUnreliableConnections :: Reflex t => Channels.Channels t -> Dynamic t Bool
-areThereUnreliableConnections = uniqDyn . fmap getAnyUnreliableConnections . (^.Channels.channelMap)
+areThereUnreliableConnections :: (Reflex t, MonadHold t m, MonadFix m) => Channels.Channels t -> m (Dynamic t Bool)
+areThereUnreliableConnections = holdUniqDyn . fmap getAnyUnreliableConnections . (^.Channels.channelMap)
 
 getAnyBrokenConnections :: Channels.ChannelMap t -> Bool
 getAnyBrokenConnections = any Channel.needsAlert . Map.elems

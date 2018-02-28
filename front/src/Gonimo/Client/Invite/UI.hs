@@ -40,7 +40,7 @@ ui loaded config = mdo
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
     let sentEvents = (const SentEmail <$> mailReqs) : reCreateEvents
 
-    linkGotSent <- uniqDyn <$> holdDyn False (leftmost [ const True <$> leftmost sentEvents
+    linkGotSent <- holdDynUniq False (leftmost [ const True <$> leftmost sentEvents
                                                        , const False <$> leftmost [ doneClicked
                                                                                   , backClicked
                                                                                   ]
