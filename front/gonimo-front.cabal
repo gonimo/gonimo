@@ -72,7 +72,6 @@ library
                     , Gonimo.Client.AcceptInvitation.UI.I18N
                     , Gonimo.Client.Account
                     , Gonimo.Client.Account.API
-                    , Gonimo.Client.Account.Internal
                     , Gonimo.Client.App
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
