@@ -112,11 +112,11 @@ makeAuthData model = do
 authenticate :: forall d t. (Reflex t, HasServer d) => d t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
 authenticate model authDataDyn =
   let
-    authDataList = leftmost
-                    [ tag (current authDataDyn) $ model^.Server.onOpen
-                    , updated authDataDyn
-                    ]
-    authData' = push pure authDataList
+    onAuth = leftmost
+             [ tag (current authDataDyn) $ model^.Server.onOpen
+             , updated authDataDyn
+             ]
+    authData' = push pure onAuth
   in
     API.ReqAuthenticate . API.authToken <$> authData'
 
