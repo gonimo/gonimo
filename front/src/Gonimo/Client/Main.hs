@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
@@ -50,38 +51,36 @@ mkEmptyConfig = do
 type AppConstraint t m = (DomBuilder t m, MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadSample t (Performable m))
 
 app :: forall t m. AppConstraint t m => Config -> m ()
-app conf' = build $ \ ~(appConf, appModel) -> do
+app conf' = build $ \ ~(modelConf, model) -> do
   conf <- toModelConfig conf'
 
   liftIO $ putStrLn "Loaded - yeah!"
 
-  server' <- Server.make Config.gonimoBackWSURL appConf
+  __server <- Server.make Config.gonimoBackWSURL modelConf
 
-  (authConf, auth') <- Auth.make (appModel ^. gonimoLocale) appModel
+  (authConf, __auth) <- Auth.make (model ^. gonimoLocale) model
 
-  (accountConf, account') <- Account.make appModel appConf
+  (accountConf, __account) <- Account.make model modelConf
 
-  subscriberConf <- Subscriber.make appModel  appConf
+  subscriberConf <- Subscriber.make model  modelConf
 
   initLang      <- readLocale
-  currentLocale <- holdDyn initLang $ appConf^.selectLanguage
-  performEvent_ $ writeLocale <$> updated (appModel ^. gonimoLocale)
+  _gonimoLocale <- holdDyn initLang $ modelConf^.selectLanguage
+  performEvent_ $ writeLocale <$> updated (model ^. gonimoLocale)
 
 
-  let runApp = flip runReaderT (GonimoEnv (appModel ^. gonimoLocale)) $ ui appModel
   -- Delay UI rendering until network is ready ...
+  let runApp = flip runReaderT (GonimoEnv (model ^. gonimoLocale)) $ ui model
   uiConf <- networkViewFlatten (pure runApp)
 
-
-  let
-    model = Model { __auth            = auth'
-                  , __account         = account'
-                  , __server          = server'
-                  , App._gonimoLocale = currentLocale
-                  }
-    appConf' = conf <> authConf <> accountConf <> subscriberConf <> uiConf
-
-  pure (appConf', model)
+  pure ( mconcat [ conf
+                 , authConf
+                 , accountConf
+                 , subscriberConf
+                 , uiConf
+                 ]
+       , Model {..}
+       )
   where
     build :: ((ModelConfig t, Model t) -> m (ModelConfig t, Model t)) -> m ()
     build = void . mfix

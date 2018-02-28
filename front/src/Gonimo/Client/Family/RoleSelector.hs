@@ -8,7 +8,7 @@ import           Reflex.Dom.Core
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Prelude
-import           Gonimo.Client.Util
+
 import           Gonimo.Client.Family.RoleSelector.I18N
 import           Control.Monad.Reader.Class
 
