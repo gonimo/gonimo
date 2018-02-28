@@ -79,7 +79,7 @@ app conf' = build $ \ ~(appConf, appModel) -> do
                   , __server          = server'
                   , App._gonimoLocale = currentLocale
                   }
-    appConf' = authConf <> accountConf <> subscriberConf <> uiConf
+    appConf' = conf <> authConf <> accountConf <> subscriberConf <> uiConf
 
   pure (appConf', model)
   where
