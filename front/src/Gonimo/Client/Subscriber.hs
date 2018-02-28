@@ -11,53 +11,53 @@ module Gonimo.Client.Subscriber ( module Gonimo.Client.Subscriber.API
                                 , subscribeKeys
                                 )where
 
-import           Control.Monad.Fix      (MonadFix)
+import           Control.Monad.Fix            (MonadFix)
 import           Reflex.Dom.Core
 
-import           Data.Map               (Map)
-
-import           Data.Set               (Set)
-import qualified Data.Set               as Set
-
-import           Gonimo.Client.Auth.API (Auth)
-import qualified Gonimo.Client.Auth.API as Auth
-import           Gonimo.Client.Server   (Server)
-import qualified Gonimo.Client.Server   as Server
-import qualified Gonimo.SocketAPI       as API
-
+import           Data.Map                     (Map)
 
 import           Control.Lens
+import           Data.Set                     (Set)
+import qualified Data.Set                     as Set
 
-import           Gonimo.Client.Reflex   (buildMap)
+import           Gonimo.Client.Auth.API       (Auth)
+import qualified Gonimo.Client.Auth.API       as Auth
+import           Gonimo.Client.Model
+import           Gonimo.Client.Reflex         (buildMap)
+import           Gonimo.Client.Server         (Server)
+import qualified Gonimo.Client.Server         as Server
 import           Gonimo.Client.Subscriber.API
+import qualified Gonimo.SocketAPI             as API
+import           Reflex.Class.Extended
 
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
 data Model t
   = Model { __server :: Server t
-         , __auth   :: Auth t
-         }
+          , __auth   :: Auth t
+          }
 
-
--- | We simply provide configuration for Server.
-type FullSubscriber t = Server.Config t
 
 -- | Constraint on needed dependencies.
-type HasModel d = (Server.HasServer d, Auth.HasAuth d)
+type HasModel model = (Server.HasServer model, Auth.HasAuth model)
 
-make :: forall c d m t. ( HasWebView m, MonadWidget t m, HasConfig c
-                          , HasModel d)
-           => d t -> c t -> m (FullSubscriber t)
+-- | Constraint for our return value.
+type HasModelConfig c t = (IsConfig c t, Server.HasConfig c)
+
+
+make :: forall c model m t mConf
+        . ( MonadFix m, MonadHold t m, Reflex t
+          , HasConfig c , HasModel model, HasModelConfig mConf t
+          )
+     => model t -> c t -> m (mConf t)
 make model conf = do
   let
     requests = API.ReqSetSubscriptions . Set.toList <$> conf^.subscriptions
 
-  pure $ Server.Config { Server._onRequest = mconcat
-                          . map (fmap (:[]))
-                          $ [ tag (current requests) $ model^.Auth.onAuthenticated
-                            , updated requests
-                            ]
-                        }
+  pure $ mempty  & Server.onRequest .~
+    mergeAsList [ tag (current requests) $ model^.Auth.onAuthenticated
+                , updated requests
+                ]
 
 subscribeKeys :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
                  => Dynamic t [key] -> (key -> API.ServerRequest) -> Event t (key, val)
