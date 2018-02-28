@@ -22,7 +22,9 @@ import qualified Gonimo.Client.Main                     as Gonimo
 
 main :: IO ()
 -- main = run 3709 $ mainWidget app
-main = gonimoRun 3709 Gonimo.main
+main = do
+  conf <- Gonimo.mkEmptyConfig
+  gonimoRun 3709 $ Gonimo.main conf
 
 
 gonimoRun :: Int -> JSM () -> IO ()
