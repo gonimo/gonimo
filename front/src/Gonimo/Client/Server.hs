@@ -23,7 +23,7 @@ import qualified Data.Text.Encoding                 as T
 import           Data.Time.Clock
 import           GHCJS.DOM.Types                    (MonadJSM)
 
-import qualified Gonimo.Client.Reflex.Dom.WebSocket as WS
+import qualified Reflex.Dom.WebSocket as WS
 import           Gonimo.Constants
 import           Gonimo.Client.Prelude
 
@@ -71,28 +71,26 @@ make :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performab
           => Text -> Config t -> m (Server t)
 make url conf = mdo
   let
-    server' = Server { _onOpen = ws^.WS.onOpen
-                     , _onResponse = decodedResponse
+    server' = Server { _onOpen = ws^.WS.webSocket_open
+                     , _onResponse = recv
                      , _onCloseRequested = killConn
-                     , _onClose = const () <$> ws^.WS.onClose
-                     -- , _socket = ws
+                     , _onClose = const () <$> ws^.WS.webSocket_close
                      }
 
-  (requests, killConn) <- handlePingPong (conf^.onRequest) decodedResponse
+  (requests, killConn) <- handlePingPong (conf^.onRequest) recv
 
   let
-    wsConfig :: WS.Config t
+    wsConfig :: WS.WebSocketConfig t ServerRequest
     wsConfig = def
-               & WS.configOnSend .~ encodedRequests
-               & WS.configOnClose .~ reqClose
-               & WS.configCloseTimeout .~ Just 4 -- Try with 4 seconds.
+               & WS.webSocketConfig_send .~ requests
+               & WS.webSocketConfig_close .~ reqClose
+               & WS.webSocketConfig_reconnect .~ True
 
-    encodedRequests = fmap (T.decodeUtf8 . BL.toStrict . Aeson.encode) <$> requests
+    reqClose = const (4000, "Server did not respond.") <$> killConn
 
-    decodedResponse = decodeResponse <$> ws^.WS.onReceive
-    reqClose = const (WS.CloseParams 4000 "Server did not respond.") <$> killConn
+  ws <- WS.jsonWebSocket url wsConfig
 
-  ws <- WS.make url wsConfig
+  let recv = fromMaybe (error "Decoding Server Response Failed!") <$> ws^.WS.webSocket_recv
 
   pure server'
 
