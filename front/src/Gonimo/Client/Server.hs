@@ -11,19 +11,16 @@ import           Gonimo.SocketAPI                   (ServerRequest (..),
                                                      ServerResponse)
 import           Reflex
 import           Reflex.Dom.Class
-
 import           Control.Lens
 import           Control.Monad.Fix
 import           Control.Monad.IO.Class
-import qualified Data.Aeson                         as Aeson
-import qualified Data.ByteString.Lazy               as BL
 import           Data.Default
 import           Data.Text                          (Text)
-import qualified Data.Text.Encoding                 as T
+
 import           Data.Time.Clock
 import           GHCJS.DOM.Types                    (MonadJSM)
-
 import qualified Reflex.Dom.WebSocket as WS
+
 import           Gonimo.Constants
 import           Gonimo.Client.Prelude
 
@@ -65,10 +62,11 @@ instance Flattenable Config where
   flattenWith doSwitch ev
     = Config <$> doSwitch never (_onRequest <$> ev)
 
-make :: forall t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
+make :: forall c t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
+                      , HasConfig c
                       )
-          => Text -> Config t -> m (Server t)
+          => Text -> c t -> m (Server t)
 make url conf = mdo
   let
     server' = Server { _onOpen = ws^.WS.webSocket_open
@@ -94,12 +92,6 @@ make url conf = mdo
 
   pure server'
 
-
-
-decodeResponse :: Text -> ServerResponse
-decodeResponse = fromMaybe (error "Decoding Server Response Failed!")
-                 . Aeson.decodeStrict
-                 . T.encodeUtf8
 
 
 -- We need to handle ping/pong at the application level so the client can detect a broken connection.
