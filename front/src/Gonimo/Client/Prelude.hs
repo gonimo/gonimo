@@ -8,6 +8,7 @@ module Gonimo.Client.Prelude ( MonadFix
                              , GonimoM
                              , module Reflex.Dom.Class
                              , module Reflex.Class.Extended
+                             , module Reflex.Dynamic.Extended
                              , module Reflex
                              ) where
 
@@ -26,6 +27,7 @@ import           Gonimo.Prelude             as GonimoPrelude
 import           Reflex
 import           Reflex.Dom.Class hiding (Alt)
 import           Reflex.Class.Extended
+import           Reflex.Dynamic.Extended
 import           Reflex.Dom.Core
 
 
