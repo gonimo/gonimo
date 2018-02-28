@@ -141,3 +141,4 @@ library
                     , Gonimo.DOM.Window.Internal
                     , Gonimo.SocketAPI.Translations
                     , Reflex.Class.Extended
+                    , Reflex.Dynamic.Extended
