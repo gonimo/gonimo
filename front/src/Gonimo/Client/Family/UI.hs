@@ -62,7 +62,6 @@ ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
   elClass "div" "container has-footer" $ mdo
-    el "script" $ text "screenfull.exit();"
     el "h1" $ do
       trText Welcome_to_the
       el "wbr" blank

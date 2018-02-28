@@ -19,11 +19,11 @@ roleSelector :: forall t m. (MonadReader (GonimoEnv t) m, MonadFix m, DomBuilder
 roleSelector = do
   elClass "div" "btn-box" $ do
     babyClicked <-
-      makeClickable . elAttr' "div" (addFullScreenBtnAttrs "btn-baby") $ do
+      makeClickable . elAttr' "div" (addBtnAttrs "btn-baby") $ do
         elAttr "img" ("src" =: "/pix/button-baby.svg") blank
         el "span" $ trText Baby
     parentClicked <-
-      makeClickable . elAttr' "div" (addFullScreenBtnAttrs "btn-parent") $ do
+      makeClickable . elAttr' "div" (addBtnAttrs "btn-parent") $ do
         elAttr "img" ("src" =: "/pix/button-parent.svg") blank
         el "span" $ trText Parent
     pure $ leftmost [ const RoleBaby <$> babyClicked

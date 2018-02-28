@@ -308,7 +308,6 @@ showPermissionError (Right _) = pure (never, never)
 showPermissionError (Left (JS.PromiseRejected err)) = elClass "div" "fullScreenOverlay" $ do
     errText <- showJSException err
     liftIO $ T.putStrLn $ "gonimo HaskellActivity, getUserMedia failed:" <> errText
-    el "script" $ text "screenfull.exit();" -- Leave fullscreen so user sees the address bar.
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
     el "h1" $ trText Error_so_sad
     el "h2" $ trText Can_not_access_your_camera_or_microphone
