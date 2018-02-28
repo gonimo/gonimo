@@ -47,42 +47,43 @@ mkEmptyConfig :: IO Config
 mkEmptyConfig = do
   Config <$> newEmptyMVar
 
-app :: forall t. Config -> Widget t ()
-app conf' = build $ \appModel -> do
+type AppConstraint t m = (DomBuilder t m, MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadSample t (Performable m))
+
+app :: forall t m. AppConstraint t m => Config -> m ()
+app conf' = build $ \ ~(appConf, appModel) -> do
   conf <- toModelConfig conf'
 
   liftIO $ putStrLn "Loaded - yeah!"
 
-  let runApp = flip runReaderT (GonimoEnv (appModel ^. gonimoLocale)) $ ui appModel
-  -- Little hack for now: We simply delay the UI a bit, so we avoid "blocked on MVar".
-  app' <- networkViewFlatten (pure runApp)
+  server' <- Server.make Config.gonimoBackWSURL appConf
 
-  fullAuth <- Auth.make (appModel ^. gonimoLocale) appModel
+  (authConf, auth') <- Auth.make (appModel ^. gonimoLocale) appModel
 
-  (accountConf, account') <- Account.make appModel
-                             $ conf <> app'
+  (accountConf, account') <- Account.make appModel appConf
 
-  subscriberServerConfig <- Subscriber.make appModel
-                            $ app' <> accountConf
+  subscriberConf <- Subscriber.make appModel  appConf
 
   initLang      <- readLocale
-  currentLocale <- holdDyn initLang $ app'^.selectLanguage
+  currentLocale <- holdDyn initLang $ appConf^.selectLanguage
   performEvent_ $ writeLocale <$> updated (appModel ^. gonimoLocale)
 
-  server' <- Server.make Config.gonimoBackWSURL
-             $ fullAuth^.Server.config
-             <> subscriberServerConfig
-             <> app' ^. serverConfig
-             <> accountConf ^. Server.config
+
+  let runApp = flip runReaderT (GonimoEnv (appModel ^. gonimoLocale)) $ ui appModel
+  -- Delay UI rendering until network is ready ...
+  uiConf <- networkViewFlatten (pure runApp)
 
 
-  pure $ Model { __auth            = fullAuth^.Auth._auth
-               , __account         = account'
-               , __server          = server'
-               , App._gonimoLocale = currentLocale
-               }
+  let
+    model = Model { __auth            = auth'
+                  , __account         = account'
+                  , __server          = server'
+                  , App._gonimoLocale = currentLocale
+                  }
+    appConf' = authConf <> accountConf <> subscriberConf <> uiConf
 
+  pure (appConf', model)
   where
+    build :: ((ModelConfig t, Model t) -> m (ModelConfig t, Model t)) -> m ()
     build = void . mfix
 
 main :: Config -> JS.JSM ()
