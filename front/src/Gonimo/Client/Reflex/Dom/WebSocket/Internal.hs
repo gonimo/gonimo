@@ -137,9 +137,10 @@ data Events t
            -- followed by termination of the connection
            -- for details see the close event
            , _onError :: Event t ()
-           , _jsOnClose :: Event t ( Bool -- ^ wasClean
-                                 , CloseParams
-                                 )
+             -- | (wasClean, CloseParams)
+           , _jsOnClose :: Event t ( Bool
+                                   , CloseParams
+                                   )
            , _triggerOnOpen :: IO ()
            , _triggerJsOnClose :: (Bool, CloseParams) -> IO ()
            , _triggerOnReceive :: Text -> IO ()

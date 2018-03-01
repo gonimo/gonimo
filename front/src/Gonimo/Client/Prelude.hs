@@ -33,6 +33,10 @@ import           Reflex.Dynamic.Extended
 import           Control.Monad.Reader.Class as MonadReader (ask)
 
 
+-- | Constraint on a Monad m, to be suitable for Gonimo UI code.
+--
+--   This also includes a 'MonadReader' on a Model holding user settings, so
+--   functions like 'trText' work properly.
 type GonimoM model t m = ( DomBuilder t m , PostBuild t m , TriggerEvent t m
                    , MonadJSM m, MonadHold t m, MonadFix m
                    , DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM (Performable m)
