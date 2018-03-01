@@ -17,7 +17,7 @@ import qualified Gonimo.SocketAPI                  as API
 import qualified Gonimo.SocketAPI.Types            as API
 
 
-navBar :: forall m t. GonimoM t m
+navBar :: forall model m t. GonimoM model t m
       => Config t -> m (NavBar t)
 navBar config = do
     let loaded = config^.configLoaded

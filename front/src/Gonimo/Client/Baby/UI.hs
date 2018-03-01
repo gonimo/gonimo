@@ -32,7 +32,7 @@ import           Gonimo.Client.Util
 
 data BabyScreen = ScreenStart | ScreenRunning
 
-ui :: forall m t. GonimoM t m => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
+ui :: forall model m t. GonimoM model t m => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configNextCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
@@ -91,7 +91,7 @@ ui appConfig loaded deviceList = mdo
     renderCenter baby' ScreenStart   = uiStart loaded deviceList baby'
     renderCenter baby' ScreenRunning = uiRunning loaded deviceList baby'
 
-uiStart :: forall m t. GonimoM t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t
+uiStart :: forall model m t. GonimoM model t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t
             -> m (UI t)
 uiStart loaded deviceList  baby' = do
     elClass "div" "container" $ do
@@ -129,7 +129,7 @@ uiStart loaded deviceList  baby' = do
     showAutostartInfo True = dismissibleOverlay "info-overlay" 7
                              $ trText Baby_monitor_will_start_automatically
 
-uiRunning :: forall m t. GonimoM t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
+uiRunning :: forall model m t. GonimoM model t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t -> m (UI t)
 uiRunning loaded deviceList baby' =
   elClass "div" "container" $ mdo
     displayScreenOnWarning baby'
@@ -151,7 +151,7 @@ uiRunning loaded deviceList baby' =
         elClass "div" "fill-full-screen" blank
         _ <- dyn $ noSleep <$> baby'^.mediaStream
         let
-          leaveConfirmation :: forall m1. GonimoM t m1 => m1 ()
+          leaveConfirmation :: forall m1. GonimoM model t m1 => m1 ()
           leaveConfirmation = do
               el "h3" $ trText Really_stop_baby_monitor
               el "p" $ trText All_connected_devices_will_be_disconnected
@@ -199,25 +199,25 @@ uiRunning loaded deviceList baby' =
                           )
 
 
-cameraSelect :: forall m t. GonimoM t m => Baby t -> m (Event t ())
+cameraSelect :: forall model m t. GonimoM model t m => Baby t -> m (Event t ())
 cameraSelect baby' =
   if baby'^.cameraCount > 1
   then makeClickable . elAttr' "div" (addBtnAttrs "cam-switch") $ el "span" blank
   else pure never
 
-enableCameraCheckbox :: forall m t. GonimoM t m
+enableCameraCheckbox :: forall model m t. GonimoM model t m
                 => Baby t -> m (Event t Bool)
 enableCameraCheckbox baby' =
   if baby'^.cameraCount > 0
   then myCheckBox  ("class" =: "cam-on ") (baby'^.cameraEnabled) $ text "\xf03d"
   else pure never -- No need to enable the camera when there is none!
 
-enableAutoStartCheckbox :: forall m t. GonimoM t m
+enableAutoStartCheckbox :: forall model m t. GonimoM model t m
                 => Baby t -> m (Event t Bool)
 enableAutoStartCheckbox baby' =
     myCheckBox ("class" =: "autostart ") (baby'^.autoStartEnabled) $ trText Autostart
 
-setBabyNameForm :: forall m t. GonimoM t m
+setBabyNameForm :: forall model m t. GonimoM model t m
                    => App.Loaded t -> Baby t -> m (Event t Text)
 setBabyNameForm loaded baby' = do
   (nameAddRequest, selectedName) <-
@@ -253,7 +253,7 @@ setBabyNameForm loaded baby' = do
   nameAdded <- editStringEl (pure nameAddRequest) (trText Add_new_baby_name) (constDyn "")
   pure $ leftmost [ selectedName, nameAdded ]
 
-renderBabySelectors :: forall m t. GonimoM t m
+renderBabySelectors :: forall model m t. GonimoM model t m
                     => Dynamic t [Text] -> m (Event t Text)
 renderBabySelectors names =
   let
@@ -273,7 +273,7 @@ renderBabySelectors names =
     elClass "div" "family-select" $
       switchPromptly never =<< (dyn $ renderSelectors <$> names)
 
-displayScreenOnWarning :: forall m t. GonimoM t m
+displayScreenOnWarning :: forall model m t. GonimoM model t m
             => Baby t -> m ()
 displayScreenOnWarning baby' = mdo
     isMobile <- getBrowserProperty "mobile"
@@ -291,7 +291,7 @@ displayScreenOnWarning baby' = mdo
       el "br" blank
       trText Alternatively_if_all_you_need_is_audio_please_disable_the_camera
 
-autoStartActiveMessage :: forall m t. GonimoM t m => m (Event t ())
+autoStartActiveMessage :: forall model m t. GonimoM model t m => m (Event t ())
 autoStartActiveMessage = do
   (disableEv, triggerDisable) <- newTriggerEvent
   dismissibleOverlay "info-overlay" 2 $ do
@@ -303,7 +303,7 @@ autoStartActiveMessage = do
   pure disableEv
 
 
-showPermissionError :: forall m t. GonimoM t m => Either JS.PromiseRejected MediaStream ->  m (Event t (), Event t ())
+showPermissionError :: forall model m t. GonimoM model t m => Either JS.PromiseRejected MediaStream ->  m (Event t (), Event t ())
 showPermissionError (Right _) = pure (never, never)
 showPermissionError (Left (JS.PromiseRejected err)) = elClass "div" "fullScreenOverlay" $ do
     errText <- showJSException err

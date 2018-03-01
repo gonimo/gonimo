@@ -15,7 +15,7 @@ import           Gonimo.Client.EditStringButton    (editFamilyName)
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Family.UI.I18N
-import           Gonimo.Client.I18N.UI
+import           Gonimo.Client.Settings.UI
 import qualified Gonimo.Client.Invite              as Invite
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
@@ -26,7 +26,7 @@ import qualified Gonimo.SocketAPI.Types            as API
 import qualified Gonimo.Types                      as Gonimo
 
 
-uiStart :: forall m t. GonimoM t m => m (UI t)
+uiStart :: forall model m t. GonimoM model t m => m (UI t)
 uiStart = do
   elClass "div" "container" $ do
     el "h1" $ do
@@ -57,7 +57,7 @@ uiStart = do
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
       pure $ UI never userWantsFamily never never never never langSelected
 
-ui :: forall m t. GonimoM t m => App.Model t -> App.Loaded t -> Bool -> m (UI t)
+ui :: forall model m t. GonimoM model t m => App.Model t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
@@ -115,7 +115,7 @@ ui appConfig loaded familyGotCreated = do
               }
 
 
--- familyChooser :: forall m t. GonimoM t m
+-- familyChooser :: forall model m t. GonimoM model t m
 --                  => DefiniteFamily t -> m (Event t FamilyId)
 -- familyChooser family' = do
 --   initVal <- sample . current $ family'^.definiteSelected
@@ -129,7 +129,7 @@ ui appConfig loaded familyGotCreated = do
 
 
 
-familyChooser :: forall m t. GonimoM t m
+familyChooser :: forall model m t. GonimoM model t m
                  => DefiniteFamily t -> m (Event t FamilyId, Event t (), Event t (), Event t Text)
 familyChooser family' = mdo
   let cFamilyName = currentFamilyName family'
@@ -168,12 +168,12 @@ familyChooser family' = mdo
     renderFamilySelectors family'
   pure (selectedId, clickedAdd, clickedLeave, nameChanged)
 
-renderFamilySelectors :: forall m t. GonimoM t m
+renderFamilySelectors :: forall model m t. GonimoM model t m
                     => DefiniteFamily t -> m (Event t FamilyId)
 renderFamilySelectors family' = fmap fst <$> selectViewListWithKey (family'^.definiteSelected) (family'^.definiteFamilies) renderFamilySelector
 
 -- Internal helper for familyChooser ...
-renderFamilySelector :: forall m t. GonimoM t m
+renderFamilySelector :: forall model m t. GonimoM model t m
                     => FamilyId -> Dynamic t API.Family -> Dynamic t Bool -> m (Event t ())
 renderFamilySelector _ family' selected' = do
     el "div" $ do
@@ -182,7 +182,7 @@ renderFamilySelector _ family' selected' = do
           $ (Gonimo.familyNameName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
-createFamily :: forall m t. GonimoM t m => App.Model t -> App.Loaded t -> Bool
+createFamily :: forall model m t. GonimoM model t m => App.Model t -> App.Loaded t -> Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
   let response' = appConfig^.onResponse
@@ -228,7 +228,7 @@ createFamily appConfig loaded familyGotCreated = mdo
   pure (createFamilyEv, reqs)
 
 -- Dialog to configure family when a new one get's created:
-createFamily' :: forall m t. GonimoM t m => App.Model t -> App.Loaded t
+createFamily' :: forall model m t. GonimoM model t m => App.Model t -> App.Loaded t
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily' appConfig loaded = mdo
   let showNameEdit = const "isFamilyNameEdit" <$> invite^.Invite.uiGoBack
@@ -260,7 +260,7 @@ createFamily' appConfig loaded = mdo
 
   pure (doneEv, invite^.Invite.request)
 
-familyEditName :: forall m t. GonimoM t m => App.Loaded t -> Event t () -> m (Event t (), Event t Text)
+familyEditName :: forall model m t. GonimoM model t m => App.Loaded t -> Event t () -> m (Event t (), Event t Text)
 familyEditName loaded reactivated' = do
     reactivated <- delay 0.2 reactivated' -- necessary because focus isn't triggered otherwise
     backClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank

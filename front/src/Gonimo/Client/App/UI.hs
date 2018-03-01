@@ -31,11 +31,12 @@ import qualified Gonimo.Client.Storage.Keys     as GStorage
 import           Gonimo.Client.Util             (getBrowserProperty,
                                                  getBrowserVersion)
 import qualified Gonimo.SocketAPI               as API
+import           Gonimo.Client.Settings       (Settings, HasSettings, HasConfig(onSelectLocale))
 
 
-ui :: forall m t. GonimoM t m
-      => Model t -> m (ModelConfig t)
-ui model = mdo
+ui :: forall m t. GonimoM Model t m => m (ModelConfig t)
+ui = mdo
+  model <- ask
   checkBrowser
   family <- Family.family
             $ (Family.fromApp model) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
@@ -66,12 +67,12 @@ ui model = mdo
   let oldConfig = mempty
                   & serverConfig .~ oldServer
                   & subscriberConfig .~ oldSubscriber
-                  & selectLanguage .~ leftmost [ app^.selectLang
-                                               , familyUI^.Family.uiSelectLang
-                                               ]
+                  & settingsConfig . onSelectLocale .~ leftmost [ app^.selectLang
+                                                                , familyUI^.Family.uiSelectLang
+                                                                ]
   pure $ oldConfig <> accept
 
-runLoaded :: forall m t. GonimoM t m
+runLoaded :: forall model m t. GonimoM model t m
       => Model t -> Family.Family t -> m (App t, Family.UI t)
 runLoaded model family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
@@ -107,7 +108,7 @@ runLoaded model family = do
       <*> Family.uiSwitchPromptly (snd <$> evEv)
 
 
-loadedUI :: forall m t. GonimoM t m
+loadedUI :: forall model m t. GonimoM model t m
       => Model t -> Loaded t -> Bool -> m (App t, Family.UI t)
 loadedUI model loaded familyCreated = mdo
     deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = model^.onResponse
@@ -152,7 +153,7 @@ loadedUI model loaded familyCreated = mdo
              else Nothing
 
 
-checkBrowser ::forall m t. GonimoM t m => m ()
+checkBrowser ::  forall model m t. GonimoM model t m => m ()
 checkBrowser = do
     isiOS <- getBrowserProperty "ios"
     isBlink <- getBrowserProperty "blink"

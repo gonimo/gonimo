@@ -1,17 +1,16 @@
 {-# LANGUAGE RecursiveDo #-}
-module Gonimo.Client.I18N.UI where
+module Gonimo.Client.Settings.UI where
+
+import Reflex.Dom.Core
 
 import Gonimo.Client.Prelude
-import Control.Monad.Reader.Class
-import Reflex.Dom.Core
-import Gonimo.Client.I18N
 import Gonimo.I18N
 import Gonimo.Client.Reflex.Dom
 
 
-langSelector :: forall t m. GonimoM t m => m (Event t Locale)
+langSelector :: forall model t m. GonimoM model t m => m (Event t Locale)
 langSelector = elClass "div" "lang-select" $ mdo
-    locDyn <- asks _gonimoLocale
+    locDyn <- view locale
     let flagClass = pure "flag " <> fmap localeCssClass locDyn
     clicked <-
       makeClickable . elDynAttr' "div" (addBtnDynAttrs flagClass) $ blank

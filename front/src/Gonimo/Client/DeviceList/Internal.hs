@@ -78,7 +78,7 @@ ownDeviceName auth deviceList' = fmap (fromMaybe "") . runMaybeT $ do
   lift $ API.deviceInfoName <$> deviceInfo
 
 
-deviceList :: forall m t. GonimoM t m => Config t -> m (DeviceList t)
+deviceList :: forall model m t. GonimoM model t m => Config t -> m (DeviceList t)
 deviceList config = do
     let
       onlineSub = Set.singleton . API.ReqGetOnlineDevices <$> config^.configFamilyId

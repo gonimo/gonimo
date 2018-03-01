@@ -1,7 +1,7 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -30,13 +30,11 @@ import qualified Gonimo.Client.Account       as Account
 import           Gonimo.Client.App           as App
 import qualified Gonimo.Client.Auth          as Auth
 import qualified Gonimo.Client.Config        as Config
-import           Gonimo.Client.I18N
+import qualified Gonimo.Client.Settings      as Settings
 import           Gonimo.Client.Prelude       hiding (app)
 import qualified Gonimo.Client.Server        as Server
-import qualified Gonimo.Client.Storage       as GStorage
-import qualified Gonimo.Client.Storage.Keys  as GStorage
 import qualified Gonimo.Client.Subscriber    as Subscriber
-import           Gonimo.I18N
+
 import           Gonimo.Types                (InvitationSecret)
 
 data Config
@@ -48,30 +46,50 @@ mkEmptyConfig :: IO Config
 mkEmptyConfig = do
   Config <$> newEmptyMVar
 
-type AppConstraint t m = (DomBuilder t m, MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m), HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadSample t (Performable m))
+type AppConstraint t m
+  = ( DomBuilder t m, MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
+    , HasJSContext m, PerformEvent t m, TriggerEvent t m
+    , PostBuild t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadSample t (Performable m)
+    )
 
+-- | Wire up the app.
+--
+--   We build up the 'Model' and the 'ModelConfig' and wire the components
+--   accordingly.
+--
+--   Each component (part of the model) has it's own view on what the model actually is, It is
+--   defined in their module's 'HasModel' constraint and specifies the other
+--   components it needs for its own operation. The actual model is kept
+--   polymorphic, so we can wire the components up by simply passing in 'Model'
+--   which is a collection of all components available. By leaving the model in
+--   the components polymorphic we make this great simplification possible,
+--   while at the same time, each component can be tested with it's minimal set
+--   of requirements.
+--
+--  'ModelConfig' gets build by the components in a similar way: Each component
+--  specifies a 'HasModelConfig' constraint in their module, which specifies
+--  precisely which parts of the module the components 'make' function
+--  is going to configure. Again by leaving this polymorphic we can test
+--  individual components with the minimum of required dependencies, while at
+--  the same time we can simply treat it as 'ModelConfig' in this function for all
+--  components.
 app :: forall t m. AppConstraint t m => Config -> m ()
 app conf' = build $ \ ~(modelConf, model) -> do
-  conf <- toModelConfig conf'
-
   liftIO $ putStrLn "Loaded - yeah!"
 
-  __server <- Server.make Config.gonimoBackWSURL modelConf
+  conf                     <- toModelConfig conf'
 
-  (authConf, __auth) <- Auth.make (model ^. gonimoLocale) model
+  __server                 <- Server.make Config.gonimoBackWSURL modelConf
+
+  (authConf, __auth)       <- Auth.make model
 
   (accountConf, __account) <- Account.make model modelConf
 
-  subscriberConf <- Subscriber.make model  modelConf
+  subscriberConf           <- Subscriber.make model modelConf
 
-  initLang      <- readLocale
-  _gonimoLocale <- holdDyn initLang $ modelConf^.selectLanguage
-  performEvent_ $ writeLocale <$> updated (model ^. gonimoLocale)
+  __settings               <- Settings.make modelConf
 
-
-  -- Delay UI rendering until network is ready ...
-  let runApp = flip runReaderT (GonimoEnv (model ^. gonimoLocale)) $ ui model
-  uiConf <- networkViewFlatten (pure runApp)
+  uiConf                   <- makeUI model
 
   pure ( mconcat [ conf
                  , authConf
@@ -84,6 +102,12 @@ app conf' = build $ \ ~(modelConf, model) -> do
   where
     build :: ((ModelConfig t, Model t) -> m (ModelConfig t, Model t)) -> m ()
     build = void . mfix
+
+    -- Delay UI rendering until network is ready.
+    makeUI :: Model t -> m (ModelConfig t)
+    makeUI = networkViewFlatten . constDyn . runReaderT ui
+
+
 
 main :: Config -> JS.JSM ()
 -- main = run 3709 $ mainWidget app
@@ -107,23 +131,6 @@ toModelConfig conf = do
   pure $ mempty & Account.onClaimInvitation .~ fmap (:[]) onClaimInvitation'
   where
     run = liftIO . void . forkIO . forever
-
-localeFromBrowserString :: Text -> Locale
-localeFromBrowserString langStr
-  | T.isPrefixOf "de" langStr = DE_DE
-  | otherwise = EN_GB
-
-readLocale :: MonadJSM m => m Locale
-readLocale = do
-  storage <- liftJSM $ Window.getLocalStorage =<< DOM.currentWindowUnchecked
-  browserLocaleStr <- liftJSM $ fromMaybe "en-US" <$> (JS.fromJSVal =<< JS.eval ("navigator.language" :: Text))
-  let browserLocale = localeFromBrowserString browserLocaleStr
-  fromMaybe browserLocale <$> GStorage.getItem storage GStorage.userLocale
-
-writeLocale :: MonadJSM m => Locale -> m ()
-writeLocale lastBabyName = do
-  storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
-  GStorage.setItem storage GStorage.userLocale lastBabyName
 
 getInvitationSecret :: forall m. (MonadPlus m, MonadJSM m) => m InvitationSecret
 getInvitationSecret = do

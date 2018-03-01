@@ -16,7 +16,7 @@ import           Gonimo.Server.Error               (ServerError (..))
 import qualified Gonimo.SocketAPI                  as API
 import           Gonimo.SocketAPI.Types            (InvitationReply (..))
 
-ui :: forall m t. GonimoM t m
+ui :: forall model m t. GonimoM model t m
       => Config t -> m (MessageBox t)
 ui config = do
   actions <- fmap switchPromptlyDyn
@@ -25,17 +25,17 @@ ui config = do
     $ displayMessages <$> config^.configMessage
   pure $ MessageBox actions
 
-displayMessages :: forall m t. GonimoM t m
+displayMessages :: forall model m t. GonimoM model t m
       => [Message] -> Maybe (m (Event t [Action]))
 displayMessages msgs = fmap mconcat <$> (sequence <$> traverse displayMessage msgs)
 
 
-displayMessage :: forall m t. GonimoM t m
+displayMessage :: forall model m t. GonimoM model t m
       => Message -> Maybe (m (Event t [Action]))
 displayMessage msg = fmap (fmap (:[])) <$> case msg of
   ServerResponse res -> displayResponse res
 
-displayResponse :: forall m t. GonimoM t m
+displayResponse :: forall model m t. GonimoM model t m
       => API.ServerResponse -> Maybe (m (Event t Action))
 displayResponse msg = case msg of
   API.ResError req err -> displayError req err
@@ -49,7 +49,7 @@ displayResponse msg = case msg of
       (never,) <$> delayed 5
   _ -> Nothing
 
-displayError :: forall m t. GonimoM t m
+displayError :: forall model m t. GonimoM model t m
       => API.ServerRequest -> ServerError -> Maybe (m (Event t Action))
 displayError req err = case (req, err) of
   (_, AlreadyFamilyMember fid) -> Just $
@@ -69,7 +69,7 @@ displayError req err = case (req, err) of
       (never,) <$> delayed 6
   (_,_) -> Nothing
 
-box :: forall m t a. GonimoM t m
+box :: forall model m t a. GonimoM model t m
       => I18N.Message -> Text -> m (Event t a, Event t ()) -> m (Event t a)
 box title panelClass inner = mdo
   dynPair <- widgetHold (box' title panelClass inner) $ const (pure (never, never)) <$> closed
@@ -77,7 +77,7 @@ box title panelClass inner = mdo
   let closed = switchPromptlyDyn . fmap snd $ dynPair
   pure widgetEvent
 
-box' :: forall m t a. GonimoM t m
+box' :: forall model m t a. GonimoM model t m
       => I18N.Message -> Text -> m (Event t a, Event t ()) -> m (Event t a, Event t ())
 box' title panelClass inner = do
   elClass "div" "notification overlay" $

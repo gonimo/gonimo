@@ -123,7 +123,7 @@ currentFamilyName df =
     in
       zipDynWith getFamilyName (df^.definiteSelected) (df^.definiteFamilies)
 
-family :: forall m t. (GonimoM t m) => Config t -> m (Family t)
+family :: forall model m t. (GonimoM model t m) => Config t -> m (Family t)
 family config' = do
     (subs, familyIds', families') <- makeFamilies config'
     -- We need to use ids here, because we need intermediate information not available in families'
@@ -137,7 +137,7 @@ family config' = do
                   , _request = selectReqs <> createReqs <> leaveReqs <> renameReqs
                 }
 
-handleFamilySelect :: forall m t. GonimoM t m
+handleFamilySelect :: forall model m t. GonimoM model t m
                       => Config t -> Dynamic t (Maybe [FamilyId])
                       -> m (Event t [ API.ServerRequest ], Dynamic t (Maybe FamilyId))
 handleFamilySelect config' familyIds' = mdo
@@ -206,7 +206,7 @@ handleSetName config' selectedFamily' = push (\name -> do
                                                   Just fid -> pure $ Just [ API.ReqSetFamilyName fid name ]
                                             ) (config'^.configSetName)
 
-makeFamilies :: forall m t. GonimoM t m
+makeFamilies :: forall model m t. GonimoM model t m
                 => Config t -> m (SubscriptionsDyn t, Dynamic t (Maybe [FamilyId]), Dynamic t (Maybe FamilyMap))
 makeFamilies config' = do
   (subs, fids) <- makeSubscriptions

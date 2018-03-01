@@ -29,7 +29,7 @@ import           Gonimo.Types                     (_Baby)
 
 
 
-ui :: forall m t. GonimoM t m
+ui :: forall model m t. GonimoM model t m
             => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
   connections' <- C.connections $ C.Config { C._configResponse = appConfig^.onResponse
@@ -112,7 +112,7 @@ ui appConfig loaded deviceList = mdo
                     , App._screenGoHome = goHome
                     }
 
-manageUi :: forall m t. GonimoM t m
+manageUi :: forall model m t. GonimoM model t m
             => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
 manageUi _ loaded deviceList connections' = do
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
@@ -130,7 +130,7 @@ manageUi _ loaded deviceList connections' = do
 
       pure (navBar', devicesUI, inviteRequested)
 
-viewUi :: forall m t. GonimoM t m
+viewUi :: forall model m t. GonimoM model t m
             => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t
             -> Dynamic t Bool -> m (C.VideoView t)
 viewUi _ loaded deviceList connections isShown = do
@@ -151,14 +151,14 @@ viewUi _ loaded deviceList connections isShown = do
         makeClickable . elAttr' "div" (addBtnAttrs "stop") $ trText Stop_All
     pure $ C.VideoView navBar' closedEv stopAllClicked
 
-renderFakeVideos :: forall m t. GonimoM t m => C.Connections t -> Dynamic t (m ())
+renderFakeVideos :: forall model m t. GonimoM model t m => C.Connections t -> Dynamic t (m ())
 renderFakeVideos connections =
   let
     renderFake stream = mediaVideo stream ("autoplay" =: "true" <> "style" =: "width:100%;height:100%;" <> "class" =: "fakeVideo" <> "muted" =: "true")
   in
     traverse_ renderFake . Map.elems <$> connections^.C.origStreams
 
-renderVideos :: forall m t. GonimoM t m => DeviceList.DeviceList t -> C.Connections t
+renderVideos :: forall model m t. GonimoM model t m => DeviceList.DeviceList t -> C.Connections t
              -> Dynamic t Bool -> Dynamic t (m [Event t DeviceId])
 renderVideos deviceList connections' isShown =
     uncurry renderVideosOrNone <$> shownStreams
@@ -216,12 +216,12 @@ renderVideos deviceList connections' isShown =
     --                            || chan^.videoReceivingState == StateUnreliable
 
 
-leaveConfirmation :: GonimoM t m => m ()
+leaveConfirmation :: GonimoM model t m => m ()
 leaveConfirmation = do
     el "h3" $ trText Really_stop_parent_station
     el "p" $ trText All_open_streams_will_be_disconnected
 
-handleUnreliableAlert :: forall t m. GonimoM t m => C.Connections t -> m ()
+handleUnreliableAlert :: forall model t m. GonimoM model t m => C.Connections t -> m ()
 handleUnreliableAlert connections' = mdo
   let gotUnreliable = updated $ connections'^.C.unreliableConnections
 
@@ -238,7 +238,7 @@ handleUnreliableAlert connections' = mdo
   pure ()
 
 -- Old currently no longer used:
--- unreliableAlert :: forall t m. GonimoM t m => m (Event t ())
+-- unreliableAlert :: forall t m. GonimoM model t m => m (Event t ())
 -- unreliableAlert = do
 --   elClass "div" "fullScreenOverlay" $ do
 --     elClass "div" "container" $ do

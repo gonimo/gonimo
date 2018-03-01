@@ -60,7 +60,7 @@ data VideoView t
 
 type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
-connections :: forall m t. GonimoM t m => Config t -> m (Connections t)
+connections :: forall model m t. GonimoM model t m => Config t -> m (Connections t)
 connections config = mdo
   let
     ourDevId = API.deviceId <$> current (config^.configAuthData)
@@ -113,7 +113,7 @@ connections config = mdo
     kickSecret :: forall v. Map (DeviceId, Secret) v -> Map DeviceId v
     kickSecret = Map.fromList . over (mapped._1) (^._1) . Map.toList
 
-playAlarmOnBrokenConnection :: GonimoM t m => Channels.Channels t -> m ()
+playAlarmOnBrokenConnection :: GonimoM model t m => Channels.Channels t -> m ()
 playAlarmOnBrokenConnection channels' = mdo
     let
       loadAlert :: forall m1. MonadJSM m1 => m1 AudioNode.AudioBufferSourceNode

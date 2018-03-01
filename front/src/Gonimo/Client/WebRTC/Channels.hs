@@ -73,7 +73,7 @@ data Channels t
              , _remoteStreams :: Dynamic t StreamMap -- Useful to have this separate for rendering. (Don't reload videos on every change to map.)
              }
 
-channels :: forall m t. GonimoM t m => Config t -> m (Channels t)
+channels :: forall model m t. GonimoM model t m => Config t -> m (Channels t)
 channels config = mdo
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
   insertChannel <- handleCreateChannel config triggerChannelEvent

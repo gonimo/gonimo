@@ -1,36 +1,32 @@
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
 module Gonimo.Client.EditStringButton (editStringButton, editStringEl, editDeviceName, editFamilyName) where
 
-import Reflex.Dom.Core
-import Control.Lens
-import Data.Map (Map)
-import Data.Text (Text)
-import Control.Monad.Fix (MonadFix)
-import Control.Monad.Reader.Class (MonadReader)
-import Gonimo.Client.Reflex.Dom
-import GHCJS.DOM.Types (MonadJSM)
-import Gonimo.Client.Prelude
-import Gonimo.Client.EditStringButton.I18N
+import           Control.Lens
+import           Data.Map                            (Map)
+import           Data.Text                           (Text)
+import           Reflex.Dom.Core
 
-type EditStringConstraint t m = (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadJSM m, MonadJSM (Performable m), PerformEvent t m, MonadReader (GonimoEnv t) m)
+import           Gonimo.Client.EditStringButton.I18N
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
 
-editFamilyName :: forall t m. EditStringConstraint t m
+editFamilyName :: forall model t m. GonimoM model t m
                       => m (Event t ()) -> Dynamic t Text -> m (Event t Text)
 editFamilyName someButton val = editStringEl someButton (trText Change_family_name_to) val
 
-editDeviceName :: forall t m. EditStringConstraint t m
+editDeviceName :: forall model t m. GonimoM model t m
                       => m (Event t ()) -> Dynamic t Text -> m (Event t Text)
 editDeviceName someButton val = editStringEl someButton (trText Change_device_name_to) val
 
-editStringButton :: forall t m. EditStringConstraint t m
+editStringButton :: forall model t m. GonimoM model t m
                       => Map Text Text -> m () -> m () -> Dynamic t Text -> m (Event t Text)
 editStringButton attrs inner = editStringEl (buttonAttr attrs inner)
 
 -- Button like element for editing a string:
-editStringEl :: forall t m. EditStringConstraint t m
+editStringEl :: forall model t m. GonimoM model t m
                       => m (Event t ()) -> m () -> Dynamic t Text -> m (Event t Text)
 editStringEl someButton editStringText val = mdo
   clicked <- someButton
@@ -41,7 +37,7 @@ editStringEl someButton editStringText val = mdo
   pure $ push (pure . id) gotAnswer
 
 
-editStringBox :: forall t m. EditStringConstraint t m
+editStringBox :: forall model t m. GonimoM model t m
               => m () -> Dynamic t Text -> m (Event t (Maybe Text))
 editStringBox editStringText val = do
   elClass "div" "fullScreenOverlay" $

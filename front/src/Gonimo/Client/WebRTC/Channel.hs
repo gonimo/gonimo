@@ -9,7 +9,7 @@ module Gonimo.Client.WebRTC.Channel where
 import Gonimo.Client.Prelude
 
 
-import           Control.Monad.Reader.Class
+
 import           GHCJS.DOM.EventM
 import           GHCJS.DOM.Enums                (MediaStreamTrackState(..))
 import           GHCJS.DOM.RTCIceCandidate

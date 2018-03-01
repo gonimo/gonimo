@@ -8,13 +8,12 @@ import           Reflex.Dom.Core
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Prelude
-
 import           Gonimo.Client.Family.RoleSelector.I18N
-import           Control.Monad.Reader.Class
 
 
 
-roleSelector :: forall t m. (MonadReader (GonimoEnv t) m, MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m)
+
+roleSelector :: forall model t m. GonimoM model t m
           => m (Event t GonimoRole)
 roleSelector = do
   elClass "div" "btn-box" $ do

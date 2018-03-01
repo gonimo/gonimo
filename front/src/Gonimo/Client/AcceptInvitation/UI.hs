@@ -30,7 +30,7 @@ import qualified Gonimo.Types                           as Gonimo
 type HasModelConfig c t = (IsConfig c t, Account.HasConfig c)
 
 ui :: forall m conf model t
-      . (GonimoM t m, HasAccount model, HasModelConfig conf t)
+      . (GonimoM model t m, HasAccount model, HasModelConfig conf t)
       => model t -> m (conf t)
 ui = networkViewFlatten . fmap renderNextInvitation . view Account.claimedInvitations
   where
@@ -41,7 +41,7 @@ ui = networkViewFlatten . fmap renderNextInvitation . view Account.claimedInvita
     renderNextInvitation = maybe (pure mempty) (uncurry ui') . nextInvitation
 
 
-ui' :: forall conf m t. (GonimoM t m, HasModelConfig conf t)
+ui' :: forall conf model m t. (GonimoM model t m, HasModelConfig conf t)
       => InvitationSecret -> InvitationInfo -> m (conf t)
 ui' secret invInfo = do
   elClass "div" "notification overlay" $ do

@@ -6,7 +6,6 @@ module Gonimo.Client.Invite.UI where
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.IO.Class        (liftIO)
-import           Control.Monad.Reader.Class
 import           Data.Maybe                    (maybe)
 import           Data.Text                     (Text)
 import qualified Data.Text.Encoding            as T
@@ -15,11 +14,11 @@ import           Network.HTTP.Types            (urlEncode)
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types       as App
-import           Gonimo.Client.I18N
 import           Gonimo.Client.Invite.Internal
 import           Gonimo.Client.Invite.UI.I18N
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
+import qualified Gonimo.Client.Settings        as Settings
 import           Gonimo.Client.Util
 import           Gonimo.I18N
 import qualified Gonimo.SocketAPI              as API
@@ -27,7 +26,7 @@ import           Gonimo.SocketAPI.Types        (InvitationId)
 import qualified Gonimo.SocketAPI.Types        as API
 import           Gonimo.Types                  (InvitationDelivery (..))
 
-ui :: forall m t. GonimoM t m => App.Loaded t -> Config t -> m (Invite t)
+ui :: forall model m t. GonimoM model t m => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
     baseUrl <- getBaseLink
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
@@ -91,7 +90,7 @@ ui loaded config = mdo
         elAttr "div" (addBtnAttrs $ "invite-button " <> className) $
           makeClickable . elDynAttr' "a" (mkLinkAttrs <$> payload) $ blank
 
-confirmationBox :: forall m t. GonimoM t m
+confirmationBox :: forall model m t. GonimoM model t m
                    => Event t InvitationSent -> m ()
 confirmationBox sent = do
   let mSent = Just <$> sent
@@ -100,7 +99,7 @@ confirmationBox sent = do
   _ <- widgetHold (pure ()) $ confirmationBox' <$> lifeEvent
   pure ()
 
-confirmationBox' :: forall m t. GonimoM t m => Maybe InvitationSent -> m ()
+confirmationBox' :: forall model m t. GonimoM model t m => Maybe InvitationSent -> m ()
 confirmationBox' Nothing = pure ()
 confirmationBox' (Just sendMethod) = do
   elClass "div" "alert alert-success" $ do
@@ -116,9 +115,9 @@ awesomeAddon t =
   elAttr "span" ( "class" =: "input-group-addon") $
     elAttr "i" ("class" =: ("fa " <> t)) blank
 
-copyButton :: forall t m. GonimoM t m => m (Event t ())
+copyButton :: forall model t m. GonimoM model t m => m (Event t ())
 copyButton = do
-  loc <- asks _gonimoLocale
+  loc <- view Settings.locale
   let title = i18n <$> loc <*> pure Copy_link_to_clipboard
   let attrs title' = ( "class" =: "input-btn input-btn-right link" <> "title" =: title'
                        <> "type" =: "button" <> "role" =: "button"
@@ -127,9 +126,9 @@ copyButton = do
   makeClickable . elDynAttr' "div" (attrs <$> title) $ blank
 
 
-refreshLinkButton :: forall t m. GonimoM t m => m (Event t ())
+refreshLinkButton :: forall model t m. GonimoM model t m => m (Event t ())
 refreshLinkButton = do
-  loc <- asks _gonimoLocale
+  loc <- view Settings.locale
   let title = i18n <$> loc <*> pure Generate_new_link
   let attrs title' = ( "class" =: "input-btn input-btn-left recreate" <> "title" =: title'
                        <> "type" =: "button" <> "role" =: "button"
@@ -167,7 +166,7 @@ copyClipboardScript = el "script" $ text $
     -- <> "   alert(\"invitationLinkUrlInput\");\n"
     <> "};\n"
 
-emailWidget :: forall t m. GonimoM t m
+emailWidget :: forall model t m. GonimoM model t m
   => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, API.Invitation))
   -> m (Event t [API.ServerRequest])
 emailWidget _ invData = mdo

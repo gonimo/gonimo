@@ -3,41 +3,42 @@ module Gonimo.Client.App.Types where
 
 import           Control.Lens
 import           Control.Monad
-import           Data.Map                 (Map)
-import qualified Data.Set                 as Set
+import           Data.Map                     (Map)
+import qualified Data.Set                     as Set
 
-import           Gonimo.Client.Account    (Account, HasAccount)
-import qualified Gonimo.Client.Account    as Account
-import           Gonimo.Client.Auth       (Auth, HasAuth)
-import qualified Gonimo.Client.Auth       as Auth
+import           Gonimo.Client.Account        (Account, HasAccount)
+import qualified Gonimo.Client.Account        as Account
+import           Gonimo.Client.Auth           (Auth, HasAuth)
+import qualified Gonimo.Client.Auth           as Auth
 import           Gonimo.Client.Prelude
-import           Gonimo.Client.Server     (HasServer, Server)
-import qualified Gonimo.Client.Server     as Server
-import           Gonimo.Client.Subscriber (SubscriptionsDyn)
-import           Gonimo.I18N
-import qualified Gonimo.SocketAPI         as API
-import qualified Gonimo.SocketAPI.Types   as API
-import qualified Gonimo.Types             as Gonimo
+import           Gonimo.Client.Server         (HasServer, Server)
+import qualified Gonimo.Client.Server         as Server
+import           Gonimo.Client.Settings       (Settings, HasSettings)
+import qualified Gonimo.Client.Settings       as Settings
+import           Gonimo.Client.Subscriber     (SubscriptionsDyn)
 import qualified Gonimo.Client.Subscriber.API as Subscriber
-
+import           Gonimo.I18N
+import qualified Gonimo.SocketAPI             as API
+import qualified Gonimo.SocketAPI.Types       as API
+import qualified Gonimo.Types                 as Gonimo
 
 
 
 data ModelConfig t
-  = ModelConfig { _accountConfig :: Account.Config t
+  = ModelConfig { _accountConfig    :: Account.Config t
                 , _subscriberConfig :: Subscriber.Config t
-                , _serverConfig :: Server.Config t
-                , _selectLanguage :: Event t Locale
+                , _serverConfig     :: Server.Config t
+                , _settingsConfig   :: Settings.Config t
                 } deriving (Generic)
 
 data Model t
-  = Model { __server  :: Server t
-          , __account :: Account t
-          , __auth    :: Auth t
-            -- | Is also in the Reader environment for translation convenience.
-          , _gonimoLocale :: Dynamic t Locale
+  = Model { __server   :: Server t
+          , __account  :: Account t
+          , __auth     :: Auth t
+          , __settings :: Settings t
           }
 
+-- | TODO: Get rid of this.
 data Loaded t
   = Loaded { _authData       :: Dynamic t API.AuthData
            , _families       :: Dynamic t (Map API.FamilyId API.Family)
@@ -59,6 +60,7 @@ data App t
         , _selectLang    :: Event t Locale
         }
 
+-- | TODO: Get rid of this, it got replaced by 'ModelConfig'.
 data Screen t
   = Screen { _screenApp    :: App t
            , _screenGoHome :: Event t ()
@@ -72,6 +74,9 @@ instance HasAccount Model where
 
 instance HasAuth Model where
   auth = _auth
+
+instance HasSettings Model where
+  settings = _settings
 
 instance (Reflex t) => Default (App t) where
   def = App (constDyn Set.empty) never never
@@ -98,13 +103,16 @@ instance Subscriber.HasConfig ModelConfig where
 instance Server.HasConfig ModelConfig where
   config = serverConfig
 
+instance Settings.HasConfig ModelConfig where
+  config = settingsConfig
+
 instance Flattenable ModelConfig where
   flattenWith doSwitch ev
     = ModelConfig
       <$> flattenWith doSwitch (_accountConfig <$> ev)
       <*> flattenWith doSwitch (_subscriberConfig <$> ev)
       <*> flattenWith doSwitch (_serverConfig <$> ev)
-      <*> doSwitch never (_selectLanguage <$> ev)
+      <*> flattenWith doSwitch (_settingsConfig <$> ev)
 
 appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev
@@ -149,9 +157,8 @@ subscriberConfig f modelConfig' = (\subscriberConfig' -> modelConfig' { _subscri
 serverConfig :: Lens' (ModelConfig t) (Server.Config t)
 serverConfig f modelConfig' = (\serverConfig' -> modelConfig' { _serverConfig = serverConfig' }) <$> f (_serverConfig modelConfig')
 
-selectLanguage :: Lens' (ModelConfig t) (Event t Locale)
-selectLanguage f modelConfig' = (\selectLanguage' -> modelConfig' { _selectLanguage = selectLanguage' }) <$> f (_selectLanguage modelConfig')
-
+settingsConfig :: Lens' (ModelConfig t) (Settings.Config t)
+settingsConfig f modelConfig' = (\settingsConfig' -> modelConfig' { _settingsConfig = settingsConfig' }) <$> f (_settingsConfig modelConfig')
 
 -- Lenses for Model t:
 
@@ -164,8 +171,8 @@ _account f model' = (\_account' -> model' { __account = _account' }) <$> f (__ac
 _auth :: Lens' (Model t) (Auth t)
 _auth f model' = (\_auth' -> model' { __auth = _auth' }) <$> f (__auth model')
 
-gonimoLocale :: Lens' (Model t) (Dynamic t Locale)
-gonimoLocale f model' = (\gonimoLocale' -> model' { _gonimoLocale = gonimoLocale' }) <$> f (_gonimoLocale model')
+_settings :: Lens' (Model t) (Settings t)
+_settings f model' = (\_settings' -> model' { __settings = _settings' }) <$> f (__settings model')
 
 
 

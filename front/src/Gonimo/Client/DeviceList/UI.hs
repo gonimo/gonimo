@@ -41,7 +41,7 @@ import           Gonimo.Client.WebRTC.Channel      (Channel,
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
 
 
-ui :: forall m t. GonimoM t m
+ui :: forall model m t. GonimoM model t m
               => App.Loaded t -> DeviceList t -> Dynamic t (Map DeviceId (Channel t))
               -> Dynamic t (Set DeviceId)  -> m (UI t)
 ui loaded deviceList' channels connected = do
@@ -54,7 +54,7 @@ ui loaded deviceList' channels connected = do
             <*> loaded^.App.authData
     uiSwitchPromptly evUI
 
-renderAccounts :: forall m t. GonimoM t m
+renderAccounts :: forall model m t. GonimoM model t m
               => TimeZone
               -> App.Loaded t
               -> NestedDeviceInfos t
@@ -71,7 +71,7 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
     allUis <- traverse renderAccount $ self <> others
     pure $ uiLeftmost allUis
   where
-    removeConfirmationText :: GonimoM t m => Bool -> Dynamic t Text -> m ()
+    removeConfirmationText :: GonimoM model t m => Bool -> Dynamic t Text -> m ()
     removeConfirmationText isUs devName
       = trDynText $ if isUs
                      then pure Really_leave_your_current_family

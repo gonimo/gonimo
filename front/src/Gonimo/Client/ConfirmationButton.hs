@@ -1,40 +1,36 @@
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Client.ConfirmationButton where
 
-import Reflex.Dom.Core
-import Data.Map (Map)
-import Data.Text (Text)
-import Control.Monad.Reader.Class (MonadReader)
-import Control.Monad.Fix (MonadFix)
-import Gonimo.Client.Reflex.Dom
-import Gonimo.Client.ConfirmationButton.I18N
-import Gonimo.Client.Prelude
+import           Data.Map                              (Map)
+import           Data.Text                             (Text)
+import           Reflex.Dom.Core
 
-type ConfirmationConstraint t m = (PostBuild t m, DomBuilder t m, MonadFix m, MonadHold t m, MonadReader (GonimoEnv t) m)
+import           Gonimo.Client.ConfirmationButton.I18N
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
 
 data Confirmed = No | Yes
 
-confirmationButton :: forall t m. ConfirmationConstraint t m
+confirmationButton :: forall model t m. GonimoM model t m
                       => Map Text Text -> m () -> m () -> m (Event t ())
 confirmationButton attrs inner = confirmationEl (buttonAttr attrs inner)
 
-confirmationEl :: forall t m. ConfirmationConstraint t m
+confirmationEl :: forall model t m. GonimoM model t m
                       => m (Event t ()) -> m () -> m (Event t ())
 confirmationEl someButton confirmationText = addConfirmation confirmationText =<< someButton
 
 
-mayAddConfirmation :: forall t m. ConfirmationConstraint t m
+mayAddConfirmation :: forall model t m. GonimoM model t m
                       => m () -> Event t () -> Dynamic t Bool -> m (Event t ())
 mayAddConfirmation confirmationText clicked needsConfirmation = do
   let
     go False = pure clicked
-    go True = addConfirmation confirmationText clicked
+    go True  = addConfirmation confirmationText clicked
   evEv <- dyn $ go <$> needsConfirmation
   switchPromptly never evEv
 
-addConfirmation :: forall t m. ConfirmationConstraint t m
+addConfirmation :: forall model t m. GonimoM model t m
                       => m () -> Event t () -> m (Event t ())
 addConfirmation confirmationText clicked = mdo
   confirmationDialog <- holdDyn (pure never) $ leftmost [ const (confirmationBox confirmationText) <$> clicked
@@ -42,12 +38,12 @@ addConfirmation confirmationText clicked = mdo
                                                         ]
   gotAnswer <- switchPromptly never =<< dyn confirmationDialog
   pure $ push (\answer -> case answer of
-                            No -> pure Nothing
+                            No  -> pure Nothing
                             Yes -> pure $ Just ()
               ) gotAnswer
 
 
-confirmationBox :: forall t m. ConfirmationConstraint t m => m () -> m (Event t Confirmed)
+confirmationBox :: forall model t m. GonimoM model t m => m () -> m (Event t Confirmed)
 confirmationBox confirmationText = do
   elClass "div" "fullScreenOverlay" $ do
     elClass "div" "container" $ do

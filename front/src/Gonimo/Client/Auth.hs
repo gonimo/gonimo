@@ -1,6 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Gonimo.Client.Auth ( -- * User interface
                             module Gonimo.Client.Auth.API
                             -- * Other types and classes
@@ -17,38 +17,39 @@ module Gonimo.Client.Auth ( -- * User interface
                           , loadingDots
                           ) where
 
-import Reflex
-import Reflex.Dom.Core
-import Reflex.PerformEvent.Class (performEvent_)
-import Control.Lens
-import qualified Gonimo.SocketAPI.Types as API
-import qualified Gonimo.SocketAPI as API
-import qualified GHCJS.DOM as DOM
-import qualified Gonimo.Client.Storage as GStorage
+import           Control.Lens
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
+import           Data.Time.Clock
+import qualified GHCJS.DOM                  as DOM
+import qualified GHCJS.DOM.Document         as Document
+import qualified GHCJS.DOM.Location         as Location
+import qualified GHCJS.DOM.NavigatorID      as Navigator
+import           GHCJS.DOM.Storage          (Storage)
+import           GHCJS.DOM.Types            (MonadJSM)
+import qualified GHCJS.DOM.Window           as Window
+import qualified Gonimo.Client.Storage      as GStorage
 import qualified Gonimo.Client.Storage.Keys as GStorage
-import qualified GHCJS.DOM.Window as Window
-import qualified GHCJS.DOM.Document as Document
-import qualified GHCJS.DOM.NavigatorID as Navigator
-import qualified GHCJS.DOM.Location as Location
-import GHCJS.DOM.Storage (Storage)
-import Data.Text (Text)
-import           GHCJS.DOM.Types (MonadJSM)
-import qualified Data.Text as T
-import Data.Time.Clock
+import qualified Gonimo.SocketAPI           as API
+import qualified Gonimo.SocketAPI.Types     as API
+import           Reflex
+import           Reflex.Dom.Core
+import           Reflex.PerformEvent.Class  (performEvent_)
 
-import Control.Monad.IO.Class
-import Gonimo.Client.Prelude
-import Gonimo.Client.Auth.I18N
-import Gonimo.I18N
-import Gonimo.Client.Auth.API
-import Gonimo.Client.Server as Server hiding (make)
+import           Control.Monad.IO.Class
+import           Gonimo.Client.Auth.API
+import           Gonimo.Client.Auth.I18N
 import           Gonimo.Client.Model
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Server       as Server hiding (make)
+import qualified Gonimo.Client.Settings     as Settings
+import           Gonimo.I18N
 
 -- | Simple data type fulfilling our 'HasModel' dependencies.
 type Model t = Server t
 
 -- | Our dependencies
-type HasModel model = Server.HasServer model
+type HasModel model = (Server.HasServer model, Settings.HasSettings model)
 
 -- | Example datatype fulfilling 'HasModelConfig'.
 type ModelConfig t = Server.Config t
@@ -58,12 +59,15 @@ type HasModelConfig c t = (IsConfig c t, Server.HasConfig c)
 
 make :: forall model mConf t m
   . ( MonadHold t m, MonadJSM m, PerformEvent t m, MonadSample t m, MonadFix m, MonadJSM (Performable m)
-    , Server.HasServer model, HasModelConfig mConf t
+    , HasModel model, HasModelConfig mConf t
     )
-     => Dynamic t Locale -> model t -> m (mConf t, Auth t)
-make locDyn model = do
+     => model t -> m (mConf t, Auth t)
+make model = do
   (makeDeviceEvent, _authData) <- makeAuthData model
-  let authenticateEvent = authenticate model _authData
+  let
+    authenticateEvent = authenticate model _authData
+    locDyn = model ^. Settings.locale
+
   performEvent_
     $ handleStolenSession <$> attach (current locDyn) (model^.Server.onResponse)
   let
@@ -115,7 +119,7 @@ makeAuthData model = do
     fromServerResponse :: API.ServerResponse -> Maybe API.AuthData
     fromServerResponse resp = case resp of
       API.ResMadeDevice auth' -> Just auth'
-      _ -> Nothing
+      _                       -> Nothing
 
 
 authenticate :: forall d t. (Reflex t, HasServer d) => d t -> Dynamic t (Maybe API.AuthData) -> Event t API.ServerRequest
@@ -153,13 +157,13 @@ getUserAgentString = do
   Navigator.getUserAgent navigator
 
 
-connectionLossScreen :: forall a m t. (GonimoM t m, HasAuth a)
+connectionLossScreen :: forall a model m t. (GonimoM model t m, HasAuth a)
   => a t -> m ()
 connectionLossScreen auth' = do
   _ <- dyn $ connectionLossScreen' . not <$> auth'^.isOnline
   pure ()
 
-connectionLossScreen' :: forall m t. GonimoM t m
+connectionLossScreen' :: forall model m t. GonimoM model t m
   => Bool -> m ()
 connectionLossScreen' isBroken = case isBroken of
   False -> pure ()
@@ -174,7 +178,7 @@ connectionLossScreen' isBroken = case isBroken of
         elClass "div" "welcome-container" $
           elClass "div" "start-welcome-img" $ blank
 
-loadingDots :: forall m t. GonimoM t m => m (Dynamic t Text)
+loadingDots :: forall model m t. GonimoM model t m => m (Dynamic t Text)
 loadingDots = do
   now <- liftIO $ getCurrentTime
   tick <- tickLossy 1 now
