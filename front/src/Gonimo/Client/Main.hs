@@ -12,17 +12,8 @@ import           Control.Concurrent
 import           Control.Lens
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
-import qualified Data.Aeson                  as Aeson
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
-import qualified Data.Text.Encoding          as T
-import qualified GHCJS.DOM                   as DOM
-import qualified GHCJS.DOM.History           as History
-import qualified GHCJS.DOM.Location          as Location
-import           GHCJS.DOM.Types             (MonadJSM, liftJSM, toJSVal)
-import qualified GHCJS.DOM.Window            as Window
+import           GHCJS.DOM.Types             (MonadJSM)
 import qualified Language.Javascript.JSaddle as JS
-import           Network.HTTP.Types          (urlDecode)
 import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
                                               webSocketConfig_send)
 
@@ -30,22 +21,31 @@ import qualified Gonimo.Client.Account       as Account
 import           Gonimo.Client.App           as App
 import qualified Gonimo.Client.Auth          as Auth
 import qualified Gonimo.Client.Config        as Config
-import qualified Gonimo.Client.Settings      as Settings
 import           Gonimo.Client.Prelude       hiding (app)
 import qualified Gonimo.Client.Server        as Server
+import qualified Gonimo.Client.Settings      as Settings
 import qualified Gonimo.Client.Subscriber    as Subscriber
-
 import           Gonimo.Types                (InvitationSecret)
 
+-- | Configuration coming from the outside.
+--
+--   This is a bit ugly right now, because the reflex-dom mainWidget and run
+--   functions expect () as return value, therefore we can't simply return a
+--   data types with callback functions, but instead we need to pass in this
+--   'Config' which contains MVars that can be set by out side code. This is
+--   needed at the moment on Android for passing in Intents (Invitation URLs for
+--   the time being) at runtime.
 data Config
   = Config { -- | Have the app accept an invitation.
              _newInvitation :: MVar InvitationSecret
            }
 
+-- | Make an empty 'Config'.
 mkEmptyConfig :: IO Config
 mkEmptyConfig = do
   Config <$> newEmptyMVar
 
+-- | What does our application need, well here it is ... ;-)
 type AppConstraint t m
   = ( DomBuilder t m, MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
     , HasJSContext m, PerformEvent t m, TriggerEvent t m
@@ -110,17 +110,10 @@ app conf' = build $ \ ~(modelConf, model) -> do
 
 
 main :: Config -> JS.JSM ()
--- main = run 3709 $ mainWidget app
-main conf = do
-    fmap (fromMaybe ()) . runMaybeT $ do
-      invSecret <- getInvitationSecret
-      clearInvitationFromURL
-      runOnce $ putMVar (conf ^. newInvitation) invSecret
-    mainWidgetInElementById "app" $ app conf
-  where
-    runOnce = liftIO . void . forkIO
+main conf = mainWidgetInElementById "app" $ app conf
 
 
+-- | Get a 'ModelConfig' from our 'MVar' Config.
 toModelConfig :: (Reflex t, MonadIO m, TriggerEvent t m)
               => Config -> m (ModelConfig t)
 toModelConfig conf = do
@@ -132,31 +125,8 @@ toModelConfig conf = do
   where
     run = liftIO . void . forkIO . forever
 
-getInvitationSecret :: forall m. (MonadPlus m, MonadJSM m) => m InvitationSecret
-getInvitationSecret = do
-    window  <- DOM.currentWindowUnchecked
-    location <- Window.getLocation window
-    queryString <- Location.getSearch location
-    let secretString =
-          let
-            (_, startSecret) = T.drop 1 <$> T.breakOn "=" queryString
-          in
-            T.takeWhile (/='&') startSecret
-    guard $ not (T.null secretString)
-    let mDecoded = Aeson.decodeStrict . urlDecode True . T.encodeUtf8 $ secretString
-    maybe mzero pure $ mDecoded
-
-clearInvitationFromURL :: forall m. (MonadJSM m) => m ()
-clearInvitationFromURL = do
-    window  <- DOM.currentWindowUnchecked
-    location <- Window.getLocation window
-    history <- Window.getHistory window
-    href <- Location.getHref location
-    emptyJSVal <- liftJSM $ toJSVal T.empty
-    History.pushState history emptyJSVal ("gonimo" :: Text) (Just $ T.takeWhile (/='?') href)
 
 -- Generated lenses:
-
 
 -- Lenses for Config:
 

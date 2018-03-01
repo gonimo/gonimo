@@ -17,11 +17,21 @@ module Gonimo.Client.Account ( -- * Interface
                              ) where
 
 
+import qualified Data.Aeson                   as Aeson
 import qualified Data.Map                     as Map
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
+import qualified Data.Text                    as T
+import qualified Data.Text.Encoding           as T
+import qualified GHCJS.DOM                    as DOM
+import qualified GHCJS.DOM.History            as History
+import qualified GHCJS.DOM.Location           as Location
+import           GHCJS.DOM.Types              (MonadJSM, liftJSM, toJSVal)
+import qualified GHCJS.DOM.Window             as Window
+import           Network.HTTP.Types           (urlDecode)
 
-import           Gonimo.Client.Account.API      as API
+import           Gonimo.Client.Account.API    as API
+import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Server         (Server)
 import qualified Gonimo.Client.Server         as Server
@@ -29,10 +39,9 @@ import qualified Gonimo.Client.Subscriber.API as Subscriber
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Types       (InvitationInfo)
 import           Gonimo.Types                 (InvitationSecret)
-import           Gonimo.Client.Model
 
 
--- | Simple data type fulfilling our 'HasModel' dependencies.
+-- | Simple data type fulfilling our 'HasModel' constraint.
 type Model t = Server t
 
 -- | Our dependencies
@@ -60,8 +69,10 @@ type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfi
 --   from the server (ReqGetClaimedInvitations), so we only provide the ones of
 --   the current session. If you restart gonimo, your claimed invitations are no
 --   longer visible.
-make :: (Reflex t, MonadHold t m, MonadFix m, HasModel model, HasConfig c, HasModelConfig mConf t)
-  => model t -> c t -> m (mConf t, Account t)
+make :: ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
+        , HasModel model, HasConfig c, HasModelConfig mConf t
+        )
+     => model t -> c t -> m (mConf t, Account t)
 make model conf = do
   _claimedInvitations <- makeClaimedInvitations model
   let
@@ -113,11 +124,15 @@ answerInvitations conf =
 --
 --   In the long run we should provide some means for reliably sending messages,
 --   so we no longer have to misuse the subscriber functionality.
-subscribeInvitationClaims :: (Reflex t, HasConfig c, MonadHold t m, MonadFix m
+subscribeInvitationClaims :: (Reflex t, HasConfig c, MonadHold t m, MonadFix m, MonadJSM m
                              , IsConfig mconf t, Subscriber.HasConfig mconf)
                           => c t -> m (mconf t)
 subscribeInvitationClaims conf = do
-    invitationsToClaim <- foldDyn id Set.empty
+    mFromQueryString <- runMaybeT getInvitationSecret
+    clearInvitationFromURL
+    let initial = maybe Set.empty Set.singleton mFromQueryString
+
+    invitationsToClaim <- foldDyn id initial
                           $ mergeWith (.) [ doAll Set.insert <$> conf ^. onClaimInvitation
                                           , doAll (Set.delete . fst) <$> conf ^. onAnswerInvitation
                                           ]
@@ -131,6 +146,35 @@ subscribeInvitationClaims conf = do
     doAll :: (a -> b -> b) -> [a] -> b -> b
     doAll f = foldr (.) id . map f
 
+-- | Get the invitation secret from the query string in the browser address bar.
+--
+--   At the moment this function assumes that there will be no other queries than acceptInvitation.
+getInvitationSecret :: forall m. (MonadPlus m, MonadJSM m) => m InvitationSecret
+getInvitationSecret = do
+    window  <- DOM.currentWindowUnchecked
+    location <- Window.getLocation window
+    queryString <- Location.getSearch location
+    let secretString =
+          let
+            (_, startSecret) = T.drop 1 <$> T.breakOn "=" queryString
+          in
+            T.takeWhile (/='&') startSecret
+    guard $ not (T.null secretString)
+    let mDecoded = Aeson.decodeStrict . urlDecode True . T.encodeUtf8 $ secretString
+    maybe mzero pure $ mDecoded
+
+-- | Clear the accept invitation query from the browser address bar.
+--
+--   For the time being it simply clears the query string. This needs to be
+--   fixed once we support other queries too.
+clearInvitationFromURL :: forall m. (MonadJSM m) => m ()
+clearInvitationFromURL = do
+    window  <- DOM.currentWindowUnchecked
+    location <- Window.getLocation window
+    history <- Window.getHistory window
+    href <- Location.getHref location
+    emptyJSVal <- liftJSM $ toJSVal T.empty
+    History.pushState history emptyJSVal ("gonimo" :: Text) (Just $ T.takeWhile (/='?') href)
 
 
 instance Server.HasConfig ModelConfig where
