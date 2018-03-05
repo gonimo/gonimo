@@ -174,7 +174,9 @@ clearInvitationFromURL = do
     history <- Window.getHistory window
     href <- Location.getHref location
     emptyJSVal <- liftJSM $ toJSVal T.empty
-    History.pushState history emptyJSVal ("gonimo" :: Text) (Just $ T.takeWhile (/='?') href)
+    let withoutQuery = T.takeWhile (/= '?') href
+    when (withoutQuery /= href) -- Setting same url caused app not loading with native Android (at some point) - yeah I know ...
+      $ History.pushState history emptyJSVal ("gonimo" :: Text) (Just withoutQuery)
 
 
 instance Server.HasConfig ModelConfig where
