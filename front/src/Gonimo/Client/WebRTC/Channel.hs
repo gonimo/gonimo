@@ -1,17 +1,17 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.WebRTC.Channel where
 
-import Gonimo.Client.Prelude
+import           Gonimo.Client.Prelude
 
 
 
+import           GHCJS.DOM.Enums                (MediaStreamTrackState (..))
 import           GHCJS.DOM.EventM
-import           GHCJS.DOM.Enums                (MediaStreamTrackState(..))
 import           GHCJS.DOM.RTCIceCandidate
 import           GHCJS.DOM.RTCIceCandidateEvent as IceEvent
 -- #ifdef __GHCJS__
@@ -20,19 +20,20 @@ import           GHCJS.DOM.RTCPeerConnection    as RTCPeerConnection
 -- import           JSDOM.Custom.RTCPeerConnection  as RTCPeerConnection hiding (newRTCPeerConnection)
 -- -- import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection (addStream)
 -- #endif
-import           Gonimo.SocketAPI.Types        (DeviceId)
-import qualified Gonimo.SocketAPI               as API
-import qualified Gonimo.SocketAPI.Types         as API
-import           Gonimo.Types                   (Secret)
 import           GHCJS.DOM.Types                (Dictionary (..), MediaStream,
                                                  MonadJSM, RTCPeerConnection)
-import           Gonimo.Client.Config
+import           Gonimo.Client.Environment      (HasEnvironment)
+import qualified Gonimo.Client.Environment      as Env
 import           Gonimo.DOM.Window              (newRTCPeerConnection)
+import qualified Gonimo.SocketAPI               as API
+import           Gonimo.SocketAPI.Types         (DeviceId)
+import qualified Gonimo.SocketAPI.Types         as API
+import           Gonimo.Types                   (Secret)
 
 
+import           GHCJS.DOM.Enums                (RTCIceConnectionState (..))
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
-import           GHCJS.DOM.Enums (RTCIceConnectionState(..))
 import           Language.Javascript.JSaddle    (liftJSM, (<#))
 import qualified Language.Javascript.JSaddle    as JS
 
@@ -61,28 +62,28 @@ considerBrokenCount = 4
 
 isStateBroken :: ReceivingState -> Bool
 isStateBroken (StateReceiving n) = n >= considerBrokenCount
-isStateBroken _ = False
+isStateBroken _                  = False
 
 data Config t
-  = Config  { _configResponse :: Event t API.ServerResponse
+  = Config  { _configResponse            :: Event t API.ServerResponse
             , _configTriggerChannelEvent :: ChannelEvent -> IO ()
-            , _configTheirId :: DeviceId
-            , _configSecret :: Secret
+            , _configTheirId             :: DeviceId
+            , _configSecret              :: Secret
             }
 
 data Channel t
-  = Channel { _rtcConnection :: RTCPeerConnection
-            , _theirStream :: Maybe MediaStream
-            , _closeRequested :: Bool -- Signal that a close is requested (don't trigger alarm when connection gets closed)
+  = Channel { _rtcConnection       :: RTCPeerConnection
+            , _theirStream         :: Maybe MediaStream
+            , _closeRequested      :: Bool -- Signal that a close is requested (don't trigger alarm when connection gets closed)
             , _audioReceivingState :: ReceivingState
             , _videoReceivingState :: ReceivingState
-            , _audioMuted :: Bool
-            , _videoMuted :: Bool
+            , _audioMuted          :: Bool
+            , _videoMuted          :: Bool
             }
 
-channel :: forall m t. (MonadJSM m, Reflex t) => Config t -> m (Channel t)
-channel config = mdo
-  conn <- makeGonimoRTCConnection
+channel :: forall model m t. (HasEnvironment (model t), MonadJSM m, Reflex t) => model t -> Config t -> m (Channel t)
+channel model config = mdo
+  conn <- makeGonimoRTCConnection model
 
   handleRTCClosedEvent config conn
   handleReceivedStream config conn
@@ -189,13 +190,13 @@ handleIceCandidate config conn = liftJSM $ do
           liftIO $ triggerRTCEvent candidate
   addListener conn iceCandidate listener False
 
-makeGonimoRTCConnection :: MonadJSM m => m RTCPeerConnection
-makeGonimoRTCConnection = liftJSM $ do
+makeGonimoRTCConnection :: (MonadJSM m, HasEnvironment model) => model -> m RTCPeerConnection
+makeGonimoRTCConnection model = liftJSM $ do
   config <- JS.obj
-  config <# ("urls" :: Text) $ JS.toJSVal [gonimoTurnServer]
-  config <# ("username" :: Text)$ JS.toJSVal gonimoTurnUser
-  config <# ("credential" :: Text) $ JS.toJSVal gonimoTurnPassword
-  config <# ("credentialType" :: Text) $ JS.toJSVal gonimoTurnCredentialType
+  config <# ("urls" :: Text) $ JS.toJSVal [model ^. Env.turnConnection]
+  config <# ("username" :: Text)$ JS.toJSVal (model ^. Env.turnUser)
+  config <# ("credential" :: Text) $ JS.toJSVal (model ^. Env.turnPassword)
+  config <# ("credentialType" :: Text) $ JS.toJSVal (model ^. Env.turnCredentialType)
   allServers <- JS.obj
   allServers <# ("iceServers" :: Text) $ [config]
   let configDic = case allServers of JS.Object val -> Dictionary val

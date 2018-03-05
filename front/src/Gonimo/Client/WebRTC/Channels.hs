@@ -32,6 +32,7 @@ import           GHCJS.DOM.Types                   (MediaStream,
                                                     RTCIceCandidateInit (..))
 import           Language.Javascript.JSaddle       (JSM, liftJSM)
 
+import           Gonimo.Client.Environment         (HasEnvironment)
 import           Gonimo.Client.Reflex              (buildDynMap)
 import           Gonimo.Client.Util                (fromPromiseM,
                                                     getTransmissionInfo)
@@ -73,10 +74,13 @@ data Channels t
              , _remoteStreams :: Dynamic t StreamMap -- Useful to have this separate for rendering. (Don't reload videos on every change to map.)
              }
 
-channels :: forall model m t. GonimoM model t m => Config t -> m (Channels t)
+type HasModel model t = HasEnvironment (model t)
+
+channels :: forall model m t. (HasModel model t, GonimoM model t m) => Config t -> m (Channels t)
 channels config = mdo
+  model <- ask
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
-  insertChannel <- handleCreateChannel config triggerChannelEvent
+  insertChannel <- handleCreateChannel model config triggerChannelEvent
   (removeChannel, sendCloseRequest) <- handleCloseChannel config channels' channelEvent
   let streamUpdates = handleRemoteStreams channelEvent
   let updateStreamChannels = fst <$> streamUpdates
@@ -249,14 +253,14 @@ handleBroadcastStream config channels' = do
     performEvent_ $ pushAlways replaceStreams (updated $ config^.configBroadcastStream)
 
 handleCreateChannel :: ( MonadHold t m, MonadFix m, Reflex t, PerformEvent t m
-                       , MonadJSM (Performable m)
+                       , MonadJSM (Performable m), HasModel model t
                        )
-                    => Config t -> (ChannelEvent -> IO ()) -> m (Event t (ChannelMap t -> ChannelMap t))
-handleCreateChannel config triggerChannelEvent
+                    => model t -> Config t -> (ChannelEvent -> IO ()) -> m (Event t (ChannelMap t -> ChannelMap t))
+handleCreateChannel model config triggerChannelEvent
   = performEvent $ buildChannel <$> config^.configCreateChannel
   where
     buildChannel key@(deviceId, secret) = do
-      chan <- Channel.channel $ Channel.Config { Channel._configResponse = config^.configResponse
+      chan <- Channel.channel model $ Channel.Config { Channel._configResponse = config^.configResponse
                                                , Channel._configTriggerChannelEvent = triggerChannelEvent
                                                , Channel._configTheirId = deviceId
                                                , Channel._configSecret = secret

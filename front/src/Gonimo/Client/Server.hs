@@ -4,25 +4,26 @@ module Gonimo.Client.Server ( Config(..)
                             , Server(..)
                             , HasConfig(..)
                             , HasServer(..)
+                            , Model
+                            , HasModel
                             , make
                             ) where
 
-import           Gonimo.SocketAPI                   (ServerRequest (..),
-                                                     ServerResponse)
-import           Reflex
-import           Reflex.Dom.Class
 import           Control.Lens
 import           Control.Monad.Fix
 import           Control.Monad.IO.Class
 import           Data.Default
-import           Data.Text                          (Text)
-
+import           Reflex
+import           Reflex.Dom.Class
 import           Data.Time.Clock
-import           GHCJS.DOM.Types                    (MonadJSM)
-import qualified Reflex.Dom.WebSocket as WS
+import           GHCJS.DOM.Types           (MonadJSM)
+import qualified Reflex.Dom.WebSocket      as WS
 
-import           Gonimo.Constants
+import           Gonimo.SocketAPI          (ServerRequest (..), ServerResponse)
+import           Gonimo.Client.Environment (Environment, HasEnvironment)
+import qualified Gonimo.Client.Environment as Environment
 import           Gonimo.Client.Prelude
+
 
 data Config t
   = Config { _onRequest :: Event t [ServerRequest]
@@ -47,6 +48,11 @@ data Server t
 
            }
 
+-- | Simple data type fulfilling our 'HasModel' constraint.
+type Model t = Environment
+
+-- | Our dependencies
+type HasModel model = HasEnvironment model
 
 instance Reflex t => Default (Config t) where
   def = mempty
@@ -62,12 +68,12 @@ instance Flattenable Config where
   flattenWith doSwitch ev
     = Config <$> doSwitch never (_onRequest <$> ev)
 
-make :: forall c t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
+make :: forall model c t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
-                      , HasConfig c
+                      , HasConfig c, HasModel model
                       )
-          => Text -> c t -> m (Server t)
-make url conf = mdo
+          => model -> c t -> m (Server t)
+make model conf = mdo
   let
     server' = Server { _onOpen = ws^.WS.webSocket_open
                      , _onResponse = recv
@@ -86,7 +92,7 @@ make url conf = mdo
 
     reqClose = const (4000, "Server did not respond.") <$> killConn
 
-  ws <- WS.jsonWebSocket url wsConfig
+  ws <- WS.jsonWebSocket (model^.Environment.backendWSURL) wsConfig
 
   let recv = fromMaybe (error "Decoding Server Response Failed!") <$> ws^.WS.webSocket_recv
 

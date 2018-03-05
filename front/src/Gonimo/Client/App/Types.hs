@@ -10,10 +10,11 @@ import           Gonimo.Client.Account        (Account, HasAccount)
 import qualified Gonimo.Client.Account        as Account
 import           Gonimo.Client.Auth           (Auth, HasAuth)
 import qualified Gonimo.Client.Auth           as Auth
+import           Gonimo.Client.Environment    (Environment, HasEnvironment(..))
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Server         (HasServer, Server)
 import qualified Gonimo.Client.Server         as Server
-import           Gonimo.Client.Settings       (Settings, HasSettings)
+import           Gonimo.Client.Settings       (HasSettings, Settings)
 import qualified Gonimo.Client.Settings       as Settings
 import           Gonimo.Client.Subscriber     (SubscriptionsDyn)
 import qualified Gonimo.Client.Subscriber.API as Subscriber
@@ -32,10 +33,11 @@ data ModelConfig t
                 } deriving (Generic)
 
 data Model t
-  = Model { __server   :: Server t
-          , __account  :: Account t
-          , __auth     :: Auth t
-          , __settings :: Settings t
+  = Model { __server      :: Server t
+          , __account     :: Account t
+          , __auth        :: Auth t
+          , __settings    :: Settings t
+          , __environment :: Environment
           }
 
 -- | TODO: Get rid of this.
@@ -66,6 +68,7 @@ data Screen t
            , _screenGoHome :: Event t ()
            }
 
+type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment (model t), HasSettings model)
 instance HasServer Model where
   server = _server
 
@@ -77,6 +80,9 @@ instance HasAuth Model where
 
 instance HasSettings Model where
   settings = _settings
+
+instance HasEnvironment (Model t) where
+  environment = _environment
 
 instance (Reflex t) => Default (App t) where
   def = App (constDyn Set.empty) never never
@@ -174,6 +180,8 @@ _auth f model' = (\_auth' -> model' { __auth = _auth' }) <$> f (__auth model')
 _settings :: Lens' (Model t) (Settings t)
 _settings f model' = (\_settings' -> model' { __settings = _settings' }) <$> f (__settings model')
 
+_environment :: Lens' (Model t) Environment
+_environment f model' = (\_environment' -> model' { __environment = _environment' }) <$> f (__environment model')
 
 
 -- Lenses for Loaded t:

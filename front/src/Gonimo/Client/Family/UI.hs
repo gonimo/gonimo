@@ -19,12 +19,13 @@ import           Gonimo.Client.Settings.UI
 import qualified Gonimo.Client.Invite              as Invite
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server
+import           Gonimo.Client.Server              hiding (HasModel)
 import qualified Gonimo.SocketAPI                  as API
 import           Gonimo.SocketAPI.Types            (FamilyId)
 import qualified Gonimo.SocketAPI.Types            as API
 import qualified Gonimo.Types                      as Gonimo
 
+type HasModel model t = Invite.HasModel model t
 
 uiStart :: forall model m t. GonimoM model t m => m (UI t)
 uiStart = do
@@ -57,7 +58,8 @@ uiStart = do
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
       pure $ UI never userWantsFamily never never never never langSelected
 
-ui :: forall model m t. GonimoM model t m => App.Model t -> App.Loaded t -> Bool -> m (UI t)
+ui :: forall model m t. (HasModel model t, GonimoM model t m)
+  => App.Model t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
@@ -182,7 +184,7 @@ renderFamilySelector _ family' selected' = do
           $ (Gonimo.familyNameName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
-createFamily :: forall model m t. GonimoM model t m => App.Model t -> App.Loaded t -> Bool
+createFamily :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t -> Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
   let response' = appConfig^.onResponse
@@ -228,7 +230,7 @@ createFamily appConfig loaded familyGotCreated = mdo
   pure (createFamilyEv, reqs)
 
 -- Dialog to configure family when a new one get's created:
-createFamily' :: forall model m t. GonimoM model t m => App.Model t -> App.Loaded t
+createFamily' :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily' appConfig loaded = mdo
   let showNameEdit = const "isFamilyNameEdit" <$> invite^.Invite.uiGoBack

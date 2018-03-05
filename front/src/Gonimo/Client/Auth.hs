@@ -41,7 +41,7 @@ import           Gonimo.Client.Auth.API
 import           Gonimo.Client.Auth.I18N
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
-import           Gonimo.Client.Server       as Server hiding (make)
+import           Gonimo.Client.Server       as Server hiding (make, HasModel, Model)
 import qualified Gonimo.Client.Settings     as Settings
 import           Gonimo.I18N
 

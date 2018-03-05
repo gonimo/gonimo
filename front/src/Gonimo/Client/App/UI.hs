@@ -24,7 +24,7 @@ import qualified Gonimo.Client.Parent           as Parent
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server           hiding (Config, config)
+import           Gonimo.Client.Server           hiding (Config, config, Model, HasModel)
 import qualified Gonimo.Client.Subscriber       as Subscriber
 import qualified Gonimo.Client.Storage          as GStorage
 import qualified Gonimo.Client.Storage.Keys     as GStorage
@@ -72,7 +72,7 @@ ui = mdo
                                                                 ]
   pure $ oldConfig <> accept
 
-runLoaded :: forall model m t. GonimoM model t m
+runLoaded :: forall model m t. (HasModel model t, GonimoM model t m)
       => Model t -> Family.Family t -> m (App t, Family.UI t)
 runLoaded model family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
@@ -108,7 +108,7 @@ runLoaded model family = do
       <*> Family.uiSwitchPromptly (snd <$> evEv)
 
 
-loadedUI :: forall model m t. GonimoM model t m
+loadedUI :: forall model m t. (HasModel model t, GonimoM model t m)
       => Model t -> Loaded t -> Bool -> m (App t, Family.UI t)
 loadedUI model loaded familyCreated = mdo
     deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = model^.onResponse

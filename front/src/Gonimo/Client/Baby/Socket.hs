@@ -40,7 +40,9 @@ data Socket t
 
 type ChannelsTransformation t = Map (API.FromId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
-socket :: forall model m t. GonimoM model t m => Config t -> m (Socket t)
+type HasModel model t = Channels.HasModel model t
+
+socket :: forall model m t. (HasModel model t, GonimoM model t m) => Config t -> m (Socket t)
 socket config = mdo
   let
     isEnabled = (\dt -> case dt of

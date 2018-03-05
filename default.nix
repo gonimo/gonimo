@@ -1,5 +1,7 @@
 {}:
-
+let
+  backendServer = "b00.alpha.gonimo.com";
+in
 (import ../reflex-platform {}).project ({ pkgs, ... }: {
   packages = {
     gonimo-common = ./common;
@@ -10,13 +12,31 @@
     gonimo-front-ghcjs = ./front-ghcjs;
   };
 
-  android.gonimo-front-android = {
+  android.gonimo-front-android =
+  let
+    gonimoAssets = pkgs.stdenv.mkDerivation {
+      name = "gonimoAssets";
+      src = ./front/static;
+      installPhase = ''
+        mkdir -p $out
+        cp -R $src/* $out/
+        cd $out/js
+        chmod u+w .
+        mv env.js env-orig.js
+        cat env-orig.js | sed  's/gonimoBackServer.*/gonimoBackServer : "${backendServer}",/1' | sed 's/secure.*/secure : true,/1' > env.js
+        cat env.js
+      '';
+    };
+  in
+  {
     executableName = "gonimo-front-android";
     applicationId = "org.gonimo.gonimo";
     displayName = "Gonimo";
-    assets = ./front/static;
+    assets = gonimoAssets.out;
+    resources = ./front/static/res;
     activityAttributes = ''
       android:launchMode="singleInstance"
+      android:alwaysRetainTaskState="true"
     '';
     intentFilters = ''
       <intent-filter>
@@ -31,9 +51,28 @@
       <uses-permission android:name="android.permission.WAKE_LOCK" />
       <uses-permission android:name="android.permission.RECORD_AUDIO" />
       <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+      <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
       <uses-feature android:name="android.hardware.camera.autofocus" />
       <uses-feature android:name="android.hardware.camera" />
+      <meta-data android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+
     '';
+    services = ''
+      <service
+        android:name=".HaskellService"
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_launcher"
+        android:exported="false"
+      >
+      </service>
+    '';
+    # releaseKey = {
+    #   storeFile = /home/robert/workbench/highly-experimental.jks;
+    #   storePassword = "DWItboUs4DlJKGF";
+    #   keyAlias = "experimental";
+    #   keyPassword = "DWItboUs4DlJKGF";
+    # };
   };
 
   overrides = self: super: {};

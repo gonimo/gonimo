@@ -20,7 +20,7 @@ import qualified Gonimo.Client.Parent.Connections as C
 import           Gonimo.Client.Parent.UI.I18N
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server
+import           Gonimo.Client.Server             hiding (HasModel)
 import           Gonimo.Client.WebRTC.Channel     (Channel, ReceivingState (..),
                                                    worstState)
 import qualified Gonimo.Client.WebRTC.Channel     as Channel
@@ -28,8 +28,9 @@ import           Gonimo.SocketAPI.Types           (DeviceId)
 import           Gonimo.Types                     (_Baby)
 
 
+type HasModel model t = Invite.HasModel model t
 
-ui :: forall model m t. GonimoM model t m
+ui :: forall model m t. (HasModel model t, GonimoM model t m)
             => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
   connections' <- C.connections $ C.Config { C._configResponse = appConfig^.onResponse

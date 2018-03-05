@@ -14,6 +14,7 @@ import           Network.HTTP.Types            (urlEncode)
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types       as App
+import           Gonimo.Client.Environment     (HasEnvironment)
 import           Gonimo.Client.Invite.Internal
 import           Gonimo.Client.Invite.UI.I18N
 import           Gonimo.Client.Prelude
@@ -26,12 +27,13 @@ import           Gonimo.SocketAPI.Types        (InvitationId)
 import qualified Gonimo.SocketAPI.Types        as API
 import           Gonimo.Types                  (InvitationDelivery (..))
 
-ui :: forall model m t. GonimoM model t m => App.Loaded t -> Config t -> m (Invite t)
+ui :: forall model m t. (HasEnvironment (model t), GonimoM model t m) => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
-    baseUrl <- getBaseLink
+    model <- ask
+    let baseUrl = getBaseLink model
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
     liftIO $ makeCreateInvEv () -- We want a new invitation every time this widget is rendered
-    invite' <- invite $ config & configCreateInvitation .~ leftmost (createInvEv : (fmap (const ()) <$> sentEvents))
+    invite' <- invite model $ config & configCreateInvitation .~ leftmost (createInvEv : (fmap (const ()) <$> sentEvents))
     let invite'' = invite' & request %~ (mailReqs <>)
 
     let currentInvitation = invite''^.invitation

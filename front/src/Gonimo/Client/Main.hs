@@ -20,12 +20,13 @@ import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
 import qualified Gonimo.Client.Account       as Account
 import           Gonimo.Client.App           as App
 import qualified Gonimo.Client.Auth          as Auth
-import qualified Gonimo.Client.Config        as Config
 import           Gonimo.Client.Prelude       hiding (app)
 import qualified Gonimo.Client.Server        as Server
 import qualified Gonimo.Client.Settings      as Settings
 import qualified Gonimo.Client.Subscriber    as Subscriber
 import           Gonimo.Types                (InvitationSecret)
+import qualified Gonimo.Client.Environment    as Environment
+
 
 -- | Configuration coming from the outside.
 --
@@ -79,7 +80,9 @@ app conf' = build $ \ ~(modelConf, model) -> do
 
   conf                     <- toModelConfig conf'
 
-  __server                 <- Server.make Config.gonimoBackWSURL modelConf
+  __environment            <- Environment.make
+
+  __server                 <- Server.make model modelConf
 
   (authConf, __auth)       <- Auth.make model
 

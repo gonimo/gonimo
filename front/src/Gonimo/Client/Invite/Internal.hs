@@ -1,46 +1,41 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.Invite.Internal where
 
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Fix    (MonadFix)
-import qualified Data.Aeson           as Aeson
-import qualified Data.ByteString.Lazy as BL
-import           Data.Default         (Default (..))
+import           Control.Monad.Fix         (MonadFix)
+import qualified Data.Aeson                as Aeson
+import qualified Data.ByteString.Lazy      as BL
+import           Data.Default              (Default (..))
 import           Data.Monoid
-import           Data.Text            (Text)
-import qualified Data.Text.Encoding   as T
-import qualified GHCJS.DOM            as DOM
-import qualified GHCJS.DOM.Document   as Document
-import qualified GHCJS.DOM.Location   as Location
-import           GHCJS.DOM.Types      (MonadJSM)
-import           Network.HTTP.Types   (urlEncode)
+import           Data.Text                 (Text)
+import qualified Data.Text.Encoding        as T
+import           Network.HTTP.Types        (urlEncode)
 import           Reflex.Dom.Core
-import           Data.Maybe           (fromMaybe)
 
-import           Gonimo.SocketAPI.Types   (FamilyId, InvitationId)
-import qualified Gonimo.SocketAPI     as API
-import qualified Gonimo.SocketAPI.Types     as API
-import Gonimo.Client.Config (httpProtocol, gonimoFrontHost, gonimoFrontPath)
+import qualified Gonimo.Client.Environment as Env
+import qualified Gonimo.SocketAPI          as API
+import           Gonimo.SocketAPI.Types    (FamilyId, InvitationId)
+import qualified Gonimo.SocketAPI.Types    as API
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
 
 data Config t
-  = Config { _configResponse :: Event t API.ServerResponse
-           , _configSelectedFamily :: Dynamic t FamilyId
-           , _configAuthenticated :: Event t ()
+  = Config { _configResponse         :: Event t API.ServerResponse
+           , _configSelectedFamily   :: Dynamic t FamilyId
+           , _configAuthenticated    :: Event t ()
            , _configCreateInvitation :: Event t ()
            }
 
 data Invite t
   = Invite { _invitation :: Dynamic t (Maybe (InvitationId, API.Invitation))
-           , _request :: Event t [ API.ServerRequest ]
-           , _uiGoBack :: Event t ()
-           , _uiDone :: Event t()
+           , _request    :: Event t [ API.ServerRequest ]
+           , _uiGoBack   :: Event t ()
+           , _uiDone     :: Event t()
            }
 
 data InvitationSent
@@ -50,15 +45,19 @@ data InvitationSent
   | SentRefresh
   | SentEmail
 
-invite :: forall t m. (MonadHold t m, MonadFix m, Reflex t) => Config t -> m (Invite t)
-invite config = mdo
+
+type HasModel model t = Env.HasEnvironment (model t)
+
+invite :: forall model t m. (MonadHold t m, MonadFix m, Reflex t, HasModel model t)
+  => model t -> Config t -> m (Invite t)
+invite model config = mdo
   let
     currentSelected = current (config^.configSelectedFamily)
     createOnAuth = push (\() -> do
                             cInv <- sample $ current inv
                             case cInv of
                               Nothing -> pure $ Just ()
-                              Just _ -> pure Nothing
+                              Just _  -> pure Nothing
                         ) (config^.configAuthenticated)
 
     createInvReq
@@ -78,18 +77,8 @@ invite config = mdo
               , _uiDone = never
               }
 
-getBaseLink :: (MonadJSM m) => m Text
-getBaseLink = do
-  -- Don't use own url in general, you'll get file:/// uris in the app version:
-  doc  <- DOM.currentDocumentUnchecked
-  location <- Document.getLocationUnsafe doc
-  -- protocol <- Location.getProtocol location
-  ownHost <- Location.getHost location
-  let
-    protocol = httpProtocol
-    host = fromMaybe ownHost gonimoFrontHost
-    pathName = gonimoFrontPath
-  pure $ protocol <> host <> pathName
+getBaseLink :: HasModel model t => model t -> Text
+getBaseLink model = model ^. Env.httpProtocol <> model ^. Env.frontendHost <> model ^. Env.frontendPath
 
 makeInvitationLink :: Text -> API.Invitation -> Text
 makeInvitationLink baseURL inv =
@@ -98,7 +87,7 @@ makeInvitationLink baseURL inv =
   in
     baseURL <> "?" <> invitationQueryParam <> "=" <> encodedSecret
 
--- Not used currently : 
+-- Not used currently :
 -- encodeURIComponent :: (ToJSVal i, FromJSVal o, MonadIO m) => i -> MaybeT m o
 -- encodeURIComponent val = do
 --   jsVal <- liftIO $ toJSVal val

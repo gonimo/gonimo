@@ -85,7 +85,6 @@ library
                     , Gonimo.Client.Baby.Socket
                     , Gonimo.Client.Baby.UI
                     , Gonimo.Client.Baby.UI.I18N
-                    , Gonimo.Client.Config
                     , Gonimo.Client.ConfirmationButton
                     , Gonimo.Client.ConfirmationButton.I18N
                     , Gonimo.Client.DeviceList
@@ -94,6 +93,7 @@ library
                     , Gonimo.Client.DeviceList.UI.I18N
                     , Gonimo.Client.EditStringButton
                     , Gonimo.Client.EditStringButton.I18N
+                    , Gonimo.Client.Environment
                     , Gonimo.Client.Family
                     , Gonimo.Client.Family.Internal
                     , Gonimo.Client.Family.RoleSelector

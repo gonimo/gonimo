@@ -58,9 +58,11 @@ data VideoView t
               , _videoViewDisconnectAll  :: Event t ()
               }
 
+type HasModel model t = Channels.HasModel model t
+
 type ChannelsTransformation t = Map (API.ToId, Secret) (Channel t) -> Map (API.FromId, Secret) (Channel t)
 
-connections :: forall model m t. GonimoM model t m => Config t -> m (Connections t)
+connections :: forall model m t. (HasModel model t, GonimoM model t m) => Config t -> m (Connections t)
 connections config = mdo
   let
     ourDevId = API.deviceId <$> current (config^.configAuthData)
