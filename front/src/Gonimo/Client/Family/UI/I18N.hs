@@ -4,6 +4,8 @@ module Gonimo.Client.Family.UI.I18N where
 import           Gonimo.I18N
 import           Data.Text (Text)
 import           Data.Monoid ((<>))
+import           Data.Map (Map)
+import           Reflex.Dom.Core ((=:))
 
 data Message = Welcome_to_the
              | Gonimo_World
@@ -13,6 +15,8 @@ data Message = Welcome_to_the
              | FamilyText
              | Add_Device
              | Really_leave_family Text
+             | Privacy_Policy
+             | Privacy_Policy_Link
              deriving (Eq, Show)
 
 instance I18N Message where
@@ -48,4 +52,16 @@ instance I18N Message where
           = "Really leave family '" <> cFamilyName <> "'?"
   i18n DE_DE (Really_leave_family cFamilyName)
           = "Willst du wirklich die Familie '" <> cFamilyName <> "' verlassen?"
+  i18n EN_GB Privacy_Policy
+          = "We care about your privacy (privacy policy)."
+  i18n DE_DE Privacy_Policy
+          = "Uns liegt Ihre Pravatsphäre am Herzen (Datenschutzerklärung)."
+  i18n EN_GB Privacy_Policy_Link
+          = "https://gonimo.com/en/faq.php"
+  i18n DE_DE Privacy_Policy_Link
+          = "https://gonimo.com/de/faq.php"
 
+privacyLinkAttrs :: Locale -> Map Text Text
+privacyLinkAttrs lang =
+  "class" =: "text-center" <>
+  "href"  =: (i18n lang Privacy_Policy_Link)

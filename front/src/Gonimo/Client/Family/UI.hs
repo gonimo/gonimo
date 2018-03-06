@@ -8,6 +8,7 @@ import           Control.Lens
 import           Data.Text                         (Text)
 import           Reflex.Dom.Core
 
+import           Gonimo.I18N
 import qualified Gonimo.Client.App.Types           as App
 import qualified Gonimo.Client.Auth                as Auth
 import           Gonimo.Client.ConfirmationButton  (confirmationEl)
@@ -57,6 +58,11 @@ uiStart = do
                         ) blank
       let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
       pure $ UI never userWantsFamily never never never never langSelected
+    currentLanguage <- holdDyn EN_GB langSelected
+    -- TODO: initialize corectly w/ locale from browser settings/user settings
+    elClass "footer" "container-fluid" $
+      elDynAttr "a" (privacyLinkAttrs <$> currentLanguage) $
+        trText Privacy_Policy
 
 ui :: forall model m t. (HasModel model t, GonimoM model t m)
   => App.Model t -> App.Loaded t -> Bool -> m (UI t)
