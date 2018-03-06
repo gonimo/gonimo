@@ -29,7 +29,7 @@ import qualified Gonimo.Types                      as Gonimo
 type HasModel model t = Invite.HasModel model t
 
 uiStart :: forall model m t. GonimoM model t m => m (UI t)
-uiStart = do
+uiStart =
   elClass "div" "container" $ do
     el "h1" $ do
       trText Welcome_to_the
@@ -40,29 +40,39 @@ uiStart = do
     -- elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.png") $ blank
     langSelected <-
       elClass "div" "welcome-container" $
-        elClass "div" "start-welcome-img" $ do
-          langSelector
+        elClass "div" "start-welcome-img" langSelector
     el "br" blank
 
     headingClicked <-
       makeClickable . el' "h3" $ trText Create_a_new_Family
-    elClass "div" "welcome-form" $ do
+    userWantsFamily <- elClass "div" "welcome-form" $ do
       inputFieldClicked <-
         makeClickable
         $ elAttr' "span" ( "class" =: "family-select" ) blank
 
       plusClicked <-
         makeClickable
-        $ elAttr' "div" ( "class" =: "input-btn plus next-action" <> "title" =: "Create a family to get started."
-                          <> "type" =: "button" <> "role" =: "button"
+        $ elAttr' "div" ( "class" =: "input-btn plus next-action"
+                       <> "title" =: "Create a family to get started."
+                       <> "type"  =: "button"
+                       <> "role"  =: "button"
                         ) blank
-      let userWantsFamily = leftmost [ plusClicked, inputFieldClicked, headingClicked ]
-      pure $ UI never userWantsFamily never never never never langSelected
+
+      pure $ leftmost [ plusClicked, inputFieldClicked, headingClicked ]
     currentLanguage <- holdDyn EN_GB langSelected
     -- TODO: initialize corectly w/ locale from browser settings/user settings
     elClass "footer" "container-fluid" $
       elDynAttr "a" (privacyLinkAttrs <$> currentLanguage) $
         trText Privacy_Policy
+
+    pure UI { _uiSelectFamily = never
+            , _uiCreateFamily = userWantsFamily
+            , _uiLeaveFamily  = never
+            , _uiSetName      = never
+            , _uiRoleSelected = never
+            , _uiRequest      = never
+            , _uiSelectLang   = langSelected
+            }
 
 ui :: forall model m t. (HasModel model t, GonimoM model t m)
   => App.Model t -> App.Loaded t -> Bool -> m (UI t)
@@ -77,9 +87,9 @@ ui appConfig loaded familyGotCreated = do
     el "br" blank
 
     langSelected <- elClass "div" "world-lang" $ do
-      l <- langSelector
-      elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") blank
-      pure l
+        l <- langSelector
+        elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") blank
+        pure l
 
     el "h3" $ trText FamilyText
     (familySelected, clickedAdd, clickedLeave, nameChanged) <-
@@ -108,18 +118,17 @@ ui appConfig loaded familyGotCreated = do
     inviteRequested <- elClass "div" "footer" $
           makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ trText Add_Device
 
-
     pure $ UI { _uiSelectFamily = familySelected
               , _uiCreateFamily = clickedAdd
-              , _uiLeaveFamily = leftmost [ clickedLeave
-                                          , push (\r -> pure $ r^?_CreateFamilyCancel) newFamilyResult
-                                          ]
-              , _uiSetName  = leftmost [ nameChanged
-                                       , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
-                                       ]
+              , _uiLeaveFamily  = leftmost [ clickedLeave
+                                           , push (\r -> pure $ r^?_CreateFamilyCancel) newFamilyResult
+                                           ]
+              , _uiSetName      = leftmost [ nameChanged
+                                           , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
+                                           ]
               , _uiRoleSelected = roleSelected
-              , _uiRequest = newFamilyReqs <> invite^.Invite.request
-              , _uiSelectLang = langSelected
+              , _uiRequest      = newFamilyReqs <> invite^.Invite.request
+              , _uiSelectLang   = langSelected
               }
 
 
