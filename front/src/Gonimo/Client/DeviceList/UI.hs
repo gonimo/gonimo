@@ -35,7 +35,7 @@ import           Gonimo.Client.DeviceList.UI.I18N
 import           Gonimo.Client.EditStringButton    (editDeviceName)
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom          (addBtnAttrs, makeClickable)
-import           Gonimo.Client.Util
+
 import           Gonimo.Client.WebRTC.Channel      (Channel,
                                                     ReceivingState (..))
 import qualified Gonimo.Client.WebRTC.Channel      as Channel
@@ -134,8 +134,8 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
                 dynText (renderBabyName <$> mDevType)
             (connectClick, streamClick, disconnectClick) <-
               elClass "div" "buttons" $ do
-                conC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "connect next-action") $ trText Connect
-                streamC <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "stream") $ trText Stream
+                conC <- makeClickable . elAttr' "div" (addBtnAttrs "connect next-action") $ trText Connect
+                streamC <- makeClickable . elAttr' "div" (addBtnAttrs "stream") $ trText Stream
                 let disconnectOnBroken = fmap (\needsAlert' -> if needsAlert' then "disconnect connectionBroken " else "disconnect ")  needsAlert
                 discC <- makeClickable . elDynAttr' "div" (addBtnAttrs <$> disconnectOnBroken) $ trText Disconnect
                 pure (conC, streamC, discC)

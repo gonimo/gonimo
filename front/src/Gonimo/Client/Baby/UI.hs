@@ -323,6 +323,6 @@ showPermissionError (Left (JS.PromiseRejected err)) = elClass "div" "fullScreenO
         else trText Please_click_on_the_lock_or_the_camera_symbol
     el "br" blank
     el "br" blank
-    retry <- makeClickable . elAttr' "div" (addFullScreenBtnAttrs "btn-lang") $ trText Try_Again
+    retry <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText Try_Again
     pure (backClicked, retry)
 
