@@ -25,5 +25,5 @@ testdb
 testdb-shm
 testdb-wal
 /front/devRoot
-
+/release-key.nix
 ghc.nix
