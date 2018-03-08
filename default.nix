@@ -1,6 +1,8 @@
 {}:
 let
   backendServer = "b00.alpha.gonimo.com";
+  androidVersionCode = "1";
+  androidVersionName = "1.0.0.0";
 in
 (import ../reflex-platform {}).project ({ pkgs, ... }: {
   packages = {
@@ -30,7 +32,10 @@ in
   in
   {
     executableName = "gonimo-front-android";
-    applicationId = "org.gonimo.gonimo";
+    applicationId = "com.gonimo.baby";
+    version = { code = androidVersionCode;
+                name = androidVersionName;
+              };
     displayName = "Gonimo";
     assets = gonimoAssets.out;
     resources = ./front/static/res;
@@ -52,8 +57,14 @@ in
       <uses-permission android:name="android.permission.RECORD_AUDIO" />
       <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
       <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-      <uses-feature android:name="android.hardware.camera.autofocus" />
-      <uses-feature android:name="android.hardware.camera" />
+
+      <uses-feature
+          android:name="android.hardware.camera"
+          android:required="false" />
+      <uses-feature
+          android:name="android.hardware.camera.autofocus"
+          android:required="false" />
+
       <meta-data android:name="android.webkit.WebView.MetricsOptOut"
             android:value="true" />
 
@@ -67,12 +78,8 @@ in
       >
       </service>
     '';
-    # releaseKey = {
-    #   storeFile = /home/robert/workbench/highly-experimental.jks;
-    #   storePassword = "DWItboUs4DlJKGF";
-    #   keyAlias = "experimental";
-    #   keyPassword = "DWItboUs4DlJKGF";
-    # };
+    # Provide proper release-key.nix and uncomment this line for doing release builds:
+    # releaseKey = import ./release-key.nix;
   };
 
   overrides = self: super: {};
