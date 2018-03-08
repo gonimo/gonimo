@@ -1,9 +1,17 @@
 {}:
 let
-  backendServer = "b00.gonimo.com";
-  frontendServer = "app.gonimo.com";
+  backendServer = if androidIsRelease
+                  then "b00.gonimo.com"
+                  else "b00.alpha.gonimo.com";
+
+  frontendServer = if androidIsRelease
+                   then "app.gonimo.com"
+                   else "app.alpha.gonimo.com";
+
   androidVersionCode = "1";
   androidVersionName = "1.0.0.0";
+
+  androidIsRelease = builtins.pathExists ./release-key.nix;
 in
 (import ../reflex-platform {}).project ({ pkgs, ... }: {
   packages = {
@@ -79,8 +87,9 @@ in
       >
       </service>
     '';
-    # Provide proper release-key.nix and uncomment this line for doing release builds:
-    releaseKey = import ./release-key.nix;
+    releaseKey = if androidIsRelease
+                 then import ./release-key.nix
+                 else null;
   };
 
   overrides = self: super: {};
