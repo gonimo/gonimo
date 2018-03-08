@@ -18,7 +18,11 @@ import           Gonimo.Types           (InvitationSecret)
 --   Currently this just handles accepting invitations.
 data Config t
   = Config { -- | Claim an invitation by providing it's secret.
+             --
+             --   When the user clicks an invitation link it gets claimed,
+             --   making the invitation unavailable for other parties.
              _onClaimInvitation :: Event t [InvitationSecret]
+
              -- | Answer an invitation. (Decline/accept it.)
            , _onAnswerInvitation :: Event t [(InvitationSecret, InvitationReply)]
            } deriving (Generic)
