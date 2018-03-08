@@ -1,6 +1,7 @@
 {}:
 let
-  backendServer = "b00.alpha.gonimo.com";
+  backendServer = "b00.gonimo.com";
+  frontendServer = "app.gonimo.com";
   androidVersionCode = "1";
   androidVersionName = "1.0.0.0";
 in
@@ -48,7 +49,7 @@ in
           <action android:name="android.intent.action.VIEW"/>
           <category android:name="android.intent.category.DEFAULT"/>
           <data android:scheme="https" />
-          <data android:host="app.alpha.gonimo.com" />
+          <data android:host="${frontendServer}" />
       </intent-filter>
     '';
     permissions = ''
@@ -79,7 +80,7 @@ in
       </service>
     '';
     # Provide proper release-key.nix and uncomment this line for doing release builds:
-    # releaseKey = import ./release-key.nix;
+    releaseKey = import ./release-key.nix;
   };
 
   overrides = self: super: {};
