@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase          #-}
 module Gonimo.Client.Family.UI where
 
 import           Control.Applicative
@@ -31,10 +32,7 @@ type HasModel model t = Invite.HasModel model t
 uiStart :: forall model m t. GonimoM model t m => m (UI t)
 uiStart =
   elClass "div" "container" $ do
-    el "h1" $ do
-      trText Welcome_to_the
-      el "wbr" blank
-      trText Gonimo_World
+    welcomeH1
     el "br" blank
 
     -- elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.png") $ blank
@@ -77,18 +75,21 @@ privacyPolicy = do
     elClass "footer" "container-fluid" $
       elDynAttr "a" (privacyLinkAttrs <$> currentLocale) $
         trText Privacy_Policy
+
+welcomeH1 :: forall model m t. GonimoM model t m => m ()
+welcomeH1 =
+    el "h1" $ do
+      trText Welcome_to_the
+      el "wbr" blank
+      trText Gonimo_World
+
 ui :: forall model m t. (HasModel model t, GonimoM model t m)
   => App.Model t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
   elClass "div" "container has-footer" $ mdo
-    el "h1" $ do
-      trText Welcome_to_the
-      el "wbr" blank
-      trText Gonimo_World
-    el "br" blank
-
+    welcomeH1
     langSelected <- elClass "div" "world-lang" $ do
         l <- langSelector
         elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") blank
@@ -109,7 +110,7 @@ ui appConfig loaded familyGotCreated = do
         firstCreation <- headE inviteRequested
         let inviteUI
               = Invite.ui loaded
-                $ Invite.Config { Invite._configResponse = appConfig^.onResponse
+                  Invite.Config { Invite._configResponse         = appConfig^.onResponse
                                 , Invite._configSelectedFamily = loaded^.App.selectedFamily
                                 , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
                                 , Invite._configCreateInvitation = never
@@ -122,7 +123,7 @@ ui appConfig loaded familyGotCreated = do
     inviteRequested <- elClass "div" "footer" $
           makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ trText Add_Device
 
-    pure $ UI { _uiSelectFamily = familySelected
+    pure UI { _uiSelectFamily = familySelected
             , _uiCreateFamily = clickedAdd
             , _uiLeaveFamily  = leftmost [ clickedLeave
                                          , push (\r -> pure $ r^?_CreateFamilyCancel) newFamilyResult
@@ -200,7 +201,8 @@ renderFamilySelector _ family' selected' = do
     el "div" $ do
       makeClickable . elAttr' "a" (addBtnAttrs "")
         $ dynText
-          $ (Gonimo.familyNameName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
+          $ (Gonimo.familyNameName . API.familyName <$> family') <>
+             ffor selected' (\selected -> if selected then " ✔" else "")
 
 
 createFamily :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t -> Bool
@@ -209,14 +211,12 @@ createFamily appConfig loaded familyGotCreated = mdo
   let response' = appConfig^.onResponse
   let
     familyCreated :: Event t FamilyId
-    familyCreated = push (\res ->
-                              case res of
-                                API.ResCreatedFamily fid -> pure $ Just fid
-                                _                        -> pure Nothing
-                           ) response'
+    familyCreated = push ( pure . \case API.ResCreatedFamily fid -> Just fid
+                                        _                        -> Nothing
+                         ) response'
   mFamilyId' :: Dynamic t (Maybe FamilyId) <- holdDyn Nothing $ leftmost [ Just <$> familyCreated
-                                                                         , const Nothing <$> gotValidFamilyId'
-                                                                         ]
+                                           , const Nothing <$> gotValidFamilyId'
+                                           ]
 
   let gotValidFamilyId' = leftmost [ push (\fid -> do
                                            cFamilies <- sample . current $ loaded^.App.families
@@ -266,7 +266,7 @@ createFamily' appConfig loaded = mdo
       firstCreation <- headE showInviteView
       let inviteUI
             = Invite.ui loaded
-            $ Invite.Config { Invite._configResponse = appConfig^.onResponse
+              Invite.Config { Invite._configResponse         = appConfig^.onResponse
                             , Invite._configSelectedFamily = loaded^.App.selectedFamily
                             , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
                             , Invite._configCreateInvitation = never
@@ -292,7 +292,7 @@ familyEditName loaded reactivated' = do
     elClass "div" "welcome-form" $ do
       genName <- sample . current $ App.currentFamilyName loaded
       nameInput <- textInput $ (def :: TextInputConfig t)
-        { _textInputConfig_attributes = (pure $ "class" =: "welcome-input")
+        { _textInputConfig_attributes   = pure $ "class" =: "welcome-input"
         , _textInputConfig_inputType = "text"
         , _textInputConfig_initialValue = genName
         , _textInputConfig_setValue = updated (App.currentFamilyName loaded)
@@ -300,7 +300,7 @@ familyEditName loaded reactivated' = do
       -- Handle focus:
       addFocusPostBuild $ nameInput^.textInput_builderElement
       performEvent_ $ const (addFocus $ nameInput^.textInput_builderElement)
-                      <$> leftmost [ const () <$> updated (App.currentFamilyName loaded)
+                      <$> leftmost [ void $ updated (App.currentFamilyName loaded)
                                    , reactivated
                                    ]
 
