@@ -51,7 +51,7 @@ type HasModel model t = Env.HasEnvironment (model t)
 
 invite :: forall model t m. (MonadHold t m, MonadFix m, Reflex t, HasModel model t)
   => model t -> Config t -> m (Invite t)
-invite model config = mdo
+invite _ config = mdo
   let
     currentSelected = current (config^.configSelectedFamily)
     createOnAuth = push (\() -> do

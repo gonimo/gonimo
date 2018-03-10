@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs               #-}
-{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Client.AcceptInvitation.UI where
 
@@ -7,7 +6,6 @@ import           Control.Lens
 
 
 import qualified Data.Map                               as Map
-
 import           Data.Text                              (Text)
 import           Reflex.Dom.Core
 

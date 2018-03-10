@@ -168,9 +168,9 @@ connectionLossScreen' :: forall model m t. GonimoM model t m
 connectionLossScreen' isOK =
  if isOK
    then pure ()
-   else elClass "div" "notification overlay" $ do
+   else elClass "div" "notification overlay" $
     elClass "div" "notification box connection-lost" $ do
-      elClass "div" "notification-header" $ do
+      elClass "div" "notification-header" $
         el "h1" $ trText No_Internet_Connection
       elClass "div" "notification text" $ do
         trText Reconnecting

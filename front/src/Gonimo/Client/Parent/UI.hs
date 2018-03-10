@@ -72,11 +72,11 @@ ui appConfig loaded deviceList = mdo
   let parentViewShown = (== "isParentView") <$> selectedView
 
   (navBar, devicesUI, inviteRequested) <-
-    elDynClass "div" (pure "container has-footer parentManage " <> selectedView) $ do
+    elDynClass "div" (pure "container has-footer parentManage " <> selectedView) $
       manageUi appConfig loaded deviceList connections'
 
   viewUI <-
-    elDynClass "div" (pure "container parentView " <> selectedView) $ do
+    elDynClass "div" (pure "container parentView " <> selectedView) $
       viewUi appConfig loaded deviceList connections' parentViewShown
 
   invite <-
@@ -197,10 +197,10 @@ renderVideos deviceList connections' isShown =
       hasVideo <- not . null <$> MediaStream.getVideoTracks stream
       let hasBackground = if hasVideo then "" else "justAudio "
       elDynClass "div" (dynConnectionClass key <> pure "stream-baby " <> pure hasBackground) $ do
-        elClass "div" "broken-overlay" $ do
+        elClass "div" "broken-overlay" $
           elClass "div" "broken-message" $ trText Connection_Lost
-        elClass "div" "stream-baby-heading" $ do
-          elClass "div" "stream-baby-name" $ do
+        elClass "div" "stream-baby-heading" $
+          elClass "div" "stream-baby-name" $
             el "h1" $ dynText ((^. at key._Just._Baby) <$> deviceList^.DeviceList.onlineDevices)
         mediaVideo stream ("autoplay" =: "true")
         closeClicked <- makeClickable $ elAttr' "div" (addBtnAttrs "btn-close-x") blank

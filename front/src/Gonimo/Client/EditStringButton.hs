@@ -44,7 +44,7 @@ editStringEl someButton editStringText val = mdo
 
 editStringBox :: forall model t m. GonimoM model t m
               => m () -> Dynamic t Text -> m (Event t (Maybe Text))
-editStringBox editStringText val = do
+editStringBox editStringText val =
   elClass "div" "fullScreenOverlay" $
     elClass "div" "container" $ do
       cancelClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank

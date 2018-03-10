@@ -45,8 +45,8 @@ addConfirmation confirmationText clicked = mdo
 
 
 confirmationBox :: forall model t m. GonimoM model t m => m () -> m (Event t Confirmed)
-confirmationBox confirmationText = do
-  elClass "div" "fullScreenOverlay" $ do
+confirmationBox confirmationText =
+  elClass "div" "fullScreenOverlay" $
     elClass "div" "container" $ do
       noClicked <- makeClickable . elAttr' "div" (addBtnAttrs "back-arrow") $ blank
       el "h1" $ trText Are_you_sure

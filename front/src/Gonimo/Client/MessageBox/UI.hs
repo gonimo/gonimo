@@ -79,7 +79,7 @@ box title panelClass inner = mdo
 
 box' :: forall model m t a. GonimoM model t m
       => I18N.Message -> Text -> m (Event t a, Event t ()) -> m (Event t a, Event t ())
-box' title panelClass inner = do
+box' title panelClass inner =
   elClass "div" "notification overlay" $
     elClass "div" "container" $
       elClass "div" ("panel " <> panelClass) $ do

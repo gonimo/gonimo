@@ -225,8 +225,8 @@ checkBrowser = do
       pure gotAnswer
 
     displayWarning' :: m () -> m (Event t ())
-    displayWarning' msg = do
-      elClass "div" "fullScreenOverlay" $ do
+    displayWarning' msg =
+      elClass "div" "fullScreenOverlay" $
         elClass "div" "container" $ do
           msg
           el "br" blank

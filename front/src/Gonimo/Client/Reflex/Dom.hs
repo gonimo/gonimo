@@ -25,7 +25,7 @@ import           GHCJS.DOM.MediaStreamTrack     (ended)
 
 
 renderVolumemeter :: forall model m t. GonimoM model t m => Event t Double -> m ()
-renderVolumemeter volEvent = do
+renderVolumemeter volEvent =
     elClass "div" "volumemeter" $ do
       volDyn <- holdDyn 0 $ (*1.4) <$> volEvent
       traverse_ (renderVolBarItem volDyn) [0.001, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]

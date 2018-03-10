@@ -320,7 +320,7 @@ registerJSHandlers webSocket' ws' = do
         -- Fork off, so on message handler does not get blocked too long.
         liftIO $ webSocket'^.triggerOnReceive $ str
 
-    releaseOnError <- on ws' WS.error $ do
+    releaseOnError <- on ws' WS.error $
       liftIO $ webSocket'^.triggerOnError
 
     pure $ do

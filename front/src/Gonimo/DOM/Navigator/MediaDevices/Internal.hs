@@ -73,7 +73,7 @@ makeSimpleMediaStreamConstraints audio video= liftJSM $ do
   rawDic <# "audio" $ audio
   rawDic <# "video" $ video
   case rawDic of
-    JS.Object val -> do
+    JS.Object val ->
       -- eval "console" ^. jsf "log" [val^.js "video"^. js0 "toString" ]
       pure $ MediaStreamConstraints val
 

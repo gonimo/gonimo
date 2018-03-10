@@ -93,8 +93,8 @@ ui appConfig loaded deviceList = mdo
 
 uiStart :: forall model m t. GonimoM model t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t
             -> m (UI t)
-uiStart loaded deviceList  baby' = do
-    elClass "div" "container" $ do
+uiStart loaded deviceList  baby' =
+    elClass "div" "container" $
       elClass "div" "baby" $ mdo
         navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
 
@@ -258,8 +258,8 @@ renderBabySelectors :: forall model m t. GonimoM model t m
 renderBabySelectors names =
   let
     renderBabySelector :: Text -> m (Event t Text)
-    renderBabySelector name' = do
-        fmap (fmap (const name')) . el "div" $ do
+    renderBabySelector name' =
+        fmap (fmap (const name')) . el "div" $
           makeClickable . elAttr' "a" (addBtnAttrs "") $ text name'
 
     renderSelectors names' =
@@ -317,7 +317,7 @@ showPermissionError (Left (JS.PromiseRejected err)) = elClass "div" "fullScreenO
     el "br" blank
     isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
     isChrome <- getBrowserProperty "blink"
-    when isChrome $ do
+    when isChrome $
       if isMobile
         then trText Please_click_on_the_lock_symbol
         else trText Please_click_on_the_lock_or_the_camera_symbol

@@ -155,7 +155,7 @@ familyChooser :: forall model m t. GonimoM model t m
                  => DefiniteFamily t -> m (Event t FamilyId, Event t (), Event t (), Event t Text)
 familyChooser family' = mdo
   let cFamilyName = currentFamilyName family'
-  (clicked, clickedAdd, clickedLeave, nameChangeReq) <- do
+  (clicked, clickedAdd, clickedLeave, nameChangeReq) <-
     elClass "div" "welcome-form" $ do
       clicked' <-
         makeClickable . elAttr' "div" (addBtnAttrs "family-select") $ do
@@ -197,8 +197,8 @@ renderFamilySelectors family' = fmap fst <$> selectViewListWithKey (family'^.def
 -- Internal helper for familyChooser ...
 renderFamilySelector :: forall model m t. GonimoM model t m
                     => FamilyId -> Dynamic t API.Family -> Dynamic t Bool -> m (Event t ())
-renderFamilySelector _ family' selected' = do
-    el "div" $ do
+renderFamilySelector _ family' selected' =
+    el "div" $
       makeClickable . elAttr' "a" (addBtnAttrs "")
         $ dynText
           $ (Gonimo.familyNameName . API.familyName <$> family') <>
@@ -256,7 +256,7 @@ createFamily' appConfig loaded = mdo
   selectedView <- holdDyn "isFamilyNameEdit" $ leftmost [showNameEdit, showInviteView]
 
   (familyEditBack, familyEditOk) <-
-    elDynClass "div" (pure "container familyNameEdit " <> selectedView) $ do
+    elDynClass "div" (pure "container familyNameEdit " <> selectedView) $
       familyEditName loaded (invite^.Invite.uiGoBack)
 
   invite <-
@@ -265,8 +265,8 @@ createFamily' appConfig loaded = mdo
       let inviteUI
             = Invite.ui loaded
               Invite.Config { Invite._configResponse         = appConfig^.onResponse
-                            , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                            , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
+                            , Invite._configSelectedFamily   = loaded^.App.selectedFamily
+                            , Invite._configAuthenticated    = appConfig^.Auth.onAuthenticated
                             , Invite._configCreateInvitation = never
                             }
       dynInvite <- widgetHold (pure def) $ inviteUI <$ firstCreation

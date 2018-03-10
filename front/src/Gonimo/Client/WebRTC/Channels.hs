@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.WebRTC.Channels where
 
@@ -109,9 +110,10 @@ getCloseEvent chans
              cChans <- sample chans
              case ev' of
                ChannelEvent mapKey RTCEventConnectionClosed
-                            -> if cChans^? at mapKey . _Just.closeRequested /= Just True
-                                  then pure . Just $ (mapKey, CloseConnectionLoss)
-                                  else pure . Just $ (mapKey, CloseRequested)
+                            -> pure . Just . (mapKey,) $
+                                 if cChans^? at mapKey . _Just.closeRequested /= Just True
+                                   then CloseConnectionLoss
+                                   else CloseRequested
                _            -> pure Nothing
          )
 
@@ -290,8 +292,7 @@ closeRTCConnections chans userClose = do
                          let connections = case ev of
                                              AllChannels -> over mapped (^._2.rtcConnection) cChans
                                              OnlyChannel key -> maybeToList $ cChansMap^?at key._Just.rtcConnection
-                         pure . Just $ do
-                           traverse_ Channel.safeClose connections
+                         pure . Just $ traverse_ Channel.safeClose connections
                      ) delayClose
   performEvent_ doClose
 
@@ -340,7 +341,7 @@ handleMessages config chans = do
 
       getMessage :: MonadPlus f => API.ServerResponse -> f (API.FromId, Secret, API.Message)
       getMessage res = case res of
-                         API.EventMessageReceived fromId secret' msg -> do
+                         API.EventMessageReceived fromId secret' msg ->
                            pure (fromId, secret', msg)
                          _ -> mzero
 

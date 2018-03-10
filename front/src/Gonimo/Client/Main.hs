@@ -41,14 +41,14 @@ newtype Config
 
 -- | Make an empty 'Config'.
 mkEmptyConfig :: IO Config
-mkEmptyConfig = do
-  Config <$> newEmptyMVar
+mkEmptyConfig = Config <$> newEmptyMVar
 
 -- | What does our application need, well here it is ... ;-)
 type AppConstraint t m
-  = ( DomBuilder t m, MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (Performable m)
-    , HasJSContext m, PerformEvent t m, TriggerEvent t m
-    , PostBuild t m, DomBuilderSpace m ~ GhcjsDomSpace, MonadSample t (Performable m)
+  = ( DomBuilder t m, MonadHold t m, MonadFix m, MonadJSM m
+    , MonadJSM (Performable m) , HasJSContext m, PerformEvent t m
+    , TriggerEvent t m , PostBuild t m, DomBuilderSpace m ~ GhcjsDomSpace
+    , MonadSample t (Performable m)
     )
 
 -- | Wire up the app.

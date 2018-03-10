@@ -8,7 +8,7 @@ import           Gonimo.Client.Prelude
 import           Gonimo.Client.Family.RoleSelector.I18N
 
 roleSelector :: forall model t m. GonimoM model t m => m (Event t GonimoRole)
-roleSelector = do
+roleSelector =
   elClass "div" "btn-box" $ do
     babyClicked <-
       makeClickable . elAttr' "div" (addBtnAttrs "btn-baby") $ do
