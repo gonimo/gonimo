@@ -21,7 +21,7 @@ ui :: forall model m t. GonimoM model t m
 ui config = do
   actions <- fmap switchPromptlyDyn
     . widgetHold (pure never)
-    . push (pure . id)
+    . push pure
     $ displayMessages <$> config^.configMessage
   pure $ MessageBox actions
 
@@ -56,7 +56,7 @@ displayError req err = case (req, err) of
     box I18N.Already_a_member_of_this_family "panel-warning" $ do
       trText I18N.You_are_already_a_member_of_this_family_wanna_switch
       switch' <- buttonAttr ("class" =: "btn btn-block") $ trText I18N.Switch_Family
-      (const (SelectFamily fid) <$> switch',) <$> delayed 10
+      (SelectFamily fid <$ switch',) <$> delayed 10
   (_, NoSuchInvitation) -> Just $
     box I18N.Invitation_not_found "panel-danger" $ do
       trText I18N.Invitations_are_only_valid_once
@@ -72,7 +72,7 @@ displayError req err = case (req, err) of
 box :: forall model m t a. GonimoM model t m
       => I18N.Message -> Text -> m (Event t a, Event t ()) -> m (Event t a)
 box title panelClass inner = mdo
-  dynPair <- widgetHold (box' title panelClass inner) $ const (pure (never, never)) <$> closed
+  dynPair <- widgetHold (box' title panelClass inner) $ pure (never, never) <$ closed
   let widgetEvent = switchPromptlyDyn . fmap fst $ dynPair
   let closed = switchPromptlyDyn . fmap snd $ dynPair
   pure widgetEvent

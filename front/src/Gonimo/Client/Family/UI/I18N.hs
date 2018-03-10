@@ -62,6 +62,5 @@ instance I18N Message where
           = "https://gonimo.com/de/faq.php?t=SicherheitPrivatsphäre"
 
 privacyLinkAttrs :: Locale -> Map Text Text
-privacyLinkAttrs lang =
-  "class" =: "text-center" <>
-  "href"  =: (i18n lang Privacy_Policy_Link)
+privacyLinkAttrs lang = "class" =: "text-center"
+                     <> "href"  =: i18n lang Privacy_Policy_Link

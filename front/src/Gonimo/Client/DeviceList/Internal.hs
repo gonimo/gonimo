@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -23,7 +24,7 @@ import qualified Gonimo.SocketAPI.Types   as API
 import           Gonimo.Types             (DeviceType)
 
 
-type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
+type SubscriptionsDyn t  = Dynamic t (Set API.ServerRequest)
 type NestedDeviceInfos t = Map AccountId (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
 
 data Config t
@@ -49,18 +50,18 @@ data UI t
        }
 
 instance Reflex t => Default (UI t) where
-  def = UI { _uiRequest = never
-           , _uiConnect = never
+  def = UI { _uiRequest    = never
+           , _uiConnect    = never
            , _uiDisconnect = never
            , _uiShowStream = never
            }
 
 uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
 uiSwitchPromptly ev
-  = UI <$> switchPromptly never (_uiRequest <$> ev)
-       <*> switchPromptly never (_uiConnect <$> ev)
-       <*> switchPromptly never (_uiDisconnect <$> ev)
-       <*> switchPromptly never (_uiShowStream <$> ev)
+  = UI <$> switchHoldPromptly never (_uiRequest    <$> ev)
+       <*> switchHoldPromptly never (_uiConnect    <$> ev)
+       <*> switchHoldPromptly never (_uiDisconnect <$> ev)
+       <*> switchHoldPromptly never (_uiShowStream <$> ev)
 
 uiLeftmost :: forall t. Reflex t => [UI t] -> UI t
 uiLeftmost uis
@@ -71,9 +72,9 @@ uiLeftmost uis
 
 ownDeviceName :: forall t. Reflex t => Dynamic t API.AuthData -> DeviceList t -> Dynamic t Text
 ownDeviceName auth deviceList' = fmap (fromMaybe "") . runMaybeT $ do
-  aid <- lift $ API.accountId <$> auth
-  did <- lift $ API.deviceId <$> auth
-  deviceIds <- MaybeT $ Map.lookup aid <$> (deviceList'^.deviceInfos)
+  aid        <- lift   $ API.accountId  <$> auth
+  did        <- lift   $ API.deviceId   <$> auth
+  deviceIds  <- MaybeT $ Map.lookup aid <$> (deviceList'^.deviceInfos)
   deviceInfo <- MaybeT $ Map.lookup did <$> deviceIds
   lift $ API.deviceInfoName <$> deviceInfo
 
@@ -82,9 +83,9 @@ deviceList :: forall model m t. GonimoM model t m => Config t -> m (DeviceList t
 deviceList config = do
     let
       onlineSub = Set.singleton . API.ReqGetOnlineDevices <$> config^.configFamilyId
-      gotOnlineDevices = push (\resp -> case resp of
-                                  API.ResGotOnlineDevices _ devList -> pure $ Just (Map.fromList devList)
-                                  _ -> pure Nothing ) (config^.configResponse)
+      gotOnlineDevices = push (pure . \case
+                                 API.ResGotOnlineDevices _ devList -> Just (Map.fromList devList)
+                                 _ -> Nothing ) (config^.configResponse)
 
     let
       (membersSubs, accoundIdsEv) = getMembersSubscription config
@@ -98,14 +99,14 @@ deviceList config = do
 
 
     onlineDevices' <- holdDyn Map.empty gotOnlineDevices
-    pure $ DeviceList { _deviceInfos = deviceInfos'
-                      , _onlineDevices = onlineDevices'
-                      , _subscriptions = onlineSub
-                                         <> membersSubs
-                                         <> accountDeviceIdsSubs
-                                         <> deviceInfoSubs
-                      , _request = never
-                      }
+    pure DeviceList { _deviceInfos   = deviceInfos'
+                    , _onlineDevices = onlineDevices'
+                    , _subscriptions = onlineSub
+                                    <> membersSubs
+                                    <> accountDeviceIdsSubs
+                                    <> deviceInfoSubs
+                    , _request       = never
+                    }
   -- where
   --   -- Causes causality loop - why?
   --   holdBackUntilReady :: Dynamic t (Map AccountId (Dynamic t [DeviceId]))
@@ -132,9 +133,9 @@ getMembersSubscription config =
   let
     subs = Set.singleton . API.ReqGetFamilyMembers <$> config^.configFamilyId
 
-    handleGotAccounts resp = case resp of
-      API.ResGotFamilyMembers _ aids -> pure . Just $ aids
-      _                              -> pure Nothing
+    handleGotAccounts resp = pure $ case resp of
+      API.ResGotFamilyMembers _ aids -> Just aids
+      _                              -> Nothing
     gotAccountsEvent = push handleGotAccounts (config^.configResponse)
   in
     (subs, gotAccountsEvent)
@@ -146,9 +147,9 @@ getDeviceIdsSubscription :: forall t m. (MonadHold t m, Reflex t, MonadFix m)
                                  )
 getDeviceIdsSubscription config accountIds' =
   let
-    gotDeviceIds = push (\resp -> case resp of
-                                    API.ResGotDevices aid dids -> pure . Just $ (aid, dids)
-                                    _ -> pure Nothing
+    gotDeviceIds = push (pure . \case
+                               API.ResGotDevices aid dids -> Just (aid, dids)
+                               _ -> Nothing
                         ) (config^.configResponse)
 
   in
@@ -188,9 +189,9 @@ getAccountDeviceInfos :: forall t m. (MonadHold t m, Reflex t, MonadFix m)
                              -> m (Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
 getAccountDeviceInfos config deviceIds' =
       let
-        gotDeviceInfo = push (\resp -> case resp of
-                                         API.ResGotDeviceInfo did info -> pure . Just $ (did, info)
-                                         _ -> pure Nothing
+        gotDeviceInfo = push (pure . \case
+                                API.ResGotDeviceInfo did info -> Just (did, info)
+                                _ -> Nothing
                              ) (config^.configResponse)
 
       in

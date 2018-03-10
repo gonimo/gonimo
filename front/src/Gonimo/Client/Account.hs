@@ -80,9 +80,9 @@ make model conf = do
 
   subscriberConfig' <- subscribeInvitationClaims conf
 
-  pure $ ( serverConfig' <> subscriberConfig'
-         , Account {..}
-         )
+  pure ( serverConfig' <> subscriberConfig'
+       , Account{..}
+       )
 
 -- | Provide the dynamic of claimed invitations.
 --
@@ -161,7 +161,7 @@ getInvitationSecret = do
             T.takeWhile (/='&') startSecret
     guard $ not (T.null secretString)
     let mDecoded = Aeson.decodeStrict . urlDecode True . T.encodeUtf8 $ secretString
-    maybe mzero pure $ mDecoded
+    maybe mzero pure mDecoded
 
 -- | Clear the accept invitation query from the browser address bar.
 --

@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Gonimo.Client.Main where
@@ -14,8 +13,7 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Reader
 import           GHCJS.DOM.Types             (MonadJSM)
 import qualified Language.Javascript.JSaddle as JS
-import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
-                                              webSocketConfig_send)
+import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.Account       as Account
 import           Gonimo.Client.App           as App
@@ -100,7 +98,7 @@ app conf' = build $ \ ~(modelConf, model) -> do
                  , subscriberConf
                  , uiConf
                  ]
-       , Model {..}
+       , Model{..}
        )
   where
     build :: ((ModelConfig t, Model t) -> m (ModelConfig t, Model t)) -> m ()

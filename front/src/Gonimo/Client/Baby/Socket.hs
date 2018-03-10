@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.Baby.Socket where
 
@@ -45,10 +45,9 @@ type HasModel model t = Channels.HasModel model t
 socket :: forall model m t. (HasModel model t, GonimoM model t m) => Config t -> m (Socket t)
 socket config = mdo
   let
-    isEnabled = (\dt -> case dt of
-                    NoBaby -> False
-                    Baby _ -> True) <$> config^.configEnabled
-    gatedResponse = gate (current $ isEnabled) (config^.configResponse)
+    isEnabled = (\case NoBaby -> False
+                       Baby _ -> True) <$> config^.configEnabled
+    gatedResponse = gate (current isEnabled) (config^.configResponse)
 
   -- Close connection when stream gets muted for some reason - so user can't take a still for live video.
   -- (streamMuted, triggerStreamMuted) <- newTriggerEvent
@@ -59,34 +58,33 @@ socket config = mdo
   --     <$> updated (config^.configMediaStream)
 
   let
-    newChannelReq = push (\res -> do
-                          case res of
+    newChannelReq = push (\case
                             API.EventChannelRequested fromId secret -> pure . Just $ (fromId, secret)
                             _ -> pure Nothing
                        ) gatedResponse
   let
-    closeEvent = push (\enabled ->
+    closeEvent = push (pure . \enabled ->
                          if enabled
-                         then pure $ Nothing
-                         else pure $ Just Channels.AllChannels
+                           then Nothing
+                           else Just Channels.AllChannels
                       ) (updated isEnabled)
   let
-    channelsConfig = Channels.Config { Channels._configResponse = gatedResponse
-                                     , Channels._configOurId = API.deviceId <$> config^.configAuthData
+    channelsConfig = Channels.Config { Channels._configResponse        = gatedResponse
+                                     , Channels._configOurId           = API.deviceId <$> config^.configAuthData
                                      , Channels._configBroadcastStream = either (const Nothing) Just <$> config^.configMediaStream
-                                     , Channels._configCreateChannel = newChannelReq
-                                     -- , Channels._configCloseChannel = leftmost [ closeEvent, streamMuted ]
-                                     , Channels._configCloseChannel = leftmost [ closeEvent ]
+                                     , Channels._configCreateChannel   = newChannelReq
+                                  -- , Channels._configCloseChannel    = leftmost [ closeEvent, streamMuted ]
+                                     , Channels._configCloseChannel    = leftmost [ closeEvent ]
                                      }
   channels' <- Channels.channels channelsConfig
 
   let deviceTypeDyn = config^.configEnabled
   let setDeviceType = zipDynWith API.ReqSetDeviceType (API.deviceId <$> config^.configAuthData) deviceTypeDyn
   let subs = Set.singleton <$> setDeviceType -- Dummy subscription, never changes but it will be re-executed when the connection breaks.
-  pure $ Socket { _request = channels'^.Channels.request
-                , _channels = channels'^.Channels.channelMap
-                , _subscriptions = subs
-                }
+  pure Socket { _request       = channels'^.Channels.request
+              , _channels      = channels'^.Channels.channelMap
+              , _subscriptions = subs
+              }
 
 
 handleMutedTracks :: MonadJSM m => IO () -> MediaStream -> m ()

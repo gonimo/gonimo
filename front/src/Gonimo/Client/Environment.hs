@@ -101,9 +101,7 @@ make = liftJSM $ do
 
   liftIO . T.putStrLn $ "gonimo, backend ws url: " <> _backendWSURL
 
-  pure $ Environment {..}
-
-  where
+  pure Environment{..}
 
 -- | Calculate the frontend host from the backend url.
 --

@@ -22,7 +22,7 @@ import Control.Lens
 -- - Messages from `configOnSend` will simply get dropped when socket is not ready.
 make :: forall t m . WebSocketM t m => Text -> Config t -> m (WebSocket t)
 make url c = mdo
-    let webSocket' = WebSocket {..}
+    let webSocket' = WebSocket{..}
 
     _events <- newTriggerEvents
 

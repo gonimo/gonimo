@@ -10,7 +10,6 @@ import           Gonimo.Client.Prelude
 
 
 
-import           GHCJS.DOM.Enums                (MediaStreamTrackState (..))
 import           GHCJS.DOM.EventM
 import           GHCJS.DOM.RTCIceCandidate
 import           GHCJS.DOM.RTCIceCandidateEvent as IceEvent
@@ -31,7 +30,8 @@ import qualified Gonimo.SocketAPI.Types         as API
 import           Gonimo.Types                   (Secret)
 
 
-import           GHCJS.DOM.Enums                (RTCIceConnectionState (..))
+import           GHCJS.DOM.Enums                ( MediaStreamTrackState (..)
+                                                , RTCIceConnectionState (..))
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
 import           Language.Javascript.JSaddle    (liftJSM, (<#))
@@ -90,14 +90,14 @@ channel model config = mdo
   handleIceCandidate config conn
   handleNegotiationNeeded config conn
 
-  pure $ Channel { _rtcConnection = conn
-                 , _theirStream = Nothing
-                 , _closeRequested = False
-                 , _audioReceivingState = StateNotReceiving
-                 , _videoReceivingState = StateNotReceiving
-                 , _audioMuted = False
-                 , _videoMuted = False
-                 }
+  pure Channel { _rtcConnection = conn
+               , _theirStream = Nothing
+               , _closeRequested = False
+               , _audioReceivingState = StateNotReceiving
+               , _videoReceivingState = StateNotReceiving
+               , _audioMuted = False
+               , _videoMuted = False
+               }
 
 -- Get the worst state available for a channel.
 worstState :: Channel t -> ReceivingState
@@ -127,7 +127,7 @@ handleRTCClosedEvent config conn = liftJSM $ do
   listener <- newListener $ do
     state <- liftJSM $ getIceConnectionState conn
     if state == RTCIceConnectionStateClosed
-      then liftIO $ triggerCloseEv
+      then liftIO triggerCloseEv
       else pure ()
   addListener conn iceConnectionStateChange listener False
 
@@ -205,7 +205,7 @@ makeGonimoRTCConnection model = liftJSM $ do
 -- Don't use plain close, it throws uncatchable exceptions when connection is already closed:
 safeClose :: MonadJSM m => RTCPeerConnection -> m ()
 safeClose conn = liftJSM $ do
-      jsClose <- JS.eval $ ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Caught: \" + e.toString());}})" :: Text)
+      jsClose <- JS.eval ("(function(conn) { try {conn.close();} catch(e) {console.log(\"Caught: \" + e.toString());}})" :: Text)
       _ <- JS.call jsClose JS.obj [conn]
       pure ()
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Client.ConfirmationButton where
@@ -28,18 +29,18 @@ mayAddConfirmation confirmationText clicked needsConfirmation = do
     go False = pure clicked
     go True  = addConfirmation confirmationText clicked
   evEv <- dyn $ go <$> needsConfirmation
-  switchPromptly never evEv
+  switchHoldPromptly never evEv
 
 addConfirmation :: forall model t m. GonimoM model t m
                       => m () -> Event t () -> m (Event t ())
 addConfirmation confirmationText clicked = mdo
-  confirmationDialog <- holdDyn (pure never) $ leftmost [ const (confirmationBox confirmationText) <$> clicked
-                                                        , const (pure never) <$> gotAnswer
-                                                        ]
-  gotAnswer <- switchPromptly never =<< dyn confirmationDialog
-  pure $ push (\answer -> case answer of
-                            No  -> pure Nothing
-                            Yes -> pure $ Just ()
+  confirmationDialog <- holdDyn (pure never) $
+                          leftmost [ confirmationBox confirmationText <$ clicked
+                                   , pure never <$ gotAnswer
+                                   ]
+  gotAnswer <- switchHoldPromptly never =<< dyn confirmationDialog
+  pure $ push (pure . \case No  -> Nothing
+                            Yes -> Just ()
               ) gotAnswer
 
 
@@ -57,5 +58,7 @@ confirmationBox confirmationText = do
       el "br" blank
 
       yesClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
-      pure $ leftmost [ const No <$> noClicked, const Yes <$> yesClicked ]
+      pure $ leftmost [ No  <$ noClicked
+                      , Yes <$ yesClicked
+                      ]
 

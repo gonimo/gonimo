@@ -33,37 +33,42 @@ type HasModel model t = Invite.HasModel model t
 ui :: forall model m t. (HasModel model t, GonimoM model t m)
             => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
-  connections' <- C.connections $ C.Config { C._configResponse = appConfig^.onResponse
-                                           , C._configAuthData = loaded^.App.authData
-                                           , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
-                                           , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
-                                                                               , navBar^.NavBar.homeClicked
-                                                                               , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
-                                                                               , viewUI^.C.videoViewDisconnectAll
-                                                                               ]
-                                           , C._configDisconnectBaby = leftmost [ devicesUI^.DeviceList.uiDisconnect
-                                                                                , viewUI^.C.videoViewDisconnectBaby
-                                                                                ]
-                                           }
+  connections' <- C.connections
+                    C.Config { C._configResponse       = appConfig^.onResponse
+                             , C._configAuthData       = loaded^.App.authData
+                             , C._configConnectBaby    = devicesUI^.DeviceList.uiConnect
+                             , C._configDisconnectAll  = leftmost [ navBar^.NavBar.backClicked
+                                                                  , navBar^.NavBar.homeClicked
+                                                                  , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
+                                                                  , viewUI^.C.videoViewDisconnectAll
+                                                                  ]
+                             , C._configDisconnectBaby = leftmost [ devicesUI^.DeviceList.uiDisconnect
+                                                                  , viewUI^.C.videoViewDisconnectBaby
+                                                                  ]
+                             }
   handleUnreliableAlert connections'
 
-  let noStreamsLeft = fmap (const ()) . ffilter id $ Map.null <$> updated (connections'^.C.streams)
+  let noStreamsLeft = void . ffilter id $ Map.null <$> updated (connections'^.C.streams)
 
-  let showParentView = const "isParentView" <$> leftmost [ devicesUI^.DeviceList.uiConnect
-                                                         , devicesUI^.DeviceList.uiShowStream
-                                                         ]
-  let showParentManage = const "isParentManage" <$> leftmost [ viewUI^.C.videoViewNavBar^.NavBar.backClicked
-                                                             , invite^.Invite.uiGoBack
-                                                             , invite^.Invite.uiDone
-                                                             , noStreamsLeft
-                                                             ]
-  let showInviteView = const "isInviteView" <$> inviteRequested
+  let showParentView = "isParentView" <$ leftmost [ devicesUI^.DeviceList.uiConnect
+                                                  , devicesUI^.DeviceList.uiShowStream
+                                                  ]
+  let showParentManage = "isParentManage" <$ leftmost [ viewUI^.C.videoViewNavBar^.NavBar.backClicked
+                                                      , invite^.Invite.uiGoBack
+                                                      , invite^.Invite.uiDone
+                                                      , noStreamsLeft
+                                                      ]
+  let showInviteView = "isInviteView" <$ inviteRequested
 
-  let showBroken = fmap not $ (||) <$> connections'^.C.brokenConnections <*> appConfig^.Auth.isOnline
+  let showOK = (||) <$> connections'^.C.brokenConnections
+                    <*> appConfig^.Auth.isOnline
 
-  _ <- dyn $ Auth.connectionLossScreen' <$> showBroken
+  _ <- dyn $ Auth.connectionLossScreen' . not <$> showOK
 
-  selectedView <- holdDyn "isParentManage" $ leftmost [showParentView, showParentManage, showInviteView]
+  selectedView <- holdDyn "isParentManage" $ leftmost [ showParentView
+                                                      , showParentManage
+                                                      , showInviteView
+                                                      ]
   let parentViewShown = (== "isParentView") <$> selectedView
 
   (navBar, devicesUI, inviteRequested) <-
@@ -79,21 +84,21 @@ ui appConfig loaded deviceList = mdo
       firstCreation <- headE inviteRequested
       let inviteUI
             = Invite.ui loaded
-              $ Invite.Config { Invite._configResponse = appConfig^.onResponse
-                              , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                              , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
-                              , Invite._configCreateInvitation = never
-                              }
-      dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
+              Invite.Config { Invite._configResponse         = appConfig^.onResponse
+                            , Invite._configSelectedFamily   = loaded^.App.selectedFamily
+                            , Invite._configAuthenticated    = appConfig^.Auth.onAuthenticated
+                            , Invite._configCreateInvitation = never
+                            }
+      dynInvite <- widgetHold (pure def) $ inviteUI <$ firstCreation
       pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
   emptySubs <- holdDyn mempty never
   let parentApp = App.App { App._subscriptions = emptySubs
                           , App._request = connections'^.C.request
-                                           <> devicesUI^.DeviceList.uiRequest
-                                           <> invite^.Invite.request
-                                           <> navBar^.NavBar.request
-                                           <> viewUI^.C.videoViewNavBar.NavBar.request
+                                        <> devicesUI^.DeviceList.uiRequest
+                                        <> invite^.Invite.request
+                                        <> navBar^.NavBar.request
+                                        <> viewUI^.C.videoViewNavBar.NavBar.request
                           , App._selectLang = never
                           }
 
@@ -102,16 +107,16 @@ ui appConfig loaded deviceList = mdo
                                , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
                                ]
   -- Ensure cleanup!
-  goHomeRequested <- hold False $ const True <$> goHomeTrigger
+  goHomeRequested <- hold False $ True <$ goHomeTrigger
   let channelsEmpty = Map.null <$> connections'^.C.channelMap
-  let goHome = fmap (const ()) . ffilter id
+  let goHome = void . ffilter id
                $ leftmost [ tag (current channelsEmpty) goHomeTrigger
                           , attachWith (&&) goHomeRequested (updated channelsEmpty)
                           ]
 
-  pure $ App.Screen { App._screenApp = parentApp
-                    , App._screenGoHome = goHome
-                    }
+  pure App.Screen { App._screenApp    = parentApp
+                  , App._screenGoHome = goHome
+                  }
 
 manageUi :: forall model m t. GonimoM model t m
             => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
@@ -147,7 +152,7 @@ viewUi _ loaded deviceList connections isShown = do
     _ <- dyn $ renderFakeVideos connections
     closedsEvEv <- dyn $ renderVideos deviceList connections isShown
     let closedEvEv  = leftmost <$> closedsEvEv
-    closedEv <- switchPromptly never closedEvEv
+    closedEv <- switchHoldPromptly never closedEvEv
     stopAllClicked <- elClass "div" "stream-menu" $
         makeClickable . elAttr' "div" (addBtnAttrs "stop") $ trText Stop_All
     pure $ C.VideoView navBar' closedEv stopAllClicked
@@ -174,7 +179,7 @@ renderVideos deviceList connections' isShown =
     renderVideosOrNone _ [] = do
         let maxLoadingTime = 7 -- Seven seconds seems plenty ...
         errorEv <- delayed maxLoadingTime
-        showError <- holdDyn False $ const True <$> errorEv
+        showError <- holdDyn False $ True <$ errorEv
         _ <- dyn $ renderLoadingOrError <$> showError
         pure []
     renderVideosOrNone _ xs = traverse renderVideo xs
@@ -200,7 +205,7 @@ renderVideos deviceList connections' isShown =
         mediaVideo stream ("autoplay" =: "true")
         closeClicked <- makeClickable $ elAttr' "div" (addBtnAttrs "btn-close-x") blank
         renderVolumemeter volEvent
-        pure $ const key <$> closeClicked
+        pure $ key <$ closeClicked
 
     dynConnectionClass key = connectionClass key <$> dynChannelMap
 

@@ -1,4 +1,3 @@
-{-# LANGUAGE RecursiveDo #-}
 module Gonimo.Client.MessageBox ( module Internal
                                       , module UI
                                       ) where

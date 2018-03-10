@@ -2,7 +2,6 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.Baby.Internal where
 
@@ -73,14 +72,14 @@ type HasModel model t = Socket.HasModel model t
 
 uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
 uiSwitchPromptly ev
-  = UI <$> switchPromptly never (_uiGoHome <$> ev)
-       <*> switchPromptly never (_uiStartMonitor <$> ev)
-       <*> switchPromptly never (_uiStopMonitor <$> ev)
-       <*> switchPromptly never (_uiEnableCamera <$> ev)
-       <*> switchPromptly never (_uiEnableAutoStart <$> ev)
-       <*> switchPromptly never (_uiSelectCamera <$> ev)
-       <*> switchPromptly never (_uiSetBabyName <$> ev)
-       <*> switchPromptly never (_uiRequest <$> ev)
+  = UI <$> switchHoldPromptly never (_uiGoHome <$> ev)
+       <*> switchHoldPromptly never (_uiStartMonitor <$> ev)
+       <*> switchHoldPromptly never (_uiStopMonitor <$> ev)
+       <*> switchHoldPromptly never (_uiEnableCamera <$> ev)
+       <*> switchHoldPromptly never (_uiEnableAutoStart <$> ev)
+       <*> switchHoldPromptly never (_uiSelectCamera <$> ev)
+       <*> switchHoldPromptly never (_uiSetBabyName <$> ev)
+       <*> switchHoldPromptly never (_uiRequest <$> ev)
 
 uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
 uiSwitchPromptlyDyn ev
@@ -120,15 +119,15 @@ baby config = mdo
   mediaStream' :: Dynamic t (Either JS.PromiseRejected MediaStream) <- holdDyn goodInit gotNewStream
 
   sockEnabled <- holdDyn Gonimo.NoBaby
-                 $ leftmost [ Gonimo.Baby <$> tag (current babyName) (config^.configStartMonitor)
-                            , const Gonimo.NoBaby <$> config^.configStopMonitor
+                 $ leftmost [ Gonimo.Baby   <$> tag (current babyName) (config^.configStartMonitor)
+                            , Gonimo.NoBaby <$  config^.configStopMonitor
                             ]
 
-  socket' <- Socket.socket $ Socket.Config { Socket._configResponse = config^.configResponse
-                                           , Socket._configAuthData = config^.configAuthData
-                                           , Socket._configEnabled = sockEnabled
-                                           , Socket._configMediaStream = mediaStream'
-                                           }
+  socket' <- Socket.socket Socket.Config { Socket._configResponse = config^.configResponse
+                                         , Socket._configAuthData = config^.configAuthData
+                                         , Socket._configEnabled = sockEnabled
+                                         , Socket._configMediaStream = mediaStream'
+                                         }
   -- OYD integration, if enabled by user. (Currently a hidden feature, user has to set local storage object 'OYD')
   setOYDBabyNameEv <- performEvent $ uncurry oyd <$> attach (current babyName) gotNewValidStream
   setOYDBabyNameBeh <- hold (const (pure ())) setOYDBabyNameEv
@@ -149,23 +148,23 @@ baby config = mdo
 
   volEvent <- flip getVolumeLevel sockEnabled $ fmap (^?_Right) mediaStream'
 
-  pure $ Baby { _selectedCamera = selected
-              , _autoStartEnabled = autoStart
-              , _cameraCount = cameraCount'
-              , _cameraEnabled = enabled
-              , _mediaStream = mediaStream'
-              , _socket = socket'
-              , _name = babyName
-              , _request = saveNameReq
-              , _volumeLevel = volEvent
-              }
+  pure Baby { _selectedCamera = selected
+            , _autoStartEnabled = autoStart
+            , _cameraCount = cameraCount'
+            , _cameraEnabled = enabled
+            , _mediaStream = mediaStream'
+            , _socket = socket'
+            , _name = babyName
+            , _request = saveNameReq
+            , _volumeLevel = volEvent
+            }
 
 handleCameraEnable :: forall model m t. GonimoM model t m => Config t -> Dynamic t (Either JS.PromiseRejected MediaStream) -> m (Dynamic t Bool)
 handleCameraEnable config mediaStream' = do
     storage <- Window.getLocalStorage =<< DOM.currentWindowUnchecked
     mLastEnabled <- GStorage.getItem storage GStorage.cameraEnabled
 
-    let initVal = fromMaybe True $ mLastEnabled
+    let initVal = fromMaybe True mLastEnabled
 
     let
       getStreamFailed = push pure $ either (const (Just False)) (const Nothing) <$> updated mediaStream'
@@ -232,7 +231,7 @@ getConstrainedMediaStream :: forall m t. (MonadJSM m, Reflex t, MonadSample t m)
                          => Dynamic t (Either JS.PromiseRejected MediaStream) -> [MediaDeviceInfo] -> Maybe Text -> m (Either JS.PromiseRejected MediaStream)
 getConstrainedMediaStream mediaStreams infos mLabel = do
   oldStream <- sample $ current mediaStreams
-  either (const $ pure ()) stopMediaStream $ oldStream
+  either (const $ pure ()) stopMediaStream oldStream
   let mInfo = flip getMediaDeviceByLabel infos =<< mLabel
   navigator <- Window.getNavigator =<< DOM.currentWindowUnchecked
   constr <- case (mInfo, mLabel) of
@@ -280,9 +279,9 @@ getVolumeLevel mediaStream' sockEnabled = do
     let updateVolInfoEv = updated . fmap sequence $ zipDyn sockEnabled mediaStream'
 
     newCleanupEv <- performEvent $ getVolInfo triggerVolumeEvent <$> updateVolInfoEv
-    mCleanup <- holdDyn Nothing $ newCleanupEv
-    let doCleanup = push (\_ -> sample $ current mCleanup) (updated mCleanup)
-    performEvent_ $ doCleanup
+    mCleanup <- holdDyn Nothing newCleanupEv
+    let doCleanup = push (const $ sample (current mCleanup)) (updated mCleanup)
+    performEvent_ doCleanup
 
     pure volEvent
   where

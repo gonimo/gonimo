@@ -9,7 +9,6 @@ import           Control.Monad.IO.Class            (liftIO)
 import qualified Data.List                         as List
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
-import           Data.Maybe                        (isJust)
 import           Data.Maybe
 import           Data.Set                          (Set)
 import qualified Data.Set                          as Set
@@ -45,7 +44,7 @@ ui :: forall model m t. GonimoM model t m
               => App.Loaded t -> DeviceList t -> Dynamic t (Map DeviceId (Channel t))
               -> Dynamic t (Set DeviceId)  -> m (UI t)
 ui loaded deviceList' channels connected = do
-    tz <- liftIO $ getCurrentTimeZone
+    tz <- liftIO getCurrentTimeZone
     evUI <- dyn $ renderAccounts tz loaded
             <$> deviceList'^.deviceInfos
             <*> pure (deviceList'^.onlineDevices) -- don't re-render full table
@@ -66,7 +65,7 @@ renderAccounts :: forall model m t. GonimoM model t m
 renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
     let
       isSelf (aId, _) = aId == API.accountId authData
-      (self, others) = List.partition isSelf . Map.toList $ allInfos
+      (self, others)  = List.partition isSelf . Map.toList $ allInfos
 
     allUis <- traverse renderAccount $ self <> others
     pure $ uiLeftmost allUis
@@ -74,17 +73,17 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
     removeConfirmationText :: GonimoM model t m => Bool -> Dynamic t Text -> m ()
     removeConfirmationText isUs devName
       = trDynText $ if isUs
-                     then pure Really_leave_your_current_family
-                     else Do_you_really_want_to_remove_device <$> devName
+                      then pure Really_leave_your_current_family
+                      else Do_you_really_want_to_remove_device <$> devName
     -- Currently pretty dumb, once we have non anonymous accounts render those differently:
     -- Visible group non devices belonging to a single account. Also family removal is per account.
-    renderAccount :: (AccountId, Dynamic t (Map DeviceId (Dynamic t (API.DeviceInfo))))
+    renderAccount :: (AccountId, Dynamic t (Map DeviceId (Dynamic t API.DeviceInfo)))
                      -> m (UI t)
     renderAccount (_, infos) = do
       rs <- dyn $ renderDevices <$> infos
       uiSwitchPromptly rs
 
-    renderDevices :: Map DeviceId (Dynamic t (API.DeviceInfo))
+    renderDevices :: Map DeviceId (Dynamic t API.DeviceInfo)
                   -> m (UI t)
     renderDevices infos = do
         let
@@ -101,11 +100,11 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
                   -> m (UI t)
     renderDevice isSelf (devId, devInfo) = mdo
         let
-          mDevType = Map.lookup devId <$> onlineStatus
-          mChannel = Map.lookup devId <$> channels
+          mDevType    = Map.lookup devId <$> onlineStatus
+          mChannel    = Map.lookup devId <$> channels
           mConnStatus = fmap Channel.worstState <$> mChannel
-          needsAlert  = (fromMaybe False . fmap Channel.needsAlert) <$> mChannel
-          devName = API.deviceInfoName <$> devInfo
+          needsAlert  = maybe False Channel.needsAlert <$> mChannel
+          devName     = API.deviceInfoName <$> devInfo
           isConnected = Set.member devId <$> connected
 
           devClass :: Dynamic t Text
@@ -164,10 +163,10 @@ renderAccounts tz loaded allInfos onlineStatus channels connected authData = do
                           <*> current (loaded^.App.selectedFamily)
               removeReqEv = tag removeReq removeClick
 
-            let ui'' = UI { _uiRequest = mconcat . map (fmap (:[])) $ [renameReq, removeReqEv]
-                          , _uiConnect = const devId <$> connectClick
-                          , _uiDisconnect = const devId <$> disconnectClick
-                          , _uiShowStream = const devId <$> streamClick
+            let ui'' = UI { _uiRequest    = mconcat . map (fmap (:[])) $ [renameReq, removeReqEv]
+                          , _uiConnect    = devId <$ connectClick
+                          , _uiDisconnect = devId <$ disconnectClick
+                          , _uiShowStream = devId <$ streamClick
                           }
             isSelected' <- toggle False selectedClick
             pure (isSelected', ui'')

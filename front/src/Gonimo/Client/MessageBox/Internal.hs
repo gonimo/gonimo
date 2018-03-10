@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Client.MessageBox.Internal where
 
@@ -38,14 +37,14 @@ fromApp c = Config { _configMessage = (:[]) . ServerResponse <$> c^.onResponse
 -- Prisms:
 
 _ServerRequest :: Prism' Action API.ServerRequest
-_ServerRequest = prism' (\r -> ServerRequest r) go
+_ServerRequest = prism' ServerRequest go
   where
     go c = case c of
       ServerRequest r -> Just r
       _               -> Nothing
 
 _SelectFamily :: Prism' Action FamilyId
-_SelectFamily = prism' (\r -> SelectFamily r) go
+_SelectFamily = prism' SelectFamily go
   where
     go c = case c of
       SelectFamily r -> Just r

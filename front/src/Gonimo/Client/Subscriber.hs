@@ -1,6 +1,4 @@
-{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
 module Gonimo.Client.Subscriber ( module Gonimo.Client.Subscriber.API
                                 , Model (..)
                                 , HasModel

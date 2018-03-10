@@ -1,6 +1,3 @@
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
 module Gonimo.Client.Family.RoleSelector where
 
 import           Reflex.Dom.Core
@@ -10,11 +7,7 @@ import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Family.RoleSelector.I18N
 
-
-
-
-roleSelector :: forall model t m. GonimoM model t m
-          => m (Event t GonimoRole)
+roleSelector :: forall model t m. GonimoM model t m => m (Event t GonimoRole)
 roleSelector = do
   elClass "div" "btn-box" $ do
     babyClicked <-
@@ -25,6 +18,6 @@ roleSelector = do
       makeClickable . elAttr' "div" (addBtnAttrs "btn-parent") $ do
         elAttr "img" ("src" =: "/pix/button-parent.svg") blank
         el "span" $ trText Parent
-    pure $ leftmost [ const RoleBaby <$> babyClicked
-                    , const RoleParent <$> parentClicked
+    pure $ leftmost [ RoleBaby   <$ babyClicked
+                    , RoleParent <$ parentClicked
                     ]

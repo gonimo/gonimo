@@ -78,7 +78,7 @@ make model conf = mdo
     server' = Server { _onOpen = ws^.WS.webSocket_open
                      , _onResponse = recv
                      , _onCloseRequested = killConn
-                     , _onClose = const () <$> ws^.WS.webSocket_close
+                     , _onClose = void $ ws^.WS.webSocket_close
                      }
 
   (requests, killConn) <- handlePingPong (conf^.onRequest) recv
@@ -90,7 +90,7 @@ make model conf = mdo
                & WS.webSocketConfig_close .~ reqClose
                & WS.webSocketConfig_reconnect .~ True
 
-    reqClose = const (4000, "Server did not respond.") <$> killConn
+    reqClose = (4000, "Server did not respond.") <$ killConn
 
   ws <- WS.jsonWebSocket (model^.Environment.backendWSURL) wsConfig
 
@@ -116,13 +116,13 @@ handlePingPong :: forall t m. ( MonadFix m, MonadHold t m, MonadJSM m, MonadJSM 
                               )
                   => Event t [ServerRequest] -> Event t ServerResponse -> m (Event t [ServerRequest], Event t ())
 handlePingPong inRequest inResponse = do
-  now <- liftIO $ getCurrentTime
+  now <- liftIO getCurrentTime
   tick <- tickLossy webSocketPingInterval now
-  let req = const [ReqPing] <$> tick
-  shallKill <- hold False $ leftmost [ const False <$> inResponse
-                                     , const True <$> tick
+  let req = [ReqPing] <$ tick
+  shallKill <- hold False $ leftmost [ False <$ inResponse
+                                     , True  <$ tick
                                      ]
-  let killConn = fmap (const ()) . ffilter id . tag shallKill $ tick
+  let killConn = void . ffilter id . tag shallKill $ tick
   let outRequest = req <> inRequest
   pure (outRequest, killConn)
 

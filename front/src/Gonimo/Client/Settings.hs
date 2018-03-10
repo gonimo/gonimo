@@ -60,7 +60,7 @@ make conf = do
   initLang      <- readLocale
   _locale <- holdDyn initLang $ conf^.onSelectLocale
   performEvent_ $ writeLocale <$> updated _locale
-  pure $ Settings {..}
+  pure Settings{..}
 
 
 -- | Render a text in the current locale.

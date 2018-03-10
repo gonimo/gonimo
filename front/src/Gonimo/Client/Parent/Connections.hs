@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -68,10 +69,9 @@ connections config = mdo
     ourDevId = API.deviceId <$> current (config^.configAuthData)
     openChannelReq = (:[]) <$> attachWith API.ReqCreateChannel ourDevId (config^.configConnectBaby)
   let
-    newChannelReq = push (\res -> do
-                             case res of
-                               API.ResCreatedChannel _ toId secret -> pure $ Just (toId, secret)
-                               _ -> pure Nothing
+    newChannelReq = push (pure . \case
+                            API.ResCreatedChannel _ toId secret -> Just (toId, secret)
+                            _ -> Nothing
                          ) (config^.configResponse)
   let
     getChannelsKey :: Event t DeviceId -> Event t (DeviceId, Secret)
@@ -79,18 +79,19 @@ connections config = mdo
                                     cSecrets <- sample $ current secrets'
                                     pure $ (devId',) <$> cSecrets^.at devId'
                                 ) devId
-    closeEvent = leftmost [ const Channels.AllChannels <$> config^.configDisconnectAll
-                          , Channels.OnlyChannel <$> getChannelsKey (leftmost [ config^.configDisconnectBaby
-                                                                              , config^.configConnectBaby
-                                                                              ]
-                                                                    )
+    closeEvent = leftmost [ Channels.AllChannels <$  config^.configDisconnectAll
+                          , Channels.OnlyChannel <$>
+                              getChannelsKey (leftmost [ config^.configDisconnectBaby
+                                                       , config^.configConnectBaby
+                                                       ]
+                                             )
                           ]
   let
-    channelsConfig = Channels.Config { Channels._configResponse = config^.configResponse
-                                     , Channels._configOurId = API.deviceId <$> config^.configAuthData
+    channelsConfig = Channels.Config { Channels._configResponse        = config^.configResponse
+                                     , Channels._configOurId           = API.deviceId <$> config^.configAuthData
                                      , Channels._configBroadcastStream = constDyn Nothing
-                                     , Channels._configCreateChannel = newChannelReq
-                                     , Channels._configCloseChannel = closeEvent
+                                     , Channels._configCreateChannel   = newChannelReq
+                                     , Channels._configCloseChannel    = closeEvent
                                      }
   channels' <- Channels.channels channelsConfig
   let secrets' = Map.fromList . Map.keys <$> channels'^.Channels.channelMap
@@ -104,13 +105,14 @@ connections config = mdo
   unreliableConnections' <- areThereUnreliableConnections channels'
   brokenConnections'     <- areThereBrokenConnections channels'
 
-  pure $ Connections { _request = channels'^.Channels.request <> openChannelReq
-                     , _channelMap = kickSecret <$> channels'^.Channels.channelMap
-                     , _origStreams = streams'
-                     , _streams = boostedStreams
-                     , _unreliableConnections = unreliableConnections'
-                     , _brokenConnections = brokenConnections'
-                     }
+  pure Connections { _request               = channels'^.Channels.request
+                                           <> openChannelReq
+                   , _channelMap            = kickSecret <$> channels'^.Channels.channelMap
+                   , _origStreams           = streams'
+                   , _streams               = boostedStreams
+                   , _unreliableConnections = unreliableConnections'
+                   , _brokenConnections     = brokenConnections'
+                   }
   where
     kickSecret :: forall v. Map (DeviceId, Secret) v -> Map DeviceId v
     kickSecret = Map.fromList . over (mapped._1) (^._1) . Map.toList
@@ -121,7 +123,7 @@ playAlarmOnBrokenConnection channels' = mdo
       loadAlert :: forall m1. MonadJSM m1 => m1 AudioNode.AudioBufferSourceNode
       loadAlert = loadSound "/sounds/gonimo_alarm_64kb_long.mp3"
     alarmSound <- loadAlert
-    newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only be played once!
+    newAlertEv <- performEvent $ loadAlert <$ ffilter not  (updated anyConnectionBroken) -- alarm can only be played once!
     -- AudioNode.start alarmSound 0 0 1000000 -- 0 for duration does not work on Chrome at least! fs
     anyConnectionBroken <- holdUniqDyn $ getAnyBrokenConnections <$> channels'^.Channels.channelMap
 
@@ -135,17 +137,17 @@ playAlarmOnBrokenConnection channels' = mdo
   where
     startStopVibra (mVibra, onOff)
       =  if onOff
-         then Just <$> startVibraAlert
-         else case mVibra of
-                Nothing -> pure Nothing
-                Just vibra -> do
-                  stopVibraAlert vibra
-                  pure Nothing
+           then Just <$> startVibraAlert
+           else case mVibra of
+                  Nothing -> pure Nothing
+                  Just vibra -> do
+                    stopVibraAlert vibra
+                    pure Nothing
 
     startStopSound (sound, onOff)
       = if onOff
-        then AudioNode.start sound (Just 0) (Just 0) (Just 1000) -- 0 for duration does not work on Chrome at least! fs
-        else AudioNode.stop  sound (Just 0)
+          then AudioNode.start sound (Just 0) (Just 0) (Just 1000) -- 0 for duration does not work on Chrome at least! fs
+          else AudioNode.stop  sound (Just 0)
 
 areThereBrokenConnections :: (Reflex t, MonadHold t m, MonadFix m) => Channels.Channels t -> m (Dynamic t Bool)
 areThereBrokenConnections = holdUniqDyn . fmap getAnyBrokenConnections . (^.Channels.channelMap)
@@ -197,7 +199,7 @@ pTraverseCache :: forall m k t. (MonadJSM m, Ord k)
                   => Map k (MediaStream,StreamData t)
                -> (k -> MediaStream -> m (StreamData t))
                -> Map k MediaStream
-               -> m (Map k (StreamData t), Map k (MediaStream, (StreamData t)))
+               -> m (Map k (StreamData t), Map k (MediaStream, StreamData t))
 pTraverseCache cache f inStreams = do
   let
     possiblyCached = Map.intersection cache inStreams

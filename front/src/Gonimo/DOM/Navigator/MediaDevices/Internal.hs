@@ -24,7 +24,7 @@ import qualified Data.Text.IO as T
 
 enumerateDevices :: (MonadJSM m, MonadIO m) => m [MediaDeviceInfo]
 enumerateDevices = do
-    devicesVar <- liftIO $ newEmptyMVar
+    devicesVar <- liftIO newEmptyMVar
     -- navigator <- jsg "navigator"
     -- jsMediaDevices <- (navigator ! "mediaDevices")
     -- enumPromise <- jsMediaDevices # "enumerateDevices" $ []

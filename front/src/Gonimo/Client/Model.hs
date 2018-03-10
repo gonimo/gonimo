@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-|
 Module      : Gonimo.Client.Account
 Description : Types, classes and utilities for dealing with models and model configs.

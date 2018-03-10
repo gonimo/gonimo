@@ -41,7 +41,11 @@ navBar config = do
               pure (devNameChangeReq, famNameChangeReq)
 
           gonimoClicked <- makeClickable .  elAttr' "div" (addBtnAttrs "menu-center") $ blank
-          pure $ (backClicked', (leftmost [homeClicked', gonimoClicked]), devNameChangeReq, famNameChangeReq)
+          pure ( backClicked'
+               , leftmost [homeClicked', gonimoClicked]
+               , devNameChangeReq
+               , famNameChangeReq
+               )
 
     devNameChanged <- editDeviceName (pure devNameChangeReq) deviceName
     famNameChanged <- editFamilyName (pure famNameChangeReq) cFamilyName
@@ -52,16 +56,15 @@ navBar config = do
     let request' = mconcat . map (fmap (:[])) $ [ attachWith ($) setDevName devNameChanged
                                                 , attachWith ($) setFamName famNameChanged
                                                 ]
-    pure $ NavBar { _backClicked = backClicked'
-                  , _homeClicked = homeClicked'
-                  , _request = request'
-                  }
+    pure NavBar { _backClicked = backClicked'
+                , _homeClicked = homeClicked'
+                , _request     = request'
+                }
   where
     backButton = makeClickable . elAttr' "div" (addBtnAttrs "menu-left back") $ blank
-
     homeButton = makeClickable . elAttr' "div" (addBtnAttrs "menu-left home") $ blank
 
 makeEllipsis :: Int -> Text -> Text
 makeEllipsis maxL t = if T.length t > maxL
-                      then T.take (maxL-2) t <> ".."
-                      else t
+                        then T.take (maxL-2) t <> ".."
+                        else t

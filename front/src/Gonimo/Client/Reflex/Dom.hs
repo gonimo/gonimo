@@ -1,8 +1,7 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE GADTs #-}
 -- | Reflex helper functions
 module Gonimo.Client.Reflex.Dom where
 
@@ -35,7 +34,7 @@ renderVolumemeter volEvent = do
     renderVolBarItem currentVolume minVal = do
       isActive <- holdUniqDyn $ (\cv -> if cv > minVal then "volBarItemActive" else "") <$> currentVolume
       let highVolume = if minVal > 0.6 then "high-volume " else ""
-      elDynClass "div" ( pure "volBarItem " <> pure highVolume <> isActive) $ blank
+      elDynClass "div" ( pure "volBarItem " <> pure highVolume <> isActive) blank
 
 dismissibleOverlay :: forall m t. ( PerformEvent t m, MonadFix m, TriggerEvent t m, MonadHold t m
                                   , MonadIO (Performable m), MonadIO m, DomBuilder t m
@@ -44,10 +43,10 @@ dismissibleOverlay :: forall m t. ( PerformEvent t m, MonadFix m, TriggerEvent t
                       => Text -> NominalDiffTime -> m () -> m ()
 dismissibleOverlay className dismissedAfter content = mdo
     dismissedEv <- delayed dismissedAfter
-    dismissed <- holdDyn False $ const True <$> leftmost [dismissedEv, clicked]
+    dismissed <- holdDyn False $ True <$ leftmost [dismissedEv, clicked]
     let shown = not <$> dismissed
     evClicked <-  dyn $ displayOverlay <$> shown
-    clicked <- switchPromptly never evClicked
+    clicked   <- switchHoldPromptly never evClicked
     pure ()
   where
     displayOverlay False = pure never
@@ -55,16 +54,15 @@ dismissibleOverlay className dismissedAfter content = mdo
                                                         <> "role" =: "button") $ content
 
 enterPressed :: Reflex t => Event t Word -> Event t ()
-enterPressed = push (\key -> pure $ if key == 13
-                                    then Just ()
-                                    else Nothing
-                    )
+enterPressed = push (\key -> pure $ if key == 13 then Just () else Nothing)
 
 addBtnAttrs :: Text -> Map Text Text
-addBtnAttrs className = "class" =: className <> "type" =: "button" <> "role" =: "button"
+addBtnAttrs className = "class" =: className
+                     <> "type"  =: "button"
+                     <> "role"  =: "button"
 
 addBtnDynAttrs :: Reflex t => Dynamic t Text -> Dynamic t (Map Text Text)
-addBtnDynAttrs className = fmap ("class" =:) className <> pure ("type" =: "button" <> "role" =: "button")
+addBtnDynAttrs = fmap addBtnAttrs
 
 buttonAttr :: DomBuilder t m => Map Text Text -> m () -> m (Event t ())
 buttonAttr attrs inner = makeClickable $ elAttr' "button" attrs inner
@@ -83,7 +81,7 @@ myCheckBox attrs checked inner = do
       elClass "div" "switch-out" blank
       elClass "div" "switch-in" blank
   let pressed = domEvent Mouseup e
-  pure $ pushAlwaysCheap (\_ -> not <$> (sample $ current checked)) pressed
+  pure $ pushAlwaysCheap (const $ not <$> sample (current checked)) pressed
 
 tabBar :: forall t m k. (MonadFix m, DomBuilder t m, MonadHold t m, PostBuild t m, Ord k)
           => Text -> Text -> Map k (Dynamic t Text -> m (Event t ())) -> m (Demux t (Maybe k))
@@ -98,7 +96,7 @@ tabBar ulClass activeClass tabItems = do
     headerBarLink :: (Dynamic t Text -> m (Event t ())) -> k -> Dynamic t Bool -> m (Event t k)
     headerBarLink x k isSelected = do
       clicked <- x $ fmap (\b -> if b then activeClass else "") isSelected
-      return $ fmap (const k) clicked
+      pure $ k <$ clicked
 
 -- | A widget to construct a tabbed view that shows only one of its child widgets at a time.
 --   Creates a header bar containing a <ul> with one <li> per child; clicking a <li> displays
@@ -196,7 +194,7 @@ addFocusPostBuild :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomS
             => InputElement EventResult (DomBuilderSpace m) t -> m ()
 addFocusPostBuild htmlEl = do
   postBuild <- getPostBuild
-  performEvent_ $ const (addFocus htmlEl) <$> postBuild -- Make sure it works always
+  performEvent_ $ addFocus htmlEl <$ postBuild -- Make sure it works always
 
 delayed :: (PerformEvent t m, TriggerEvent t m, MonadIO (Performable m), MonadIO m) => NominalDiffTime -> m (Event t ())
 delayed dt = do

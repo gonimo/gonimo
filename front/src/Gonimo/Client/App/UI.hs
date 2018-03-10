@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
@@ -24,14 +25,14 @@ import qualified Gonimo.Client.Parent           as Parent
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Server           hiding (Config, config, Model, HasModel)
+import           Gonimo.Client.Server           hiding (Config, Model, HasModel)
 import qualified Gonimo.Client.Subscriber       as Subscriber
 import qualified Gonimo.Client.Storage          as GStorage
 import qualified Gonimo.Client.Storage.Keys     as GStorage
 import           Gonimo.Client.Util             (getBrowserProperty,
                                                  getBrowserVersion)
 import qualified Gonimo.SocketAPI               as API
-import           Gonimo.Client.Settings       (Settings, HasSettings, HasConfig(onSelectLocale))
+import           Gonimo.Client.Settings         (HasConfig(onSelectLocale))
 
 
 ui :: forall m t. GonimoM Model t m => m (ModelConfig t)
@@ -39,12 +40,13 @@ ui = mdo
   model <- ask
   checkBrowser
   family <- Family.family
-            $ (Family.fromApp model) & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
-                                                                              , familyUI^.Family.uiSelectFamily
-                                                                              ]
-                                      & Family.configCreateFamily .~ familyUI^.Family.uiCreateFamily
-                                      & Family.configLeaveFamily .~ familyUI^.Family.uiLeaveFamily
-                                      & Family.configSetName .~ familyUI^.Family.uiSetName
+            $ Family.fromApp model
+              & Family.configSelectFamily .~ leftmost [ msgSwitchFamily
+                                                      , familyUI^.Family.uiSelectFamily
+                                                      ]
+              & Family.configCreateFamily .~ familyUI^.Family.uiCreateFamily
+              & Family.configLeaveFamily  .~ familyUI^.Family.uiLeaveFamily
+              & Family.configSetName      .~ familyUI^.Family.uiSetName
 
   -- navEv <- navBar family
   -- let navCreateFamily = push (pure . (^?_Left)) navEv
@@ -52,9 +54,9 @@ ui = mdo
 
   msgBox <- MessageBox.ui $ MessageBox.fromApp model
 
-  let msgSwitchFamily = push (\actions -> case actions of
-                                [MessageBox.SelectFamily fid] -> pure $ Just fid
-                                _ -> pure Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
+  let msgSwitchFamily = push (pure . \case
+                                [MessageBox.SelectFamily fid] -> Just fid
+                                _ -> Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
                              ) (msgBox ^. MessageBox.action)
 
   accept <- AcceptInvitation.ui model
@@ -65,7 +67,7 @@ ui = mdo
                                         )
   let oldSubscriber = mempty & Subscriber.subscriptions .~ (family ^. Family.subscriptions <> app ^. subscriptions)
   let oldConfig = mempty
-                  & serverConfig .~ oldServer
+                  & serverConfig     .~ oldServer
                   & subscriberConfig .~ oldSubscriber
                   & settingsConfig . onSelectLocale .~ leftmost [ app^.selectLang
                                                                 , familyUI^.Family.uiSelectLang
@@ -78,11 +80,11 @@ runLoaded model family = do
   let mkFuncPair fa fb = (,) <$> fa <*> fb
   evReady <- waitForJust
              $ zipDynWith mkFuncPair (model^.Auth.authData) (family^.Family.families)
-  familyGotCreated <- hold False $ push (\res ->
-                                            case res of
-                                              API.ResCreatedFamily _ -> pure $ Just True
-                                              _ -> pure Nothing
-                                        ) (model^.onResponse)
+  familyGotCreated <- hold False $
+                        push (pure . \case
+                                API.ResCreatedFamily _ -> Just True
+                                _ -> Nothing
+                             ) (model^.onResponse)
 
   let onReady dynAuthFamilies =
         fromMaybeDyn
@@ -111,10 +113,11 @@ runLoaded model family = do
 loadedUI :: forall model m t. (HasModel model t, GonimoM model t m)
       => Model t -> Loaded t -> Bool -> m (App t, Family.UI t)
 loadedUI model loaded familyCreated = mdo
-    deviceList <- DeviceList.deviceList $ DeviceList.Config { DeviceList._configResponse = model^.onResponse
-                                                            , DeviceList._configAuthData = model^.Auth.authData
-                                                            , DeviceList._configFamilyId = loaded^.selectedFamily
-                                                            }
+    deviceList <- DeviceList.deviceList
+                    DeviceList.Config { DeviceList._configResponse = model^.onResponse
+                                      , DeviceList._configAuthData = model^.Auth.authData
+                                      , DeviceList._configFamilyId = loaded^.selectedFamily
+                                      }
     initialRole <- getInitialRole
     dynPair <- widgetHold
               (renderCenter deviceList familyCreated initialRole)
@@ -124,15 +127,17 @@ loadedUI model loaded familyCreated = mdo
     let familyUI = Family.uiSwitchPromptlyDyn . fmap snd $ dynPair
 
     let roleSelected = leftmost [ Just <$> familyUI^.Family.uiRoleSelected
-                                , const Nothing <$> screen^.screenGoHome
+                                , Nothing <$ screen^.screenGoHome
                                 ]
 
-    let app = App { _request = deviceList^.DeviceList.request <> screen^.screenApp.request
-                              <> familyUI^.Family.uiRequest
-                  , _subscriptions = deviceList^.DeviceList.subscriptions <> screen^.screenApp.subscriptions
-                  , _selectLang = never
-                  }
-    pure (app, familyUI)
+    let app' = App { _request       = deviceList^.DeviceList.request
+                                   <> screen^.screenApp.request
+                                   <> familyUI^.Family.uiRequest
+                   , _subscriptions = deviceList^.DeviceList.subscriptions
+                                   <> screen^.screenApp.subscriptions
+                   , _selectLang    = never
+                   }
+    pure (app', familyUI)
   where
     renderCenter :: DeviceList.DeviceList t -> Bool -> Maybe Family.GonimoRole -> m (Screen t, Family.UI t)
     renderCenter deviceList familyCreated' mRole =
@@ -164,8 +169,7 @@ checkBrowser = do
     browserVersion <- getBrowserVersion
     let major :: Double -> Int
         major = floor
-    let warnMessage = if isiOS
-                      then Just $ do
+    let warnMessage | isiOS = Just $ do
                         el "h1" $ trText IOS_support_is_in_the_works
                         el "br" blank
                         -- el "h2" $ trText Gonimo_might_not_work_as_expected
@@ -179,12 +183,11 @@ checkBrowser = do
                         elAttr "a" ("class" =: "link" <> "href" =: "https://blog.gonimo.com")
                           $ text "blog"
                         trText To_stay_up_to_date_on_the_progress
-                      else if (isFirefox &&  browserVersion < 52.0) ||
-                              (isChrome  && ( browserVersion < 55.0  ||
-                                              (isAndroid && major browserVersion == 61)
-                                            )
-                              )
-                           then  Just $ do
+                     | (isFirefox &&  browserVersion < 52.0) ||
+                       (isChrome  && (browserVersion < 55.0  ||
+                                     (isAndroid && major browserVersion == 61)
+                                     )
+                       ) = Just $ do
                              el "h1" $ trText Please_upgrade_your_browser
                              el "br" blank
                              el "h2" $ trText Gonimo_might_not_work_as_expected
@@ -192,20 +195,20 @@ checkBrowser = do
                              trText Gonimo_needs_some_cutting_edge_technology
                              el "br" blank
                              trText If_you_can't_upgrade
-                      else if not isBlink && not isFirefox
-                           then Just $ do
-                            el "h1" $ trText Unsupported_browser
-                            el "br" blank
-                            el "h2" $ trText Gonimo_might_not_work_as_expected
-                            el "br" blank
-                            trText We_either_never_tested_gonimo_with_your_browser
-                            elAttr "a" ("class" =: "link" <> "href" =: "https://github.com/gonimo/gonimo/issues")
-                              $ text "github!"
-                            el "br" blank
-                            trText Thank_you
-                            text "!"
+                     | not isBlink && not isFirefox
+                       = Just $ do
+                          el "h1" $ trText Unsupported_browser
+                          el "br" blank
+                          el "h2" $ trText Gonimo_might_not_work_as_expected
+                          el "br" blank
+                          trText We_either_never_tested_gonimo_with_your_browser
+                          elAttr "a" ("class" =: "link" <> "href" =: "https://github.com/gonimo/gonimo/issues")
+                            $ text "github!"
+                          el "br" blank
+                          trText Thank_you
+                          text "!"
 
-                           else Nothing
+                     | otherwise = Nothing
     case warnMessage of
       Nothing -> pure ()
       Just msg -> do
@@ -217,8 +220,8 @@ checkBrowser = do
   where
     displayWarning :: m () -> m (Event t ())
     displayWarning msg = mdo
-      displayIt <- holdDyn (displayWarning' msg) $ const (pure never) <$> gotAnswer
-      gotAnswer <- switchPromptly never =<< dyn displayIt
+      displayIt <- holdDyn (displayWarning' msg) $ pure never <$ gotAnswer
+      gotAnswer <- switchHoldPromptly never =<< dyn displayIt
       pure gotAnswer
 
     displayWarning' :: m () -> m (Event t ())

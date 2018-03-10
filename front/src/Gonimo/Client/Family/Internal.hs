@@ -64,7 +64,9 @@ data UI t
        , _uiSelectLang   :: Event t Locale
        }
 
-data CreateFamilyResult = CreateFamilyCancel | CreateFamilyOk | CreateFamilySetName !Text
+data CreateFamilyResult = CreateFamilyCancel
+                        | CreateFamilyOk
+                        | CreateFamilySetName !Text
 
 data DefiniteFamily t
   = DefiniteFamily { _definiteFamilies :: Dynamic t FamilyMap
@@ -76,34 +78,34 @@ instance Reflex t => Default (UI t) where
   def = UI never never never never never never never
 
 fromApp :: Reflex t => App.Model t -> Config t
-fromApp c = Config { _configResponse = c^.onResponse
-                   , _configAuthData = c^.Auth.authData
-                   , _configSelectFamily = never
-                   , _configSetName = never
+fromApp c = Config { _configResponse      = c^.onResponse
+                   , _configAuthData      = c^.Auth.authData
+                   , _configSelectFamily  = never
+                   , _configSetName       = never
                    , _configAuthenticated = c^.Auth.onAuthenticated
-                   , _configCreateFamily = never
-                   , _configLeaveFamily = never
+                   , _configCreateFamily  = never
+                   , _configLeaveFamily   = never
                    }
 
 uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
 uiSwitchPromptly ev
-  = UI <$> switchPromptly never (_uiSelectFamily <$> ev)
-       <*> switchPromptly never (_uiCreateFamily <$> ev)
-       <*> switchPromptly never (_uiLeaveFamily <$> ev)
-       <*> switchPromptly never (_uiSetName <$> ev)
-       <*> switchPromptly never (_uiRoleSelected <$> ev)
-       <*> switchPromptly never (_uiRequest <$> ev)
-       <*> switchPromptly never (_uiSelectLang <$> ev)
+  = UI <$> switchHoldPromptly never (_uiSelectFamily <$> ev)
+       <*> switchHoldPromptly never (_uiCreateFamily <$> ev)
+       <*> switchHoldPromptly never (_uiLeaveFamily  <$> ev)
+       <*> switchHoldPromptly never (_uiSetName      <$> ev)
+       <*> switchHoldPromptly never (_uiRoleSelected <$> ev)
+       <*> switchHoldPromptly never (_uiRequest      <$> ev)
+       <*> switchHoldPromptly never (_uiSelectLang   <$> ev)
 
 uiSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (UI t) -> UI t
 uiSwitchPromptlyDyn ev
   = UI (switchPromptlyDyn (_uiSelectFamily <$> ev))
        (switchPromptlyDyn (_uiCreateFamily <$> ev))
-       (switchPromptlyDyn (_uiLeaveFamily <$> ev))
-       (switchPromptlyDyn (_uiSetName <$> ev))
+       (switchPromptlyDyn (_uiLeaveFamily  <$> ev))
+       (switchPromptlyDyn (_uiSetName      <$> ev))
        (switchPromptlyDyn (_uiRoleSelected <$> ev))
-       (switchPromptlyDyn (_uiRequest <$> ev))
-       (switchPromptlyDyn (_uiSelectLang <$> ev))
+       (switchPromptlyDyn (_uiRequest      <$> ev))
+       (switchPromptlyDyn (_uiSelectLang   <$> ev))
 
 -- makeDefinite :: forall m t. Reflex t => Family t -> Dynamic t (Maybe DefiniteFamily t)
 -- makeDefinite family' =
@@ -131,11 +133,14 @@ family config' = do
     let createReqs = handleCreateFamily config'
     let leaveReqs = handleLeaveFamily config' selected'
     let renameReqs = handleSetName config' selected'
-    pure $ Family { _subscriptions = subs
-                  , _families = families'
-                  , _selectedFamily = selected'
-                  , _request = selectReqs <> createReqs <> leaveReqs <> renameReqs
-                }
+    pure Family { _subscriptions  = subs
+                , _families       = families'
+                , _selectedFamily = selected'
+                , _request        = selectReqs
+                                 <> createReqs
+                                 <> leaveReqs
+                                 <> renameReqs
+              }
 
 handleFamilySelect :: forall model m t. GonimoM model t m
                       => Config t -> Dynamic t (Maybe [FamilyId])
@@ -180,14 +185,14 @@ handleFamilySelect config' familyIds' = mdo
 
         reqDyn = zipDynWith mayReq (config'^.configAuthData) selected'
         reqsDyn :: Dynamic t [ API.ServerRequest ]
-        reqsDyn = maybe [] (:[]) <$> reqDyn
+        reqsDyn = maybe [] pure <$> reqDyn
 
-      pure $ mconcat $ [ tag (current reqsDyn) $ config'^.configAuthenticated
-                       , updated reqsDyn
-                       ]
+      pure $ mconcat [ tag (current reqsDyn) $ config'^.configAuthenticated
+                     , updated reqsDyn
+                     ]
 
 handleCreateFamily :: forall t. Reflex t => Config t -> Event t [ API.ServerRequest ]
-handleCreateFamily config' = const [API.ReqCreateFamily] <$> config'^.configCreateFamily
+handleCreateFamily config' = [API.ReqCreateFamily] <$ config'^.configCreateFamily
 
 handleLeaveFamily :: forall t. Reflex t => Config t -> Dynamic t (Maybe FamilyId) -> Event t [ API.ServerRequest ]
 handleLeaveFamily config' selected'
@@ -221,7 +226,7 @@ makeFamilies config' = do
          _                         -> pure Nothing
        gotFamiliesEvent = push handleGotFamilies (config'^.configResponse)
 
-       fidsToSubscriptions = foldr Set.insert Set.empty . map API.ReqGetFamily
+       fidsToSubscriptions = foldr (Set.insert . API.ReqGetFamily) Set.empty
 
      familyIds <- holdDyn [] gotFamiliesEvent
      let familiesSubs = fidsToSubscriptions <$> familyIds
@@ -230,9 +235,9 @@ makeFamilies config' = do
                           <$> config'^.configAuthData
 
      mFamilyIds <- holdDyn Nothing (Just <$> gotFamiliesEvent)
-     pure $ ( zipDynWith Set.union familyIdsSubs familiesSubs
-            , mFamilyIds
-            )
+     pure ( zipDynWith Set.union familyIdsSubs familiesSubs
+          , mFamilyIds
+          )
 
   -- Nothing until consistent.
    makeFamilyMap :: Dynamic t (Maybe [FamilyId]) -> m (Dynamic t (Maybe FamilyMap))
@@ -267,37 +272,36 @@ makeFamilies config' = do
 
 -- Prisms:
 
-
 _CreateFamilyCancel :: Prism' CreateFamilyResult ()
-_CreateFamilyCancel = prism' (\() -> CreateFamilyCancel) go
+_CreateFamilyCancel = prism' (const CreateFamilyCancel) go
   where
     go c = case c of
       CreateFamilyCancel -> Just ()
       _                  -> Nothing
 
 _CreateFamilyOk :: Prism' CreateFamilyResult ()
-_CreateFamilyOk = prism' (\() -> CreateFamilyOk) go
+_CreateFamilyOk = prism' (const CreateFamilyOk) go
   where
     go c = case c of
       CreateFamilyOk -> Just ()
       _              -> Nothing
 
 _CreateFamilySetName :: Prism' CreateFamilyResult Text
-_CreateFamilySetName = prism' (\t -> CreateFamilySetName t) go
+_CreateFamilySetName = prism' CreateFamilySetName go
   where
     go c = case c of
-      CreateFamilySetName t -> Just $ t
+      CreateFamilySetName t -> Just t
       _                     -> Nothing
 
 _RoleParent :: Prism' GonimoRole ()
-_RoleParent = prism' (\() -> RoleParent) go
+_RoleParent = prism' (const RoleParent) go
   where
     go c = case c of
       RoleParent -> Just ()
       _          -> Nothing
 
 _RoleBaby :: Prism' GonimoRole ()
-_RoleBaby = prism' (\() -> RoleBaby) go
+_RoleBaby = prism' (const RoleBaby) go
   where
     go c = case c of
       RoleBaby -> Just ()

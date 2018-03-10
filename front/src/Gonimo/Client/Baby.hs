@@ -1,6 +1,3 @@
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 module Gonimo.Client.Baby
   ( module UI
   , module Baby

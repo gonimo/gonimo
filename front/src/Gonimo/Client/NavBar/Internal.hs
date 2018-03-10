@@ -1,6 +1,4 @@
-{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 module Gonimo.Client.NavBar.Internal where
 
@@ -11,14 +9,14 @@ import qualified Gonimo.Client.DeviceList.Internal as DeviceList
 import qualified Gonimo.SocketAPI as API
 
 data Config t
-  = Config { _configLoaded :: App.Loaded t
+  = Config { _configLoaded     :: App.Loaded t
            , _configDeviceList :: DeviceList.DeviceList t
            }
 
 data NavBar t
   = NavBar { _backClicked :: Event t ()
            , _homeClicked :: Event t ()
-           , _request :: Event t [API.ServerRequest]
+           , _request     :: Event t [API.ServerRequest]
            }
 
 

@@ -78,11 +78,11 @@ make model = do
             _                    -> Nothing
       push handleAuthenticated $ model^.Server.onResponse
   _isOnline <- holdDynUniq False
-               $ leftmost [ const False <$> model^.Server.onClose
-                          , const False <$> model^.Server.onCloseRequested
-                          , const True <$> _onAuthenticated
+               $ leftmost [ False <$ model^.Server.onClose
+                          , False <$ model^.Server.onCloseRequested
+                          , True  <$ _onAuthenticated
                           ]
-  let auth' = Auth {..}
+  let auth' = Auth{..}
   let mConf = mempty & onRequest .~ mergeAsList [ makeDeviceEvent
                                                 , authenticateEvent
                                                 ]
@@ -165,9 +165,10 @@ connectionLossScreen auth' = do
 
 connectionLossScreen' :: forall model m t. GonimoM model t m
   => Bool -> m ()
-connectionLossScreen' isBroken = case isBroken of
-  False -> pure ()
-  True  -> elClass "div" "notification overlay" $ do
+connectionLossScreen' isOK =
+ if isOK
+   then pure ()
+   else elClass "div" "notification overlay" $ do
     elClass "div" "notification box connection-lost" $ do
       elClass "div" "notification-header" $ do
         el "h1" $ trText No_Internet_Connection
@@ -176,11 +177,11 @@ connectionLossScreen' isBroken = case isBroken of
         dynText =<< loadingDots
         el "br" blank
         elClass "div" "welcome-container" $
-          elClass "div" "start-welcome-img" $ blank
+          elClass "div" "start-welcome-img" blank
 
 loadingDots :: forall model m t. GonimoM model t m => m (Dynamic t Text)
 loadingDots = do
-  now <- liftIO $ getCurrentTime
+  now <- liftIO getCurrentTime
   tick <- tickLossy 1 now
   tickCount :: Dynamic t Int <- count tick
   let dotCount = mod <$> tickCount <*> pure 8

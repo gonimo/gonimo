@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
 
 module Gonimo.Client.WebRTC.Channels where
 
@@ -97,10 +97,10 @@ channels config = mdo
 
   rStreams <- holdDyn Map.empty . buildDynMap (current rStreams) $ [updateStreams]
 
-  pure $ Channels { _request = sendCloseRequest <> msgRequest <> rtcRequest
-                  , _channelMap = channels'
-                  , _remoteStreams = rStreams
-                  }
+  pure Channels { _request = sendCloseRequest <> msgRequest <> rtcRequest
+                , _channelMap = channels'
+                , _remoteStreams = rStreams
+                }
 
 -- Get notified when a channel gets closed.
 getCloseEvent :: Reflex t => ChannelsBehavior t -> Event t ChannelEvent -> Event t ((API.FromId,Secret), CloseEvent)
@@ -201,26 +201,23 @@ handleConnectionStateUpdate chans chanEv = do
 
 -- Little helper frunction for handleConnectionStateUpdate and handleMuteUpdate
 newStreamEvent :: Reflex t => ChannelsBehavior t -> Event t ChannelEvent -> Event t ((DeviceId, Secret), MediaStream, RTCPeerConnection)
-newStreamEvent chans = push (\ev' ->
-                      case ev' of
-                        ChannelEvent mapKey (RTCEventGotRemoteStream stream) -> runMaybeT $ do
-                          cChans <- lift $ sample chans
-                          conn <- MaybeT . pure $ cChans^?at mapKey._Just.rtcConnection
-                          pure (mapKey, stream, conn)
-                        _ -> pure Nothing
-                    )
+newStreamEvent chans = push
+  (\case ChannelEvent mapKey (RTCEventGotRemoteStream stream) -> runMaybeT $ do
+           cChans <- lift $ sample chans
+           conn <- MaybeT . pure $ cChans^?at mapKey._Just.rtcConnection
+           pure (mapKey, stream, conn)
+         _ -> pure Nothing
+  )
 
 handleRemoteStreams :: Reflex t
                     => Event t ChannelEvent -> Event t (ChannelMap t -> ChannelMap t, StreamMap -> StreamMap)
-handleRemoteStreams
-    = push (\ev' -> do
-              case ev' of
-                ChannelEvent mapKey (RTCEventGotRemoteStream stream)
-                  -> pure . Just $ (at mapKey . _Just . theirStream .~ Just stream, at mapKey .~ Just stream)
+handleRemoteStreams = push
+  (pure . \case ChannelEvent mapKey (RTCEventGotRemoteStream stream)
+                  -> Just (at mapKey . _Just . theirStream .~ Just stream, at mapKey .~ Just stream)
                 ChannelEvent mapKey RTCEventRemoteStreamEnded
-                  -> pure . Just $ (at mapKey . _Just . theirStream .~ Nothing, at mapKey .~ Nothing)
-                _ -> pure Nothing
-           )
+                  -> Just (at mapKey . _Just . theirStream .~ Nothing, at mapKey .~ Nothing)
+                _ -> Nothing
+  )
 
 handleBroadcastStream :: forall t m. ( MonadHold t m, MonadFix m, Reflex t, Applicative (Performable m)
                                      , MonadJSM (Performable m), PerformEvent t m
@@ -234,7 +231,7 @@ handleBroadcastStream config channels' = do
         let newChans = Map.elems $ Map.difference upChans oldChans
         let connections = (^.rtcConnection) <$> newChans
         cStream <- MaybeT . sample . current $ config^.configBroadcastStream
-        pure $ traverse_ (flip addStream cStream) connections
+        pure $ traverse_ (`addStream` cStream) connections
 
     performEvent_ $ push initializeNewChans (updated channels')
 
@@ -260,11 +257,11 @@ handleCreateChannel model config triggerChannelEvent
   = performEvent $ buildChannel <$> config^.configCreateChannel
   where
     buildChannel key@(deviceId, secret) = do
-      chan <- Channel.channel model $ Channel.Config { Channel._configResponse = config^.configResponse
-                                               , Channel._configTriggerChannelEvent = triggerChannelEvent
-                                               , Channel._configTheirId = deviceId
-                                               , Channel._configSecret = secret
-                                               }
+      chan <- Channel.channel model Channel.Config { Channel._configResponse            = config^.configResponse
+                                                   , Channel._configTriggerChannelEvent = triggerChannelEvent
+                                                   , Channel._configTheirId             = deviceId
+                                                   , Channel._configSecret              = secret
+                                                   }
       pure (at key .~ Just chan)
 
 handleCloseChannel :: ( MonadHold t m, MonadFix m, Reflex t, PerformEvent t m
@@ -272,7 +269,7 @@ handleCloseChannel :: ( MonadHold t m, MonadFix m, Reflex t, PerformEvent t m
                       )
                     => Config t -> Dynamic t (ChannelMap t) -> Event t ChannelEvent -> m (Event t (ChannelMap t -> ChannelMap t), Event t [API.ServerRequest])
 handleCloseChannel config channels' channelEvent = do
-    closeRTCConnections (current $ channels') (config^.configCloseChannel)
+    closeRTCConnections (current channels') (config^.configCloseChannel)
     let closeRequests = sendCloseMessages (current $ config^.configOurId) (current channels') (config^.configCloseChannel)
     let removeChan = getClosedChannels (config^.configResponse) channelEvent (config^.configCloseChannel)
     pure (removeChan, closeRequests)
@@ -316,22 +313,20 @@ sendCloseMessages ourId chans
 getClosedChannels :: Reflex t => Event t API.ServerResponse -> Event t ChannelEvent -> Event t ChannelSelector -> Event t (ChannelMap t -> ChannelMap t)
 getClosedChannels response chanEv userClose =
   let
-    remoteClosed = push (\res ->
-                              case res of
-                                API.EventMessageReceived fromId secret' API.MsgCloseConnection
-                                  -> pure . Just $ (at (fromId, secret') . _Just . Channel.closeRequested .~ True)
-                                _ -> pure Nothing
-                        ) response
-    connClosed = push (\ev -> do
-                          case ev of
-                            ChannelEvent mapKey RTCEventConnectionClosed
-                              -> pure . Just . trace "Channel got deleted" $ (at mapKey .~ Nothing)
-                            _ -> pure Nothing
-                      ) chanEv
-    localClosed = push (\ev -> case ev of
-                         AllChannels -> pure . Just $ (over mapped (closeRequested .~ True))
-                         OnlyChannel key -> pure . Just $ (at key . _Just . Channel.closeRequested .~ True)
-                       ) userClose
+    remoteClosed = push
+      (pure . \case API.EventMessageReceived fromId secret' API.MsgCloseConnection
+                      -> Just (at (fromId, secret') . _Just . Channel.closeRequested .~ True)
+                    _ -> Nothing
+      ) response
+    connClosed = push
+     (pure . \case ChannelEvent mapKey RTCEventConnectionClosed
+                     -> Just . trace "Channel got deleted" $ (at mapKey .~ Nothing)
+                   _ -> Nothing
+     ) chanEv
+    localClosed = push
+      (pure . Just . \case AllChannels     -> (over mapped (closeRequested .~ True))
+                           OnlyChannel key -> (at key . _Just . Channel.closeRequested .~ True)
+      ) userClose
   in
     remoteClosed <> connClosed <> localClosed
 
@@ -380,11 +375,11 @@ handleMessages config chans = do
                                 Channel.safeClose connection
                                 mzero
                         ourId' <- lift $ sample (current $ config^.configOurId)
-                        pure $ [API.ReqSendMessage ourId' fromId secret' resMesg]
+                        pure [API.ReqSendMessage ourId' fromId secret' resMesg]
                     ) response'
 
 
-  push (pure . id) <$> performEvent actions
+  push pure <$> performEvent actions
 
 -- handles RTCPeerConnection events and produces messages to be sent to the other party.
 handleRTCEvents :: forall t m. ( PerformEvent t m, Reflex t, MonadSample t (Performable m)
@@ -410,9 +405,9 @@ handleRTCEvents ourId chans chanEv = do
                                 RTCEventIceCandidate candidate
                                   -> API.MsgIceCandidate <$> API.mFromFrontend (rtcIceCandidateToInit candidate)
                                 _            -> mzero
-                         pure $ [API.ReqSendMessage cOurId toId secret' msg]
+                         pure [API.ReqSendMessage cOurId toId secret' msg]
                    ) chanEv
-  push (pure . id) <$> performEvent actions
+  push pure <$> performEvent actions
 
 
 -- | Specialized promise handling for `handleRTCEvents` and `handleMessages`

@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
@@ -66,9 +67,9 @@ invite model config = mdo
                      , tag currentSelected (config^.configCreateInvitation)
                      , tag currentSelected createOnAuth
                      ]
-    invEv = push (\res -> case res of
-                     API.ResCreatedInvitation invTuple -> pure $ Just invTuple
-                     _ -> pure Nothing
+    invEv = push (pure . \case
+                     API.ResCreatedInvitation invTuple -> Just invTuple
+                     _ -> Nothing
                  ) (config^.configResponse)
   inv <- holdDyn Nothing $ Just <$> invEv
   pure Invite { _invitation = inv
@@ -101,17 +102,17 @@ makeInvitationLink baseURL inv =
 
 instance Reflex t => Default (Invite t) where
   def = Invite { _invitation = constDyn Nothing
-               , _request = never
-               , _uiGoBack = never
-               , _uiDone = never
+               , _request    = never
+               , _uiGoBack   = never
+               , _uiDone     = never
                }
 
 inviteSwitchPromptlyDyn :: Reflex t => Dynamic t (Invite t) -> Invite t
 inviteSwitchPromptlyDyn dynInvite
-  = Invite { _invitation = join (_invitation <$> dynInvite)
-           , _request = switchPromptlyDyn (_request <$> dynInvite)
-           , _uiGoBack = switchPromptlyDyn (_uiGoBack <$> dynInvite)
-           , _uiDone = switchPromptlyDyn (_uiDone <$> dynInvite)
+  = Invite { _invitation = join              (_invitation <$> dynInvite)
+           , _request    = switchPromptlyDyn (_request    <$> dynInvite)
+           , _uiGoBack   = switchPromptlyDyn (_uiGoBack   <$> dynInvite)
+           , _uiDone     = switchPromptlyDyn (_uiDone     <$> dynInvite)
            }
 
 

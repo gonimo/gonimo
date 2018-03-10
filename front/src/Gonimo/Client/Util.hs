@@ -26,8 +26,9 @@ import           Language.Javascript.JSaddle (JSVal, MonadJSM, liftJSM)
 import qualified Language.Javascript.JSaddle as JS
 
 
-import           GHCJS.DOM.Types             (MediaStreamTrack,
-                                              RTCPeerConnection)
+import           GHCJS.DOM.Types             (MediaStreamTrack
+                                             ,RTCPeerConnection
+                                             ,nullableToMaybe)
 import qualified GHCJS.DOM.Types             as JS hiding (JSM)
 import           GHCJS.Types                 (nullRef)
 -- import GHCJS.DOM.AudioContext             as Ctx
@@ -36,8 +37,6 @@ import           GHCJS.Types                 (nullRef)
 import           Data.Map.Strict             (Map)
 import qualified Data.Text                   as T
 import qualified Data.Text.IO                as T
-import           GHCJS.DOM.Types             (nullableToMaybe)
-
 
 import           Gonimo.Client.JS.Audio      as Audio
 import           Gonimo.Client.JS.OYD        as OYD
@@ -218,7 +217,7 @@ showJSException e = liftJSM $ do
     else do
       json <- JS.jsg ("JSON" :: Text)
       propStr <- json^.JS.js3 ("stringify" :: Text) e nullRef (2 :: Int)
-      str <- fromMaybe ("Can't be stringifyed!") <$> JS.fromJSVal propStr
+      str <- fromMaybe "Can't be stringifyed!" <$> JS.fromJSVal propStr
       pure $ "Caught exception: " <> str
 
 -- | Like `fromPromiseM` but if you have a pure value to return on error

@@ -101,9 +101,9 @@ ui appConfig loaded familyGotCreated = do
 
     el "br" blank
 
-    selectedView <- holdDyn "" $ leftmost [ const "isInviteView " <$> inviteRequested
-                                          , const "" <$> invite^.Invite.uiGoBack
-                                          , const "" <$> invite^.Invite.uiDone
+    selectedView <- holdDyn "" $ leftmost [ "isInviteView " <$ inviteRequested
+                                          , ""              <$ invite^.Invite.uiGoBack
+                                          , ""              <$ invite^.Invite.uiDone
                                           ]
     invite <-
       elDynClass "div" (pure "container fullScreenOverlay inviteView " <> selectedView) $ do
@@ -111,11 +111,11 @@ ui appConfig loaded familyGotCreated = do
         let inviteUI
               = Invite.ui loaded
                   Invite.Config { Invite._configResponse         = appConfig^.onResponse
-                                , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                                , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
+                                , Invite._configSelectedFamily   = loaded^.App.selectedFamily
+                                , Invite._configAuthenticated    = appConfig^.Auth.onAuthenticated
                                 , Invite._configCreateInvitation = never
                                 }
-        dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
+        dynInvite <- widgetHold (pure def) $ inviteUI <$ firstCreation
         pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
     roleSelected <- roleSelector
@@ -127,14 +127,14 @@ ui appConfig loaded familyGotCreated = do
             , _uiCreateFamily = clickedAdd
             , _uiLeaveFamily  = leftmost [ clickedLeave
                                          , push (\r -> pure $ r^?_CreateFamilyCancel) newFamilyResult
-                                           ]
-              , _uiSetName      = leftmost [ nameChanged
-                                           , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
-                                           ]
-              , _uiRoleSelected = roleSelected
-              , _uiRequest      = newFamilyReqs <> invite^.Invite.request
-              , _uiSelectLang   = langSelected
-              }
+                                         ]
+            , _uiSetName      = leftmost [ nameChanged
+                                         , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
+                                         ]
+            , _uiRoleSelected = roleSelected
+            , _uiRequest      = newFamilyReqs <> invite^.Invite.request
+            , _uiSelectLang   = langSelected
+            }
 
 
 -- familyChooser :: forall model m t. GonimoM model t m
@@ -177,7 +177,7 @@ familyChooser family' = mdo
   nameChanged <- editFamilyName (pure nameChangeReq) cFamilyName
   let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
   droppedDown <- holdDyn False $ leftmost [ openClose
-                                          , const False <$> selectedId
+                                          , False <$ selectedId
                                           ]
   let
     droppedDownClass :: Dynamic t Text
@@ -215,7 +215,7 @@ createFamily appConfig loaded familyGotCreated = mdo
                                         _                        -> Nothing
                          ) response'
   mFamilyId' :: Dynamic t (Maybe FamilyId) <- holdDyn Nothing $ leftmost [ Just <$> familyCreated
-                                           , const Nothing <$> gotValidFamilyId'
+                                           , Nothing <$ gotValidFamilyId'
                                            ]
 
   let gotValidFamilyId' = leftmost [ push (\fid -> do
@@ -234,11 +234,9 @@ createFamily appConfig loaded familyGotCreated = mdo
 
   let startUI = if familyGotCreated then uiTrue else uiFalse
 
-  let uiEv = leftmost [ const uiTrue <$> gotValidFamilyId'
-                      , const uiFalse
-                        <$> push (\ev -> pure
-                                        $ ev^?_CreateFamilyCancel
-                                        <|> ev^?_CreateFamilyOk
+  let uiEv = leftmost [ uiTrue  <$ gotValidFamilyId'
+                      , uiFalse <$ push (\ev -> pure $  ev^?_CreateFamilyCancel
+                                                    <|> ev^?_CreateFamilyOk
                                 ) createFamilyEv
                       ]
 
@@ -252,8 +250,8 @@ createFamily appConfig loaded familyGotCreated = mdo
 createFamily' :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily' appConfig loaded = mdo
-  let showNameEdit = const "isFamilyNameEdit" <$> invite^.Invite.uiGoBack
-  let showInviteView = const "isInviteView" <$> familyEditOk
+  let showNameEdit   = "isFamilyNameEdit" <$ invite^.Invite.uiGoBack
+  let showInviteView = "isInviteView"     <$ familyEditOk
 
   selectedView <- holdDyn "isFamilyNameEdit" $ leftmost [showNameEdit, showInviteView]
 
@@ -271,11 +269,11 @@ createFamily' appConfig loaded = mdo
                             , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
                             , Invite._configCreateInvitation = never
                             }
-      dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
+      dynInvite <- widgetHold (pure def) $ inviteUI <$ firstCreation
       pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
-  let doneEv = leftmost [ const CreateFamilyOk <$> invite^.Invite.uiDone
-                        , const CreateFamilyCancel <$> familyEditBack
+  let doneEv = leftmost [ CreateFamilyOk      <$  invite^.Invite.uiDone
+                        , CreateFamilyCancel  <$  familyEditBack
                         , CreateFamilySetName <$> familyEditOk
                         ]
 
@@ -299,10 +297,10 @@ familyEditName loaded reactivated' = do
         }
       -- Handle focus:
       addFocusPostBuild $ nameInput^.textInput_builderElement
-      performEvent_ $ const (addFocus $ nameInput^.textInput_builderElement)
-                      <$> leftmost [ void $ updated (App.currentFamilyName loaded)
-                                   , reactivated
-                                   ]
+      performEvent_ $ addFocus (nameInput^.textInput_builderElement)
+                   <$ leftmost [ void $ updated (App.currentFamilyName loaded)
+                               , reactivated
+                               ]
 
       okClicked <- makeClickable . elAttr' "div" (addBtnAttrs "input-btn check ") $ blank
       let nameValue = current $ nameInput^.textInput_value

@@ -34,17 +34,17 @@ data BabyScreen = ScreenStart | ScreenRunning
 
 ui :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
-    baby' <- baby $ Config { _configNextCamera = ui'^.uiSelectCamera
-                           , _configEnableCamera = ui'^.uiEnableCamera
-                           , _configEnableAutoStart = leftmost [ui'^.uiEnableAutoStart, disableAutostart]
-                           , _configResponse = appConfig^.onResponse
-                           , _configAuthData = loaded^.App.authData
-                           , _configStartMonitor = startMonitor
-                           , _configStopMonitor  = leftmost [ui'^.uiGoHome, ui'^.uiStopMonitor]
-                           , _configSetBabyName = ui'^.uiSetBabyName
-                           , _configSelectedFamily = loaded^.App.selectedFamily
-                           , _configGetUserMedia = errorNewStream
-                           }
+    baby' <- baby Config { _configNextCamera = ui'^.uiSelectCamera
+                         , _configEnableCamera = ui'^.uiEnableCamera
+                         , _configEnableAutoStart = leftmost [ui'^.uiEnableAutoStart, disableAutostart]
+                         , _configResponse = appConfig^.onResponse
+                         , _configAuthData = loaded^.App.authData
+                         , _configStartMonitor = startMonitor
+                         , _configStopMonitor  = leftmost [ui'^.uiGoHome, ui'^.uiStopMonitor]
+                         , _configSetBabyName = ui'^.uiSetBabyName
+                         , _configSelectedFamily = loaded^.App.selectedFamily
+                         , _configGetUserMedia = errorNewStream
+                         }
 
     (autoStartEv, triggerAutoStart) <- newTriggerEvent
     doAutoStart <- readAutoStart
@@ -53,12 +53,12 @@ ui appConfig loaded deviceList = mdo
 
     disableAutostart <-
       if doAutoStart
-      then do
-        disabled <- autoStartActiveMessage
-        liftIO $ triggerAutoStart ()
-        pure $ const False <$> disabled
-      else
-        pure never
+        then do
+          disabled <- autoStartActiveMessage
+          liftIO $ triggerAutoStart ()
+          pure $ False <$ disabled
+        else
+          pure never
 
     let startMonitor = leftmost [ ui'^.uiStartMonitor
                                 , autoStartEv
@@ -68,25 +68,25 @@ ui appConfig loaded deviceList = mdo
 
     errorNewStreamEv <-
       dyn $ showPermissionError <$> baby'^.mediaStream
-    errorNewStream <- switchPromptly never $ snd <$> errorNewStreamEv
-    errorGoHome <- switchPromptly never $ fst <$> errorNewStreamEv
+    errorNewStream <- switchHoldPromptly never $ snd <$> errorNewStreamEv
+    errorGoHome <- switchHoldPromptly never $ fst <$> errorNewStreamEv
 
-    let screenSelected = leftmost [ const ScreenStart <$> ui'^.uiStopMonitor
-                                  , const ScreenRunning <$> startMonitor
+    let screenSelected = leftmost [ ScreenStart <$ ui'^.uiStopMonitor
+                                  , ScreenRunning <$ startMonitor
                                   ]
 
-    performEvent_ $ const (do
-                              cStream <- sample $ current (baby'^.mediaStream)
-                              traverse_ stopMediaStream cStream
-                          ) <$> ui'^.uiGoHome
+    performEvent_ $ (do cStream <- sample $ current (baby'^.mediaStream)
+                        traverse_ stopMediaStream cStream
+                    ) <$ ui'^.uiGoHome
     let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
-                          , App._request = baby'^.socket.Socket.request <> baby'^.request
-                                           <> ui'^.uiRequest
-                          , App._selectLang = never
+                          , App._request       = baby'^.socket.Socket.request
+                                              <> baby'^.request
+                                              <> ui'^.uiRequest
+                          , App._selectLang    = never
                           }
-    pure $ App.Screen { App._screenApp = babyApp
-                      , App._screenGoHome = leftmost [ui'^.uiGoHome, errorGoHome]
-                      }
+    pure App.Screen { App._screenApp = babyApp
+                    , App._screenGoHome = leftmost [ui'^.uiGoHome, errorGoHome]
+                    }
   where
     renderCenter baby' ScreenStart   = uiStart loaded deviceList baby'
     renderCenter baby' ScreenRunning = uiRunning loaded deviceList baby'
@@ -109,15 +109,15 @@ uiStart loaded deviceList  baby' = do
           selectCamera <- cameraSelect baby'
           autoStart <- enableAutoStartCheckbox baby'
           enableCamera <- enableCameraCheckbox baby'
-          pure $ UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
-                    , _uiStartMonitor = startClicked
-                    , _uiStopMonitor = never -- already there
-                    , _uiEnableCamera = enableCamera
-                    , _uiEnableAutoStart = autoStart
-                    , _uiSelectCamera = selectCamera
-                    , _uiSetBabyName = newBabyName
-                    , _uiRequest = navBar^.NavBar.request
-                    }
+          pure UI { _uiGoHome = leftmost [ navBar^.NavBar.homeClicked, navBar^.NavBar.backClicked ]
+                  , _uiStartMonitor = startClicked
+                  , _uiStopMonitor = never -- already there
+                  , _uiEnableCamera = enableCamera
+                  , _uiEnableAutoStart = autoStart
+                  , _uiSelectCamera = selectCamera
+                  , _uiSetBabyName = newBabyName
+                  , _uiRequest = navBar^.NavBar.request
+                  }
   where
     renderVideo (Left _) = pure ()
     renderVideo (Right stream)
@@ -172,9 +172,9 @@ uiRunning loaded deviceList baby' =
         --               =<< (makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText Stop)
         let handleStop f = push (\_ -> do
                                   autoStartOn' <- sample $ current (baby'^.autoStartEnabled)
-                                  if f autoStartOn'
-                                  then pure $ Nothing
-                                  else pure $ Just ()
+                                  pure $ if f autoStartOn'
+                                           then Nothing
+                                           else Just ()
                                 ) stopClicked
         let stopGoHome = handleStop id
         let stopGoBack = handleStop not
@@ -237,7 +237,7 @@ setBabyNameForm loaded baby' = do
 
       let openClose = pushAlways (\_ -> not <$> sample (current droppedDown)) clicked
       droppedDown <- holdDyn False $ leftmost [ openClose
-                                              , const False <$> selectedName
+                                              , False <$ selectedName
                                               ]
       let
         droppedDownClass :: Dynamic t Text
@@ -271,7 +271,7 @@ renderBabySelectors names =
         leftmost <$> traverse renderBabySelector names''
   in
     elClass "div" "family-select" $
-      switchPromptly never =<< (dyn $ renderSelectors <$> names)
+      switchHoldPromptly never =<< dyn (renderSelectors <$> names)
 
 displayScreenOnWarning :: forall model m t. GonimoM model t m
             => Baby t -> m ()
@@ -299,7 +299,7 @@ autoStartActiveMessage = do
     el "br" blank
     el "br" blank
     clicked <- makeClickable . elAttr' "div" (addBtnAttrs "stop") $ trText Disable
-    performEvent_ $ const (liftIO $ triggerDisable ())  <$> clicked
+    performEvent_ $ liftIO (triggerDisable ()) <$ clicked
   pure disableEv
 
 

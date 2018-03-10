@@ -1,8 +1,6 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecursiveDo #-}
 -- | Reflex helper functions
 module Gonimo.Client.Reflex where
 
@@ -38,7 +36,7 @@ waitForReady inEv = do
 --   let getCurrent = push (\dynVal -> fmap Just (sample $ current dynVal)
 --                         ) dynEv
 --   let getUpdated = updated <$> dynEv
---   updates <- switchPromptly getCurrent getUpdated
+--   updates <- switchHoldPromptly getCurrent getUpdated
 --   holdDyn startVal updates
 
 
@@ -56,10 +54,10 @@ waitForJust :: forall t m a. (MonadHold t m, Reflex t, MonadFix m, TriggerEvent 
 waitForJust dynMay = do
   mC <- sample $ current dynMay
   case mC of
-    Nothing -> waitForReady . push (pure . id) . updated $ dynMay
+    Nothing -> waitForReady . push pure . updated $ dynMay
     Just c -> do
       (ev, makeEv) <- newTriggerEvent
-      outDyn <- holdDyn c $ push (pure . id) (updated dynMay)
+      outDyn <- holdDyn c $ push pure (updated dynMay)
       liftIO $ makeEv outDyn
       pure ev
 
@@ -71,7 +69,7 @@ fromMaybeDyn' :: (DomBuilder t m, MonadHold t m, Show a)
                 => m b -> (Dynamic t a -> m b) -> Dynamic t (Maybe a) -> m (Dynamic t (m b))
 fromMaybeDyn' onNothing action mDyn = do
   mInit <- sample $ current mDyn
-  let onlyJusts = push (pure . id) $ updated mDyn
+  let onlyJusts = push pure $ updated mDyn
   let widgetInit = case mInit of
         Nothing -> onNothing
         Just v  -> action =<< holdDyn v onlyJusts
@@ -92,26 +90,24 @@ buildMap keys gotNewKeyVal' = mdo
   let
     gotNewKeyVal = push (\p@(k,_) -> do
                             cKeys <- sample $ current keys
-                            if k `elem` cKeys
-                              then pure $ Just p
-                              else pure Nothing
+                            pure $ if k `elem` cKeys
+                                     then Just p
+                                     else Nothing
                         ) gotNewKeyVal'
     gotNewVal :: key -> Event t val
-    gotNewVal key' = push (\(k,v)
-                           -> pure $ if k == key'
-                                     then Just v
-                                     else Nothing
+    gotNewVal key' = push (pure . \(k,v)
+                           -> if k == key'
+                                then Just v
+                                else Nothing
                           ) gotNewKeyVal
 
     insertKeys :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
     insertKeys = push (\(key, val) -> do
                           oldMap <- sample $ current resultMap
-                          if (Map.member key oldMap)
-                          then
-                            pure Nothing -- Nothing to do.
-                          else do
-                            dynVal <- holdDyn val (gotNewVal key)
-                            pure . Just $ Map.insert key dynVal
+                          if Map.member key oldMap
+                            then pure Nothing -- Nothing to do.
+                            else
+                              Just . Map.insert key <$> holdDyn val (gotNewVal key)
                       ) gotNewKeyVal
 
     deleteKeys :: Event t (Map key (Dynamic t val) -> Map key (Dynamic t val))
@@ -119,9 +115,9 @@ buildMap keys gotNewKeyVal' = mdo
                          oldKeys <- fmap Set.fromList . sample $ current keys
                          let newKeys = Set.fromList keys'
                          let deletedKeys = oldKeys \\ newKeys
-                         if Set.null deletedKeys
-                           then pure Nothing
-                           else pure $ Just $ \oldMap -> foldr Map.delete oldMap deletedKeys
+                         pure $ if Set.null deletedKeys
+                           then Nothing
+                           else Just $ \oldMap -> foldr Map.delete oldMap deletedKeys
                      ) (updated keys)
 
   resultMap <- holdDyn Map.empty . buildDynMap (current resultMap) $ [ insertKeys, deleteKeys ]

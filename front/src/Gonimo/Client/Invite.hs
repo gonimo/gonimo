@@ -1,4 +1,3 @@
-{-# LANGUAGE RecursiveDo #-}
 module Gonimo.Client.Invite ( module Internal
                             , module UI
                             ) where

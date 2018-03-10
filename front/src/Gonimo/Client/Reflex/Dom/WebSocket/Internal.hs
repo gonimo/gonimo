@@ -4,16 +4,15 @@
 
 module Gonimo.Client.Reflex.Dom.WebSocket.Internal where
 
-import Prelude hiding (all, concat, concatMap, div, mapM, mapM_, sequence, span)
+import Prelude -- hiding (all, concat, concatMap, div, mapM, mapM_, sequence, span)
 
 import Reflex.Class
 import Reflex.PerformEvent.Class
 import Reflex.TriggerEvent.Class
 import Control.Lens
-import Control.Monad hiding (forM, forM_, mapM, mapM_, sequence)
+import Control.Monad -- hiding (forM, forM_, mapM, mapM_, sequence)
 import Control.Monad.IO.Class
 import Data.Text
-import GHCJS.DOM.Types (liftJSM, JSM)
 import qualified GHCJS.DOM.Types as JS
 import Data.JSString.Text (textFromJSVal)
 import qualified GHCJS.DOM.WebSocket as WS
@@ -23,7 +22,7 @@ import Control.Concurrent.MVar
 import Control.Concurrent (threadDelay)
 import Data.Default
 import Control.Monad.Fix
-import GHCJS.DOM.Types (MonadJSM)
+import GHCJS.DOM.Types (MonadJSM, liftJSM, JSM)
 import qualified Data.Text as T
 
 import Data.Foldable (traverse_)
@@ -176,7 +175,7 @@ newTriggerEvents = do
 
     (_jsOnClose, _triggerJsOnClose) <- newTriggerEvent
 
-    pure $ Events {..}
+    pure Events{..}
 
 -- | Forwards user send request to the JS WebSocket object.
 sendMessage :: forall t m. WebSocketM t m => WebSocket t -> Event t [Text] -> m ()
@@ -202,8 +201,8 @@ close webSocket' closeTimeout' onConfigClose = do
 
     delayedRequest <- delayCloseRequest
 
-    doForceClose <- hold False $ leftmost [ const True  <$> onConfigClose
-                                          , const False <$> webSocket'^.jsOnClose
+    doForceClose <- hold False $ leftmost [ True  <$ onConfigClose
+                                          , False <$ webSocket'^.jsOnClose
                                           ]
     let onForceClose = fmap snd . ffilter fst $ attach doForceClose delayedRequest
 
@@ -230,8 +229,8 @@ renew webSocket' url = mdo
 
     ws' <- holdDyn wsInit newWS
 
-    renewInProgress <- hold False $ leftmost [ const True <$> makeNew
-                                             , const False <$> newWS
+    renewInProgress <- hold False $ leftmost [ True  <$ makeNew
+                                             , False <$ newWS
                                              ]
 
     let
