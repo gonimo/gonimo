@@ -12,21 +12,13 @@ import           Network.Wai.Handler.Warp
 import           Control.Exception             (Exception)
 import           Control.Monad.IO.Class        (MonadIO)
 import           Crypto.Random                 (newGenIO)
-import           Data.Text                     (Text)
-import qualified Data.Text                     as T
-import qualified Data.Text.Encoding            as T
 import           Data.Typeable
-import           Database.Persist.Postgresql
 import           GHC.Generics
 import           Gonimo.Db.Entities
 import           Gonimo.Server.Effects         (Config (..))
-import           Gonimo.Server.Error           (fromMaybeErr)
 import qualified Gonimo.Server.Messenger       as Messenger
 import           Gonimo.Server.NameGenerator   (loadFamilies, loadPredicates)
 import           Gonimo.SocketServer           (serve)
-import           Network.HTTP.Types.Status
-import           Safe                          (readMay)
-import           System.Environment            (lookupEnv)
 
 #ifdef DEVELOPMENT
 import           System.IO
@@ -74,23 +66,22 @@ prodMain = do
   port <- fromMaybeErr NO_GONIMO_BACK_PORT $ do
       strPort <- mPort
       readMay strPort
-  subscriber' <- atomically $ makeSubscriber
+  subscriber' <- atomically makeSubscriber
   -- empty connection string means settings are fetched from env.
   pool        <- runGonimoLoggingT (createPostgresqlPool "" 10)
-  messenger   <- newTVarIO $ Messenger.empty
-  flip runSqlPool pool $ runMigration migrateAll
+  messenger   <- newTVarIO Messenger.empty
+  runSqlPool (runMigration migrateAll) pool
   names <- loadFamilies
   predicates <- loadPredicates
   generator <- newTVarIO =<< newGenIO
-  let config = Config {
-    configPool = pool
-  , configMessenger  = messenger
-  , configSubscriber = subscriber'
-  , configNames      = names
-  , configPredicates = predicates
-  , configFrontendURL = T.pack frontendURL
-  , configRandom = generator
-  }
+  let config = Config { configPool = pool
+                      , configMessenger   = messenger
+                      , configSubscriber  = subscriber'
+                      , configNames       = names
+                      , configPredicates  = predicates
+                      , configFrontendURL = T.pack frontendURL
+                      , configRandom      = generator
+                      }
   run port . checkOrigin (T.pack frontendURL) $ serve runGonimoLoggingT config
 
 #endif
@@ -127,6 +118,6 @@ checkOrigin frontendURL app req sendResponse = do
   case mOrigin of
     Nothing -> deny "No Origin Header"
     Just origin -> if T.isPrefixOf (T.decodeUtf8 origin) frontendURL || origin == "file://" -- Support native app!
-                      then app req sendResponse
-                      else deny "Wrong origin - you nasty boy!"
+                     then app req sendResponse
+                     else deny "Wrong origin - you nasty boy!"
 #endif

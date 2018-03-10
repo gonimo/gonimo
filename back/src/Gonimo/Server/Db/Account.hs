@@ -5,32 +5,29 @@ module Gonimo.Server.Db.Account ( insert, Gonimo.Server.Db.Account.get
                                 , joinFamily, getFamilyIds, getUser, getDevices
                                 ) where
 
-import           Control.Monad.State.Class       as State
-import           Data.Maybe
-import           Data.Text                        (Text)
-
-
+import           Control.Monad.Base               (MonadBase)
 import           Control.Monad.IO.Class           (MonadIO)
+import           Control.Monad.State.Class        as State
+import           Control.Monad.Trans.Maybe        (MaybeT (..))
 import           Control.Monad.Trans.Reader       (ReaderT (..))
-import           Control.Monad.Trans.Maybe        (MaybeT(..))
 import           Control.Monad.Trans.State.Strict (evalStateT)
 import           Data.Foldable                    (traverse_)
+import           Data.Maybe
 import qualified Data.Set                         as Set
+import           Data.Text                        (Text)
 import qualified Data.Vector                      as V
-import           Database.Persist                 (Entity, entityVal, (==.))
-import           Database.Persist                 (Entity (..))
+import           Database.Persist                 (Entity(..), entityVal, (==.))
 import qualified Database.Persist.Class           as Db
 import           Database.Persist.Sql             (SqlBackend)
-import           Control.Monad.Base              (MonadBase)
 
+import           Gonimo.Database.Effects.Servant
 import qualified Gonimo.Database.Effects.Servant  as Db
 import qualified Gonimo.Db.Entities               as Db
+import           Gonimo.Server.Db.IsDb
+import           Gonimo.Server.Error              (ServerError (..))
+import           Gonimo.Server.NameGenerator      (Predicates)
 import qualified Gonimo.Server.NameGenerator      as Gen
 import qualified Gonimo.SocketAPI.Types           as API
-import           Gonimo.Server.NameGenerator (Predicates)
-import Gonimo.Server.Db.IsDb
-import           Gonimo.Database.Effects.Servant
-import           Gonimo.Server.Error             (ServerError (..))
 
 
 
@@ -56,7 +53,7 @@ getUser :: MonadIO m => API.AccountId -> ReaderT SqlBackend m (Maybe (API.UserId
 getUser aid' = runMaybeT $ do
   let aid = toDb aid'
   Entity userId' user' <- MaybeT $ Db.getBy $ Db.AccountIdUser aid
-  pure $ (fromDb userId', fromDb user')
+  pure (fromDb userId', fromDb user')
 
 
 -- | Make an account join a family

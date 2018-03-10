@@ -1,52 +1,50 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes   #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Gonimo.Server.Handlers.Auth where
 
-import           Control.Applicative                  ((<|>))
-import           Control.Concurrent.STM               (STM, TVar, readTVar)
+import           Control.Applicative             ((<|>))
+import           Control.Concurrent.STM          (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Extra                  (whenM)
-import           Control.Monad.Reader                 (ask)
-import           Control.Monad.State.Class            (gets, modify)
-import           Control.Monad.STM.Class              (liftSTM)
-import           Control.Monad.Trans.Class            (lift)
-import           Control.Monad.Trans.Identity         (IdentityT, runIdentityT)
-import           Control.Monad.Trans.Maybe            (MaybeT (MaybeT),
-                                                       runMaybeT)
-import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
-import           Control.Monad.Trans.State            (StateT (..))
-import qualified Data.Map.Strict                      as M
-import           Data.Maybe                           (fromMaybe)
+import           Control.Monad.Extra             (whenM)
+import           Control.Monad.Reader            (ask)
+import           Control.Monad.State.Class       (gets, modify)
+import           Control.Monad.STM.Class         (liftSTM)
+import           Control.Monad.Trans.Class       (lift)
+import           Control.Monad.Trans.Identity    (IdentityT, runIdentityT)
+import           Control.Monad.Trans.Maybe       (MaybeT (..), runMaybeT)
+import           Control.Monad.Trans.State       (StateT (..))
+import qualified Data.Map.Strict                 as M
+import           Data.Maybe                      (fromMaybe)
 import           Data.Monoid
-import           Data.Proxy                           (Proxy (..))
-import qualified Data.Set                             as S
-import           Data.Text                            (Text)
-import qualified Data.Text                            as T
-import           Database.Persist                     (Entity (..), (==.))
+import           Data.Proxy                      (Proxy (..))
+import qualified Data.Set                        as S
+import           Data.Text                       (Text)
+import qualified Data.Text                       as T
+import           Database.Persist                (Entity (..), (==.))
 import           Database.Persist.Class
-import qualified Database.Persist.Class               as Db
+import qualified Database.Persist.Class          as Db
+import           Unsafe.Coerce
+import           Utils.Control.Monad.Trans.Maybe (maybeT)
 
-import           Gonimo.Database.Effects.Servant      as Db
-import           Gonimo.Server.Auth                   as Auth
-import           Gonimo.Server.Effects                as Eff
+import           Gonimo.Database.Effects.Servant as Db
+import           Gonimo.Server.Auth              as Auth
+import qualified Gonimo.Server.Db.Account        as Account
+import qualified Gonimo.Server.Db.Device         as Device
+import qualified Gonimo.Server.Db.Family         as Family
+import qualified Gonimo.Server.Db.Invitation     as Invitation
+import           Gonimo.Server.Effects           as Eff
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
-import           Gonimo.SocketAPI.Types                  (InvitationInfo (..),
-                                                       InvitationReply (..))
-import           Gonimo.SocketAPI.Types                  as API
-import           Gonimo.SocketAPI (ServerRequest(..))
-import           Unsafe.Coerce
-import           Utils.Control.Monad.Trans.Maybe      (maybeT)
-import qualified Gonimo.Server.Db.Account             as Account
-import qualified Gonimo.Server.Db.Device              as Device
-import qualified Gonimo.Server.Db.Family              as Family
-import qualified Gonimo.Server.Db.Invitation              as Invitation
-import qualified Gonimo.Types.Extended   as Server
-import           Gonimo.Types.Extended   (Secret, InvitationDelivery(..))
+import           Gonimo.SocketAPI                (ServerRequest (..))
+import           Gonimo.SocketAPI.Types          (InvitationInfo (..),
+                                                  InvitationReply (..))
+import           Gonimo.SocketAPI.Types          as API
+import           Gonimo.Types.Extended           (InvitationDelivery (..),
+                                                  Secret)
+import qualified Gonimo.Types.Extended           as Server
 
 createInvitationR :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
 createInvitationR fid = do
@@ -54,15 +52,14 @@ createInvitationR fid = do
   now <- getCurrentTime
   isecret <- generateSecret
   -- family <- getFamily fid  -- defined but not used (yet).
-  senderId' <- authView $ authDeviceId
-  let inv = Invitation {
-    invitationSecret = isecret
-    , invitationFamilyId = fid
-    , invitationCreated = now
-    , invitationDelivery = OtherDelivery
-    , invitationSenderId = senderId'
-    , invitationReceiverId = Nothing
-  }
+  senderId' <- authView authDeviceId
+  let inv = Invitation { invitationSecret     = isecret
+                       , invitationFamilyId   = fid
+                       , invitationCreated    = now
+                       , invitationDelivery   = OtherDelivery
+                       , invitationSenderId   = senderId'
+                       , invitationReceiverId = Nothing
+                       }
   iid <- runDb $ Invitation.insert inv
   return (iid, inv)
 
@@ -70,16 +67,16 @@ createInvitationR fid = do
 --   by any other device.
 claimInvitationR :: (AuthReader m, MonadServer m) => Secret -> m InvitationInfo
 claimInvitationR invSecret = do
-  aid <- authView $ authAccountId
+  aid <- authView authAccountId
   runDb $ do
     (_, inv) <- Invitation.claim aid invSecret
     invFamily  <- Family.get $ invitationFamilyId inv
     invDevice  <- Device.get $ invitationSenderId inv
     mInvUser   <- Account.getUser (deviceAccountId invDevice)
     return InvitationInfo
-                { invitationInfoFamily = API.familyName invFamily
+                { invitationInfoFamily        = API.familyName invFamily
                 , invitationInfoSendingDevice = fromMaybe "" $ deviceName invDevice
-                , invitationInfoSendingUser = userLogin . snd <$> mInvUser
+                , invitationInfoSendingUser   = userLogin . snd <$> mInvUser
                 }
 
 -- | Actually accept or decline an invitation.
@@ -97,16 +94,16 @@ answerInvitationR invSecret reply = do
     Invitation.delete iid
     return inv
   predPool <- getPredicatePool
-  runDb $ do -- Separate transaction - we want the invitation to be deleted now!
-    when (reply == InvitationAccept ) $ do
+  runDb $ -- Separate transaction - we want the invitation to be deleted now!
+    when (reply == InvitationAccept ) $
       guardWith (AlreadyFamilyMember (invitationFamilyId inv))
         $ not $ isFamilyMember (invitationFamilyId inv) authData
-      Account.joinFamily predPool $ FamilyAccount {
-          familyAccountAccountId = aid
-        , familyAccountFamilyId = invitationFamilyId inv
-        , familyAccountJoined = now
-        , familyAccountInvitedBy = Just (invitationDelivery inv)
-        }
+      Account.joinFamily predPool
+        FamilyAccount { familyAccountAccountId = aid
+                      , familyAccountFamilyId  = invitationFamilyId inv
+                      , familyAccountJoined    = now
+                      , familyAccountInvitedBy = Just (invitationDelivery inv)
+                      }
   case reply of
     InvitationAccept -> do
       notify $ ReqGetFamilies aid
@@ -178,21 +175,21 @@ createFamilyR = do
   n <- generateFamilyName
   predPool <- getPredicatePool
   fid <- runDb $ do
-    fid <- Family.insert $ Family {
-        API.familyName = n
-      , familyCreated = now
-      , familyLastAccessed = now
-      , familyLastUsedBabyNames = []
-    }
-    Account.joinFamily predPool $ FamilyAccount {
-      familyAccountAccountId = aid
-      , familyAccountFamilyId = fid
-      , familyAccountJoined = now
-      , familyAccountInvitedBy = Nothing
-    }
-    return fid
+    fid <- Family.insert
+             Family { API.familyName          = n
+                    , familyCreated           = now
+                    , familyLastAccessed      = now
+                    , familyLastUsedBabyNames = []
+                    }
+    Account.joinFamily predPool
+      FamilyAccount { familyAccountAccountId = aid
+                    , familyAccountFamilyId  = fid
+                    , familyAccountJoined    = now
+                    , familyAccountInvitedBy = Nothing
+                    }
+    pure fid
   notify $ ReqGetFamilies aid
-  return fid
+  pure fid
 
 setFamilyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
 setFamilyNameR familyId' name = do

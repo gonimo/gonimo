@@ -49,7 +49,7 @@ authorize :: MonadBase IO m => (a -> Bool) -> a -> m ()
 authorize check x = unless (check x) (throwServer Forbidden)
 
 authorizeJust :: MonadBase IO m => (a -> Maybe b) -> a -> m b
-authorizeJust check x = fromMaybeErr Forbidden . check $ x
+authorizeJust check = fromMaybeErr Forbidden . check
 
 authorizeAuthData :: (AuthReader m, MonadBase IO m) => (AuthData -> Bool) -> m ()
 authorizeAuthData check = authorize check =<< ask

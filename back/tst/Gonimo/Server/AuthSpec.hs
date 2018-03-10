@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# ANN module "HLint: ignore Redundant do" #-}
 module Gonimo.Server.AuthSpec where
 
 import           Gonimo.Server.Auth

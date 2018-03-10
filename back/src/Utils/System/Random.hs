@@ -15,4 +15,4 @@ randomL lst gen =
 
 randomLs :: RandomGen g => [[a]] -> g -> ([a], g)
 randomLs =
-  runState . sequence . map (state . randomL)
+  runState . traverse (state . randomL)

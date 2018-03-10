@@ -3,30 +3,27 @@
 --   This module is intended to be imported qualified as Device
 module Gonimo.Server.Db.Device where
 
-import           Control.Monad                   (MonadPlus, guard)
-import           Control.Monad.State.Class       as State
-import           Control.Monad.Trans.Maybe       (MaybeT)
-import           Data.Text                       (Text)
-
-
-import           Control.Monad
-import           Control.Monad.Base              (MonadBase)
-import           Control.Monad.IO.Class          (MonadIO)
-import           Control.Monad.Trans.Reader      (ReaderT (..))
-import           Data.Time                       (UTCTime)
-import           Database.Persist.Class          (PersistEntity,
-                                                  PersistEntityBackend)
-import qualified Database.Persist.Class          as Db
-import           Database.Persist.Sql            (SqlBackend)
-import           Database.Persist                (Entity(..))
+import           Control.Monad              (MonadPlus, guard, (<=<))
+import           Control.Monad.Base         (MonadBase)
+import           Control.Monad.IO.Class     (MonadIO)
+import           Control.Monad.State.Class  as State
+import           Control.Monad.Trans.Maybe  (MaybeT)
+import           Control.Monad.Trans.Reader (ReaderT (..))
+import           Data.Text                  (Text)
+import           Data.Time                  (UTCTime)
+import           Database.Persist           (Entity (..))
+import           Database.Persist.Class     (PersistEntity,
+                                             PersistEntityBackend)
+import qualified Database.Persist.Class     as Db
+import           Database.Persist.Sql       (SqlBackend)
 
 import           Gonimo.Database.Effects.Servant
 import qualified Gonimo.Db.Entities              as Db
 import           Gonimo.Server.Db.Internal       (UpdateT, updateRecord)
 import           Gonimo.Server.Db.IsDb
-import           Gonimo.Server.Error             (ServerError (NoSuchDevice, InvalidAuthToken))
+import           Gonimo.Server.Error             (ServerError (InvalidAuthToken, NoSuchDevice))
 import           Gonimo.SocketAPI.Types
-import           Gonimo.Types (AuthToken)
+import           Gonimo.Types                    (AuthToken)
 
 type UpdateDeviceT m a = UpdateT Device m a
 

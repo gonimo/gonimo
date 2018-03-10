@@ -1,23 +1,19 @@
 module Gonimo.Server.Handlers where
 
-import           Data.Text               (Text, take)
-import           Prelude                 hiding (take, unwords)
+import           Data.Text                (Text, take)
+import           Prelude                  hiding (take)
 
-
-import           Gonimo.Server.Db.Device as Device
 import           Gonimo.Server.Db.Account as Account
+import           Gonimo.Server.Db.Device  as Device
 import           Gonimo.Server.Effects
-import           Gonimo.SocketAPI.Types  as Client
+import           Gonimo.SocketAPI.Types   as Client
 import           Gonimo.Types
-
-
 
 noUserAgentDefault :: Text
 noUserAgentDefault = "None"
 
 maxUserAgentLength :: Int
 maxUserAgentLength = 300
-
 
 -- | Create an anonymous account and a device.
 --   Each device is uniquely identified by a DeviceId, multiple
@@ -30,22 +26,20 @@ createDeviceR mUserAgent = do
   let userAgent = maybe noUserAgentDefault (take maxUserAgentLength) mUserAgent
   runDb $ do
     aid <- Account.insert
-      $ Account { accountCreated = now
-                }
+             Account { accountCreated = now }
 
     cid <- Device.insert
-      $ Device  { deviceName         = Nothing -- Will be set on join of first family
-                , deviceAuthToken    = authToken'
-                , deviceAccountId    = aid
-                , deviceLastAccessed = now
-                , deviceUserAgent    = userAgent
-                }
+             Device  { deviceName         = Nothing -- Will be set on join of first family
+                     , deviceAuthToken    = authToken'
+                     , deviceAccountId    = aid
+                     , deviceLastAccessed = now
+                     , deviceUserAgent    = userAgent
+                     }
 
-    return Client.AuthData {
-        Client.accountId = aid
-      , Client.deviceId  = cid
-      , Client.authToken = authToken'
-      }
+    return Client.AuthData { Client.accountId = aid
+                           , Client.deviceId  = cid
+                           , Client.authToken = authToken'
+                           }
 
 
 -- -- | Generate a funny user name.

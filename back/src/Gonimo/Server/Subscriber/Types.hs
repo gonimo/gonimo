@@ -1,13 +1,10 @@
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-
 
 module Gonimo.Server.Subscriber.Types where
 
 import           Control.Concurrent.STM
-import           Data.Map (Map)
+import           Data.Map               (Map)
 
 import           Gonimo.SocketAPI
 

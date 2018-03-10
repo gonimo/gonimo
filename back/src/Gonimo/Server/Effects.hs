@@ -1,11 +1,10 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE RankNTypes   #-}
-{-# LANGUAGE MultiParamTypeClasses   #-}
-{-# LANGUAGE UndecidableInstances   #-} -- For MonadBaseControl instance
-{-# LANGUAGE TypeFamilies   #-} -- For MonadBaseControl instance
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE CPP   #-}
+{-# LANGUAGE TypeFamilies          #-} -- For MonadBaseControl instance
+{-# LANGUAGE UndecidableInstances  #-} -- For MonadBaseControl instance
 module Gonimo.Server.Effects (
     MonadServer
   , Server
@@ -31,46 +30,51 @@ module Gonimo.Server.Effects (
   ) where
 
 
-import           Control.Concurrent.STM         (STM)
-import           Control.Concurrent.STM         (TVar)
+import           Control.Concurrent.Async       (Async)
+import qualified Control.Concurrent.Async       as Async
+import           Control.Concurrent.STM         (STM, TVar)
+import qualified Control.Concurrent.STM         as STM
+import           Control.Concurrent.STM.TVar    (readTVar, writeTVar)
 import           Control.Monad.Base             (MonadBase, liftBase)
-import           Control.Monad.Trans.Control     (MonadBaseControl, liftBaseWith, restoreM, defaultLiftBaseWith, defaultRestoreM, StM, ComposeSt, MonadTransControl, StT, liftWith, restoreT, defaultLiftWith, defaultRestoreM)
 import           Control.Monad.IO.Class         (MonadIO, liftIO)
-import           Control.Monad.Trans.Class      (lift, MonadTrans)
+import           Control.Monad.Logger           (LoggingT, MonadLogger,
+                                                 MonadLoggerIO, askLoggerIO,
+                                                 runLoggingT)
+import           Control.Monad.Reader           (MonadReader, ask, asks)
+import           Control.Monad.Trans.Class      (MonadTrans, lift)
+import           Control.Monad.Trans.Control    (ComposeSt, MonadBaseControl,
+                                                 MonadTransControl, StM, StT,
+                                                 defaultLiftBaseWith,
+                                                 defaultLiftWith,
+                                                 defaultRestoreM,
+                                                 defaultRestoreM, liftBaseWith,
+                                                 liftWith, restoreM, restoreT,
+                                                 defaultRestoreT)
 import           Control.Monad.Trans.Maybe      (MaybeT)
+import           Control.Monad.Trans.Reader     (ReaderT, runReaderT)
 import           Control.Monad.Trans.State      (StateT (..))
-import           Control.Monad.Reader           (ask, MonadReader, asks)
-import           Control.Monad.Logger           ( MonadLoggerIO, MonadLogger
-                                                , askLoggerIO, LoggingT, runLoggingT)
-import           Data.ByteString                (ByteString)
-import           Data.Time.Clock                (UTCTime)
-import           Database.Persist.Sql           (SqlBackend)
-import           Network.Mail.Mime              (Mail)
-import           Gonimo.Server.Subscriber.Types
-import           Gonimo.Server.Subscriber
-import           System.Random                  (StdGen)
-
-import           Gonimo.Types            (Secret (..), FamilyName(..))
-import           Control.Monad.Trans.Reader      (ReaderT, runReaderT)
-import           Database.Persist.Sql            (runSqlPool)
-import           Data.Pool                               (Pool)
-import qualified Control.Concurrent.STM          as STM
-#ifndef DEVELOPMENT
-import           Network.Mail.SMTP             (sendMail)
-#endif
-import           Crypto.Random                 (SystemRandom)
 import           Crypto.Classes.Exceptions      (genBytes)
-import qualified Data.Time.Clock               as Clock
-import           System.Random                           (getStdRandom)
-import           Control.Monad.Trans.Control    (defaultRestoreT)
-import           Control.Concurrent.Async            (Async)
-import qualified Control.Concurrent.Async            as Async
-import qualified Gonimo.Server.NameGenerator   as Gen
-import           Gonimo.Server.NameGenerator   (Predicates, FamilyNames)
-import           Gonimo.SocketAPI (ServerRequest)
-import           Gonimo.Server.Messenger (MessengerVar)
-import           Data.Text (Text)
-import           Control.Concurrent.STM.TVar (readTVar, writeTVar)
+import           Crypto.Random                  (SystemRandom)
+import           Data.ByteString                (ByteString)
+import           Data.Pool                      (Pool)
+import           Data.Text                      (Text)
+import           Data.Time.Clock                (UTCTime)
+import qualified Data.Time.Clock                as Clock
+import           Database.Persist.Sql           (SqlBackend,runSqlPool)
+import           Network.Mail.Mime              (Mail)
+#ifndef DEVELOPMENT
+import           Network.Mail.SMTP              (sendMail)
+#endif
+import           System.Random                  (StdGen, getStdRandom)
+
+import           Gonimo.Server.Messenger        (MessengerVar)
+import           Gonimo.Server.NameGenerator    (FamilyNames, Predicates)
+import           Gonimo.Server.Subscriber
+import           Gonimo.Server.Subscriber.Types
+import           Gonimo.SocketAPI               (ServerRequest)
+import           Gonimo.Types                   (FamilyName (..), Secret (..))
+import qualified Gonimo.Server.NameGenerator    as Gen
+
 
 secretLength :: Int
 secretLength = 16
@@ -145,22 +149,21 @@ instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
 
   getCurrentTime = liftIO Clock.getCurrentTime
   runDb trans = do
-    c <- ask
-    liftIO $ flip runSqlPool (configPool c) trans
+    pool <- asks configPool
+    liftIO $ runSqlPool trans pool
   runRandom rand = liftIO $ getStdRandom rand
   getMessenger = configMessenger <$> ask
   notify req = do
-    c <- ask
-    liftIO $ notifyChangeIO (configSubscriber c) req
+    subs <- asks configSubscriber
+    liftIO $ notifyChangeIO subs req
   async (ServerT task) = do
     c <- ask
     logFunc <- askLoggerIO
-    let ioTask = flip runLoggingT logFunc . flip runReaderT c $ task
+    let ioTask = runLoggingT (runReaderT task c) logFunc
     liftIO $ Async.async ioTask
   getFamilyNamePool = asks configNames
   getPredicatePool  = asks configPredicates
   getFrontendURL    = asks configFrontendURL
-
 
 instance MonadIO m => MonadBase IO (ServerT m) where
   liftBase = liftIO

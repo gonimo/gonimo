@@ -1,34 +1,41 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell     #-}
 module Gonimo.SocketServer where
 
+import           Control.Concurrent
 import           Control.Concurrent.Async.Lifted  (race_)
 import           Control.Exception.Lifted         (catch, finally, throwIO, try)
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.IO.Class           (liftIO)
-import           Control.Monad.IO.Class           (MonadIO)
-import           Control.Monad.Logger             (LoggingT)
-import           Control.Monad.Logger             (logError)
+import           Control.Monad.IO.Class           (liftIO, MonadIO)
+import           Control.Monad.Logger             (LoggingT, logError)
 import           Control.Monad.Reader.Class       (MonadReader, ask)
-import           Control.Monad.Trans.Reader       (runReaderT)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.Maybe        (runMaybeT, MaybeT(..))
+import           Control.Monad.Trans.Maybe        (MaybeT (..), runMaybeT)
+import           Control.Monad.Trans.Reader       (runReaderT)
 import           Data.Aeson                       (FromJSON)
 import qualified Data.Aeson                       as Aeson
 import qualified Data.ByteString.Lazy             as LB
 import           Data.IORef
+import           Data.Maybe
 import           Data.Monoid                      ((<>))
 import qualified Data.Set                         as Set
 import qualified Data.Text                        as T
-import           Gonimo.SocketAPI.Types           hiding (AuthData(..), Message(..))
+import qualified Network.HTTP.Types.Status        as Http
+import qualified Network.Wai                      as Wai
+import qualified Network.Wai.Handler.WebSockets   as Wai
+import qualified Network.WebSockets               as WS
+
+import           Gonimo.Constants
 import           Gonimo.Server.Auth               (AuthData (..), AuthReader,
                                                    allowedFamilies)
 import qualified Gonimo.Server.Auth               as Auth
+import qualified Gonimo.Server.Db.Account         as Account
+import qualified Gonimo.Server.Db.Device          as Device
 import           Gonimo.Server.Effects            as Server
 import           Gonimo.Server.Error              (ServerError (..),
                                                    fromMaybeErr)
@@ -40,16 +47,9 @@ import           Gonimo.Server.Messenger          (Message (..))
 import qualified Gonimo.Server.Subscriber         as Subscriber
 import qualified Gonimo.Server.Subscriber.Types   as Subscriber
 import           Gonimo.SocketAPI
+import           Gonimo.SocketAPI.Types           hiding (AuthData (..),
+                                                          Message (..))
 import           Gonimo.Types                     (AuthToken (..))
-import qualified Network.HTTP.Types.Status        as Http
-import qualified Network.Wai                      as Wai
-import qualified Network.Wai.Handler.WebSockets   as Wai
-import qualified Network.WebSockets               as WS
-import           Data.Maybe
-import           Control.Concurrent
-import           Gonimo.Constants
-import qualified Gonimo.Server.Db.Device          as Device
-import qualified Gonimo.Server.Db.Account         as Account
 
 type AuthDataRef = IORef (Maybe AuthData)
 
@@ -106,11 +106,11 @@ serveWebSocket authRef conn = do
         liftIO . WS.sendDataMessage conn $ WS.Text encoded
 
       receiver :: Message -> IO ()
-      receiver message = wsExceptionToServerError $ case message of
+      receiver message = wsExceptionToServerError $
+        case message of
           MessageSessionGotStolen
-            -> do
-            writeIORef authRef Nothing
-            sendWSMessage EventSessionGotStolen
+            -> do writeIORef authRef Nothing
+                  sendWSMessage EventSessionGotStolen
           MessageCreateChannel fromId secret
             -> sendWSMessage $ EventChannelRequested fromId secret
           MessageSendMessage fromId secret msg
@@ -118,15 +118,13 @@ serveWebSocket authRef conn = do
         where
           wsExceptionToServerError :: IO () -> IO ()
           wsExceptionToServerError action = catch action
-            $ \e -> case e of
-                      WS.CloseRequest _ _ -> throwIO DeviceOffline
-                      WS.ConnectionClosed -> throwIO DeviceOffline
-                      _ -> throwIO InternalServerError
+            $ \case WS.CloseRequest _ _ -> throwIO DeviceOffline
+                    WS.ConnectionClosed -> throwIO DeviceOffline
+                    _ -> throwIO InternalServerError
 
       decodeLogError :: forall a. FromJSON a => LB.ByteString -> Server a
-      decodeLogError bs = do
-        let r = Aeson.eitherDecode bs
-        case r of
+      decodeLogError bs =
+        case Aeson.eitherDecode bs of
           Left err -> do
             $logError ("Request could not be decoded: " <> T.pack err)
             throwIO $ userError "Request could not be decoded!"
@@ -168,14 +166,11 @@ handleAuthServerRequest sub req = case req of
   ReqSwitchFamily deviceId familyId    -> do switchFamilyR deviceId familyId
                                              pure $ ResSwitchedFamily deviceId familyId
   ReqCreateFamily                      -> ResCreatedFamily <$> createFamilyR
-  ReqSetFamilyName familyId name       -> setFamilyNameR familyId name
-                                          *> pure (ResSetFamilyName familyId)
+  ReqSetFamilyName familyId name       -> ResSetFamilyName familyId <$ setFamilyNameR familyId name
   ReqGetFamily familyId                -> ResGotFamily familyId <$> getFamilyR familyId
   ReqGetFamilyMembers familyId         -> ResGotFamilyMembers familyId <$> getFamilyMembersR familyId
   ReqGetOnlineDevices familyId         -> ResGotOnlineDevices familyId <$> getOnlineDevicesR familyId
-  ReqSaveBabyName familyId name        -> saveBabyNameR familyId name
-                                          *> pure ResSavedBabyName
-
+  ReqSaveBabyName familyId name        -> ResSavedBabyName <$ saveBabyNameR familyId name
   ReqCreateInvitation familyId'        -> ResCreatedInvitation <$> createInvitationR familyId'
   ReqSendInvitation sendInv            -> do sendInvitationR sendInv
                                              pure $ ResSentInvitation sendInv
@@ -194,8 +189,8 @@ handleAuthServerRequest sub req = case req of
   ReqLeaveFamily accountId familyId    -> do leaveFamilyR accountId familyId
                                              pure $ ResLeftFamily accountId familyId
 
-  ReqCreateChannel from' to'             -> ResCreatedChannel from' to' <$> createChannelR from' to'
-  ReqSendMessage from' to' secret msg    -> sendMessageR from' to' secret msg *> pure ResSentMessage
+  ReqCreateChannel from' to'           -> ResCreatedChannel from' to' <$> createChannelR from' to'
+  ReqSendMessage from' to' secret msg  -> ResSentMessage <$ sendMessageR from' to' secret msg
 
 authenticate :: forall m. (MonadReader AuthDataRef m, MonadServer m)
   => (Message -> IO ()) -> Subscriber.Client -> AuthToken -> m ServerResponse
@@ -213,12 +208,12 @@ makeAuthData token = runDb $ do
     (devId, dev@Device{..}) <- Device.getByAuthToken token
     account <- Account.get deviceAccountId
     fids <- Account.getFamilyIds deviceAccountId
-    return $ AuthData { _authAccountId = deviceAccountId
-                      , _authAccount = account
-                      , _allowedFamilies = fids
-                      , _authDeviceId = devId
-                      , _authDevice = dev
-                      }
+    pure AuthData { _authAccountId   = deviceAccountId
+                  , _authAccount     = account
+                  , _allowedFamilies = fids
+                  , _authDeviceId    = devId
+                  , _authDevice      = dev
+                  }
 
 -- Clean up dead connections after a sensible delay:
 watchDog :: IORef Int -> IO ()

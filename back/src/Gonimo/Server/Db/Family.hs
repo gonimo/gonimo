@@ -3,28 +3,28 @@
 --   This module is intended to be imported qualified as Family
 module Gonimo.Server.Db.Family where
 
-import           Control.Monad              (MonadPlus, guard)
-import           Control.Monad.Base         (MonadBase)
-import           Control.Monad.IO.Class     (MonadIO)
-import           Control.Monad.State.Class  as State
-import           Control.Monad.Trans.Maybe  (MaybeT)
-import           Control.Monad.Trans.Reader (ReaderT (..))
-import           Data.Maybe                 (listToMaybe)
-import           Data.Text                  (Text)
-import           Database.Persist.Class     (PersistEntity,
-                                             PersistEntityBackend)
-import           Database.Persist.Sql       (SqlBackend)
-import qualified Database.Persist.Class  as Db
-import           Database.Persist           ((==.), Entity(..))
-import Control.Arrow
+import           Control.Arrow
+import           Control.Monad                   (MonadPlus, guard)
+import           Control.Monad.Base              (MonadBase)
+import           Control.Monad.IO.Class          (MonadIO)
+import           Control.Monad.State.Class       as State
+import           Control.Monad.Trans.Maybe       (MaybeT)
+import           Control.Monad.Trans.Reader      (ReaderT (..))
+import           Data.Maybe                      (listToMaybe)
+import           Data.Text                       (Text)
+import           Database.Persist                (Entity (..), (==.))
+import           Database.Persist.Class          (PersistEntity,
+                                                  PersistEntityBackend)
+import qualified Database.Persist.Class          as Db
+import           Database.Persist.Sql            (SqlBackend)
 
-import           Gonimo.Server.Db.Internal  (UpdateT, updateRecord)
+import           Gonimo.Database.Effects.Servant
+import qualified Gonimo.Db.Entities              as Db
+import           Gonimo.Server.Db.Internal       (UpdateT, updateRecord)
 import           Gonimo.Server.Db.IsDb
-import           Gonimo.Server.Error        (ServerError (NoSuchFamily))
+import           Gonimo.Server.Error             (ServerError (NoSuchFamily))
 import           Gonimo.SocketAPI.Types
 import           Gonimo.Types
-import qualified Gonimo.Db.Entities         as Db
-import Gonimo.Database.Effects.Servant
 
 type UpdateFamilyT m a = UpdateT Family m a
 
@@ -64,7 +64,7 @@ pushBabyName :: (MonadState Family m, MonadPlus m) => Text -> m ()
 pushBabyName name = do
   oldFamily <- State.get
   let oldBabies = familyLastUsedBabyNames oldFamily
-  guard $ (Just name /= listToMaybe oldBabies)
+  guard (Just name /= listToMaybe oldBabies)
   put $ oldFamily
     { familyLastUsedBabyNames = take 5 (name : filter (/= name) oldBabies)
     }

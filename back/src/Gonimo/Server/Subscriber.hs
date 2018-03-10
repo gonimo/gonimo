@@ -1,28 +1,24 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE RankNTypes        #-}
 module Gonimo.Server.Subscriber where
 
-
-import           Control.Lens
-import           Control.Concurrent.STM        (STM, atomically, retry)
+import           Control.Concurrent.STM         (STM, atomically, retry)
 import           Control.Concurrent.STM.TVar
+import           Control.Lens
 import           Control.Monad
 import           Control.Monad.IO.Class
-import qualified Data.Map.Strict               as Map
-import           Data.Foldable                 (traverse_)
-import           Data.Set                      ((\\), Set)
-import qualified Data.Set                      as Set
+import           Data.Foldable                  (traverse_)
+import qualified Data.Map.Strict                as Map
+import           Data.Set                       (Set, (\\))
+import qualified Data.Set                       as Set
 
 import           Gonimo.Server.Subscriber.Types
-import           Gonimo.SocketAPI (ServerRequest)
+import           Gonimo.SocketAPI               (ServerRequest)
 
 makeSubscriber :: STM Subscriber
 makeSubscriber = do
   state' <- newTVar Map.empty
-  pure $ Subscriber { subState = state'
-                    }
+  pure Subscriber { subState = state' }
 
 makeClient :: Subscriber -> STM Client
 makeClient subscriber' = do
@@ -44,8 +40,7 @@ notifyChange subscriber' req' = do
   rMap <- readTVar (subState subscriber')
   case Map.lookup req' rMap of
     Nothing -> return ()
-    Just refStatus -> do
-      modifyTVar refStatus $ fmap (\(Modified n) -> Modified (n+1))
+    Just refStatus -> modifyTVar refStatus $ fmap (\(Modified n) -> Modified (n+1))
 
 -- | Version of notify that lives in 'IO' - for your convenience.
 notifyChangeIO :: Subscriber -> ServerRequest -> IO ()
@@ -121,7 +116,7 @@ unsubscribeMonitor sub m =
 runMonitor :: MonadIO m => Client -> (ServerRequest -> m ()) -> m ()
 runMonitor c handleRequest = forever $ do
     changes <- liftIO . atomically $ monitorChanges c
-    mapM_ (handleRequest . fst) $ changes
+    mapM_ (handleRequest . fst) changes
 
 monitorChanges :: Client -> STM [(ServerRequest, ResourceStatus)]
 monitorChanges c = do
@@ -153,8 +148,9 @@ updateOldStatus m = (fullMonitor m) {
   }
 
 monitorsFromList :: [StatusMonitor] -> ClientMonitors
-monitorsFromList ms = let
-    reqs = map (request) ms
+monitorsFromList ms =
+  let
+    reqs = map request ms
     assList = zip reqs ms
   in
     Map.fromList assList
