@@ -25,7 +25,7 @@ import qualified Gonimo.Client.Environment as Environment
 import           Gonimo.Client.Prelude
 
 
-data Config t
+newtype Config t
   = Config { _onRequest :: Event t [ServerRequest]
            } deriving (Generic)
 

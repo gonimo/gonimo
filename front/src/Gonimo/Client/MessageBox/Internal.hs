@@ -15,15 +15,15 @@ import           Gonimo.SocketAPI.Types  (FamilyId)
 invitationQueryParam :: Text
 invitationQueryParam = "messageBox"
 
-data Config t
+newtype Config t
   = Config { _configMessage :: Event t [ Message ]
            }
 
-data MessageBox t
+newtype MessageBox t
   = MessageBox { _action :: Event t [Action]
                }
 
-data Message
+newtype Message
   = ServerResponse API.ServerResponse
 
 data Action

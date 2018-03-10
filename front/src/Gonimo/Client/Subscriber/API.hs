@@ -15,7 +15,7 @@ import qualified Gonimo.SocketAPI as API
 -- | Configuration for creating an subscriber.
 --
 --   Currently this just handles accepting invitations.
-data Config t
+newtype Config t
   = Config { -- | The 'ServerRequest's you want to have subscribed
              _subscriptions :: Dynamic t (Set API.ServerRequest)
            } deriving (Generic)

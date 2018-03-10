@@ -30,7 +30,7 @@ data Config t
 -- | Account data.
 --   All data belonging to the current active account should go here. Like
 --   claimed invitations or user name, ...
-data Account t
+newtype Account t
   = Account { -- | Invitations currently claimed by the account. (At the moment,
               --   just the ones claimed in this session.)
               _claimedInvitations :: Dynamic t ClaimedInvitations

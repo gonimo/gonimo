@@ -34,7 +34,7 @@ import qualified Gonimo.Client.Environment    as Environment
 --   'Config' which contains MVars that can be set by out side code. This is
 --   needed at the moment on Android for passing in Intents (Invitation URLs for
 --   the time being) at runtime.
-data Config
+newtype Config
   = Config { -- | Have the app accept an invitation.
              _newInvitation :: MVar InvitationSecret
            }
