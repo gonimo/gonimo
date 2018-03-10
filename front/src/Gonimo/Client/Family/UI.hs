@@ -8,7 +8,6 @@ import           Control.Lens
 import           Data.Text                         (Text)
 import           Reflex.Dom.Core
 
-import           Gonimo.I18N
 import qualified Gonimo.Client.App.Types           as App
 import qualified Gonimo.Client.Auth                as Auth
 import           Gonimo.Client.ConfirmationButton  (confirmationEl)
@@ -16,6 +15,7 @@ import           Gonimo.Client.EditStringButton    (editFamilyName)
 import           Gonimo.Client.Family.Internal
 import           Gonimo.Client.Family.RoleSelector
 import           Gonimo.Client.Family.UI.I18N
+import           Gonimo.Client.Settings            as Settings
 import           Gonimo.Client.Settings.UI
 import qualified Gonimo.Client.Invite              as Invite
 import           Gonimo.Client.Prelude
@@ -59,11 +59,7 @@ uiStart =
                         ) blank
 
       pure $ leftmost [ plusClicked, inputFieldClicked, headingClicked ]
-    currentLanguage <- holdDyn EN_GB langSelected
-    -- TODO: initialize corectly w/ locale from browser settings/user settings
-    elClass "footer" "container-fluid" $
-      elDynAttr "a" (privacyLinkAttrs <$> currentLanguage) $
-        trText Privacy_Policy
+    privacyPolicy
 
     pure UI { _uiSelectFamily = never
             , _uiCreateFamily = userWantsFamily
@@ -74,6 +70,13 @@ uiStart =
             , _uiSelectLang   = langSelected
             }
 
+
+privacyPolicy :: forall model m t. GonimoM model t m => m ()
+privacyPolicy = do
+    currentLocale <- view Settings.locale
+    elClass "footer" "container-fluid" $
+      elDynAttr "a" (privacyLinkAttrs <$> currentLocale) $
+        trText Privacy_Policy
 ui :: forall model m t. (HasModel model t, GonimoM model t m)
   => App.Model t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
@@ -115,13 +118,14 @@ ui appConfig loaded familyGotCreated = do
         pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
     roleSelected <- roleSelector
+    privacyPolicy
     inviteRequested <- elClass "div" "footer" $
           makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ trText Add_Device
 
     pure $ UI { _uiSelectFamily = familySelected
-              , _uiCreateFamily = clickedAdd
-              , _uiLeaveFamily  = leftmost [ clickedLeave
-                                           , push (\r -> pure $ r^?_CreateFamilyCancel) newFamilyResult
+            , _uiCreateFamily = clickedAdd
+            , _uiLeaveFamily  = leftmost [ clickedLeave
+                                         , push (\r -> pure $ r^?_CreateFamilyCancel) newFamilyResult
                                            ]
               , _uiSetName      = leftmost [ nameChanged
                                            , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
