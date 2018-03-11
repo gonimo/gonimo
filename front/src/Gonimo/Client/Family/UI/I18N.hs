@@ -55,7 +55,7 @@ instance I18N Message where
   i18n EN_GB Privacy_Policy
           = "We care about your privacy (privacy policy)."
   i18n DE_DE Privacy_Policy
-          = "Uns liegt dein Privatsphäre am Herzen (Datenschutzerklärung)."
+          = "Uns liegt deine Privatsphäre am Herzen (Datenschutzerklärung)."
   i18n EN_GB Privacy_Policy_Link
           = "https://gonimo.com/en/faq.php"
   i18n DE_DE Privacy_Policy_Link
