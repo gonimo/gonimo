@@ -57,9 +57,9 @@ instance I18N Message where
   i18n DE_DE Privacy_Policy
           = "Uns liegt deine Privatsphäre am Herzen (Datenschutzerklärung)."
   i18n EN_GB Privacy_Policy_Link
-          = "https://gonimo.com/en/faq.php"
+          = "https://gonimo.com/en/faq.php?t=ReliabilitySecurityandPrivacy"
   i18n DE_DE Privacy_Policy_Link
-          = "https://gonimo.com/de/faq.php"
+          = "https://gonimo.com/de/faq.php?t=SicherheitPrivatsphäre"
 
 privacyLinkAttrs :: Locale -> Map Text Text
 privacyLinkAttrs lang =
