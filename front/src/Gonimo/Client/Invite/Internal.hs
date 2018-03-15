@@ -14,6 +14,8 @@ import           Data.Monoid
 import           Data.Text                 (Text)
 import qualified Data.Text.Encoding        as T
 import           Network.HTTP.Types        (urlEncode)
+import           Language.Javascript.JSaddle
+import           Language.Javascript.JSaddle.Value
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.Environment as Env
@@ -143,5 +145,20 @@ uiGoBack f invite' = (\uiGoBack' -> invite' { _uiGoBack = uiGoBack' }) <$> f (_u
 
 uiDone :: Lens' (Invite t) (Event t ())
 uiDone f invite' = (\uiDone' -> invite' { _uiDone = uiDone' }) <$> f (_uiDone invite')
+
+-- Browser capabilities
+shareLink :: (MonadJSM m, MonadPlus m, MonadJSM m') => m (Text -> m' ())
+shareLink = do
+  nav    <- liftJSM $ jsg ("navigator" :: Text)
+  mShare <- liftJSM $ maybeNullOrUndefined =<< nav ! ("share" :: Text)
+  case mShare of
+    Nothing    -> mzero
+    Just share' ->
+      let shareFunc linkUrl = void $ liftJSM $ do
+            o <- obj
+            url <- (o <# ("url" :: Text)) linkUrl
+            nav ^. js1 ("share" :: Text) url
+       in pure shareFunc
+
 
 

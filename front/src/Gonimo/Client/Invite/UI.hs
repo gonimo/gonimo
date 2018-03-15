@@ -61,6 +61,14 @@ ui loaded config = mdo
       let onMobile mEv = if isMobile then mEv else pure never
       whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
       tgClicked <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
+      mShare <- runMaybeT shareLink
+      case mShare of
+        Nothing    -> blank
+        Just share ->
+          do shareClicked <- button "share"
+             performEvent_ $ share
+                          <$> tag (current invitationLink) shareClicked
+
       pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
 
     el "h3" $ trText Email
