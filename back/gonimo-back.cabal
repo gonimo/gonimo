@@ -112,6 +112,7 @@ library
                       , wai-websockets
                       , warp
                       , websockets
+                      , sandi
 
 
 executable gonimo-back

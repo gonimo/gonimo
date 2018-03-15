@@ -153,3 +153,6 @@ instance FromJSON InvitationDelivery
 instance ToJSON InvitationDelivery where
   toJSON = genericToJSON defaultOptions
   toEncoding = genericToEncoding defaultOptions
+
+-- | Invitation code data type for use in code based invitation.
+newtype InvitationCode = InvitationCode Text deriving (Show, Read, FromJSON, ToJSON, Eq, Ord)

@@ -239,3 +239,15 @@ generateFamilyName = do
   preds <- getPredicatePool
   fNames <- getFamilyNamePool
   Gen.generateFamilyName preds fNames
+
+
+-- | Generate a random invitation code.
+--
+--   An Invitation code is just Text consisting of 6 characters. (Base32 characters)
+generateInvitationCode :: MonadServer m => m InvitationCode
+generateInvitationCode = do
+    bytes <- genRandomBytes 4
+    pure $ makeCode bytes
+  where
+    makeCode :: ByteString -> InvitationCode
+    makeCode = InvitationCode . T.take 6 . T.decodeUtf8 . Base32.encode
