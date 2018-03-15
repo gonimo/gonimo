@@ -11,44 +11,148 @@ import           Gonimo.Server.Error    (ServerError)
 import           Gonimo.SocketAPI.Types (FromId, InvitationInfo,
                                          InvitationReply, Message, ToId, AccountId, DeviceId, Family, FamilyId, Invitation, InvitationId)
 import qualified Gonimo.SocketAPI.Types as Client
-import Gonimo.Types (AuthToken, Secret, DeviceType)
+import Gonimo.Types (AuthToken, Secret, DeviceType, InvitationSecret, InvitationCode)
 
 type MessageId = Int
 
 data ServerRequest
   = ReqPing -- We can't rely on WebSocket ping control messages, because the client can't see them!
-  | ReqAuthenticate !AuthToken
+  | ReqAuthenticate             !AuthToken
 
-  | ReqMakeDevice !(Maybe Text)
-  | ReqGetDeviceInfo !DeviceId
-  | ReqSetDeviceType !DeviceId !DeviceType
-  | ReqSetDeviceName !DeviceId !Text
-  | ReqSwitchFamily  !DeviceId !FamilyId
+  | ReqMakeDevice               !(Maybe Text)
+  | ReqGetDeviceInfo            !DeviceId
+  | ReqSetDeviceType            !DeviceId !DeviceType
+  | ReqSetDeviceName            !DeviceId !Text
+  | ReqSwitchFamily             !DeviceId !FamilyId
 
   | ReqCreateFamily
-  | ReqSetFamilyName !FamilyId !Text
-  | ReqGetFamily !FamilyId
-  | ReqGetFamilyMembers !FamilyId
-  | ReqGetOnlineDevices !FamilyId
-  | ReqSaveBabyName !FamilyId !Text
+  | ReqSetFamilyName            !FamilyId !Text
+  | ReqGetFamily                !FamilyId
+  | ReqGetFamilyMembers         !FamilyId
+  | ReqGetOnlineDevices         !FamilyId
+  | ReqSaveBabyName             !FamilyId !Text
 
-  | ReqCreateInvitation !FamilyId
-  | ReqSendInvitation !Client.SendInvitation
-  | ReqClaimInvitation !Secret
-  | ReqAnswerInvitation !Secret !InvitationReply
+  | ReqCreateInvitation         !FamilyId
+  | ReqSendInvitation           !Client.SendInvitation
+  | ReqClaimInvitation          !InvitationSecret
+  | ReqAnswerInvitation         !InvitationSecret !InvitationReply
+  -- To be implemented:
+  --  ReqGetClaimedInvitations !AccountId
 
-  | ReqSetSubscriptions ![ServerRequest]
 
-  | ReqGetFamilies !AccountId
-  | ReqGetDevices !AccountId
-  | ReqLeaveFamily !AccountId !FamilyId
 
-  | ReqCreateChannel !FromId !ToId
-  | ReqSendMessage !FromId !ToId !Secret Message
+    -- | Invite a client per code.
+    --
+    --   Have the server create a code, which can then be used with
+    --   'ReqGetCodeInvite' to retrieve the invitation secret. The code will
+    --   only be valid for 'InviteCodeDurability' seconds, a 'ResDeletedCodeInvite' will be triggered
+    --   when the time is up.
+    --
+    --   There is always just one code per invitation. If you send
+    --   'ReqMakeCodeInvite' again, the old code will be replaced (and the timer
+    --   will be restarted).
+    --
+    --   On reception of this message the server will respond with a
+    --   'ResMadeCodeInvite' message containing the generated code.
+  | ReqMakeCodeInvite           !InvitationSecret
+
+    -- | Manually request deletion of an invite code.
+    --
+    --   The server will automatically delete the invite code after thirty
+    --   seconds, if you want to get rid of it early you can send this message.
+    --   The server will respond with 'ResDeletedCodeInvite'.
+  | ReqDeleteCodeInvite         !InvitationSecret
+
+    -- | Retrieve an invitation by code.
+    --
+    --   The server will respond with 'ResGotCodeInvite' containing the
+    --   Invitation secret, which you should use with 'ReqClaimInvitation'.
+  | ReqGetCodeInvite          !InvitationCode
+
+
+  
+  | ReqSetSubscriptions         ![ServerRequest]
+
+  | ReqGetFamilies              !AccountId
+  | ReqGetDevices               !AccountId
+  | ReqLeaveFamily              !AccountId !FamilyId
+
+  | ReqCreateChannel            !FromId !ToId
+  | ReqSendMessage              !FromId !ToId !Secret Message
   deriving (Generic, Ord, Eq, Show)
 
 instance FromJSON ServerRequest
 instance ToJSON ServerRequest where
+  toEncoding = genericToEncoding defaultOptions
+
+
+-- | Constructors starting with "Res" are responses to requests.
+--   Constructors starting with Event happen without any request.
+data ServerResponse
+  = ResPong
+  | ResAuthenticated
+  | ResMadeDevice               !Client.AuthData
+  | ResGotDeviceInfo            !DeviceId !Client.DeviceInfo
+  | ResSetDeviceType            !DeviceId
+  | ResSetDeviceName            !DeviceId
+  | ResSwitchedFamily           !DeviceId !FamilyId
+
+
+  | ResCreatedFamily            !FamilyId
+  | ResSetFamilyName            !FamilyId
+  | ResGotFamily                !FamilyId !Family
+  | ResGotFamilyMembers         !FamilyId ![AccountId]
+  | ResGotOnlineDevices         !FamilyId ![(DeviceId, DeviceType)]
+  | ResSavedBabyName
+
+  | ResCreatedInvitation        !(InvitationId, Invitation)
+  | ResSentInvitation           !Client.SendInvitation
+  | ResClaimedInvitation        !Secret !InvitationInfo
+  | ResAnsweredInvitation       !Secret !InvitationReply !(Maybe FamilyId)
+
+
+    -- | Created 'InvitationCode'.
+    --
+    --   This message is sent in response to 'ReqmakeCodeInvite' and contains
+    --   the generated code, which can then be passed on to another device which
+    --   will issue 'ReqGetCodeInvite' with it to retrieve the actual
+    --   invitation.
+  | ResMadeCodeInvite           !InvitationSecret !InvitationCode
+
+    -- | An 'InvitationCode' got deleted.
+    --
+    --   Either due to a received 'ReqDeleteCodeInvite' or due to the automatic
+    --   invalidation, which happens afer 'InviteCodeDurability' seconds.
+  | ResDeletedCodeInvite        !InvitationSecret
+
+    -- | Retrieve an 'InvitationSecret' by code.
+    --
+    --   This message is sent in response to 'ReqGetCodeInvite' and contains the
+    --   'InvitationSecret' which can be used with 'ReqClaimInvitation' for
+    --   actual invitation retrieval.
+  | ResGotCodeInvite            !InvitationCode !InvitationSecret
+
+
+
+  | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
+
+  | ResGotFamilies              !AccountId ![FamilyId]
+  | ResGotDevices               !AccountId ![DeviceId]
+  | ResLeftFamily               !AccountId !FamilyId
+
+  | ResCreatedChannel           !FromId !ToId !Secret
+  | ResSentMessage -- Dummy
+
+
+  | ResError                    !ServerRequest !ServerError
+
+  | EventSessionGotStolen
+  | EventChannelRequested       !FromId !Secret
+  | EventMessageReceived        !FromId !Secret Message
+  deriving (Generic, Show)
+
+instance FromJSON ServerResponse
+instance ToJSON ServerResponse where
   toEncoding = genericToEncoding defaultOptions
 
 class AsServerRequest r where
@@ -265,52 +369,6 @@ instance AsServerRequest ServerRequest where
                 ReqSendMessage y1 y2 y3 y4
                   -> Right (y1, y2, y3, y4)
                 _ -> Left x)
-
--- | Constructors starting with "Res" are responses to requests.
---   Constructors starting with Event happen without any request.
-data ServerResponse
-  = ResPong
-  | ResAuthenticated
-  | ResMadeDevice !Client.AuthData
-  | ResGotDeviceInfo !DeviceId !Client.DeviceInfo
-  | ResSetDeviceType !DeviceId
-  | ResSetDeviceName !DeviceId
-  | ResSwitchedFamily !DeviceId !FamilyId
-
-
-  | ResCreatedFamily !FamilyId
-  | ResSetFamilyName !FamilyId
-  | ResGotFamily !FamilyId !Family
-  | ResGotFamilyMembers !FamilyId ![AccountId]
-  | ResGotOnlineDevices !FamilyId ![(DeviceId, DeviceType)]
-  | ResSavedBabyName
-
-  | ResCreatedInvitation !(InvitationId, Invitation)
-  | ResSentInvitation !Client.SendInvitation
-  | ResClaimedInvitation !Secret !InvitationInfo
-  | ResAnsweredInvitation !Secret !InvitationReply !(Maybe FamilyId)
-
-  | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
-
-  | ResGotFamilies !AccountId ![FamilyId]
-  | ResGotDevices !AccountId ![DeviceId]
-  | ResLeftFamily !AccountId !FamilyId
-
-  | ResCreatedChannel !FromId !ToId !Secret
-  | ResSentMessage -- Dummy
-
-
-  | ResError !ServerRequest !ServerError
-
-  | EventSessionGotStolen
-  | EventChannelRequested !FromId !Secret
-  | EventMessageReceived !FromId !Secret Message
-  deriving (Generic, Show)
-
-instance FromJSON ServerResponse
-instance ToJSON ServerResponse where
-  toEncoding = genericToEncoding defaultOptions
-
 class AsServerResponse r where
   _ServerResponse :: Prism' r ServerResponse
   _ResPong :: Prism' r ()
