@@ -26,7 +26,7 @@ sendMessageR fromId toId secret msg
 
 
 -- Internal helper function:
-sendMessage :: (AuthReader m, MonadServer m) => DeviceId -> DeviceId -> Message -> m ()
+sendMessage :: (HasAuthData env, HasConfig env) => DeviceId -> DeviceId -> Message -> RIO env ()
 sendMessage fromId toId msg = do
   authorizeAuthData $ isDevice fromId
 

@@ -85,7 +85,7 @@ switchFamilyR deviceId familyId = do
 
 -- Update last used baby names and send out notifications on change.
 -- TODO: Does not really belong here!
-saveBabyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
+saveBabyNameR :: (HasAuthData env, HasConfig env) => FamilyId -> Text -> RIO env ()
 saveBabyNameR familyId babyName = do
   authorizeAuthData $ isFamilyMember familyId
 

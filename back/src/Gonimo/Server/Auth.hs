@@ -17,7 +17,7 @@ data AuthData = AuthData { _authAccountId   :: !AccountId
                          , _authDeviceId    :: !DeviceId
                          , _authDevice      :: !Device
                          }
-$(makeLenses ''AuthData)
+$(makeClassy ''AuthData)
 
 type AuthReader = MonadReader AuthData
 

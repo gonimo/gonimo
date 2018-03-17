@@ -7,20 +7,17 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 module Gonimo.Server.Effects (
-    MonadServer
-  , Server
-  , ServerT
-  , runServer
+    ServerIO
+  , unRIO
+  , runRIO
   , Config (..)
   , async
-  , async_
   , atomically
   , genRandomBytes
   , generateSecret
   , getCurrentTime
   , getMessenger
   , notify
-  , registerDelay
   , runDb
   , runRandom
   , sendEmail
@@ -36,22 +33,16 @@ import qualified Codec.Binary.Base32            as Base32
 import           Control.Concurrent.STM         (STM)
 import           Control.Concurrent.STM         (TVar)
 import qualified Control.Concurrent.STM         as STM
-import           Control.Monad.Base             (MonadBase, liftBase)
+
 import           Control.Monad.IO.Class         (MonadIO, liftIO)
-import           Control.Monad.Logger           (LoggingT, MonadLogger,
-                                                 MonadLoggerIO, askLoggerIO,
-                                                 runLoggingT)
+import           Control.Monad.Logger           (MonadLogger(..),
+                                                 MonadLoggerIO(..), askLoggerIO,
+                                                 Loc, LogSource, LogLevel, LogStr, toLogStr)
 import           Control.Monad.Reader           (MonadReader, ask, asks)
-import           Control.Monad.Trans.Class      (MonadTrans, lift)
-import           Control.Monad.Trans.Control    (ComposeSt, MonadBaseControl,
-                                                 MonadTransControl, StM, StT,
-                                                 defaultLiftBaseWith,
-                                                 defaultLiftWith,
-                                                 defaultRestoreM, liftBaseWith,
-                                                 liftWith, restoreM, restoreT)
-import           Control.Monad.Trans.Maybe      (MaybeT)
-import           Control.Monad.Trans.Reader     (ReaderT, runReaderT)
-import           Control.Monad.Trans.State      (StateT (..))
+
+
+import           Control.Monad.Trans.Reader     (ReaderT(..))
+
 import           Data.ByteString                (ByteString)
 import           Data.Pool                      (Pool)
 import qualified Data.Text                      as T
@@ -69,12 +60,14 @@ import           Network.Mail.SMTP              (sendMail)
 import           Control.Concurrent.Async       (Async)
 import qualified Control.Concurrent.Async       as Async
 import           Control.Concurrent.STM.TVar    (readTVar, writeTVar)
-import           Control.Monad.Trans.Control    (defaultRestoreT)
+
 import           Crypto.Classes.Exceptions      (genBytes)
 import           Crypto.Random                  (SystemRandom)
 import           Data.Text                      (Text)
 import qualified Data.Time.Clock                as Clock
 import           System.Random                  (getStdRandom)
+import           Control.Lens (Getting, view)
+import           Control.Monad.Catch  as X (MonadThrow (..))
 
 import           Gonimo.Server.Messenger        (MessengerVar)
 import           Gonimo.Server.NameGenerator    (FamilyNames, Predicates)
@@ -83,158 +76,120 @@ import           Gonimo.Server.Subscriber
 import           Gonimo.Server.Subscriber.Types
 import           Gonimo.SocketAPI               (ServerRequest)
 
+type DbPool = Pool SqlBackend
+
+-- TODO: Create HasConfig - make it polymorph, so we can simply add an additional constraint instead of AuthReader.
+
+data Config = Config {
+  _configPool        :: !DbPool
+, _configMessenger   :: !MessengerVar
+, _configSubscriber  :: !Subscriber
+, _configNames       :: !FamilyNames
+, _configPredicates  :: !Predicates
+, _configFrontendURL :: !Text
+, _configRandom      :: !(TVar SystemRandom)
+}
+
+
+$(makeClassy ''Config)
+
 secretLength :: Int
 secretLength = 16
 
-class (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m) => MonadServer m where
-  atomically :: STM a -> m a
-  registerDelay :: Int -> m (TVar Bool)
-  sendEmail :: Mail -> m ()
-  genRandomBytes :: Int -> m ByteString
-  getCurrentTime :: m UTCTime
-  runDb :: ReaderT SqlBackend IO a -> m a
-  runRandom :: (StdGen -> (a, StdGen)) -> m a
-  getMessenger :: m MessengerVar
-  notify :: ServerRequest -> m ()
-  async  :: Server a -> m (Async a)
-  getFamilyNamePool :: m FamilyNames
-  getPredicatePool  :: m Predicates
-  getFrontendURL :: m Text
-
--- | Ignore Async result - yeah forkIO would work as well.
-async_ :: MonadServer m => Server () -> m ()
-async_ action = do
-  _ :: Async () <- async action
-  pure ()
-
-type DbPool = Pool SqlBackend
-
-data Config = Config {
-  configPool        :: !DbPool
-, configMessenger   :: !MessengerVar
-, configSubscriber  :: !Subscriber
-, configNames       :: !FamilyNames
-, configPredicates  :: !Predicates
-, configFrontendURL :: !Text
-, configRandom      :: !(TVar SystemRandom)
-}
-
-newtype ServerT m a = ServerT (ReaderT Config m a)
-                 deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadLoggerIO, MonadReader Config, MonadTrans)
+-- | Reader IO Monad specialized on IO.
+--
+--   RIO as in: https://www.fpcomplete.com/blog/2017/07/the-rio-monad
+newtype RIO env a = RIO { unRIO :: (ReaderT env IO a) }
+  deriving (Functor,Applicative,Monad,MonadIO,MonadReader env,MonadThrow)
 
 
-runServerT :: ServerT m a -> ReaderT Config m a
-runServerT (ServerT i) = i
+-- | Concrete monad stack makes a whole lot of stuff easier.
+--
+--   See https://www.fpcomplete.com/blog/2017/07/the-rio-monad for details.
+--   Modules should use RIO with some polymorphic env for increased modularity and easy testability.
+type ServerIO = RIO Config
 
--- newtype Server a = Server (ReaderT Config (LoggingT IO) a)
---                  deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Config)
-type Server = ServerT (LoggingT IO)
+runRIO :: MonadIO m => env -> RIO env a -> m a
+runRIO env (RIO (ReaderT f)) = liftIO (f env)
 
-runServer :: (forall m. MonadIO m => LoggingT m a -> m a) -> Config -> Server a -> IO a
-runServer runLogging c = runLogging . flip runReaderT c . runServerT
+class HasLogFunc env where
+  logFuncL :: Getting r env (Loc -> LogSource -> LogLevel -> LogStr -> IO ())
 
-instance (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m)
-  => MonadServer (ServerT m) where
-  atomically = liftIO . STM.atomically
-  registerDelay = liftIO . STM.registerDelay
+instance HasLogFunc env => MonadLogger (RIO env) where
+  monadLoggerLog a b c d = do
+    f <- view logFuncL
+    liftIO $ f a b c $ toLogStr d
 
+instance HasLogFunc env => MonadLoggerIO (RIO env) where
+  askLoggerIO = view logFuncL
+
+-- | 'STM.atomically' lifted to the RIO monad.
+atomically :: STM a -> RIO env a
+atomically = liftIO . STM.atomically
+
+-- | Send an email.
+sendEmail :: Mail -> RIO env ()
 #ifdef DEVELOPMENT
-  sendEmail = const $ pure ()
+sendEmail = const $ pure ()
 #else
-  sendEmail = liftIO . sendMail "localhost"
+sendEmail = liftIO . sendMail "localhost"
 #endif
-  genRandomBytes l = do
-      randRef <- asks configRandom
-      genBytesSecure randRef
-    where
-      -- STM necessary so multiple threads won't return the same secret!
-      genBytesSecure randRef = atomically $ do
-        oldGen <- readTVar randRef
-        let (r, newGen) = genBytes l oldGen
-        writeTVar randRef newGen -- Probably a problem with threading: https://ghc.haskell.org/trac/ghc/ticket/13751
-        pure r
 
-  getCurrentTime = liftIO Clock.getCurrentTime
-  runDb trans = do
-    c <- ask
-    liftIO $ flip runSqlPool (configPool c) trans
-  runRandom rand = liftIO $ getStdRandom rand
-  getMessenger = configMessenger <$> ask
-  notify req = do
-    c <- ask
-    liftIO $ notifyChangeIO (configSubscriber c) req
-  async (ServerT task) = do
-    c <- ask
-    logFunc <- askLoggerIO
-    let ioTask = flip runLoggingT logFunc . flip runReaderT c $ task
-    liftIO $ Async.async ioTask
-  getFamilyNamePool = asks configNames
-  getPredicatePool  = asks configPredicates
-  getFrontendURL    = asks configFrontendURL
+-- | Convenient wrapper around 'genBytesSecure' in the 'ServerIO' monad.
+genRandomBytes :: HasConfig env => Int -> RIO env ByteString
+genRandomBytes l = do
+    randRef <- view configRandom
+    atomically $ genBytesSecure l randRef
+
+-- | Generate some random bytes securely.
+-- STM necessary so multiple threads won't return the same secret!
+genBytesSecure :: Int -> TVar SystemRandom -> STM ByteString
+genBytesSecure l randRef = do
+  oldGen <- readTVar randRef
+  let (r, newGen) = genBytes l oldGen
+  writeTVar randRef newGen -- Probably a problem with threading: https://ghc.haskell.org/trac/ghc/ticket/13751
+  pure r
 
 
-instance MonadIO m => MonadBase IO (ServerT m) where
-  liftBase = liftIO
+getCurrentTime :: RIO env UTCTime
+getCurrentTime = liftIO Clock.getCurrentTime
 
-instance (MonadBaseControl IO m, MonadIO m) => MonadBaseControl IO (ServerT m) where
-  type StM (ServerT m) a = ComposeSt ServerT m a
-  liftBaseWith = defaultLiftBaseWith
-  restoreM = defaultRestoreM
+runDb :: HasConfig env => ReaderT SqlBackend IO a -> RIO env a
+runDb trans = do
+  c <- ask
+  liftIO $ flip runSqlPool (_configPool c) trans
 
-instance MonadTransControl ServerT where
-    type StT ServerT a = StT (ReaderT Config) a
-    liftWith = defaultLiftWith ServerT runServerT
-    restoreT = defaultRestoreT ServerT
+runRandom :: (StdGen -> (a, StdGen)) -> RIO env a
+runRandom rand = liftIO $ getStdRandom rand
 
-instance MonadServer m => MonadServer (ReaderT c m) where
-  atomically = lift . atomically
-  registerDelay = lift . registerDelay
-  sendEmail = lift . sendEmail
-  genRandomBytes = lift . genRandomBytes
-  getCurrentTime = lift getCurrentTime
-  runDb = lift . runDb
-  runRandom = lift . runRandom
-  getMessenger = lift getMessenger
-  notify = lift . notify
-  async = lift . async
-  getFamilyNamePool = lift getFamilyNamePool
-  getPredicatePool  = lift getPredicatePool
-  getFrontendURL  = lift getFrontendURL
+getMessenger :: HasConfig env => RIO env MessengerVar
+getMessenger = view configMessenger
 
-instance MonadServer m => MonadServer (StateT c m) where
-  atomically = lift . atomically
-  registerDelay = lift . registerDelay
-  sendEmail = lift . sendEmail
-  genRandomBytes = lift . genRandomBytes
-  getCurrentTime = lift getCurrentTime
-  runDb = lift . runDb
-  runRandom = lift . runRandom
-  getMessenger = lift getMessenger
-  notify = lift . notify
-  async = lift . async
-  getFamilyNamePool = lift getFamilyNamePool
-  getPredicatePool  = lift getPredicatePool
-  getFrontendURL  = lift getFrontendURL
+notify :: HasConfig env => ServerRequest -> RIO env ()
+notify req = do
+  c <- view configSubscriber
+  liftIO $ notifyChangeIO c req
 
-instance MonadServer m => MonadServer (MaybeT m) where
-  atomically = lift . atomically
-  registerDelay = lift . registerDelay
-  sendEmail = lift . sendEmail
-  genRandomBytes = lift . genRandomBytes
-  getCurrentTime = lift getCurrentTime
-  runDb = lift . runDb
-  runRandom = lift . runRandom
-  getMessenger = lift getMessenger
-  notify = lift . notify
-  async = lift . async
-  getFamilyNamePool = lift getFamilyNamePool
-  getPredicatePool  = lift getPredicatePool
-  getFrontendURL  = lift getFrontendURL
+async  :: HasConfig env => ServerIO a -> RIO env (Async a)
+async task = do
+  c <- ask
+  let ioTask = runRIO c $ task
+  liftIO $ Async.async ioTask
 
-generateSecret :: MonadServer m => m Secret
+getFamilyNamePool :: HasConfig env => RIO env FamilyNames
+getFamilyNamePool = view configNames
+
+getPredicatePool  :: HasConfig env => RIO env Predicates
+getPredicatePool = view configPredicates
+
+getFrontendURL :: HasConfig env => RIO env Text
+getFrontendURL = asks configFrontendURL
+
+
+generateSecret :: HasConfig env => RIO env Secret
 generateSecret = Secret <$> genRandomBytes secretLength
 
-generateFamilyName :: MonadServer m => m FamilyName
+generateFamilyName :: HasConfig env => RIO env FamilyName
 generateFamilyName = do
   preds <- getPredicatePool
   fNames <- getFamilyNamePool
@@ -244,7 +199,7 @@ generateFamilyName = do
 -- | Generate a random invitation code.
 --
 --   An Invitation code is just Text consisting of 6 characters. (Base32 characters)
-generateInvitationCode :: MonadServer m => m InvitationCode
+generateInvitationCode :: HasConfig env => RIO env InvitationCode
 generateInvitationCode = do
     bytes <- genRandomBytes 4
     pure $ makeCode bytes

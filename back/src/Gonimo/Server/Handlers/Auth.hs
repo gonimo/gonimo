@@ -48,7 +48,7 @@ import qualified Gonimo.Server.Db.Invitation              as Invitation
 import qualified Gonimo.Types.Extended   as Server
 import           Gonimo.Types.Extended   (Secret, InvitationDelivery(..))
 
-createInvitationR :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
+createInvitationR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env (InvitationId, Invitation)
 createInvitationR fid = do
   authorizeAuthData $ isFamilyMember fid
   now <- getCurrentTime
@@ -68,7 +68,7 @@ createInvitationR fid = do
 
 -- | Receive an invitation and mark it as received - it can no longer be claimed
 --   by any other device.
-claimInvitationR :: (AuthReader m, MonadServer m) => Secret -> m InvitationInfo
+claimInvitationR :: (HasAuthData env, HasConfig env) => Secret -> RIO env InvitationInfo
 claimInvitationR invSecret = do
   aid <- authView $ authAccountId
   runDb $ do
@@ -83,7 +83,7 @@ claimInvitationR invSecret = do
                 }
 
 -- | Actually accept or decline an invitation.
-answerInvitationR :: (AuthReader m, MonadServer m) => Secret -> InvitationReply -> m (Maybe FamilyId)
+answerInvitationR :: (HasAuthData env, HasConfig env) => Secret -> InvitationReply -> RIO env (Maybe FamilyId)
 answerInvitationR invSecret reply = do
   authData <- ask
   let aid = authData ^. authAccountId
@@ -115,7 +115,7 @@ answerInvitationR invSecret reply = do
     _ -> pure Nothing
 
 
-sendInvitationR :: (AuthReader m, MonadServer m) => API.SendInvitation -> m ()
+sendInvitationR :: (HasAuthData env, HasConfig env) => API.SendInvitation -> RIO env ()
 sendInvitationR (API.SendInvitation iid d@(EmailInvitation email)) = do
   authData <- ask -- Only allowed if user is member of the inviting family!
   (secret, famName, devName) <- runDb $ do
@@ -133,12 +133,12 @@ sendInvitationR (API.SendInvitation iid d@(EmailInvitation email)) = do
 
 sendInvitationR (API.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
 
-getFamilyMembersR :: (AuthReader m, MonadServer m) => FamilyId -> m [AccountId]
+getFamilyMembersR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env [AccountId]
 getFamilyMembersR familyId = do
   authorizeAuthData $ isFamilyMember familyId
   runDb $ Family.getAccountIds familyId
 
-getDevicesR :: (AuthReader m, MonadServer m) => AccountId -> m [DeviceId]
+getDevicesR :: (HasAuthData env, HasConfig env) => AccountId -> RIO env [DeviceId]
 getDevicesR accountId' = do
   (result, inFamilies) <- runDb $ do
     inFamilies' <- Account.getFamilyIds accountId'
@@ -147,7 +147,7 @@ getDevicesR accountId' = do
   authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
   pure result
 
-getDeviceInfoR :: (AuthReader m, MonadServer m) => DeviceId -> m API.DeviceInfo
+getDeviceInfoR :: (HasAuthData env, HasConfig env) => DeviceId -> RIO env API.DeviceInfo
 getDeviceInfoR deviceId' = do
   (result, inFamilies) <- runDb $ do
     device <- Device.get deviceId'
@@ -157,7 +157,7 @@ getDeviceInfoR deviceId' = do
   authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
   pure result
 
-setDeviceNameR :: (AuthReader m, MonadServer m) => DeviceId -> Text -> m ()
+setDeviceNameR :: (HasAuthData env, HasConfig env) => DeviceId -> Text -> RIO env ()
 setDeviceNameR deviceId' name = do
   inFamilies <- runDb $ do
     device <- Device.get deviceId'
@@ -194,14 +194,14 @@ createFamilyR = do
   notify $ ReqGetFamilies aid
   return fid
 
-setFamilyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
+setFamilyNameR :: (HasAuthData env, HasConfig env) => FamilyId -> Text -> RIO env ()
 setFamilyNameR familyId' name = do
   authorizeAuthData $ isFamilyMember familyId'
 
   _ :: Maybe () <- runDb . runMaybeT $ Family.update familyId' (Family.setFamilyName name)
   notify $ ReqGetFamily familyId'
 
-leaveFamilyR :: (AuthReader m, MonadServer m) => AccountId -> FamilyId -> m ()
+leaveFamilyR :: (HasAuthData env, HasConfig env) => AccountId -> FamilyId -> RIO env ()
 leaveFamilyR accountId' familyId' = do
   -- authorizeAuthData $ isAccount accountId' -- Not needed - any member can kick another member.
   authorizeAuthData $ isFamilyMember familyId'
@@ -215,12 +215,12 @@ leaveFamilyR accountId' familyId' = do
   notify $ ReqGetFamilyMembers familyId'
 
 
-getFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
+getFamiliesR :: (HasAuthData env, HasConfig env) => AccountId -> RIO env [FamilyId]
 getFamiliesR accountId' = do
   authorizeAuthData $ isAccount accountId'
   runDb $ Account.getFamilyIds accountId'
 
-getFamilyR :: (AuthReader m, MonadServer m) => FamilyId -> m Family
+getFamilyR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env Family
 getFamilyR familyId' = do
   authorizeAuthData $ isFamilyMember familyId'
   runDb $ Family.get familyId'

@@ -155,7 +155,7 @@ handleServerRequest receiver sub req = errorToResponse $ case req of
       pure r
 
 
-handleAuthServerRequest :: (AuthReader m, MonadServer m) => Subscriber.Client -> ServerRequest -> m ServerResponse
+handleAuthServerRequest :: (HasAuthData env, HasConfig env) => Subscriber.Client -> ServerRequest -> RIO env ServerResponse
 handleAuthServerRequest sub req = case req of
   ReqPing                              -> error "ReqPing should have been handled already!"
   ReqAuthenticate _                    -> error "ReqAuthenticate should have been handled already!"
@@ -208,7 +208,7 @@ authenticate receiver sub token = do
   flip runReaderT authData' $ registerReceiverR (Auth.deviceKey authData') receiver
   pure ResAuthenticated
 
-makeAuthData :: MonadServer m => AuthToken -> m AuthData
+makeAuthData :: HasConfig env => AuthToken -> RIO env AuthData
 makeAuthData token = runDb $ do
     (devId, dev@Device{..}) <- Device.getByAuthToken token
     account <- Account.get deviceAccountId
