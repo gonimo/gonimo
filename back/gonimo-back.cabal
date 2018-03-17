@@ -57,7 +57,6 @@ library
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random
                 , Utils.Constants
-                , Utils.STM
                 , Paths_gonimo_back
 
   default-extensions: ConstraintKinds
