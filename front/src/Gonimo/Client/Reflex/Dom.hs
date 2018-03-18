@@ -136,7 +136,7 @@ mediaVideo :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
               )
               => MediaStream -> Map Text Text -> m ()
 mediaVideo stream attrs = do
-  (videoTag, _) <- elAttr' "video" attrs blank
+  (videoTag, _) <- elAttr' "video" (attrs <> "playsinline" =: "true") blank
   let rawElement =  _element_raw videoTag
   -- liftIO $ setSrcObject rawElement stream
   -- liftIO $ playVideo rawElement
