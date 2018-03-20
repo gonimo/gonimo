@@ -4,7 +4,7 @@ import           Control.Monad.IO.Class  (liftIO)
 import           Control.Monad.Catch  as X (MonadThrow (..))
 
 import           Gonimo.Server.Auth      as Auth
-import           Gonimo.Server.Effects
+import           Gonimo.Server.Config
 import           Gonimo.Server.Error
 import           Gonimo.Server.Messenger
 import           Gonimo.SocketAPI.Types  (DeviceId)

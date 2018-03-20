@@ -6,7 +6,7 @@ import           Prelude                 hiding (take, unwords)
 
 import           Gonimo.Server.Db.Device as Device
 import           Gonimo.Server.Db.Account as Account
-import           Gonimo.Server.Effects
+import           Gonimo.Server.Config
 import           Gonimo.SocketAPI.Types  as Client
 import           Gonimo.Types
 

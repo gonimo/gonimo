@@ -40,7 +40,7 @@ library
                   , Gonimo.Server.Db.Internal
                   , Gonimo.Server.Db.Invitation
                   , Gonimo.Server.Db.IsDb
-                  , Gonimo.Server.Effects
+                  , Gonimo.Server.Config
                   , Gonimo.Server.EmailInvitation
                   , Gonimo.Server.Handlers
                   , Gonimo.Server.Handlers.Auth

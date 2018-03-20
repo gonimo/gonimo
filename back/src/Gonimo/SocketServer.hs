@@ -36,7 +36,7 @@ import           Gonimo.Server.Auth               (AuthData (..),
 import qualified Gonimo.Server.Auth               as Auth
 import qualified Gonimo.Server.Db.Account         as Account
 import qualified Gonimo.Server.Db.Device          as Device
-import           Gonimo.Server.Effects            as Server
+import           Gonimo.Server.Config            as Server
 import           Gonimo.Server.Error              (ServerError (..))
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Handlers.Auth

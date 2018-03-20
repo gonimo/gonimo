@@ -19,7 +19,7 @@ import           Data.Typeable
 import           Database.Persist.Postgresql
 import           GHC.Generics
 import           Gonimo.Db.Entities
-import           Gonimo.Server.Effects         (Config (..))
+import           Gonimo.Server.Config         (Config (..))
 import           Gonimo.Server.Error           (fromMaybeErr)
 import qualified Gonimo.Server.Messenger       as Messenger
 import           Gonimo.Server.NameGenerator   (loadFamilies, loadPredicates)

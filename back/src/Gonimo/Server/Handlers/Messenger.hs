@@ -9,7 +9,7 @@ import           Data.Text                 (Text)
 import           Gonimo.Server.Auth        as Auth
 import qualified Gonimo.Server.Db.Device   as Device
 import qualified Gonimo.Server.Db.Family   as Family
-import           Gonimo.Server.Effects
+import           Gonimo.Server.Config
 import           Gonimo.Server.Messenger
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Types    hiding (Message, deviceId)

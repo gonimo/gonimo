@@ -6,7 +6,13 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module Gonimo.Server.Effects (
+{-|
+Module      : Gonimo.Server.Config
+Description : Base Config for server operations.
+Copyright   : (c) Robert Klotzner, 2018
+'Config' provides a basic Reader environment for server operations.
+-}
+module Gonimo.Server.Config (
     ServerIO
   , RIO
   , unRIO
