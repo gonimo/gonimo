@@ -57,7 +57,6 @@ library
                     , time
                     , mtl
                     , data-default
-                    , lifted-base
                     , jsaddle
                     , reflex-dom-core
                     , generic-deriving

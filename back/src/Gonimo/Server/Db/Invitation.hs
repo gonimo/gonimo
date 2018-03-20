@@ -9,8 +9,8 @@ import           Control.Monad.Trans.Reader      (ReaderT (..))
 import qualified Database.Persist.Class          as Db
 import           Database.Persist.Sql            (SqlBackend)
 import           Database.Persist                (Entity(..))
-import           Control.Monad.Base              (MonadBase)
 import           Data.Bifunctor                  (bimap)
+import           Control.Monad.Catch  as X (MonadThrow (..))
 
 import           Gonimo.Database.Effects.Servant as Db
 import qualified Gonimo.Db.Entities              as Db
@@ -25,13 +25,13 @@ import           Gonimo.Types.Extended           (Secret, InvitationDelivery(..)
 insert :: MonadIO m => API.Invitation -> ReaderT SqlBackend m API.InvitationId
 insert = fmap fromDb . Db.insert . toDb
 
-get :: (MonadBase IO m, MonadIO m) => InvitationId -> ReaderT SqlBackend m Invitation
+get :: (MonadThrow m, MonadIO m) => InvitationId -> ReaderT SqlBackend m Invitation
 get = fmap fromDb . getErr NoSuchInvitation . toDb
 
 delete :: MonadIO m => InvitationId -> ReaderT SqlBackend m ()
 delete = Db.delete . toDb
 
-updateDelivery :: (MonadBase IO m, MonadIO m) => InvitationDelivery -> InvitationId -> ReaderT SqlBackend m API.Invitation
+updateDelivery :: (MonadThrow m, MonadIO m) => InvitationDelivery -> InvitationId -> ReaderT SqlBackend m API.Invitation
 updateDelivery d iid' = do
   let iid = toDb iid'
   inv <- getErr NoSuchInvitation iid
@@ -41,7 +41,7 @@ updateDelivery d iid' = do
   Db.replace iid newInv
   pure $ fromDb newInv
 
-claim :: (MonadBase IO m, MonadIO m)
+claim :: (MonadThrow m, MonadIO m)
       => AccountId -> Secret -> ReaderT SqlBackend m (API.InvitationId, API.Invitation)
 claim aid' secret = do
   let aid = toDb aid'
@@ -54,10 +54,10 @@ claim aid' secret = do
       Just receiverId' -> return $ receiverId' == aid
   pure (fromDb invId, fromDb inv)
 
-getBySecret :: (MonadBase IO m, MonadIO m) => Secret -> ReaderT SqlBackend m (API.InvitationId, API.Invitation)
+getBySecret :: (MonadThrow m, MonadIO m) => Secret -> ReaderT SqlBackend m (API.InvitationId, API.Invitation)
 getBySecret = fmap (bimap fromDb fromDb) . getBySecret'
 
-getBySecret' :: (MonadBase IO m, MonadIO m) => Secret -> ReaderT SqlBackend m (Db.InvitationId, Db.Invitation)
+getBySecret' :: (MonadThrow m, MonadIO m) => Secret -> ReaderT SqlBackend m (Db.InvitationId, Db.Invitation)
 getBySecret' secret = do
   Entity invId inv <- Db.getByErr NoSuchInvitation (Db.SecretInvitation secret)
   pure (invId, inv)

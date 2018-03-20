@@ -1,6 +1,7 @@
 module Gonimo.Server.Handlers.Socket where
 
 import           Control.Monad.IO.Class  (liftIO)
+import           Control.Monad.Catch  as X (MonadThrow (..))
 
 import           Gonimo.Server.Auth      as Auth
 import           Gonimo.Server.Effects
@@ -11,16 +12,16 @@ import qualified Gonimo.SocketAPI.Types  as API
 import           Gonimo.Types
 
 -- | Create a channel for communication with  a baby station
-createChannelR :: (AuthReader m, MonadServer m)
-              => DeviceId -> DeviceId -> m Secret
+createChannelR :: (HasAuthData env, HasConfig env)
+  => DeviceId -> DeviceId -> RIO env Secret
 createChannelR fromId toId = do
   secret <- generateSecret
   sendMessage fromId toId $ MessageCreateChannel fromId secret
   return secret
 
 
-sendMessageR :: forall m. (AuthReader m, MonadServer m)
-           => DeviceId -> DeviceId -> Secret -> API.Message -> m ()
+sendMessageR :: forall env. (HasAuthData env, HasConfig env)
+  => DeviceId -> DeviceId -> Secret -> API.Message -> RIO env ()
 sendMessageR fromId toId secret msg
   = sendMessage fromId toId $ MessageSendMessage fromId secret msg
 
@@ -28,7 +29,7 @@ sendMessageR fromId toId secret msg
 -- Internal helper function:
 sendMessage :: (HasAuthData env, HasConfig env) => DeviceId -> DeviceId -> Message -> RIO env ()
 sendMessage fromId toId msg = do
-  authorizeAuthData $ isDevice fromId
+  authorize =<< isDevice fromId
 
   messenger <- getMessenger
   (mFromFamily, mToFamily, mSend) <- atomically $ do
@@ -39,12 +40,12 @@ sendMessage fromId toId msg = do
     pure (mFromFamily', mToFamily', mSend')
 
   -- Both devices have to be online:
-  fromFamily <- authorizeJust id mFromFamily
-  toFamily   <- authorizeJust id mToFamily
+  fromFamily <- authorizeJust mFromFamily
+  toFamily   <- authorizeJust mToFamily
   -- and online in the same family:
-  authorize (fromFamily ==) toFamily
+  authorize $ fromFamily == toFamily
   -- Additional sanity check:
-  authorizeAuthData $ isFamilyMember fromFamily
+  authorize =<< isFamilyMember fromFamily
   case mSend of
-    Nothing -> throwServer DeviceOffline
+    Nothing -> throwM DeviceOffline
     Just send -> liftIO $ send msg

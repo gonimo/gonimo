@@ -5,14 +5,15 @@ module Gonimo.Server.Db.Account ( insert, Gonimo.Server.Db.Account.get
                                 , joinFamily, getFamilyIds, getUser, getDevices
                                 ) where
 
-import           Control.Monad.State.Class       as State
+import           Control.Monad.State.Class        as State
 import           Data.Maybe
 import           Data.Text                        (Text)
 
 
+import           Control.Monad.Catch              as X (MonadThrow (..))
 import           Control.Monad.IO.Class           (MonadIO)
+import           Control.Monad.Trans.Maybe        (MaybeT (..))
 import           Control.Monad.Trans.Reader       (ReaderT (..))
-import           Control.Monad.Trans.Maybe        (MaybeT(..))
 import           Control.Monad.Trans.State.Strict (evalStateT)
 import           Data.Foldable                    (traverse_)
 import qualified Data.Set                         as Set
@@ -21,16 +22,15 @@ import           Database.Persist                 (Entity, entityVal, (==.))
 import           Database.Persist                 (Entity (..))
 import qualified Database.Persist.Class           as Db
 import           Database.Persist.Sql             (SqlBackend)
-import           Control.Monad.Base              (MonadBase)
 
+import           Gonimo.Database.Effects.Servant
 import qualified Gonimo.Database.Effects.Servant  as Db
 import qualified Gonimo.Db.Entities               as Db
+import           Gonimo.Server.Db.IsDb
+import           Gonimo.Server.Error              (ServerError (..))
+import           Gonimo.Server.NameGenerator      (Predicates)
 import qualified Gonimo.Server.NameGenerator      as Gen
 import qualified Gonimo.SocketAPI.Types           as API
-import           Gonimo.Server.NameGenerator (Predicates)
-import Gonimo.Server.Db.IsDb
-import           Gonimo.Database.Effects.Servant
-import           Gonimo.Server.Error             (ServerError (..))
 
 
 
@@ -38,7 +38,7 @@ import           Gonimo.Server.Error             (ServerError (..))
 insert :: MonadIO m => API.Account -> ReaderT SqlBackend m API.AccountId
 insert = fmap fromDb . Db.insert . toDb
 
-get :: (MonadBase IO m, MonadIO m) => API.AccountId -> ReaderT SqlBackend m API.Account
+get :: (MonadThrow m, MonadIO m) => API.AccountId -> ReaderT SqlBackend m API.Account
 get aid' = fmap fromDb . getErr (NoSuchAccount aid') . toDb $ aid'
 
 getFamilyIds :: MonadIO m => API.AccountId -> ReaderT SqlBackend m [API.FamilyId]

@@ -43,6 +43,10 @@ instance Exception StartupError
 runGonimoLoggingT :: MonadIO m => LoggingT m a -> m a
 runGonimoLoggingT = runStdoutLoggingT
 
+-- | The logging function used by Gonimo.
+getGonimoLogFunc :: IO (Loc -> LogSource -> LogLevel -> LogStr -> IO ())
+getGonimoLogFunc = runGonimoLoggingT $ askLoggerIO
+
 #ifdef DEVELOPMENT
 devMain :: IO ()
 devMain = do
@@ -53,17 +57,19 @@ devMain = do
   names <- loadFamilies
   predicates <- loadPredicates
   generator <- newTVarIO =<< newGenIO
+  gonimoLogFunc <- getGonimoLogFunc
   let config = Config {
-    configPool = pool
-  , configMessenger  = messenger
-  , configSubscriber = subscriber'
-  , configNames      = names
-  , configPredicates = predicates
-  , configFrontendURL = "http://localhost:8081/index.html"
-  , configRandom = generator
+    _configPool = pool
+  , _configMessenger  = messenger
+  , _configSubscriber = subscriber'
+  , _configNames      = names
+  , _configPredicates = predicates
+  , _configFrontendURL = "http://localhost:8081/index.html"
+  , _configRandom = generator
+  , _configLogFunc = gonimoLogFunc
   }
   checkAndFixCurrentDirectory
-  run 8081 . addDevServer $ serve runGonimoLoggingT config
+  run 8081 . addDevServer $ serve config
 
 #else
 
@@ -82,16 +88,18 @@ prodMain = do
   names <- loadFamilies
   predicates <- loadPredicates
   generator <- newTVarIO =<< newGenIO
+  gonimoLogFunc <- getGonimoLogFunc
   let config = Config {
-    configPool = pool
-  , configMessenger  = messenger
-  , configSubscriber = subscriber'
-  , configNames      = names
-  , configPredicates = predicates
-  , configFrontendURL = T.pack frontendURL
-  , configRandom = generator
+    _configPool = pool
+  , _configMessenger  = messenger
+  , _configSubscriber = subscriber'
+  , _configNames      = names
+  , _configPredicates = predicates
+  , _configFrontendURL = T.pack frontendURL
+  , _configRandom = generator
+  , _configLogFunc = gonimoLogFunc
   }
-  run port . checkOrigin (T.pack frontendURL) $ serve runGonimoLoggingT config
+  run port . checkOrigin (T.pack frontendURL) $ serve config
 
 #endif
 

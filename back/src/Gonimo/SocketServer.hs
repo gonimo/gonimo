@@ -1,23 +1,18 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell     #-}
 module Gonimo.SocketServer where
 
-import           Control.Concurrent.Async.Lifted  (race_)
-import           Control.Exception.Lifted         (catch, finally, throwIO, try)
+import           Control.Concurrent
 import           Control.Lens
 import           Control.Monad
+import           Control.Monad.Catch              as X (MonadThrow (..))
 import           Control.Monad.IO.Class           (liftIO)
-import           Control.Monad.IO.Class           (MonadIO)
-import           Control.Monad.Logger             (LoggingT)
 import           Control.Monad.Logger             (logError)
-import           Control.Monad.Reader.Class       (MonadReader, ask)
-import           Control.Monad.Trans.Reader       (runReaderT)
-import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.Maybe        (runMaybeT, MaybeT(..))
+import           Control.Monad.Reader.Class       (ask)
+import           Control.Monad.Trans.Maybe        (MaybeT (..), runMaybeT)
 import           Data.Aeson                       (FromJSON)
 import qualified Data.Aeson                       as Aeson
 import qualified Data.ByteString.Lazy             as LB
@@ -25,13 +20,24 @@ import           Data.IORef
 import           Data.Monoid                      ((<>))
 import qualified Data.Set                         as Set
 import qualified Data.Text                        as T
-import           Gonimo.SocketAPI.Types           hiding (AuthData(..), Message(..))
-import           Gonimo.Server.Auth               (AuthData (..), AuthReader,
+import qualified Network.HTTP.Types.Status        as Http
+import qualified Network.Wai                      as Wai
+import qualified Network.Wai.Handler.WebSockets   as Wai
+import qualified Network.WebSockets               as WS
+import           UnliftIO.Async                   (async, race_)
+-- Does not yet exist in version 0.1.0.0:
+-- import           UnliftIO.Concurrent              (forkIO)
+import           UnliftIO.Exception               (catch, finally, throwIO, try)
+
+import           Gonimo.Constants
+import           Gonimo.Server.Auth               (AuthData (..),
+                                                   HasAuthData (..),
                                                    allowedFamilies)
 import qualified Gonimo.Server.Auth               as Auth
+import qualified Gonimo.Server.Db.Account         as Account
+import qualified Gonimo.Server.Db.Device          as Device
 import           Gonimo.Server.Effects            as Server
-import           Gonimo.Server.Error              (ServerError (..),
-                                                   fromMaybeErr)
+import           Gonimo.Server.Error              (ServerError (..))
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Handlers.Auth
 import           Gonimo.Server.Handlers.Messenger
@@ -40,27 +46,38 @@ import           Gonimo.Server.Messenger          (Message (..))
 import qualified Gonimo.Server.Subscriber         as Subscriber
 import qualified Gonimo.Server.Subscriber.Types   as Subscriber
 import           Gonimo.SocketAPI
+import           Gonimo.SocketAPI.Types           hiding (AuthData (..),
+                                                   Message (..))
 import           Gonimo.Types                     (AuthToken (..))
-import qualified Network.HTTP.Types.Status        as Http
-import qualified Network.Wai                      as Wai
-import qualified Network.Wai.Handler.WebSockets   as Wai
-import qualified Network.WebSockets               as WS
-import           Data.Maybe
-import           Control.Concurrent
-import           Gonimo.Constants
-import qualified Gonimo.Server.Db.Device          as Device
-import qualified Gonimo.Server.Db.Account         as Account
 
 type AuthDataRef = IORef (Maybe AuthData)
 
-serve :: (forall a m. MonadIO m => LoggingT m a -> m a) -> Config -> Wai.Application
-serve runLoggingT config = do
+-- | AuthData and Server 'Config' combined.
+--
+--   Has 'HasAuthData' and 'HasConfig' instances. Accessors are not expected to
+--   be used except for initialization.
+data AuthConfig = AuthConfig { __authData :: AuthData
+                             , __config   :: Config
+                             }
+
+$(makeLenses 'AuthConfig)
+
+-- | 'AuthConfig' has 'AuthData'.
+instance HasAuthData AuthConfig where
+  authData = _authData
+
+-- | 'AuthConfig' has 'Config'.
+instance HasConfig AuthConfig where
+  config = _config
+
+serve :: Config -> Wai.Application
+serve config' = do
   let handleWSConnection pending = do
         connection <- WS.acceptRequest pending
         -- Don't use this - the client won't be able to detect dead connections, which is baaad! (Baby station!)
         -- WS.forkPingThread connection 28
         noAuthRef <- newIORef Nothing
-        runServer runLoggingT config $ serveWebSocket noAuthRef connection
+        runRIO config' $ serveWebSocket noAuthRef connection
   let
     errorApp :: Wai.Request -> (Wai.Response -> IO Wai.ResponseReceived) -> IO Wai.ResponseReceived
     errorApp _ sendResponse =  do
@@ -70,32 +87,31 @@ serve runLoggingT config = do
   Wai.websocketsOr WS.defaultConnectionOptions handleWSConnection errorApp
 
 
-serveWebSocket :: AuthDataRef -> WS.Connection -> Server ()
+serveWebSocket :: AuthDataRef -> WS.Connection -> ServerIO ()
 serveWebSocket authRef conn = do
     msgCounter <- liftIO $ newIORef 0
-    sub <- configSubscriber <$> ask
+    sub <- view configSubscriber
     client <- atomically $ Subscriber.makeClient sub
     let
       work = race_ (liftIO $ watchDog msgCounter)
                    (race_ (Subscriber.runMonitor client respondToRequest) (forever handleIncoming))
+
       cleanup = do
         Subscriber.cleanup client
-        fmap (fromMaybe ()) . runMaybeT $ do
-          authData' <- MaybeT . liftIO $ readIORef authRef
-          lift . flip runReaderT authData' $ deleteReceiverR (Auth.deviceKey authData')
+        runAuthServer (pure ()) authRef (deleteReceiverR =<< view authDeviceId)
 
       handleIncoming = do
         raw <- liftIO $ WS.receiveDataMessage conn
         liftIO $ modifyIORef' msgCounter (+1)
         let bs = case raw of
                   WS.Binary bs' -> bs'
-                  WS.Text bs' -> bs'
+                  WS.Text bs'   -> bs'
         respondToRequest =<< decodeLogError bs
 
-      respondToRequest :: ServerRequest -> Server ()
-      respondToRequest req = async_ $ do -- Let's fork off :-)
-        r <- flip runReaderT authRef
-             $ handleServerRequest receiver client req -- Does handle user interesting exceptions ...
+
+      respondToRequest :: ServerRequest -> ServerIO ()
+      respondToRequest req = void . async $ do -- Let's fork off :-)
+        r <- handleServerRequest authRef receiver client req -- Does handle user interesting exceptions ...
         case r of
           ResGotFamilies _ fids -> liftIO $ modifyIORef' authRef (_Just.allowedFamilies .~ fids)
           _ -> pure ()
@@ -121,37 +137,35 @@ serveWebSocket authRef conn = do
             $ \e -> case e of
                       WS.CloseRequest _ _ -> throwIO DeviceOffline
                       WS.ConnectionClosed -> throwIO DeviceOffline
-                      _ -> throwIO InternalServerError
+                      _                   -> throwIO InternalServerError
 
-      decodeLogError :: forall a. FromJSON a => LB.ByteString -> Server a
+      decodeLogError :: forall a. FromJSON a => LB.ByteString -> ServerIO a
       decodeLogError bs = do
         let r = Aeson.eitherDecode bs
         case r of
           Left err -> do
             $logError ("Request could not be decoded: " <> T.pack err)
-            throwIO $ userError "Request could not be decoded!"
+            throwM $ userError "Request could not be decoded!"
           Right ok -> pure ok
 
     finally work cleanup
 
 
 
-handleServerRequest :: forall m. (MonadReader AuthDataRef m, MonadServer m)
-                       => (Message -> IO ()) -> Subscriber.Client -> ServerRequest -> m ServerResponse
-handleServerRequest receiver sub req = errorToResponse $ case req of
+handleServerRequest :: AuthDataRef -> (Message -> IO ()) -> Subscriber.Client -> ServerRequest -> ServerIO ServerResponse
+handleServerRequest authRef receiver sub req = errorToResponse $ case req of
     ReqPing                 -> pure ResPong
-    ReqAuthenticate token   -> authenticate receiver sub token
+    ReqAuthenticate token   -> authenticate authRef receiver sub token
     ReqMakeDevice userAgent -> ResMadeDevice <$> createDeviceR userAgent
-    _                       -> do
-      authData' <- fromMaybeErr NotAuthenticated =<< liftIO . readIORef =<< ask
-      flip runReaderT authData' $ handleAuthServerRequest sub req
+    _                       -> runAuthServer (throwM NotAuthenticated) authRef
+                               $ handleAuthServerRequest sub req
   where
-    errorToResponse :: m ServerResponse -> m ServerResponse
+    errorToResponse :: ServerIO ServerResponse -> ServerIO ServerResponse
     errorToResponse action = do
       r <- either (ResError req) id <$> try action
       case r of
         ResError _ _ -> $logError ((T.pack. show) r)
-        _ -> pure ()
+        _            -> pure ()
       pure r
 
 
@@ -183,7 +197,7 @@ handleAuthServerRequest sub req = case req of
   ReqAnswerInvitation secret reply     -> ResAnsweredInvitation secret reply <$> answerInvitationR secret reply
 
   ReqSetSubscriptions subs             -> do
-    accountId <- Auth.accountKey <$> ask
+    accountId <- view authAccountId
     -- We need GetFamilies subscribed to keep our AuthData current.
     let subsSet = Set.insert (ReqGetFamilies accountId) (Set.fromList subs)
     Server.atomically $ Subscriber.processRequest sub subsSet
@@ -197,15 +211,13 @@ handleAuthServerRequest sub req = case req of
   ReqCreateChannel from' to'             -> ResCreatedChannel from' to' <$> createChannelR from' to'
   ReqSendMessage from' to' secret msg    -> sendMessageR from' to' secret msg *> pure ResSentMessage
 
-authenticate :: forall m. (MonadReader AuthDataRef m, MonadServer m)
-  => (Message -> IO ()) -> Subscriber.Client -> AuthToken -> m ServerResponse
-authenticate receiver sub token = do
+authenticate :: AuthDataRef -> (Message -> IO ()) -> Subscriber.Client -> AuthToken -> ServerIO ServerResponse
+authenticate authRef receiver sub token = do
   authData' <- makeAuthData token
-  authRef <- ask
   liftIO . writeIORef authRef $ Just authData'
   -- Evil hack:
   atomically . Subscriber.processRequest sub $ Set.singleton (ReqGetFamilies (Auth.accountKey authData'))
-  flip runReaderT authData' $ registerReceiverR (Auth.deviceKey authData') receiver
+  runAuthServer (pure ()) authRef $ registerReceiverR (authData' ^. authDeviceId) receiver
   pure ResAuthenticated
 
 makeAuthData :: HasConfig env => AuthToken -> RIO env AuthData
@@ -227,3 +239,15 @@ watchDog msgCount = forever $ do
   threadDelay $ (ceiling serverWatchDogTime) * 1000000
   nextCount <- readIORef msgCount
   when (nextCount == currentCount) $ throwIO $ WS.CloseRequest 1000 "Connection timed out (server)"
+
+-- | Convenience function for running a handler that requires AuthData.
+runAuthServer ::
+  ServerIO a -- ^ Fallback action in case authRef was 'Nothing'
+  -> AuthDataRef -- ^ The 'IORef' to receive the needed 'AuthData' from.
+  -> RIO AuthConfig a -- ^ The 'AuthData' needing action to run.
+  -> ServerIO a
+runAuthServer fallback authRef authAction = maybe fallback return <=< runMaybeT $ do
+    authData' <- MaybeT . liftIO $ readIORef authRef
+    conf <- ask
+    let authConf = AuthConfig { __authData = authData', __config = conf }
+    runRIO authConf $ authAction
