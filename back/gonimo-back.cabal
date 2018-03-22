@@ -33,6 +33,7 @@ library
 
   exposed-modules:  Gonimo.Database.Effects.Servant
                   , Gonimo.Db.Entities
+                  , Gonimo.Db.PersistFields
                   , Gonimo.Server.Auth
                   , Gonimo.Server.Db.Account
                   , Gonimo.Server.Db.Device
@@ -52,7 +53,6 @@ library
                   , Gonimo.Server.Subscriber
                   , Gonimo.Server.Subscriber.Types
                   , Gonimo.SocketServer
-                  , Gonimo.Types.Extended
                   , Control.Monad.RIO
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
