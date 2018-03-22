@@ -6,12 +6,14 @@ module Gonimo.Client.Invite.Internal where
 
 import           Control.Lens
 import           Control.Monad
+import           Control.Monad.IO.Class      (liftIO)
 import           Control.Monad.Fix           (MonadFix)
 import qualified Data.Aeson                  as Aeson
 import qualified Data.ByteString.Lazy        as BL
 import           Data.Default                (Default (..))
 import           Data.Monoid
 import           Data.Text                   (Text)
+import qualified Data.Text.IO                as T
 import qualified Data.Text.Encoding          as T
 import           Language.Javascript.JSaddle
 import           Language.Javascript.JSaddle.Value
@@ -154,10 +156,10 @@ shareLink = do
   mNativeShare      <- liftJSM $ maybeNullOrUndefined =<< nav ! ("share"        :: Text)
   mAndroidShare     <- liftJSM $ maybeNullOrUndefined =<< win ! ("androidShare" :: Text)
   case (mNativeShare, mAndroidShare) of
-    (Just share, _) ->
+    (Just _share, _) ->
       let shareFunc linkUrl = void $ liftJSM $ do
-            o <- obj
-            url <- (o <# ("url" :: Text)) linkUrl
+            url <- obj
+            (url <# ("url" :: Text)) linkUrl
             nav ^. js1 ("share" :: Text) url
        in pure shareFunc
     (_, Just share) ->
