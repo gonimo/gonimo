@@ -9,8 +9,8 @@ data Message = Invite_More_Devices
              | Done
              | Email
              | Invitation_Link
-             | Sent_WhatsApp
-             | Sent_Telegram
+             | Sent_WhatsApp -- No longer in use
+             | Sent_Telegram -- No longer in use
              | Sent_Copy
              | Sent_Refresh
              | Sent_Email

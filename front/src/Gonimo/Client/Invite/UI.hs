@@ -103,11 +103,13 @@ confirmationBox sent = do
 
 confirmationBox' :: forall model m t. GonimoM model t m => Maybe InvitationSent -> m ()
 confirmationBox' Nothing = pure ()
+confirmationBox' (Just SentWhatsApp) = pure () -- We don't know whether we actually sent anything.
+confirmationBox' (Just SentTelegram) = pure () -- We don't know whether we actually sent anything.
 confirmationBox' (Just sendMethod) = do
   elClass "div" "alert alert-success" $ do
     case sendMethod of
-      SentWhatsApp -> el "strong" $ trText Sent_WhatsApp
-      SentTelegram -> el "strong" $ trText Sent_Telegram
+      SentWhatsApp -> el "strong" $ trText Sent_WhatsApp -- Not reached
+      SentTelegram -> el "strong" $ trText Sent_Telegram -- Not reached
       SentCopy     -> el "strong" $ trText Sent_Copy
       SentRefresh  -> el "strong" $ trText Sent_Refresh
       SentEmail    -> el "strong" $ trText Sent_Email
