@@ -1,16 +1,17 @@
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 -- SocketAPI/DB Translations ...
 module Gonimo.Server.Db.IsDb where
 
+import           Control.Monad.State.Strict         (StateT (..))
 import           Database.Persist.Sql
-import           Control.Monad.State.Strict (StateT(..))
 
-import Gonimo.SocketAPI.Types as API
-import Gonimo.Db.Entities as Db
+import           Gonimo.Db.Entities                 as Db
+import           Gonimo.SocketAPI.Invitation.Legacy as API
+import           Gonimo.SocketAPI.Types             as API
 
 -- | Types that have a representation in the db.
 class IsDbType apiType where

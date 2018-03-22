@@ -5,27 +5,28 @@ module Gonimo.Client.Invite.UI where
 
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.IO.Class        (liftIO)
-import           Data.Maybe                    (maybe)
-import           Data.Text                     (Text)
-import qualified Data.Text.Encoding            as T
-import qualified GHCJS.DOM.Element             as Element
-import           Network.HTTP.Types            (urlEncode)
+import           Control.Monad.IO.Class             (liftIO)
+import           Data.Maybe                         (maybe)
+import           Data.Text                          (Text)
+import qualified Data.Text.Encoding                 as T
+import qualified GHCJS.DOM.Element                  as Element
+import           Network.HTTP.Types                 (urlEncode)
 import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.App.Types       as App
-import           Gonimo.Client.Environment     (HasEnvironment)
+import qualified Gonimo.Client.App.Types            as App
+import           Gonimo.Client.Environment          (HasEnvironment)
 import           Gonimo.Client.Invite.Internal
 import           Gonimo.Client.Invite.UI.I18N
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import qualified Gonimo.Client.Settings        as Settings
+import qualified Gonimo.Client.Settings             as Settings
 import           Gonimo.Client.Util
 import           Gonimo.I18N
-import qualified Gonimo.SocketAPI              as API
-import           Gonimo.SocketAPI.Types        (InvitationId)
-import qualified Gonimo.SocketAPI.Types        as API
-import           Gonimo.Types                  (InvitationDelivery (..))
+import qualified Gonimo.SocketAPI                   as API
+import           Gonimo.SocketAPI.Invitation.Legacy (Invitation,
+                                                     InvitationDelivery (..),
+                                                     InvitationId,
+                                                     SendInvitation (..))
 
 ui :: forall model m t. (HasEnvironment (model t), GonimoM model t m) => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
@@ -169,7 +170,7 @@ copyClipboardScript = el "script" $ text $
     <> "};\n"
 
 emailWidget :: forall model t m. GonimoM model t m
-  => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, API.Invitation))
+  => Event t API.ServerResponse -> Dynamic t (Maybe (InvitationId, Invitation))
   -> m (Event t [API.ServerRequest])
 emailWidget _ invData = mdo
     req <- elClass "div" "mail-form" $ do
@@ -191,7 +192,7 @@ emailWidget _ invData = mdo
     buildRequest clicked addr =
       let
         makeReqs mId email = maybe [] (:[])
-          $ API.ReqSendInvitation <$> (API.SendInvitation <$> mId <*> Just (EmailInvitation email))
+          $ API.ReqSendInvitation <$> (SendInvitation <$> mId <*> Just (EmailInvitation email))
         mInvId = fmap fst <$> current invData
         invAddr = (,) <$> mInvId <*> addr
       in
@@ -199,7 +200,7 @@ emailWidget _ invData = mdo
 
     sendEmailBtn = makeClickable . elAttr' "div" (addBtnAttrs "input-btn mail") $ trText SEND
 
-    -- invSent :: Event t (Maybe API.SendInvitation)
+    -- invSent :: Event t (Maybe SendInvitation)
     -- invSent = push (\r -> pure $ case r of
     --                                API.ResSentInvitation inv -> Just (Just inv)
     --                                _ -> Nothing
@@ -210,5 +211,6 @@ emailWidget _ invData = mdo
     --     elAttr "div" ("class" =: "alert alert-success") $
     --       text $ "e-mail successfully sent to: " <> getAddr inv
     --   where
-    --     getAddr (API.SendInvitation _ (EmailInvitation addr)) = addr
+    --     getAddr (SendInvitation _ (EmailInvitation addr)) = addr
     --     getAddr _ = "nobody"
+

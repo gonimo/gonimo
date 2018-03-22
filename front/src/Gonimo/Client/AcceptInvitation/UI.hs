@@ -19,9 +19,8 @@ import           Gonimo.Client.Account.API              (ClaimedInvitations,
 import qualified Gonimo.Client.Account.API              as Account
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
-import           Gonimo.SocketAPI.Types                 (InvitationInfo (..),
-                                                         InvitationReply (..))
-import           Gonimo.Types                           (InvitationSecret)
+import           Gonimo.SocketAPI.Invitation.Legacy     (InvitationInfo (..),
+                                                         InvitationReply (..), InvitationSecret)
 import qualified Gonimo.Types                           as Gonimo
 
 

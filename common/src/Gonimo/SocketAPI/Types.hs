@@ -7,13 +7,14 @@ module Gonimo.SocketAPI.Types where
 
 import           Data.Aeson.Types (FromJSON, ToJSON (..), defaultOptions,
                                    genericToEncoding)
-import           Data.Int         (Int64)
 import           Data.Maybe       (fromMaybe)
 import           Data.Text        (Text)
 import           Data.Time        (UTCTime)
 import           GHC.Generics
 
 import           Gonimo.Types
+import           Gonimo.SocketAPI.Internal
+import           Gonimo.SocketAPI.Invitation.Internal
 
 
 data AuthData = AuthData {
@@ -26,28 +27,6 @@ instance FromJSON AuthData
 instance ToJSON AuthData where
   toEncoding = genericToEncoding defaultOptions
 
-
-data SendInvitation = SendInvitation InvitationId InvitationDelivery deriving (Eq, Ord, Generic, Show)
-instance FromJSON SendInvitation
-instance ToJSON SendInvitation where
-  toEncoding = genericToEncoding defaultOptions
-
-
-data InvitationInfo = InvitationInfo {
-    invitationInfoFamily        :: !FamilyName
-  , invitationInfoSendingDevice :: !Text
-  , invitationInfoSendingUser   :: !(Maybe Text)
-  } deriving (Generic, Show)
-
-instance FromJSON InvitationInfo
-instance ToJSON InvitationInfo where
-  toEncoding = genericToEncoding defaultOptions
-
-data InvitationReply = InvitationAccept | InvitationReject deriving (Generic, Show, Eq, Ord)
-
-instance FromJSON InvitationReply
-instance ToJSON InvitationReply where
-  toEncoding = genericToEncoding defaultOptions
 
 data DeviceInfo = DeviceInfo
   { deviceInfoName :: !Text
@@ -115,8 +94,6 @@ instance ToJSON Message where
 
 -- For now, just copied Db types:
 
-type DbKey = Int64
-
 -- Account:
 newtype Account = Account {accountCreated :: UTCTime} deriving (Generic)
 newtype AccountId = AccountId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
@@ -147,20 +124,6 @@ newtype FamilyId = FamilyId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, To
 
 -- Invitation:
 
-data Invitation
-  = Invitation { invitationSecret     :: !Secret
-               , invitationFamilyId   :: !FamilyId
-               , invitationCreated    :: !UTCTime
-               , invitationDelivery   :: !InvitationDelivery
-               , invitationSenderId   :: !DeviceId
-               , invitationReceiverId :: !(Maybe AccountId)
-               }
-  deriving (Show, Generic, Eq, Ord)
-
-instance FromJSON Invitation
-instance ToJSON Invitation
-
-newtype InvitationId = InvitationId DbKey deriving (Show, Generic, Eq, Ord, FromJSON, ToJSON)
 
 
 -- Family Account:

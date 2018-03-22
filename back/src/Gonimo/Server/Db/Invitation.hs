@@ -4,20 +4,24 @@
 module Gonimo.Server.Db.Invitation (insert, get, claim, delete, getBySecret, updateDelivery) where
 
 
-import           Control.Monad.IO.Class          (MonadIO)
-import           Control.Monad.Trans.Reader      (ReaderT (..))
-import qualified Database.Persist.Class          as Db
-import           Database.Persist.Sql            (SqlBackend)
-import           Database.Persist                (Entity(..))
-import           Data.Bifunctor                  (bimap)
-import           Control.Monad.Catch  as X (MonadThrow (..))
+import           Control.Monad.Catch                as X (MonadThrow (..))
+import           Control.Monad.IO.Class             (MonadIO)
+import           Control.Monad.Trans.Reader         (ReaderT (..))
+import           Data.Bifunctor                     (bimap)
+import           Database.Persist                   (Entity (..))
+import qualified Database.Persist.Class             as Db
+import           Database.Persist.Sql               (SqlBackend)
 
-import           Gonimo.Database.Effects.Servant as Db
-import qualified Gonimo.Db.Entities              as Db
+import           Gonimo.Database.Effects.Servant    as Db
+import qualified Gonimo.Db.Entities                 as Db
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error
-import           Gonimo.SocketAPI.Types          as API
-import           Gonimo.Types.Extended           (Secret, InvitationDelivery(..))
+import           Gonimo.SocketAPI.Invitation.Legacy (Invitation,
+                                                     InvitationDelivery (..),
+                                                     InvitationId)
+import qualified Gonimo.SocketAPI.Invitation.Legacy as API
+import           Gonimo.SocketAPI.Types             as API
+import           Gonimo.Types                       (Secret)
 
 
 

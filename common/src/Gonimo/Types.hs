@@ -67,11 +67,6 @@ instance ToJSON Secret where
   toJSON (Secret bs) = String . decodeUtf8 . Base64.encode $ bs
   toEncoding (Secret bs) = toEncoding $ (decodeUtf8 . Base64.encode) bs
 
--- | TODO: More type safety for InvitationSecret, roadmap:
---   1. [x] Introduce type synonym InvitationSecret
---   2. [ ] Use InvitationSecret everywhere instead of Secret (where applicable)
---   3. [ ] Make it a newtype and fix breaking code
-type InvitationSecret = Secret
 
 -- Other auth methods might be added later on, like oauth bearer tokens:
 data AuthToken = GonimoSecret Secret
@@ -94,7 +89,7 @@ instance ToJSON Coffee where
 data FamilyName
   = FamilyName { familyMemberName :: !Text
                , familyNameName :: !Text
-               } deriving (Show, Generic, Eq)
+               } deriving (Show, Generic, Eq, Ord)
 
 parseFamilyName :: Text -> FamilyName
 parseFamilyName t =
@@ -142,17 +137,3 @@ instance ToJSON FamilyName where
 
 --------------------------------------------------
 
-type EmailAddress = Text
-
-data InvitationDelivery = EmailInvitation EmailAddress
-                        | OtherDelivery
-                        deriving (Read, Show, Eq, Ord, Generic)
-
-instance FromJSON InvitationDelivery
-
-instance ToJSON InvitationDelivery where
-  toJSON = genericToJSON defaultOptions
-  toEncoding = genericToEncoding defaultOptions
-
--- | Invitation code data type for use in code based invitation.
-newtype InvitationCode = InvitationCode Text deriving (Show, Read, FromJSON, ToJSON, Eq, Ord)

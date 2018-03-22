@@ -17,28 +17,28 @@ module Gonimo.Client.Account ( -- * Interface
                              ) where
 
 
-import qualified Data.Aeson                   as Aeson
-import qualified Data.Map                     as Map
-import           Data.Set                     (Set)
-import qualified Data.Set                     as Set
-import qualified Data.Text                    as T
-import qualified Data.Text.Encoding           as T
-import qualified GHCJS.DOM                    as DOM
-import qualified GHCJS.DOM.History            as History
-import qualified GHCJS.DOM.Location           as Location
-import           GHCJS.DOM.Types              (MonadJSM, liftJSM, toJSVal)
-import qualified GHCJS.DOM.Window             as Window
-import           Network.HTTP.Types           (urlDecode)
+import qualified Data.Aeson                         as Aeson
+import qualified Data.Map                           as Map
+import           Data.Set                           (Set)
+import qualified Data.Set                           as Set
+import qualified Data.Text                          as T
+import qualified Data.Text.Encoding                 as T
+import qualified GHCJS.DOM                          as DOM
+import qualified GHCJS.DOM.History                  as History
+import qualified GHCJS.DOM.Location                 as Location
+import           GHCJS.DOM.Types                    (MonadJSM, liftJSM, toJSVal)
+import qualified GHCJS.DOM.Window                   as Window
+import           Network.HTTP.Types                 (urlDecode)
 
-import           Gonimo.Client.Account.API    as API
+import           Gonimo.Client.Account.API          as API
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
-import           Gonimo.Client.Server         (Server)
-import qualified Gonimo.Client.Server         as Server
-import qualified Gonimo.Client.Subscriber.API as Subscriber
+import           Gonimo.Client.Server               (Server)
+import qualified Gonimo.Client.Server               as Server
+import qualified Gonimo.Client.Subscriber.API       as Subscriber
 import           Gonimo.SocketAPI
-import           Gonimo.SocketAPI.Types       (InvitationInfo)
-import           Gonimo.Types                 (InvitationSecret)
+import           Gonimo.SocketAPI.Invitation        (InvitationSecret)
+import           Gonimo.SocketAPI.Invitation.Legacy (InvitationInfo)
 
 
 -- | Simple data type fulfilling our 'HasModel' constraint.

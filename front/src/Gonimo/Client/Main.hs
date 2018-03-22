@@ -12,20 +12,21 @@ import           Control.Concurrent
 import           Control.Lens
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
-import           GHCJS.DOM.Types             (MonadJSM)
-import qualified Language.Javascript.JSaddle as JS
-import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
-                                              webSocketConfig_send)
+import           GHCJS.DOM.Types                    (MonadJSM)
+import qualified Language.Javascript.JSaddle        as JS
+import           Reflex.Dom.Core                    hiding
+                                                     (webSocketConfig_reconnect,
+                                                     webSocketConfig_send)
 
-import qualified Gonimo.Client.Account       as Account
-import           Gonimo.Client.App           as App
-import qualified Gonimo.Client.Auth          as Auth
-import           Gonimo.Client.Prelude       hiding (app)
-import qualified Gonimo.Client.Server        as Server
-import qualified Gonimo.Client.Settings      as Settings
-import qualified Gonimo.Client.Subscriber    as Subscriber
-import           Gonimo.Types                (InvitationSecret)
-import qualified Gonimo.Client.Environment    as Environment
+import qualified Gonimo.Client.Account              as Account
+import           Gonimo.Client.App                  as App
+import qualified Gonimo.Client.Auth                 as Auth
+import qualified Gonimo.Client.Environment          as Environment
+import           Gonimo.Client.Prelude              hiding (app)
+import qualified Gonimo.Client.Server               as Server
+import qualified Gonimo.Client.Settings             as Settings
+import qualified Gonimo.Client.Subscriber           as Subscriber
+import           Gonimo.SocketAPI.Invitation.Legacy (InvitationSecret)
 
 
 -- | Configuration coming from the outside.

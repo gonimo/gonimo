@@ -5,11 +5,12 @@ Copyright   : (c) Robert Klotzner, 2018
 -}
 module Gonimo.Client.Account.API where
 
-import           Data.Map               (Map)
+import           Data.Map                           (Map)
 
 import           Gonimo.Client.Prelude
-import           Gonimo.SocketAPI.Types (InvitationInfo, InvitationReply)
-import           Gonimo.Types           (InvitationSecret)
+import           Gonimo.SocketAPI.Invitation        (InvitationReply,
+                                                     InvitationSecret)
+import           Gonimo.SocketAPI.Invitation.Legacy (InvitationInfo)
 
 
 

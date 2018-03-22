@@ -6,20 +6,22 @@ module Gonimo.Client.Invite.Internal where
 
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Fix         (MonadFix)
-import qualified Data.Aeson                as Aeson
-import qualified Data.ByteString.Lazy      as BL
-import           Data.Default              (Default (..))
+import           Control.Monad.Fix                  (MonadFix)
+import qualified Data.Aeson                         as Aeson
+import qualified Data.ByteString.Lazy               as BL
+import           Data.Default                       (Default (..))
 import           Data.Monoid
-import           Data.Text                 (Text)
-import qualified Data.Text.Encoding        as T
-import           Network.HTTP.Types        (urlEncode)
+import           Data.Text                          (Text)
+import qualified Data.Text.Encoding                 as T
+import           Network.HTTP.Types                 (urlEncode)
 import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.Environment as Env
-import qualified Gonimo.SocketAPI          as API
-import           Gonimo.SocketAPI.Types    (FamilyId, InvitationId)
-import qualified Gonimo.SocketAPI.Types    as API
+import qualified Gonimo.Client.Environment          as Env
+import qualified Gonimo.SocketAPI                   as API
+import           Gonimo.SocketAPI.Invitation        (InvitationId)
+import           Gonimo.SocketAPI.Invitation.Legacy (Invitation(..))
+import           Gonimo.SocketAPI.Types             (FamilyId)
+
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -32,7 +34,7 @@ data Config t
            }
 
 data Invite t
-  = Invite { _invitation :: Dynamic t (Maybe (InvitationId, API.Invitation))
+  = Invite { _invitation :: Dynamic t (Maybe (InvitationId, Invitation))
            , _request    :: Event t [ API.ServerRequest ]
            , _uiGoBack   :: Event t ()
            , _uiDone     :: Event t()
@@ -50,7 +52,7 @@ type HasModel model t = Env.HasEnvironment (model t)
 
 invite :: forall model t m. (MonadHold t m, MonadFix m, Reflex t, HasModel model t)
   => model t -> Config t -> m (Invite t)
-invite model config = mdo
+invite _ config = mdo
   let
     currentSelected = current (config^.configSelectedFamily)
     createOnAuth = push (\() -> do
@@ -80,10 +82,10 @@ invite model config = mdo
 getBaseLink :: HasModel model t => model t -> Text
 getBaseLink model = model ^. Env.httpProtocol <> model ^. Env.frontendHost <> model ^. Env.frontendPath
 
-makeInvitationLink :: Text -> API.Invitation -> Text
+makeInvitationLink :: Text -> Invitation -> Text
 makeInvitationLink baseURL inv =
   let
-    encodedSecret = T.decodeUtf8 .  urlEncode True . BL.toStrict . Aeson.encode . API.invitationSecret $ inv
+    encodedSecret = T.decodeUtf8 .  urlEncode True . BL.toStrict . Aeson.encode . invitationSecret $ inv
   in
     baseURL <> "?" <> invitationQueryParam <> "=" <> encodedSecret
 
@@ -132,7 +134,7 @@ configCreateInvitation f config' = (\configCreateInvitation' -> config' { _confi
 
 -- Lenses for Invite t:
 
-invitation :: Lens' (Invite t) (Dynamic t (Maybe (InvitationId, API.Invitation)))
+invitation :: Lens' (Invite t) (Dynamic t (Maybe (InvitationId, Invitation)))
 invitation f invite' = (\invitation' -> invite' { _invitation = invitation' }) <$> f (_invitation invite')
 
 request :: Lens' (Invite t) (Event t [ API.ServerRequest ])
