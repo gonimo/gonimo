@@ -63,6 +63,7 @@ data Invitation
                , _delivery   :: !InvitationDelivery
                , _senderId   :: !DeviceId
                , _receiverId :: !(Maybe AccountId)
+               , _code       :: !(Maybe InvitationCode)
                }
   deriving (Show, Generic, Eq, Ord)
 
