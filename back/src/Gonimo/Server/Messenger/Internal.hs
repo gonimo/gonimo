@@ -1,7 +1,7 @@
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TemplateHaskell       #-}
 
 module Gonimo.Server.Messenger.Internal where
 
@@ -19,7 +19,8 @@ import           Data.Set                  (Set)
 import qualified Data.Set                  as Set
 
 import           Control.Concurrent.STM    (STM)
-import           Gonimo.SocketAPI.Types    hiding (FromId, ToId, Message, deviceId)
+import           Gonimo.SocketAPI.Types    hiding (FromId, Message, ToId,
+                                            deviceId)
 import qualified Gonimo.SocketAPI.Types    as API
 import           Gonimo.Types              (DeviceType (..), Secret)
 
@@ -32,15 +33,15 @@ data Message
   | MessageSendMessage !FromId !Secret API.Message
 
 data Receiver
-  = Receiver { _receiverSend :: !(Message -> IO ())
-             , _receiverType :: !DeviceType
+  = Receiver { _receiverSend   :: !(Message -> IO ())
+             , _receiverType   :: !DeviceType
              , _receiverFamily :: !(Maybe FamilyId)
              }
 $(makeLenses ''Receiver)
 
 data Messenger
   = Messenger { _messengerReceivers :: Map DeviceId Receiver
-              , _messengerFamilies :: Map FamilyId (Set DeviceId)
+              , _messengerFamilies  :: Map FamilyId (Set DeviceId)
               }
 $(makeLenses ''Messenger)
 
