@@ -6,22 +6,23 @@ module Gonimo.Client.Invite.Internal where
 
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Fix         (MonadFix)
-import qualified Data.Aeson                as Aeson
-import qualified Data.ByteString.Lazy      as BL
-import           Data.Default              (Default (..))
+import           Control.Applicative         ((<|>))
+import           Control.Monad.Fix           (MonadFix)
+import qualified Data.Aeson                  as Aeson
+import qualified Data.ByteString.Lazy        as BL
+import           Data.Default                (Default (..))
 import           Data.Monoid
-import           Data.Text                 (Text)
-import qualified Data.Text.Encoding        as T
-import           Network.HTTP.Types        (urlEncode)
+import           Data.Text                   (Text)
+import qualified Data.Text.Encoding          as T
 import           Language.Javascript.JSaddle
 import           Language.Javascript.JSaddle.Value
+import           Network.HTTP.Types          (urlEncode)
 import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.Environment as Env
-import qualified Gonimo.SocketAPI          as API
-import           Gonimo.SocketAPI.Types    (FamilyId, InvitationId)
-import qualified Gonimo.SocketAPI.Types    as API
+import qualified Gonimo.Client.Environment   as Env
+import qualified Gonimo.SocketAPI            as API
+import           Gonimo.SocketAPI.Types      (FamilyId, InvitationId)
+import qualified Gonimo.SocketAPI.Types      as API
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -150,9 +151,11 @@ uiDone f invite' = (\uiDone' -> invite' { _uiDone = uiDone' }) <$> f (_uiDone in
 shareLink :: (MonadJSM m, MonadPlus m, MonadJSM m') => m (Text -> m' ())
 shareLink = do
   nav    <- liftJSM $ jsg ("navigator" :: Text)
-  mShare <- liftJSM $ maybeNullOrUndefined =<< nav ! ("share" :: Text)
-  case mShare of
-    Nothing    -> mzero
+  win    <- liftJSM $ jsg ("window"    :: Text)
+  mNativeShare      <- liftJSM $ maybeNullOrUndefined =<< nav ! ("share"        :: Text)
+  mAndroidShare     <- liftJSM $ maybeNullOrUndefined =<< win ! ("androidShare" :: Text)
+  case mNativeShare <|> mAndroidShare of
+    Nothing     -> mzero
     Just share' ->
       let shareFunc linkUrl = void $ liftJSM $ do
             o <- obj
