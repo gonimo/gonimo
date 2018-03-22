@@ -31,32 +31,32 @@ module Gonimo.Server.Config (
   , generateFamilyName
   , getPredicatePool
   , getFrontendURL
-  , generateInvitationCode
+  , forkIO
+  , forkIO_
   -- , timeout
   ) where
 
 
-import qualified Codec.Binary.Base32            as Base32
+import qualified Control.Concurrent             as Concurrent
 import           Control.Concurrent.STM         (STM)
 import           Control.Concurrent.STM         (TVar)
 import qualified Control.Concurrent.STM         as STM
-
+import           Control.Monad
 import           Control.Monad.IO.Class         (liftIO)
-import           Control.Monad.Logger           (Loc, LogSource, LogLevel, LogStr)
+import           Control.Monad.Logger           (Loc, LogLevel, LogSource,
+                                                 LogStr)
 import           Control.Monad.Reader           (MonadReader, ask)
 
 
-import           Control.Monad.Trans.Reader     (ReaderT(..))
+import           Control.Monad.Trans.Reader     (ReaderT (..))
 
 import           Data.ByteString                (ByteString)
 import           Data.Pool                      (Pool)
-import qualified Data.Text                      as T
-import qualified Data.Text.Encoding             as T
 import           Data.Time.Clock                (UTCTime)
 import           Database.Persist.Sql           (SqlBackend)
 import           Database.Persist.Sql           (runSqlPool)
 import           Gonimo.Types                   (FamilyName (..),
-                                                 InvitationCode (..), Secret (..))
+                                                 Secret (..))
 import           Network.Mail.Mime              (Mail)
 import           System.Random                  (StdGen)
 #ifndef DEVELOPMENT
@@ -64,13 +64,13 @@ import           Network.Mail.SMTP              (sendMail)
 #endif
 import           Control.Concurrent.STM.TVar    (readTVar, writeTVar)
 
+import           Control.Lens                   (makeClassy, view, (^.))
+import           Control.Monad.RIO
 import           Crypto.Classes.Exceptions      (genBytes)
 import           Crypto.Random                  (SystemRandom)
 import           Data.Text                      (Text)
 import qualified Data.Time.Clock                as Clock
 import           System.Random                  (getStdRandom)
-import           Control.Lens (view, makeClassy, (^.))
-import           Control.Monad.RIO
 
 import           Gonimo.Server.Messenger        (MessengerVar)
 import           Gonimo.Server.NameGenerator    (FamilyNames, Predicates)
@@ -180,13 +180,12 @@ generateFamilyName = do
   Gen.generateFamilyName preds fNames
 
 
--- | Generate a random invitation code.
---
---   An Invitation code is just Text consisting of 6 characters. (Base32 characters)
-generateInvitationCode :: HasConfig env => RIO env InvitationCode
-generateInvitationCode = do
-    bytes <- genRandomBytes 4
-    pure $ makeCode bytes
-  where
-    makeCode :: ByteString -> InvitationCode
-    makeCode = InvitationCode . T.take 6 . T.decodeUtf8 . Base32.encode
+-- | Compatibility functions, until we have an up2date unliftio package.
+forkIO :: RIO env () -> RIO env Concurrent.ThreadId
+forkIO t = do
+  c <- ask
+  liftIO . Concurrent.forkIO $ runRIO c t
+
+-- | Compatibility functions, until we have an up2date unliftio package.
+forkIO_ :: RIO env () -> RIO env ()
+forkIO_ = void . forkIO
