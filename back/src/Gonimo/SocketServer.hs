@@ -33,7 +33,7 @@ import           Gonimo.Constants
 import           Gonimo.Server.Auth               (AuthData (..),
                                                    HasAuthData (..),
                                                    allowedFamilies)
-import qualified Gonimo.Server.Auth               as Auth
+
 import qualified Gonimo.Server.Db.Account         as Account
 import qualified Gonimo.Server.Db.Device          as Device
 import           Gonimo.Server.Config            as Server
@@ -216,7 +216,7 @@ authenticate authRef receiver sub token = do
   authData' <- makeAuthData token
   liftIO . writeIORef authRef $ Just authData'
   -- Evil hack:
-  atomically . Subscriber.processRequest sub $ Set.singleton (ReqGetFamilies (Auth.accountKey authData'))
+  atomically . Subscriber.processRequest sub $ Set.singleton (ReqGetFamilies (authData' ^. authAccountId))
   runAuthServer (pure ()) authRef $ registerReceiverR (authData' ^. authDeviceId) receiver
   pure ResAuthenticated
 
