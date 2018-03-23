@@ -48,6 +48,7 @@ data InvitationSent
   | SentCopy
   | SentRefresh
   | SentEmail
+  | SentShare
 
 
 type HasModel model t = Env.HasEnvironment (model t)

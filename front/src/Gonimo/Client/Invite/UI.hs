@@ -56,20 +56,21 @@ ui loaded config = mdo
     el "h2" . trDynText $ To_your_family <$> App.currentFamilyName loaded
 
     confirmationBox $ leftmost sentEvents
-    invButtons <- elClass "div" "invite-buttons" $ do
-      isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
-      let onMobile mEv = if isMobile then mEv else pure never
-      whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
-      tgClicked <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
-      mShare <- runMaybeT shareLink
+    mShare <- runMaybeT shareLink
+    invButtons <- elClass "div" "invite-buttons" $
       case mShare of
-        Nothing    -> blank
+        Nothing    ->
+          do isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
+             let onMobile mEv = if isMobile then mEv else pure never
+             whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
+             tgClicked <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
+             pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
+
         Just share ->
-          do shareClicked <- button "share"
+          do shareClicked <- shareButton
              performEvent_ $ share
                           <$> tag (current invitationLink) shareClicked
-
-      pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
+             pure [SentShare <$ shareClicked]
 
     el "h3" $ trText Email
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
@@ -121,6 +122,7 @@ confirmationBox' (Just sendMethod) = do
       SentCopy     -> el "strong" $ trText Sent_Copy
       SentRefresh  -> el "strong" $ trText Sent_Refresh
       SentEmail    -> el "strong" $ trText Sent_Email
+      SentShare    -> el "strong" $ trText Sent_Share
 
 awesomeAddon :: forall m t. (DomBuilder t m) =>  Text -> m ()
 awesomeAddon t =
@@ -131,12 +133,28 @@ copyButton :: forall model t m. GonimoM model t m => m (Event t ())
 copyButton = do
   loc <- view Settings.locale
   let title = i18n <$> loc <*> pure Copy_link_to_clipboard
-  let attrs title' = ( "class" =: "input-btn input-btn-right link" <> "title" =: title'
-                       <> "type" =: "button" <> "role" =: "button"
-                       <> "onClick" =: "copyInvitationLink()"
+  let attrs title' = ( "class"   =: "input-btn input-btn-right link"
+                    <> "title"   =: title'
+                    <> "type"    =: "button"
+                    <> "role"    =: "button"
+                    <> "onClick" =: "copyInvitationLink()"
                      )
   makeClickable . elDynAttr' "div" (attrs <$> title) $ blank
 
+shareButton :: forall model t m. GonimoM model t m => m (Event t ())
+shareButton = do
+  loc <- view Settings.locale
+  let title = i18n <$> loc <*> pure Share
+  let attrs title' = ( "class"   =: "input-btn link"
+                    <> "title"   =: title'
+                    <> "type"    =: "button"
+                    <> "role"    =: "button"
+                    <> "aria-label" =: "share-invitation"
+                     )
+  makeClickable . elDynAttr' "div" (attrs <$> title) $
+    el "div" $ do
+      elClass "i" "fa fa-share" blank
+      el "small" $ trText Share
 
 refreshLinkButton :: forall model t m. GonimoM model t m => m (Event t ())
 refreshLinkButton = do
