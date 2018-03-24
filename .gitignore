@@ -27,3 +27,5 @@ testdb-wal
 /front/devRoot
 /release-key.nix
 ghc.nix
+
+result
