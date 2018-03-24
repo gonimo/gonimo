@@ -8,10 +8,12 @@ import           Database.Persist.Sqlite
 import           Gonimo.Server.Subscriber
 import           Network.Wai
 import           Network.Wai.Handler.Warp
+import           Network.Wai.Handler.WarpTLS (runTLS, tlsSettings)
 
 import           Control.Exception             (Exception)
 import           Control.Monad.IO.Class        (MonadIO)
 import           Crypto.Random                 (newGenIO)
+import           Data.Function                 ((&))
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import qualified Data.Text.Encoding            as T
@@ -59,12 +61,15 @@ devMain = do
   , configSubscriber = subscriber'
   , configNames      = names
   , configPredicates = predicates
-  , configFrontendURL = "http://localhost:8081/index.html"
+  , configFrontendURL = "https://0.0.0.0:8081/index.html"
   , configRandom = generator
   }
   checkAndFixCurrentDirectory
-  run 8081 . addDevServer $ serve runGonimoLoggingT config
-
+  runTLS (tlsSettings "./certs/certificate.pem" "./certs/key.pem")
+         (defaultSettings & setPort 8081
+                          & setHost "*"
+         )
+         $ addDevServer (serve runGonimoLoggingT config)
 #else
 
 prodMain :: IO ()

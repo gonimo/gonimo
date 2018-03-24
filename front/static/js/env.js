@@ -6,7 +6,7 @@
 
 window.gonimoEnv = {
     // Whether to use https/wss or not:
-    secure : false,
+    secure : true,
     gonimoBackServer : "localhost:8081",
     gonimoTurnConnection : "turn:gonimo.com:3478",
     gonimoTurnUser : "gonimo",

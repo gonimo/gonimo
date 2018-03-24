@@ -4,9 +4,10 @@
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+import           Data.Function                          ((&))
 import           Network.Wai.Handler.Warp               (defaultSettings,
                                                          runSettings, setPort,
-                                                         setTimeout)
+                                                         setHost, setTimeout)
 import           Network.WebSockets                     (defaultConnectionOptions)
 
 import           Language.Javascript.JSaddle.Run        (syncPoint)
@@ -30,11 +31,13 @@ main = do
 gonimoRun :: Int -> JSM () -> IO ()
 gonimoRun port f = do
     checkAndFixCurrentDirectory
-    runSettings (setPort port (setTimeout 3600 defaultSettings)) =<<
+    runSettings gonimoSettings =<<
         jsaddleOr defaultConnectionOptions (f >> syncPoint) gonimoApp
   where
     gonimoApp = staticPolicy (addBase "../front/static" <|> addSlash) jsaddleApp
-
+    gonimoSettings = defaultSettings & setPort port
+                                     & setTimeout 3600
+                                     & setHost "*"
 
 -- Yeah this is a hack ...
 -- for convenience so we can run gonimo-front both in gonimo and gonimo/front-warp folders.

@@ -170,6 +170,7 @@ executable gonimo-back
                     , gonimo-common
                     , safe
                     , warp
+                    , warp-tls
                     , http-types
   if flag(dev) 
     build-depends:    directory
