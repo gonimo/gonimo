@@ -6,7 +6,7 @@ module Gonimo.Client.Invite.UI where
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.IO.Class        (liftIO)
-import           Data.Maybe                    (maybe)
+import           Data.Maybe                    (maybe, maybeToList)
 import           Data.Text                     (Text)
 import qualified Data.Text.Encoding            as T
 import qualified GHCJS.DOM.Element             as Element
@@ -33,19 +33,19 @@ ui loaded config = mdo
     let baseUrl = getBaseLink model
     (createInvEv, makeCreateInvEv) <- newTriggerEvent
     liftIO $ makeCreateInvEv () -- We want a new invitation every time this widget is rendered
-    invite' <- invite model $ config & configCreateInvitation .~ leftmost (createInvEv : (fmap (const ()) <$> sentEvents))
+    invite' <- invite model $ config & configCreateInvitation .~ leftmost (createInvEv : (void <$> sentEvents))
     let invite'' = invite' & request %~ (mailReqs <>)
 
     let currentInvitation = invite''^.invitation
     let invitationLink = maybe "" (makeInvitationLink baseUrl . snd) <$> currentInvitation
     let escapedLink = T.decodeUtf8 . urlEncode True . T.encodeUtf8 <$> invitationLink
-    let sentEvents = (const SentEmail <$> mailReqs) : reCreateEvents
+    let sentEvents = (SentEmail <$ mailReqs) : reCreateEvents
 
-    linkGotSent <- holdDynUniq False (leftmost [ const True <$> leftmost sentEvents
-                                                       , const False <$> leftmost [ doneClicked
-                                                                                  , backClicked
-                                                                                  ]
-                                                       ]
+    linkGotSent <- holdDynUniq False (leftmost [ True  <$ leftmost sentEvents
+                                               , False <$ leftmost [ doneClicked
+                                                                   , backClicked
+                                                                   ]
+                                               ]
                                              )
     performEvent_ $ (\goForIt -> when goForIt $ Element.scrollIntoView rawDone True) <$> updated linkGotSent
 
@@ -63,8 +63,10 @@ ui loaded config = mdo
           do isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
              let onMobile mEv = if isMobile then mEv else pure never
              whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
-             tgClicked <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
-             pure [const SentWhatsApp <$> whatsAppClicked, const SentTelegram <$> tgClicked]
+             tgClicked       <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
+             pure [ SentWhatsApp <$ whatsAppClicked
+                  , SentTelegram <$ tgClicked
+                  ]
 
         Just share ->
           do shareClicked <- shareButton
@@ -82,7 +84,9 @@ ui loaded config = mdo
           showLinkInput invitationLink
           clicked <- refreshLinkButton
           copyClicked <- copyButton
-          pure [const SentRefresh <$> clicked, const SentCopy <$> copyClicked]
+          pure [ SentRefresh <$ clicked
+               , SentCopy    <$ copyClicked
+               ]
     let reCreateEvents = recreateClicked <> invButtons
 
     el "br" blank
@@ -133,47 +137,44 @@ copyButton :: forall model t m. GonimoM model t m => m (Event t ())
 copyButton = do
   loc <- view Settings.locale
   let title = i18n <$> loc <*> pure Copy_link_to_clipboard
-  let attrs title' = ( "class"   =: "input-btn input-btn-right link"
-                    <> "title"   =: title'
-                    <> "type"    =: "button"
-                    <> "role"    =: "button"
-                    <> "onClick" =: "copyInvitationLink()"
-                     )
+  let attrs title' = "class"   =: "input-btn input-btn-right link"
+                  <> "title"   =: title'
+                  <> "type"    =: "button"
+                  <> "role"    =: "button"
+                  <> "onClick" =: "copyInvitationLink()"
   makeClickable . elDynAttr' "div" (attrs <$> title) $ blank
 
 shareButton :: forall model t m. GonimoM model t m => m (Event t ())
 shareButton = do
   loc <- view Settings.locale
   let title = i18n <$> loc <*> pure Share
-  let attrs title' = ( "class"   =: "input-btn link"
-                    <> "title"   =: title'
-                    <> "type"    =: "button"
-                    <> "role"    =: "button"
-                    <> "aria-label" =: "share-invitation"
-                     )
-  makeClickable . elDynAttr' "div" (attrs <$> title) $
-    el "div" $ do
-      elClass "i" "fa fa-share" blank
-      el "small" $ trText Share
+  let attrs title' = "class"      =: "input-btn share"
+                  <> "title"      =: title'
+                  <> "type"       =: "button"
+                  <> "role"       =: "button"
+                  <> "style"      =: "margin-left:0;"
+                  <> "aria-label" =: "share-invitation"
+
+  makeClickable . elDynAttr' "div" (attrs <$> title) $ blank
 
 refreshLinkButton :: forall model t m. GonimoM model t m => m (Event t ())
 refreshLinkButton = do
   loc <- view Settings.locale
   let title = i18n <$> loc <*> pure Generate_new_link
-  let attrs title' = ( "class" =: "input-btn input-btn-left recreate" <> "title" =: title'
-                       <> "type" =: "button" <> "role" =: "button"
-                     )
-  makeClickable . elDynAttr' "div" (attrs <$> title)  $ blank
+  let attrs title' = "class" =: "input-btn input-btn-left recreate"
+                  <> "title" =: title'
+                  <> "type"  =: "button"
+                  <> "role"  =: "button"
+  makeClickable . elDynAttr' "div" (attrs <$> title) $ blank
 
 showLinkInput :: forall t m. (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m ()
 showLinkInput invitationLink =
   let
-    makeLinkAttrs link' = ( "type" =: "text"
-                            <> "class" =: "mail-input link"
-                            <> "readOnly" =: "true"
-                            <> "id" =: "invitationLinkUrlInput"
-                            <> "value" =: link'
-                          )
+    makeLinkAttrs link' = "type"     =: "text"
+                       <> "class"    =: "mail-input link"
+                       <> "readOnly" =: "true"
+                       <> "id"       =: "invitationLinkUrlInput"
+                       <> "value"    =: link'
   in
     elDynAttr "input" (makeLinkAttrs <$> invitationLink) blank
 
@@ -201,11 +202,11 @@ emailWidget :: forall model t m. GonimoM model t m
   -> m (Event t [API.ServerRequest])
 emailWidget _ invData = mdo
     req <- elClass "div" "mail-form" $ do
-      addrInput <- textInput $ def { _textInputConfig_attributes = (pure $ "placeholder" =: ".."
-                                                                       <> "class" =: "mail-input"
-                                                                   )
-                                   , _textInputConfig_inputType = "email"
-                                   }
+      addrInput <- textInput def { _textInputConfig_attributes =
+                                      pure $ "class"       =: "mail-input"
+                                          <> "placeholder" =: ".."
+                                 , _textInputConfig_inputType = "email"
+                                 }
       let addr = addrInput^.textInput_value
       sendClicked <- sendEmailBtn
       let enterPressed' = enterPressed $ addrInput^.textInput_keypress
@@ -218,7 +219,7 @@ emailWidget _ invData = mdo
     buildRequest :: Event t () -> Behavior t Text -> Event t [API.ServerRequest]
     buildRequest clicked addr =
       let
-        makeReqs mId email = maybe [] (:[])
+        makeReqs mId email = maybeToList
           $ API.ReqSendInvitation <$> (API.SendInvitation <$> mId <*> Just (EmailInvitation email))
         mInvId = fmap fst <$> current invData
         invAddr = (,) <$> mInvId <*> addr
