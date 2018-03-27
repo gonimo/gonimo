@@ -148,7 +148,7 @@ h1{
 	font-family: Raleway-light;
 	text-align:center;
 	color:black;
-	font-size: 36px;
+	font-size: 20px;
 	line-height: 1.1;
 	margin-top: 20px;
 	margin-bottom: 10px;
@@ -160,7 +160,7 @@ h1{
         margin-bottom: 5px;
     }
     h2 {
-        font-size: 20px;
+        font-size: 18px;
     }
     h3 {
         font-size: medium;
@@ -169,6 +169,7 @@ h1{
 
 h2{
 	font-family: Raleway-light;
+	font-size: 18px;
 	text-align:center;
 	color:black;
 	margin-top:unset;
@@ -380,7 +381,7 @@ h3{
 .mail-form{
 	display:inline-block;
 	position:relative;
-	width:75%;
+	width:90%;
 	border-right:none;
 	border-left:none;
 	margin-bottom:20px;
