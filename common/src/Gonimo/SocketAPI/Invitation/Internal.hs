@@ -45,7 +45,11 @@ instance ToJSON SendInvitation where
 
 
 -- | Invitation code data type for use in code based invitation.
-newtype InvitationCode = InvitationCode Text deriving (Show, Read, FromJSON, ToJSON, Eq, Ord)
+data InvitationCode = InvitationCode Text deriving (Show, Read, Eq, Ord, Generic)
+
+instance FromJSON InvitationCode
+instance ToJSON InvitationCode where
+  toEncoding = genericToEncoding defaultOptions
 
 -- | TODO: More type safety for InvitationSecret, roadmap:
 --   1. [x] Introduce type synonym InvitationSecret

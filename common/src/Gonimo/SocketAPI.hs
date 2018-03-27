@@ -117,10 +117,14 @@ data ServerResponse
   | ResGotOnlineDevices         !FamilyId ![(DeviceId, DeviceType)]
   | ResSavedBabyName
 
+  | ResInvitation (ResCRUD InvitationR)
+
+  -- Deprecated March 21th, 2018:
   | ResCreatedInvitation        !(InvitationId, Legacy.Invitation)
   | ResSentInvitation           !Legacy.SendInvitation
   | ResClaimedInvitation        !Secret !Legacy.InvitationInfo
   | ResAnsweredInvitation       !Secret !InvitationReply !(Maybe FamilyId)
+  -- End of deprecation
 
 
     -- | Created 'InvitationCode'.

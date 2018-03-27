@@ -40,6 +40,7 @@ library
                   , Gonimo.Server.Db.Family
                   , Gonimo.Server.Db.Internal
                   , Gonimo.Server.Db.Invitation
+                  , Gonimo.Server.Db.Invitation.Legacy
                   , Gonimo.Server.Db.IsDb
                   , Gonimo.Server.Config
                   , Gonimo.Server.EmailInvitation
@@ -54,6 +55,7 @@ library
                   , Gonimo.Server.Subscriber.Types
                   , Gonimo.SocketServer
                   , Control.Monad.RIO
+                  , Data.IndexedTable
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random

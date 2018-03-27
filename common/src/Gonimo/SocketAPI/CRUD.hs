@@ -1,8 +1,8 @@
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE StandaloneDeriving     #-}
+{-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances   #-}
 {-|
 Module      : Gonimo.SocketAPI.CRUD
 Description : Common CRUD interface for resources.
@@ -19,13 +19,14 @@ module Gonimo.SocketAPI.CRUD ( -- * Types
                              ) where
 
 
-import GHC.Generics (Generic)
+import           GHC.Generics (Generic)
 
 
 data ReqCRUD r = Create (CreateData r)
-               | Read (ReadIdentifier r) (ReadData r)
-               | Update (Identifier r) (UpdateData r)
-               | Delete (Identifier r) deriving Generic
+               | Read (RequestIdentifier r) (ReadData r)
+               | Update (RequestIdentifier r) (UpdateData r)
+               | Delete (RequestIdentifier r)
+               deriving Generic
 
 
 
@@ -40,11 +41,11 @@ data ResCRUD r = Created (Identifier r) (CreatedData r)
 class IsResource r where
   type Identifier r = result | result -> r
 
-  -- | You can override this in order to have a different identifier for reads as for updates/deletes.
-  type ReadIdentifier r :: *
+  -- | You can override this in order to have a different identifier for requests.
+  type RequestIdentifier r :: *
 
   -- | By default this is just the normal 'Identifier'
-  type instance ReadIdentifier r = Identifier r
+  type instance RequestIdentifier r = Identifier r
 
   -- | Data passed to create.
   type CreateData r :: *

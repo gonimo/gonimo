@@ -21,6 +21,7 @@ module Gonimo.Server.Config (
   , HasConfig (..)
   , atomically
   , genRandomBytes
+  , genRandomBytesSTM
   , generateSecret
   , getCurrentTime
   , getMessenger
@@ -63,7 +64,6 @@ import           System.Random                  (StdGen)
 import           Network.Mail.SMTP              (sendMail)
 #endif
 import           Control.Concurrent.STM.TVar    (readTVar, writeTVar)
-
 import           Control.Lens                   (makeClassy, view, (^.))
 import           Control.Monad.RIO
 import           Crypto.Classes.Exceptions      (genBytes)
@@ -71,6 +71,7 @@ import           Crypto.Random                  (SystemRandom)
 import           Data.Text                      (Text)
 import qualified Data.Time.Clock                as Clock
 import           System.Random                  (getStdRandom)
+
 
 import           Gonimo.Server.Messenger        (MessengerVar)
 import           Gonimo.Server.NameGenerator    (FamilyNames, Predicates)
@@ -124,19 +125,19 @@ sendEmail = const $ pure ()
 sendEmail = liftIO . sendMail "localhost"
 #endif
 
--- | Convenient wrapper around 'genBytesSecure' in the 'ServerIO' monad.
+-- | RIO version of genRandomBytesSTM
 genRandomBytes :: HasConfig env => Int -> RIO env ByteString
 genRandomBytes l = do
-    randRef <- view configRandom
-    atomically $ genBytesSecure l randRef
+  env <- ask
+  atomically $ genRandomBytesSTM env l
 
 -- | Generate some random bytes securely.
 -- STM necessary so multiple threads won't return the same secret!
-genBytesSecure :: Int -> TVar SystemRandom -> STM ByteString
-genBytesSecure l randRef = do
-  oldGen <- readTVar randRef
+genRandomBytesSTM :: HasConfig env => env -> Int -> STM ByteString
+genRandomBytesSTM env l  = do
+  oldGen <- readTVar $ env ^. configRandom
   let (r, newGen) = genBytes l oldGen
-  writeTVar randRef newGen -- Probably a problem with threading: https://ghc.haskell.org/trac/ghc/ticket/13751
+  writeTVar (env ^. configRandom) newGen -- Probably a problem with threading: https://ghc.haskell.org/trac/ghc/ticket/13751
   pure r
 
 

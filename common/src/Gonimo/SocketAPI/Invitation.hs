@@ -55,6 +55,10 @@ deriving instance Show (ReqCRUD InvitationR)
 deriving instance Eq (ReqCRUD InvitationR)
 deriving instance Ord (ReqCRUD InvitationR)
 
+deriving instance Show (ResCRUD InvitationR)
+deriving instance Eq (ResCRUD InvitationR)
+deriving instance Ord (ResCRUD InvitationR)
+
 -- | Full 'Invitation' data as retrieved by 'Read'.
 data Invitation
   = Invitation { _secret     :: !InvitationSecret
@@ -80,6 +84,7 @@ data InvitationInfo = InvitationInfo {
     _infoFamily        :: !FamilyName
   , _infoSendingDevice :: !Text
   , _infoSendingUser   :: !(Maybe Text)
+  , _infoSecret        :: !InvitationSecret
   } deriving (Generic, Show, Ord, Eq)
 
 instance FromJSON InvitationInfo
@@ -105,7 +110,7 @@ instance ToJSON ReadBy where
 instance FromJSON ReadBy
 
 -- | Used as 'ReadData', for specifying what view to read.
-data Read = Read
+data Read = ReadFull
           | ReadInfo
           deriving (Generic, Eq, Ord, Show)
 
@@ -114,7 +119,7 @@ instance ToJSON Read where
 instance FromJSON Read
 
 -- | Used as 'DidReadData' in response to the corresponding 'Read' request.
-data DidRead = DidRead Invitation
+data DidRead = DidReadFull Invitation
              | DidReadInfo InvitationInfo
              deriving (Generic, Eq, Ord, Show)
 
@@ -124,6 +129,10 @@ instance FromJSON DidRead
 
 -- | Used as 'UpdateData' for specifying what part of the invitation to update.
 data Update = UpdateDelivery InvitationDelivery
+              -- | Claim an invitation and retrieve the info.
+              --
+              --  This call is mandatory for accessing invitation info for an
+              --  invited device.
             | UpdateReceiver AccountId
             | UpdateCode
             | DeleteCode
@@ -134,7 +143,10 @@ instance ToJSON Update where
 instance FromJSON Update
 
 data Updated = UpdatedDelivery InvitationDelivery
-             | UpdatedReceiver AccountId
+               -- | Update the receiver.
+               --
+               --   The invitation is now claimed and can be accepted or denied.
+             | UpdatedReceiver AccountId InvitationInfo
              | UpdatedCode InvitationCode
              | DeletedCode
              deriving (Generic, Eq, Ord, Show)
@@ -146,7 +158,7 @@ instance FromJSON Updated
 instance IsResource InvitationR where
   -- | For updates and deletes we only accept the id.
   type Identifier InvitationR     = InvitationId
-  type ReadIdentifier InvitationR = ReadBy
+  type RequestIdentifier InvitationR = ReadBy
 
   type CreateData InvitationR     = FamilyId
   type CreatedData InvitationR    = ()

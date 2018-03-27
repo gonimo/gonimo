@@ -37,17 +37,19 @@ class (IsResource r, Functor m) => IsResourceHandler r m where
   --
   --   In some cases one wants to access a resource by some additonal
   --   identifiers than the database id, usually some property contained in the
-  --   resource itself: You can make 'ReadIdentifier' a sum type for this. Note
+  --   resource itself: You can make 'RequestIdentifier' a sum type for this. Note
   --   however, 'handleRead' returns an 'Identifier' not a 'ReadIdentifer',
   --   because other identifiers than the database id are contained in the
   --   actual result.
-  handleRead :: ReadIdentifier r -> ReadData r -> m (Identifier r, DidReadData r)
+  handleRead :: RequestIdentifier r -> ReadData r -> m (Identifier r, DidReadData r)
 
   -- | Handle an update.
-  handleUpdate :: Identifier r -> UpdateData r -> m (UpdatedData r)
+  handleUpdate :: RequestIdentifier r -> UpdateData r -> m (Identifier r, UpdatedData r)
 
   -- | Handle a delete, no return value expected.
-  handleDelete :: Identifier r -> m ()
+  handleDelete :: RequestIdentifier r -> m (Identifier r)
+
+  getRequestIdentifiers :: Identifier r -> m (RequestIdentifier r)
 
 
 -- | Handle a generic CRUD request.
@@ -56,5 +58,5 @@ handleCRUDRequest req =
   case req of
     Create fid           -> uncurry Created <$> handleCreate fid
     Read readId readData -> uncurry DidRead <$> handleRead readId readData
-    Update updId updData -> Updated updId <$> handleUpdate updId updData
-    Delete delId         -> Deleted delId <$ handleDelete delId
+    Update updId updData -> uncurry Updated <$> handleUpdate updId updData
+    Delete delId         -> Deleted         <$> handleDelete delId

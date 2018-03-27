@@ -33,6 +33,8 @@ data ServerError = InvalidAuthToken
                  | TransactionTimeout
                  | SessionInvalid -- There exists a session for this device, but it does not match
                  | NoActiveSession -- There is no sessino for this device.
+                 | TooManyOpenCodes -- Avoid guessable codes, due to too many taken ones.
+                 | NoSuchInvitationCode -- Thrown if a given code could not be found.
                  | InternalServerError deriving (Generic, Eq, Show, Typeable)
 
 instance Exception ServerError

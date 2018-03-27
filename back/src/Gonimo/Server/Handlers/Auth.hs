@@ -38,7 +38,7 @@ import           Gonimo.Server.Config               as Eff
 import qualified Gonimo.Server.Db.Account           as Account
 import qualified Gonimo.Server.Db.Device            as Device
 import qualified Gonimo.Server.Db.Family            as Family
-import qualified Gonimo.Server.Db.Invitation        as Invitation
+import qualified Gonimo.Server.Db.Invitation.Legacy as Invitation
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
 import           Gonimo.SocketAPI                   (ServerRequest (..))
