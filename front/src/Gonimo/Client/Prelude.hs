@@ -21,7 +21,6 @@ import           GHCJS.DOM.Types            (MonadJSM (..))
 #else
 import           GHCJS.DOM.Types            (MonadJSM)
 #endif
-import           Control.Monad.Reader.Class
 import           Gonimo.Client.Settings     as Settings (HasSettings (..),
                                                          trDynText, trText)
 import           Gonimo.Prelude             as GonimoPrelude
