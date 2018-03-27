@@ -9,6 +9,7 @@ data Message = Invite_More_Devices
              | Done
              | Email
              | Share
+             | SHARE_INVITATION
              | Invitation_Link
              | Sent_WhatsApp -- No longer in use
              | Sent_Telegram -- No longer in use
@@ -30,8 +31,10 @@ data Message = Invite_More_Devices
 instance I18N Message where
     i18n EN_GB SEND = "SEND"
     i18n DE_DE SEND = "SENDEN"
-    i18n EN_GB Share = "Share"
-    i18n DE_DE Share = "Teilen"
+    i18n EN_GB SHARE_INVITATION = "SHARE INVITATION"
+    i18n DE_DE SHARE_INVITATION = "EINLADUNG TEILEN"
+    i18n EN_GB Share = " SHARE"
+    i18n DE_DE Share = " TEILEN"
     i18n EN_GB Invite_More_Devices = "Invite more devices"
     i18n DE_DE Invite_More_Devices = "Lade weitere Geräte ein"
     i18n EN_GB Done = "DONE"

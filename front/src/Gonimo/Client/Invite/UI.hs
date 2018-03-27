@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs               #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Gonimo.Client.Invite.UI where
@@ -57,22 +58,27 @@ ui loaded config = mdo
 
     confirmationBox $ leftmost sentEvents
     mShare <- runMaybeT shareLink
-    invButtons <- elClass "div" "invite-buttons" $
+    invButtons <-
       case mShare of
-        Nothing    ->
-          do isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
-             let onMobile mEv = if isMobile then mEv else pure never
-             whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
-             tgClicked       <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
-             pure [ SentWhatsApp <$ whatsAppClicked
-                  , SentTelegram <$ tgClicked
-                  ]
+        Nothing    -> do
+          isMobile <- (||) <$> getBrowserProperty "mobile" <*> getBrowserProperty "tablet"
+          let onMobile mEv = if isMobile then mEv else pure never
+          if isMobile then el "h3" (trText SHARE_INVITATION) else blank
+          elClass "div" "invite-buttons" $ do
+            whatsAppClicked <- onMobile $ inviteButton "whatsapp" "whatsapp://send?text=" escapedLink
+            tgClicked       <- onMobile $ inviteButton "telegram" "tg://msg?text=" escapedLink
 
-        Just share ->
-          do shareClicked <- shareButton
-             performEvent_ $ share
-                          <$> tag (current invitationLink) shareClicked
-             pure [SentShare <$ shareClicked]
+            pure [ SentWhatsApp <$ whatsAppClicked
+                 , SentTelegram <$ tgClicked
+                 ]
+
+        Just share -> do
+          el "h3" $ trText SHARE_INVITATION
+          elClass "div" "mail-form" $ do
+            shareClicked <- shareButton
+            performEvent_ $ share
+                         <$> tag (current invitationLink) shareClicked
+            pure [SentShare <$ shareClicked]
 
     el "h3" $ trText Email
     mailReqs <- emailWidget (config^.configResponse) currentInvitation
@@ -148,14 +154,16 @@ shareButton :: forall model t m. GonimoM model t m => m (Event t ())
 shareButton = do
   loc <- view Settings.locale
   let title = i18n <$> loc <*> pure Share
-  let attrs title' = "class"      =: "input-btn share"
+  let attrs title' = "class"      =: "input-btn mail"
                   <> "title"      =: title'
                   <> "type"       =: "button"
                   <> "role"       =: "button"
                   <> "style"      =: "margin-left:0;"
                   <> "aria-label" =: "share-invitation"
 
-  makeClickable . elDynAttr' "div" (attrs <$> title) $ blank
+  makeClickable . elDynAttr' "div" (attrs <$> title) $ el "span" $ do
+    elClass "i" "fa fa-share-alt" blank
+    trText Share
 
 refreshLinkButton :: forall model t m. GonimoM model t m => m (Event t ())
 refreshLinkButton = do
