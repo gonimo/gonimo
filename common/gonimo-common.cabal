@@ -65,3 +65,4 @@ library
                       , data-default
                       , generic-deriving
                       , exceptions >= 0.8.3
+                      , mtl

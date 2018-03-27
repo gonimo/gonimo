@@ -18,6 +18,7 @@ module Gonimo.Prelude ( MaybeT(..)
                       , module Generics.Deriving.Base
                       , module Generics.Deriving.Semigroup
                       , module Generics.Deriving.Monoid
+                      , module Control.Monad.Reader.Class
                       ) where
 
 import           Control.Applicative       as Applicative
@@ -40,3 +41,4 @@ import           Generics.Deriving.Semigroup (gsappenddefault)
 import           Generics.Deriving.Monoid  (memptydefault, mappenddefault)
 import           Gonimo.Constants          as Constants
 import           Safe                      as Safe (headMay)
+import           Control.Monad.Reader.Class
