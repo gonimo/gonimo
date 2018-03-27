@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -116,8 +118,9 @@ instance HasReadRequests Resource Request where
                                                   , Read devId DeviceAccountRead
                                                   ]
 
+
 data ReqCRUD r = Create (CreateData r)
-               | Read (ReadIdentifier r) (ReadData r)
+               | Read (RequestIdentifier r) (ReadData r)
                | Update (Identifier r) (UpdateData r)
                | Delete (Identifier r) deriving (Generic)
 
@@ -125,7 +128,7 @@ instance ToJSON (ReqCRUD DeviceR)
 instance FromJSON (ReqCRUD DeviceR)
 
 data ResCRUD r = Created (Identifier r) (CreatedData r)
-               | DidRead (ReadIdentifier r) (DidReadData r)
+               | DidRead (RequestIdentifier r) (DidReadData r)
                | Updated (Identifier r) (UpdatedData r)
                | Deleted (Identifier r)
                deriving Generic
@@ -133,7 +136,8 @@ data ResCRUD r = Created (Identifier r) (CreatedData r)
 instance ToJSON (ResCRUD DeviceR)
 instance FromJSON (ResCRUD DeviceR)
 
-data Request = ReqDevice (ReqCRUD DeviceR) deriving (Generic)
+data Request = ReqDevice (ReqCRUD DeviceR)
+            deriving Generic
              -- | ReqFamily (ReqCRUD FamilyR)
 
 instance ToJSON Request
@@ -149,9 +153,9 @@ class IsResource r where
   type Identifier r :: *
 
   -- | You can override this in order to have a different identifier for reads as for updates/deletes.
-  type ReadIdentifier r :: *
+  type RequestIdentifier r :: *
   -- | By default this is just the normal 'Identifier'
-  type instance ReadIdentifier r = Identifier r
+  type instance RequestIdentifier r = Identifier r
 
   type CreateData r :: *
   type CreatedData r :: *
