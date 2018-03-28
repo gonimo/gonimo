@@ -8,12 +8,15 @@ import           Data.Monoid
 data Message = Invite_More_Devices
              | Done
              | Email
+             | Share
+             | SHARE_INVITATION
              | Invitation_Link
              | Sent_WhatsApp -- No longer in use
              | Sent_Telegram -- No longer in use
              | Sent_Copy
              | Sent_Refresh
              | Sent_Email
+             | Sent_Share
              | To_your_family Text
              | Open_invitation_link_on_another_device_and_press_Accept
              | Make_the_other_device_a_parent_station
@@ -28,8 +31,12 @@ data Message = Invite_More_Devices
 instance I18N Message where
     i18n EN_GB SEND = "SEND"
     i18n DE_DE SEND = "SENDEN"
+    i18n EN_GB SHARE_INVITATION = "SHARE INVITATION"
+    i18n DE_DE SHARE_INVITATION = "EINLADUNG TEILEN"
+    i18n EN_GB Share = " SHARE"
+    i18n DE_DE Share = " TEILEN"
     i18n EN_GB Invite_More_Devices = "Invite more devices"
-    i18n DE_DE Invite_More_Devices = "Lade weitere Geräte"
+    i18n DE_DE Invite_More_Devices = "Lade weitere Geräte ein"
     i18n EN_GB Done = "DONE"
     i18n DE_DE Done = "FERTIG"
     i18n EN_GB Email = "EMAIL"
@@ -46,6 +53,8 @@ instance I18N Message where
     i18n DE_DE Sent_Refresh  = "Neue Einladung generiert!"
     i18n EN_GB Sent_Email    = "Sent email!"
     i18n DE_DE Sent_Email    = "Email versendet!"
+    i18n EN_GB Sent_Share    = "Invitation link shared!"
+    i18n DE_DE Sent_Share    = "Einladung geteilt!"
     i18n EN_GB (To_your_family familyName) = "to your family '"<> familyName<>"'."
     i18n DE_DE (To_your_family familyName) = "in deine Familie '"<> familyName<>"' ein."
     i18n EN_GB Open_invitation_link_on_another_device_and_press_Accept

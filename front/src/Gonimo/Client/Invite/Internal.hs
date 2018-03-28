@@ -6,20 +6,24 @@ module Gonimo.Client.Invite.Internal where
 
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Fix         (MonadFix)
-import qualified Data.Aeson                as Aeson
-import qualified Data.ByteString.Lazy      as BL
-import           Data.Default              (Default (..))
+import           Control.Monad.IO.Class      (liftIO)
+import           Control.Monad.Fix           (MonadFix)
+import qualified Data.Aeson                  as Aeson
+import qualified Data.ByteString.Lazy        as BL
+import           Data.Default                (Default (..))
 import           Data.Monoid
-import           Data.Text                 (Text)
-import qualified Data.Text.Encoding        as T
-import           Network.HTTP.Types        (urlEncode)
+import           Data.Text                   (Text)
+import qualified Data.Text.IO                as T
+import qualified Data.Text.Encoding          as T
+import           Language.Javascript.JSaddle
+import           Language.Javascript.JSaddle.Value
+import           Network.HTTP.Types          (urlEncode)
 import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.Environment as Env
-import qualified Gonimo.SocketAPI          as API
-import           Gonimo.SocketAPI.Types    (FamilyId, InvitationId)
-import qualified Gonimo.SocketAPI.Types    as API
+import qualified Gonimo.Client.Environment   as Env
+import qualified Gonimo.SocketAPI            as API
+import           Gonimo.SocketAPI.Types      (FamilyId, InvitationId)
+import qualified Gonimo.SocketAPI.Types      as API
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
@@ -44,6 +48,7 @@ data InvitationSent
   | SentCopy
   | SentRefresh
   | SentEmail
+  | SentShare
 
 
 type HasModel model t = Env.HasEnvironment (model t)
@@ -143,5 +148,25 @@ uiGoBack f invite' = (\uiGoBack' -> invite' { _uiGoBack = uiGoBack' }) <$> f (_u
 
 uiDone :: Lens' (Invite t) (Event t ())
 uiDone f invite' = (\uiDone' -> invite' { _uiDone = uiDone' }) <$> f (_uiDone invite')
+
+-- Browser capabilities
+shareLink :: (MonadJSM m, MonadPlus m, MonadJSM m') => m (Text -> m' ())
+shareLink = do
+  nav    <- liftJSM $ jsg ("navigator" :: Text)
+  win    <- liftJSM $ jsg ("window"    :: Text)
+  mNativeShare      <- liftJSM $ maybeNullOrUndefined =<< nav ! ("share"        :: Text)
+  mAndroidShare     <- liftJSM $ maybeNullOrUndefined =<< win ! ("androidShare" :: Text)
+  case (mNativeShare, mAndroidShare) of
+    (Just _share, _) ->
+      let shareFunc linkUrl = void $ liftJSM $ do
+            url <- obj
+            (url <# ("url" :: Text)) linkUrl
+            nav ^. js1 ("share" :: Text) url
+       in pure shareFunc
+    (_, Just share) ->
+      let shareFunc linkUrl = void $ liftJSM $
+            share ^. js1 ("share" :: Text) linkUrl
+       in pure shareFunc
+    _ -> mzero
 
 
