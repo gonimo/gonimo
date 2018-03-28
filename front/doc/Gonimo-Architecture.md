@@ -152,18 +152,89 @@ type HasModel model = (Server.HasServer model, Auth.HasAuth model)
 
 It does not only depend on the server but also
 on
-[Auth](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Auth.hs),
+[Auth](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Auth/API.hs#L15),
 which provides an event that signals successful authentication.
 
 ## The Config
 
-In addition to the model, a component might define some component specific configuration data type. E.g. some events triggering the component to do some work.
+In addition to the model, a component might define some component specific
+configuration data type. E.g. some events triggering the component to do some
+work. In our example the [Account.Config](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account/API.hs#L19) looks like this:
+
+```haskell
+data Config t
+  = Config { -- | Claim an invitation by providing it's secret.
+             _onClaimInvitation :: Event t [InvitationSecret]
+             -- | Answer an invitation. (Decline/accept it.)
+           , _onAnswerInvitation :: Event t [(InvitationSecret, InvitationReply)]
+} deriving (Generic)
+```
+
+So Account can be told to claim an invitation and to respond to an invitation. This is the public facing API of `Account`, depending components can ask `Account` to claim an invitation by providing a config type that fullfills [Account.HasConfig](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account/API.hs#L60). At this point it should be noted, that in this architecture modules are intended to be imported qualifed.
+
 ## The ModelConfig
 
+So a component takes optionally a `Model` and a `Config`, the [ModelConfig](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account.hs#L51) or rather some type fulfilling [HasModelConfig](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account.hs#L63) is one of two optional return values of the components [make](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account.hs#L72) function:
+
+```haskell
+-- | Example datatype fulfilling 'HasModelConfig'.
+data ModelConfig t
+  = ModelConfig { -- | For subscribing important commands.
+                  --
+                  --   We subscribe important commands to ensure they will be
+                  --   delivered even on connection problems.
+                  _subscriberConfig :: Subscriber.Config t
+
+                  -- | Commands going to the server.
+                , _serverConfig     :: Server.Config t
+                }
+
+-- | Configurations we provide for the model as inputs.
+
+type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfig c)
+```
+
+The `ModelConfig` consists of `Config` values for components `Account` depends on. In our case it depends on some [Subscriber.Config](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Subscriber/API.hs#L18) and [Server.Config](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Server.hs#L28).
+
+Which means that our `Account` will be able to send messages to the server and
+will be able to tell `Subscriber` to subscribe to changes on the server.
+
+For other components, that in turn depend on `Account`, they will require `Account.Config` on their `ModelConfig`, in our case this is currently [UI code](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/AcceptInvitation/UI.hs#L30).
+
+So to recap, 'Config' is your components configuration, `ModelConfig` is the configuration you provide for your dependencies. You take a config, you provide a `ModelConfig`.
+
+## The Component Type itself
+
+In addition to a `ModelConfig` triggering actions in other components, a
+component will usually provide some information/functionality which then in turn
+will serve as part of the model for other components. This data is usually named
+like the component, in our case
+[Account](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account/API.hs#L29):
+
+```haskell
+-- | Account data.
+--   All data belonging to the current active account should go here. Like
+--   claimed invitations or user name, ...
+data Account t
+  = Account { -- | Invitations currently claimed by the account. (At the moment,
+              --   just the ones claimed in this session.)
+              _claimedInvitations :: Dynamic t ClaimedInvitations
+}
+
+type ClaimedInvitations = Map InvitationSecret InvitationInfo
+
+```
+
+So our account provides a dynamic Map consisting of claimed invitations, that
+need to be responded to. Components needing this information, will simply have
+a [HasModel](https://github.com/gonimo/gonimo/blob/2073d6e10e2862a016bf46770ad3c457d685fc0f/front/src/Gonimo/Client/AcceptInvitation/UI.hs#L32) definition that includes `Account.HasAccount`.
 
 # How it works
 
+Now that you know all the ingredients, let's have a look how this all plays out together:
+
 - Classy lazy lenses
+- Using HasModel & HasModelConfig of child components, to be robust to changes in dependencies.
 
 # Trash:
 ## Modularity
