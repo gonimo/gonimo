@@ -9,7 +9,9 @@ tags: 'haskell reflex reflex-dom'
 When people are talking about reflex, you will often hear a phrase like:
 
 ```
-Reflex is not really complex or hard, but it can be hard to figure out how to properly structure your application. Patterns and best practices, still need to be developed and documented.
+Reflex is not really complex or hard, but it can be hard to figure out how to
+properly structure your application. Patterns and best practices, still need to
+be developed and documented.
 ```
 
 Well that's certainly true. I started
