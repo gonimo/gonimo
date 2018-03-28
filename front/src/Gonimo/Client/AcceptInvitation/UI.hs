@@ -29,8 +29,10 @@ import qualified Gonimo.Types                           as Gonimo
 
 type HasModelConfig c t = (IsConfig c t, Account.HasConfig c)
 
+type HasModel model = HasAccount model
+
 ui :: forall m conf model t
-      . (GonimoM model t m, HasAccount model, HasModelConfig conf t)
+      . (GonimoM model t m, HasModel model, HasModelConfig conf t)
       => model t -> m (conf t)
 ui = networkViewFlatten . fmap renderNextInvitation . view Account.claimedInvitations
   where
