@@ -104,12 +104,12 @@ type ClaimedInvitations = Map InvitationSecret InvitationInfo
 Gonimo is a baby monitor, which needs devices to be coupled for operation.
 Coupling is implemented by sending out invitations, which are then claimed by
 the receiving device before responding to it. Once an invitation is claimed, no
-other device will be able to claim the invitation. Just to provide a bit of
+other device will be able to claim the invitation.  - Just to provide a bit of
 context.
 
 ## The Model
 
-As suggested by the title we build a classical "Model - View - Controller"
+As suggested by the title, we build a classical "Model - View - Controller"
 architecture, with the model playing the essential role. What the model is, in
 the Gonimo architecture, is actually dependent on whom you ask. Every component
 has it's own view on the model. The component's model is basically the
@@ -118,6 +118,42 @@ to understand, it makes the architecture modular.
 
 The model gets passed in, into a component, providing it with it's dependencies.
 
+For `Account`
+the
+[model](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account.hs#L45) is
+simply
+the
+[Server](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Server.hs#L33),
+providing it with the means to react to messages coming from the server:
+
+```haskell
+type Model t = Server t
+```
+
+The above given model, actually just serves as an example satisfying our [HasModel](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account.hs#L48) constraint. It is useful for testing the component in isolation, but other than that we resort to a polymorphic type satisfying `HasModel`:
+
+```haskell
+-- | Our dependencies
+type HasModel model = Server.HasServer model
+```
+
+for the point of illustrating the model of a component with more requirements, here you can see the model definitions for [Subscriber](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Subscriber.hs#L41):
+
+```haskell
+data Model t
+  = Model { __server :: Server t
+          , __auth   :: Auth t
+          }
+
+
+-- | Constraint on needed dependencies.
+type HasModel model = (Server.HasServer model, Auth.HasAuth model)
+```
+
+It does not only depend on the server but also
+on
+[Auth](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Auth.hs),
+which provides an event that signals successful authentication.
 
 ## The Config
 
@@ -125,6 +161,11 @@ In addition to the model, a component might define some component specific confi
 ## The ModelConfig
 
 
+# How it works
+
+- Classy lazy lenses
+
+# Trash:
 ## Modularity
 
 Simple self-contained components, with a well defined interface and hidden
