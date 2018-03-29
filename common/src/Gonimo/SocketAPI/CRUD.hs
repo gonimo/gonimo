@@ -10,6 +10,24 @@ Copyright   : (c) Robert Klotzner, 2018
 
 Resources can be Created Read Updated and Deleted, this module provides a common
 interface for resources implementing those operations.
+
+Not used!
+
+This CRUD based approach does not really fit for our application, most concerning issue:
+
+Some requests are simply more complex than modifying just one resource.
+Sometimes many related resources need to be modified and those modifications
+might need to be atomic or are at least much more performant, when carried out
+by the server at once, instead of letting the client issue one request after the
+other. Example: Leaving a family: An entry in the family_account table gets
+removed, but if the account was the last member of the family, the family needs
+to be deleted as well.
+
+The other issue: This approach should have helped in having principled
+subscriber notifications, but that is not that simple as well: While Update
+requests are usually localized to a given resource, create and delete requests
+are most often not: They usuall will have an effect on other resources as well,
+e.g. deliting an invitation will update the family_invitations resource.
 -}
 module Gonimo.SocketAPI.CRUD ( -- * Types
                                ReqCRUD(..)
