@@ -1,5 +1,5 @@
 ---
-title: 'The Gonimo Architecture - Modular MVC architecture for reflex'
+title: 'The Gonimo Architecture Part 1 - Modular MVC architecture for reflex'
 description: 'Nice, flexible, modular and usable architecture for reflex based programs'
 tags: 'haskell reflex reflex-dom'
 ---
@@ -357,76 +357,23 @@ dirty, but it works for me - so if you need something similar, feel free to get
 inspired ;-)
 
 
-# How it works
+# Conclusion and Part 2
 
-Now that you know all the ingredients, let's have a look how this all plays out together:
+The most important part is probably that we split up a component's input into a
+model (its dependencies on other components) and a `Config` which is
+introduced by the component itself. This leads to a clean and easy to use
+architecture. In part 2 of this series we will put this all together and we will
+see how to actually build a full blown application out of components, reaching
+the goals we aimed for.
 
-- Classy lazy lenses
-- Using HasModel & HasModelConfig of child components, to be robust to changes in dependencies.
+If you like this architecture and want to give it a try, but don't have a
+toy project at hand - feel free to play with Gonimo! Most of the frontend is
+still legacy code, with no architecture at all, if you want to give a hand,
+porting it to the Gonimo Architecture - pull requests would be greatly
+appreciated!
 
-# Trash:
-## Modularity
+Stay tuned for part 2, Monoids rock! ;-)
 
-Simple self-contained components, with a well defined interface and hidden
-implementation are easily replaced, with a different component offering the
-same interface, can be re-used and can be tested independently.
-
-It should be clear from the exposed definitions, how the component is going to be used. It should not be required
-
-I will explain each of them individually, but first let me note that especially (1) and (2) seem to be mutually exclusive.
-Solution: Typeclasses and lazy lenses.
-
-## Component Public API
-Let's see the code, well start with the public facing API of a component. This
-is the part you'll use in order to make use of the components services, it does
-not cover howto set it up. Lets walk through the important parts of the [Gonimo.Client.Account module](LINK) step by step:
-
-```haskell
--- | Configuration for creating an account.
---
---   Currently this just handles accepting invitations.
-data Config t
-  = Config { -- | Claim an invitation by providing it's secret.
-             --
-             --   When the user clicks an invitation link it gets claimed,
-             --   making the invitation unavailable for other parties.
-             _onClaimInvitation :: Event t [InvitationSecret]
-
-             -- | Answer an invitation. (Decline/accept it.)
-           , _onAnswerInvitation :: Event t [(InvitationSecret, InvitationReply)]
-           } deriving (Generic)
-```
-
-```haskell
--- | Account data.
---   All data belonging to the current active account should go here. Like
---   claimed invitations or user name, ...
-data Account t
-  = Account { -- | Invitations currently claimed by the account. (At the moment,
-              --   just the ones claimed in this session.)
-              _claimedInvitations :: Dynamic t ClaimedInvitations
-            }
-
--- | Map type for claimed invitations.
---
---   Eventually (when we have ReqGetClaimedInvitations) this should become Map
---   InvitationId InvitationInfo
-type ClaimedInvitations = Map InvitationSecret InvitationInfo
-```
-
-```haskell
-instance Reflex t => Monoid (Config t) where
-  mempty = memptydefault
-  mappend = (<>)
-```
-
-```haskell
-instance Flattenable Config where
-  flattenWith doSwitch ev
-    = Config
-      <$> doSwitch never (_onClaimInvitation <$> ev)
-      <*> doSwitch never (_onAnswerInvitation <$> ev)
-```
 
 [Gonimo.Client.Account]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account.hs
 [Gonimo.Client.Account.Impl]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account/Impl.hs
