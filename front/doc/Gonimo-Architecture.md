@@ -102,6 +102,8 @@ The currently pretty
 simple [Account](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account.hs) 
 component of Gonimo, will do as the running example.
 
+![Component Illustration](./component.svg "Basic Component interaction")
+
 
 ## Component Building Blocks
 
