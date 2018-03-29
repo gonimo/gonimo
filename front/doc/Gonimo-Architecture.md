@@ -1,5 +1,5 @@
 ---
-title: 'The Gonimo Architecture Part 1 - Modular MVC architecture for reflex'
+title: 'The Gonimo Architecture Part 1 - The Component'
 description: 'Nice, flexible, modular and usable architecture for reflex based programs'
 tags: 'haskell reflex reflex-dom'
 ---
