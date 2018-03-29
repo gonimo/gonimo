@@ -36,7 +36,7 @@ parts I ported, look already pretty promising, so I am going to write about it.
 
 # Intended Audience
 
-People who are familar with FRP
+People who are familiar with FRP
 and [reflex](https://github.com/reflex-frp/reflex) in particular and are
 wondering how they can structure their applications better.
 
@@ -126,7 +126,7 @@ context.
 
 ### The Model
 
-The first part of a component, I want to get startet with, is probably the most
+The first part of a component, I want to get started with, is probably the most
 important one: The model. As suggested by the title, we build a classical
 "Model - View - Controller" architecture, with the model playing the essential
 role. What the model is, in the Gonimo architecture, is actually dependent on
@@ -192,7 +192,7 @@ data Config t
 So Account can be told to claim an invitation and to respond to an invitation.
 This is part of the public facing API of `Account`: Dependent components can ask
 `Account` to claim an invitation by providing a config type that
-fullfills [Account.HasConfig][Account.HasConfig].
+fulfills [Account.HasConfig][Account.HasConfig].
 
 As every component may provide a `Config` type and a `HasConfig` type class, it
 should have become clear that in this architecture, modules are expected to be
@@ -316,11 +316,11 @@ dependencies (Model) and the `make` function for actually building the component
 module needs to be imported, for setting up the component. This will usually be in
 a single place.
 
-This splitup is obviously not required, but makes it easy to swap out the implementation.
+This split-up is obviously not required, but makes it easy to swap out the implementation.
 
 Illustrated with our `Account` example, we have:
 
-- [Gonimo.Client.Account][Gonimo.Client.Account]: The Interface: `Config` and `Account` datatypes
+- [Gonimo.Client.Account][Gonimo.Client.Account]: The Interface: `Config` and `Account` data types
   and accompanying type classes, `HasConfig` and `HasAccount`.
 - [Gonimo.Client.Account.Impl][Gonimo.Client.Account.Impl]: The implementation: `Model`, `ModelConfig`
   accompanying constraints, `HasModel` and `HasModelConfig` and of course the
@@ -351,13 +351,13 @@ dev-GenerateLenses classy
 ```
 
 I use it, by copying the data definitions to the bottom of the file, then select
-the defintions and have my editor pass it through `dev-GenerateLenses classy`.
+the definitions and have my editor pass it through `dev-GenerateLenses classy`.
 This is obviously not the most elegant way, also the tool is written pretty
 dirty, but it works for me - so if you need something similar, feel free to get
 inspired ;-)
 
 
-# Conclusion and Part 2
+# Conclusion and Monoids
 
 The most important part is probably that we split up a component's input into a
 model (its dependencies on other components) and a `Config` which is
