@@ -102,9 +102,6 @@ The currently pretty
 simple [Account](https://github.com/gonimo/gonimo/blob/5afd58dfd6e21525c0688508d978429b51bc85f7/front/src/Gonimo/Client/Account.hs) 
 component of Gonimo, will do as the running example.
 
-![Component Illustration](./component.svg "Basic Component interaction")
-
-
 ## Component Building Blocks
 
 `Account` currently only has a single purpose, it offers a `Dynamic` containing invitations currently claimed by the client.
@@ -124,6 +121,8 @@ Coupling is implemented by sending out invitations, which are then claimed by
 the receiving device before responding to it. Once an invitation is claimed, no
 other device will be able to claim the invitation.  - Just to provide a bit of
 context.
+
+![Component Illustration](./component.svg "Basic Component interaction")
 
 ### The Model
 
