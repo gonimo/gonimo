@@ -70,8 +70,8 @@ library
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.UI
                     , Gonimo.Client.AcceptInvitation.UI.I18N
+                    , Gonimo.Client.Account.Impl
                     , Gonimo.Client.Account
-                    , Gonimo.Client.Account.API
                     , Gonimo.Client.App
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types

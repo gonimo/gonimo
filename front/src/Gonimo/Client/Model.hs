@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-|
-Module      : Gonimo.Client.Account
+Module      : Gonimo.Client.Account.Impl
 Description : Types, classes and utilities for dealing with models and model configs.
 Copyright   : (c) Robert Klotzner, 2018
 -}

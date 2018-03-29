@@ -6,8 +6,8 @@ import           Control.Monad
 import           Data.Map                     (Map)
 import qualified Data.Set                     as Set
 
-import           Gonimo.Client.Account        (Account, HasAccount)
-import qualified Gonimo.Client.Account        as Account
+import           Gonimo.Client.Account.Impl        (Account, HasAccount)
+import qualified Gonimo.Client.Account.Impl        as Account
 import           Gonimo.Client.Auth           (Auth, HasAuth)
 import qualified Gonimo.Client.Auth           as Auth
 import           Gonimo.Client.Environment    (Environment, HasEnvironment(..))

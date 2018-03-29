@@ -17,7 +17,7 @@ import qualified Language.Javascript.JSaddle as JS
 import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
                                               webSocketConfig_send)
 
-import qualified Gonimo.Client.Account       as Account
+import qualified Gonimo.Client.Account.Impl       as Account
 import           Gonimo.Client.App           as App
 import qualified Gonimo.Client.Auth          as Auth
 import           Gonimo.Client.Prelude       hiding (app)
