@@ -77,8 +77,8 @@ library
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
                     , Gonimo.Client.App.UI.I18N
+                    , Gonimo.Client.Auth.Impl
                     , Gonimo.Client.Auth
-                    , Gonimo.Client.Auth.API
                     , Gonimo.Client.Auth.I18N
                     , Gonimo.Client.Baby
                     , Gonimo.Client.Baby.Internal
@@ -129,8 +129,8 @@ library
                     , Gonimo.Client.Server
                     , Gonimo.Client.Storage
                     , Gonimo.Client.Storage.Keys
+                    , Gonimo.Client.Subscriber.Impl
                     , Gonimo.Client.Subscriber
-                    , Gonimo.Client.Subscriber.API
                     , Gonimo.Client.Util
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.WebRTC.Channels

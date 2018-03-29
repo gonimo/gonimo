@@ -19,11 +19,11 @@ import           Reflex.Dom.Core             hiding (webSocketConfig_reconnect,
 
 import qualified Gonimo.Client.Account.Impl       as Account
 import           Gonimo.Client.App           as App
-import qualified Gonimo.Client.Auth          as Auth
+import qualified Gonimo.Client.Auth.Impl          as Auth
 import           Gonimo.Client.Prelude       hiding (app)
 import qualified Gonimo.Client.Server        as Server
 import qualified Gonimo.Client.Settings      as Settings
-import qualified Gonimo.Client.Subscriber    as Subscriber
+import qualified Gonimo.Client.Subscriber.Impl    as Subscriber
 import           Gonimo.Types                (InvitationSecret)
 import qualified Gonimo.Client.Environment    as Environment
 

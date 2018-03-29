@@ -35,7 +35,7 @@ import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Server         (Server)
 import qualified Gonimo.Client.Server         as Server
-import qualified Gonimo.Client.Subscriber.API as Subscriber
+import qualified Gonimo.Client.Subscriber as Subscriber
 import           Gonimo.SocketAPI
 import           Gonimo.SocketAPI.Types       (InvitationInfo)
 import           Gonimo.Types                 (InvitationSecret)

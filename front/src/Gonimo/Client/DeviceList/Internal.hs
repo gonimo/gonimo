@@ -16,7 +16,7 @@ import           Reflex.Dom.Core
 
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex     (buildMap)
-import           Gonimo.Client.Subscriber (subscribeKeys)
+import           Gonimo.Client.Subscriber.Impl (subscribeKeys)
 import qualified Gonimo.SocketAPI         as API
 import           Gonimo.SocketAPI.Types   (AccountId, DeviceId, FamilyId)
 import qualified Gonimo.SocketAPI.Types   as API

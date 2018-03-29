@@ -8,16 +8,16 @@ import qualified Data.Set                     as Set
 
 import           Gonimo.Client.Account.Impl        (Account, HasAccount)
 import qualified Gonimo.Client.Account.Impl        as Account
-import           Gonimo.Client.Auth           (Auth, HasAuth)
-import qualified Gonimo.Client.Auth           as Auth
+import           Gonimo.Client.Auth.Impl           (Auth, HasAuth)
+import qualified Gonimo.Client.Auth.Impl           as Auth
 import           Gonimo.Client.Environment    (Environment, HasEnvironment(..))
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Server         (HasServer, Server)
 import qualified Gonimo.Client.Server         as Server
 import           Gonimo.Client.Settings       (HasSettings, Settings)
 import qualified Gonimo.Client.Settings       as Settings
-import           Gonimo.Client.Subscriber     (SubscriptionsDyn)
-import qualified Gonimo.Client.Subscriber.API as Subscriber
+import           Gonimo.Client.Subscriber.Impl     (SubscriptionsDyn)
+import qualified Gonimo.Client.Subscriber as Subscriber
 import           Gonimo.I18N
 import qualified Gonimo.SocketAPI             as API
 import qualified Gonimo.SocketAPI.Types       as API

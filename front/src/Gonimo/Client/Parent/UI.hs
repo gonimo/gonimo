@@ -11,7 +11,7 @@ import qualified GHCJS.DOM.MediaStream            as MediaStream
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types          as App
-import qualified Gonimo.Client.Auth               as Auth
+import qualified Gonimo.Client.Auth.Impl               as Auth
 import           Gonimo.Client.ConfirmationButton (mayAddConfirmation)
 import qualified Gonimo.Client.DeviceList         as DeviceList
 import qualified Gonimo.Client.Invite             as Invite

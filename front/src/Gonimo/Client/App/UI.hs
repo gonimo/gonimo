@@ -15,7 +15,7 @@ import qualified Gonimo.Client.AcceptInvitation as AcceptInvitation
 import           Gonimo.Client.App.Internal
 import           Gonimo.Client.App.Types
 import           Gonimo.Client.App.UI.I18N
-import qualified Gonimo.Client.Auth             as Auth
+import qualified Gonimo.Client.Auth.Impl             as Auth
 import qualified Gonimo.Client.Baby             as Baby
 import qualified Gonimo.Client.DeviceList       as DeviceList
 import qualified Gonimo.Client.Family           as Family
@@ -25,7 +25,7 @@ import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Server           hiding (Config, config, Model, HasModel)
-import qualified Gonimo.Client.Subscriber       as Subscriber
+import qualified Gonimo.Client.Subscriber.Impl       as Subscriber
 import qualified Gonimo.Client.Storage          as GStorage
 import qualified Gonimo.Client.Storage.Keys     as GStorage
 import           Gonimo.Client.Util             (getBrowserProperty,

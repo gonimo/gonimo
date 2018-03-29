@@ -20,7 +20,7 @@ import           Reflex.Dom.Core
 import           Safe                       (headMay)
 
 import qualified Gonimo.Client.App.Types    as App
-import qualified Gonimo.Client.Auth         as Auth
+import qualified Gonimo.Client.Auth.Impl         as Auth
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Server       hiding (Config)
 import qualified Gonimo.Client.Storage      as GStorage

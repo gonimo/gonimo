@@ -17,7 +17,7 @@ import           GHCJS.DOM.MediaStreamTrack    (mute)
 import           GHCJS.DOM.Types               (MediaStream, MonadJSM, liftJSM)
 import qualified GHCJS.DOM.Types               as JS
 
-import           Gonimo.Client.Subscriber      (SubscriptionsDyn)
+import           Gonimo.Client.Subscriber.Impl      (SubscriptionsDyn)
 import           Gonimo.Client.WebRTC.Channel  (Channel)
 import qualified Gonimo.Client.WebRTC.Channels as Channels
 import qualified Gonimo.SocketAPI              as API

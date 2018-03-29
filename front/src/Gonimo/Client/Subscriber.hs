@@ -1,80 +1,52 @@
-{-# LANGUAGE RecursiveDo         #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
-module Gonimo.Client.Subscriber ( module Gonimo.Client.Subscriber.API
-                                , Model (..)
-                                , HasModel
-                                , _server
-                                , _auth
-                                , make
-                                , SubscriptionsDyn
-                                , subscribeKeys
-                                )where
+{-|
+Module      : Gonimo.Client.Subscriber
+Description : User facing Subscriber API
+Copyright   : (c) Robert Klotzner, 2018
+-}
+module Gonimo.Client.Subscriber where
 
-import           Control.Monad.Fix            (MonadFix)
-import           Reflex.Dom.Core
+import           Data.Set (Set)
 
-import           Data.Map                     (Map)
+import           Gonimo.Client.Prelude
+import qualified Gonimo.SocketAPI as API
 
-import           Control.Lens
-import           Data.Set                     (Set)
-import qualified Data.Set                     as Set
 
-import           Gonimo.Client.Auth.API       (Auth)
-import qualified Gonimo.Client.Auth.API       as Auth
-import           Gonimo.Client.Model
-import           Gonimo.Client.Reflex         (buildMap)
-import           Gonimo.Client.Server         (Server)
-import qualified Gonimo.Client.Server         as Server
-import           Gonimo.Client.Subscriber.API
-import qualified Gonimo.SocketAPI             as API
-import           Reflex.Class.Extended
-
+{-# Deprecated SubscriptionsDyn " Use plain 'Subscriber' instead."#-}
 type SubscriptionsDyn t = Dynamic t (Set API.ServerRequest)
 
-data Model t
-  = Model { __server :: Server t
-          , __auth   :: Auth t
-          }
+-- | Configuration for creating an subscriber.
+--
+--   Currently this just handles accepting invitations.
+data Config t
+  = Config { -- | The 'ServerRequest's you want to have subscribed
+             _subscriptions :: Dynamic t (Set API.ServerRequest)
+           } deriving (Generic)
 
+instance Reflex t => Default (Config t) where
+  def = mempty
 
--- | Constraint on needed dependencies.
-type HasModel model = (Server.HasServer model, Auth.HasAuth model)
+instance Reflex t => Semigroup (Config t) where
+  (<>) = mappenddefault
 
--- | Constraint for our return value.
-type HasModelConfig c t = (IsConfig c t, Server.HasConfig c)
-
-
-make :: forall c model m t mConf
-        . ( MonadFix m, MonadHold t m, Reflex t
-          , HasConfig c , HasModel model, HasModelConfig mConf t
-          )
-     => model t -> c t -> m (mConf t)
-make model conf = do
-  let
-    requests = API.ReqSetSubscriptions . Set.toList <$> conf^.subscriptions
-
-  pure $ mempty  & Server.onRequest .~
-    mergeAsList [ tag (current requests) $ model^.Auth.onAuthenticated
-                , updated requests
-                ]
-
-subscribeKeys :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
-                 => Dynamic t [key] -> (key -> API.ServerRequest) -> Event t (key, val)
-              -> m (SubscriptionsDyn t, Dynamic t (Map key (Dynamic t val)))
-subscribeKeys keys mkKeyRequest gotNewKeyVal = do
-    let getValsSubs = Set.unions . map (Set.singleton . mkKeyRequest) <$> keys
-    resultMap <- buildMap keys gotNewKeyVal
-    pure (getValsSubs, resultMap)
+instance Reflex t => Monoid (Config t) where
+  mempty = memptydefault
+  mappend = (<>)
 
 -- Auto generated lenses:
 
--- Lenses for Model t:
+class HasConfig a where
+  config :: Lens' (a t) (Config t)
 
-_server :: Lens' (Model t) (Server t)
-_server f fullConfig' = (\_server' -> fullConfig' { __server = _server' }) <$> f (__server fullConfig')
+  subscriptions :: Lens' (a t) (Dynamic t (Set API.ServerRequest))
+  subscriptions = config . go
+    where
+      go :: Lens' (Config t) (Dynamic t (Set API.ServerRequest))
+      go f config' = (\subscriptions' -> config' { _subscriptions = subscriptions' }) <$> f (_subscriptions config')
 
-_auth :: Lens' (Model t) (Auth t)
-_auth f fullConfig' = (\_auth' -> fullConfig' { __auth = _auth' }) <$> f (__auth fullConfig')
+
+instance HasConfig Config where
+  config = id
 
 
+instance Flattenable Config where
+  flattenWith doSwitch ev = Config <$> flattenDynamic doSwitch (_subscriptions <$> ev)
