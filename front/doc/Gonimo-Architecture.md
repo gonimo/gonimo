@@ -334,13 +334,16 @@ As you've seen above, we use classes for specifying the interface of a component
 $(makeLensesWith (classyRules & generateLazyPatterns .~ True) ''Account)
 ```
 
-Make sure to set `generateLazyPatterns`, as strict patterns don't play well with [mfix][mfix].
+Make sure to set `generateLazyPatterns`, as strict patterns don't play well
+with [mfix][mfix], which is used directly or indirectly by reflex based
+applications.
 
 For Gonimo we have to pass on TemplateHaskell, because TemplateHaskell does not
 play well with cross compilation, which we need for our
-native [Android version][Gonimo Android]. This is why, I wrote a [simple lens
-generator][lens generator] program which takes the data definition as input and outputs the class
-definition. Call it with `classy` as argument in order to get the classy version:
+native [Android version][Gonimo Android]. This is why, I wrote
+a [simple lens generator][lens generator] program which takes data definitions
+on stdin and outputs the lens definitions. Call it with `classy` as argument in
+order to get the classy version:
 
 ```
 dev-GenerateLenses classy
@@ -424,23 +427,23 @@ instance Flattenable Config where
       <*> doSwitch never (_onAnswerInvitation <$> ev)
 ```
 
-[Gonimo.Client.Account]:
-[Gonimo.Client.Account.Impl]:
-[Account.Config]:
-[Account.Account]:
-[Account.HasConfig]:
-[Account.ModelConfig]:
-[Account.Model]:
-[Account.make]:
-[Account.HasModel]:
-[Server.Server]:
-[Server.HasConfig]:
-[Subscriber.Model]:
-[Subscriber.Config]:
-[Subscriber.HasConfig]:
-[Auth.Auth]:
-[AcceptInvitation.UI.HasModelConfig]:
-[AcceptInvitation.UI.HasModel]:
+[Gonimo.Client.Account]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account.hs
+[Gonimo.Client.Account.Impl]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account/Impl.hs
+[Account.Config]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account.hs#L19
+[Account.Account]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account.hs#L33
+[Account.HasConfig]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account.hs#L64
+[Account.ModelConfig]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account/Impl.hs#L51
+[Account.Model]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account/Impl.hs#L45
+[Account.make]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account/Impl.hs#L72
+[Account.HasModel]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Account/Impl.hs#L48
+[Server.Server]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Server.hs#L33
+[Server.HasConfig]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Server.hs#L130
+[Subscriber.Model]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Subscriber/Impl.hs#L32
+[Subscriber.Config]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Subscriber.hs#L20
+[Subscriber.HasConfig]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Subscriber.hs#L37
+[Auth.Auth]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/Auth.hs#L15
+[AcceptInvitation.UI.HasModelConfig]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/AcceptInvitation/UI.hs#L30
+[AcceptInvitation.UI.HasModel]: https://github.com/gonimo/gonimo/blob/239ffb031ece20dccdb806ad7476f0da8c3018eb/front/src/Gonimo/Client/AcceptInvitation/UI.hs#L32
 [makeLensesWith]:  https://hackage.haskell.org/package/lens-4.16.1/docs/Control-Lens-TH.html#v:makeLensesWith
 [mfix]: https://www.stackage.org/haddock/lts-11.2/base-4.10.1.0/Control-Monad-Fix.html#v:mfix
 [Gonimo Android]: https://play.google.com/store/apps/details?id=com.gonimo.baby
