@@ -176,7 +176,7 @@ provides an event that signals successful authentication.
 
 The second part, that also gets passed in to the [make function][Account.make], in addition to the model, is the [component's Config][Account.Config] or rather some type satisfying [Account.HasConfig][Account.HasConfig]. 
 
-The `Config` is a component specific configuration data type. Usually consisting
+The `Config` is a component specific configuration data type, usually consisting
 of some events, triggering the component to do some work. In our example
 the [Account.Config][Account.Config] looks like this:
 
