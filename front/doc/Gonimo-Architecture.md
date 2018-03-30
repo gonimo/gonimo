@@ -294,7 +294,7 @@ As you can see, it takes a model which needs to satisfy `HasModel`, the
 configuration (satisfying `HasConfig`) and returns a `mConf` (satisfying
 `HasModelConfig`) for sending events to components it depends on and the `Account`
 itself. `Account` is the only thing that is left monomorphic. By keeping all
-this parameters polymorphic we get really neat decoupling of components and, as
+these parameters polymorphic we get really neat decoupling of components and, as
 we shall see, ease of usage.
 
 By specializing to `Model`, `Config` and `ModelConfig` we can test the component
@@ -341,7 +341,7 @@ applications.
 
 For Gonimo we have to pass on TemplateHaskell, because TemplateHaskell does not
 play well with cross compilation, which we need for our
-native [Android version][Gonimo Android]. This is why, I wrote
+native [Android version][Gonimo Android]. This is why I wrote
 a [simple lens generator][lens generator] program which takes data definitions
 on stdin and outputs the lens definitions. Call it with `classy` as argument in
 order to get the classy version:
@@ -350,7 +350,7 @@ order to get the classy version:
 dev-GenerateLenses classy
 ```
 
-I use it, by copying the data definitions to the bottom of the file, then select
+I use it by copying the data definitions to the bottom of the file, then select
 the definitions and have my editor pass it through `dev-GenerateLenses classy`.
 This is obviously not the most elegant way, also the tool is written pretty
 dirty, but it works for me - so if you need something similar, feel free to get
@@ -366,11 +366,11 @@ architecture. In part 2 of this series we will put this all together and we will
 see how to actually build a full blown application out of components, reaching
 the goals we aimed for.
 
-If you like this architecture and want to give it a try, but don't have a
-toy project at hand - feel free to play with Gonimo! Most of the frontend is
-still legacy code, with no architecture at all, if you want to give a hand,
-porting it to the Gonimo Architecture - pull requests would be greatly
-appreciated!
+If you like this architecture and want to give it a try, but don't have a toy
+project at hand - feel free to play with Gonimo! Most of the frontend is still
+legacy code, with no architecture at all, if you want to give a hand, porting it
+to the Gonimo Architecture - pull requests would be greatly appreciated! For
+questions and discussions, please join our [gitter chat][gonimo gitter]!
 
 Stay tuned for part 2, Monoids rock! ;-)
 
@@ -396,3 +396,5 @@ Stay tuned for part 2, Monoids rock! ;-)
 [mfix]: https://www.stackage.org/haddock/lts-11.2/base-4.10.1.0/Control-Monad-Fix.html#v:mfix
 [Gonimo Android]: https://play.google.com/store/apps/details?id=com.gonimo.baby
 [lens generator]: https://github.com/eskimor/dev-utils/blob/master/app/GenerateLenses.hs
+[gonimo gitter]: https://gitter.im/gonimo/Lobby
+
