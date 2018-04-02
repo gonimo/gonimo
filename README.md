@@ -5,12 +5,12 @@
 Welcome to the source code of [Gonimo](https://gonimo.com), the web based baby
 monitor. You can give it a try [here](https://app.gonimo.com)!
 
-Please join us on [Gitter](https://gitter.im/gonimo/Lobby) if you have any questions.
+Please join us on [Gitter](https://gitter.im/gonimo/Lobby), if you have any questions.
 
 # Docs
 
 We will create more documentation as things mature. For frontend development
-have a look at the [Gonimo Architecture](./front/doc/Gonimo-Architecture.md)
+have a look at the [Gonimo Architecture](./front/doc/Gonimo-Architecture.md),
 which describes how frontend code is supposed to be built (WIP).
 
 # Build Instructions
@@ -28,7 +28,7 @@ Make sure you have the gonimo branch, as specified in the above command.
 Next we need to clone the Gonimo source code:
 
 ```bash
-git clone git@github.com:gonimo/gonimo.git
+$ git clone git@github.com:gonimo/gonimo.git
 ```
 
 Now we are ready to rumble.
@@ -54,7 +54,7 @@ Now change to the checked out Gonimo repository.
 ### Backend Build
 
 ```bash
-./cabal new-build gonimo-back
+$ ./cabal new-build gonimo-back
 
 ```
 
@@ -70,19 +70,17 @@ If you want quick builds, use this.
 You can build the warp based development frontend by typing:
 
 ```bash
-./cabal new-build gonimo-front-warp
+$ ./cabal new-build gonimo-front-warp
 ```
 
-Save the path of the resulting executable, which is printed at the end. We'll
-need it for executing it later on. (cabal new-run was broken at the time of
-writing).
+Same as for the backend, save the path that is printed at the end.
 
 ### GHCJS Build of the Frontend
 
 The ghcjs version is built with:
 
 ```bash
-./cabal-ghcjs new-build gonimo-front-ghcjs
+$ ./cabal-ghcjs new-build gonimo-front-ghcjs
 
 ```
 
