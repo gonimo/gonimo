@@ -112,9 +112,8 @@ library
                       , wai-websockets
                       , warp
                       , websockets
-  if flag(dev) 
-    build-depends:    directory
-                    , filepath
+                      , directory
+                      , filepath
 
 
 executable gonimo-back
