@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Gonimo</string>
+    <string name="service_description">Service showing the "Gonimo Running" notification</string>
+    <string name="gonimo_running">Gonimo running.</string>
+    <string name="stop_gonimo">Stop</string>
+    <string name="gonimo_stopped">Gonimo stopped</string>
+</resources>

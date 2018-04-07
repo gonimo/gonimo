@@ -80,13 +80,15 @@ in
     '';
     services = ''
       <service
-        android:name=".HaskellService"
+        android:name=".GonimoRunning"
         android:label="@string/app_name"
         android:icon="@drawable/ic_launcher"
         android:exported="false"
+        android:description="@string/service_description"
       >
       </service>
     '';
+
     releaseKey = if androidIsRelease
                  then import ./release-key.nix
                  else null;

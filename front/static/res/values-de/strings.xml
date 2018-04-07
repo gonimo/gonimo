@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_description">Gonimo Notification Service</string>
+    <string name="gonimo_running">Gonimo läuft.</string>
+    <string name="stop_gonimo">Stopp</string>
+    <string name="gonimo_stopped">Gonimo beendet</string>
+</resources>
