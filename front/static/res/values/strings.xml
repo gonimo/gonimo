@@ -5,4 +5,6 @@
     <string name="gonimo_running">Gonimo running.</string>
     <string name="stop_gonimo">Stop</string>
     <string name="gonimo_stopped">Gonimo stopped</string>
+    <string name="gonimo_must_run_in_the_foreground">Gonimo must be run in the foreground</string>
+    <string name="please_switch_back_to_gonimo">for working reliably.</string>
 </resources>

@@ -4,4 +4,6 @@
     <string name="gonimo_running">Gonimo läuft.</string>
     <string name="stop_gonimo">Stopp</string>
     <string name="gonimo_stopped">Gonimo beendet</string>
+    <string name="gonimo_must_run_in_the_foreground">Gonimo muss im Vordergrund laufen</string>
+    <string name="please_switch_back_to_gonimo">um zuverlässig zu funktionieren.</string>
 </resources>
