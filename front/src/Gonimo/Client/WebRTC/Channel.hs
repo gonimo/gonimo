@@ -81,7 +81,7 @@ data Channel t
             , _videoMuted          :: Bool
             }
 
-channel :: forall model m t. (HasEnvironment (model t), MonadJSM m, Reflex t) => model t -> Config t -> m (Channel t)
+channel :: forall model m t. (HasEnvironment model, MonadJSM m, Reflex t) => model t -> Config t -> m (Channel t)
 channel model config = mdo
   conn <- makeGonimoRTCConnection model
 
@@ -190,7 +190,7 @@ handleIceCandidate config conn = liftJSM $ do
           liftIO $ triggerRTCEvent candidate
   addListener conn iceCandidate listener False
 
-makeGonimoRTCConnection :: (MonadJSM m, HasEnvironment model) => model -> m RTCPeerConnection
+makeGonimoRTCConnection :: (MonadJSM m, HasEnvironment model) => model t -> m RTCPeerConnection
 makeGonimoRTCConnection model = liftJSM $ do
   config <- JS.obj
   config <# ("urls" :: Text) $ JS.toJSVal [model ^. Env.turnConnection]

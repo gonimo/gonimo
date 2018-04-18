@@ -49,9 +49,9 @@ data InvitationSent
   | SentShare
 
 
-type HasModel model t = Env.HasEnvironment (model t)
+type HasModel model = Env.HasEnvironment model
 
-invite :: forall model t m. (MonadHold t m, MonadFix m, Reflex t, HasModel model t)
+invite :: forall model t m. (MonadHold t m, MonadFix m, Reflex t, HasModel model)
   => model t -> Config t -> m (Invite t)
 invite model config = mdo
   let
@@ -80,7 +80,7 @@ invite model config = mdo
               , _uiDone = never
               }
 
-getBaseLink :: HasModel model t => model t -> Text
+getBaseLink :: HasModel model => model t -> Text
 getBaseLink model = model ^. Env.httpProtocol <> model ^. Env.frontendHost <> model ^. Env.frontendPath
 
 makeInvitationLink :: Text -> API.Invitation -> Text

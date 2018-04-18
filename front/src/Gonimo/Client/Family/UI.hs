@@ -26,7 +26,7 @@ import           Gonimo.SocketAPI.Types            (FamilyId)
 import qualified Gonimo.SocketAPI.Types            as API
 import qualified Gonimo.Types                      as Gonimo
 
-type HasModel model t = Invite.HasModel model t
+type HasModel model = Invite.HasModel model
 
 uiStart :: forall model m t. GonimoM model t m => m (UI t)
 uiStart =
@@ -77,7 +77,7 @@ privacyPolicy = do
     elClass "footer" "container-fluid" $
       elDynAttr "a" (privacyLinkAttrs <$> currentLocale) $
         trText Privacy_Policy
-ui :: forall model m t. (HasModel model t, GonimoM model t m)
+ui :: forall model m t. (HasModel model, GonimoM model t m)
   => App.Model t -> App.Loaded t -> Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
@@ -203,7 +203,7 @@ renderFamilySelector _ family' selected' = do
           $ (Gonimo.familyNameName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
-createFamily :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t -> Bool
+createFamily :: forall model m t. (HasModel model, GonimoM model t m) => App.Model t -> App.Loaded t -> Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
   let response' = appConfig^.onResponse
@@ -249,7 +249,7 @@ createFamily appConfig loaded familyGotCreated = mdo
   pure (createFamilyEv, reqs)
 
 -- Dialog to configure family when a new one get's created:
-createFamily' :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t
+createFamily' :: forall model m t. (HasModel model, GonimoM model t m) => App.Model t -> App.Loaded t
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily' appConfig loaded = mdo
   let showNameEdit = const "isFamilyNameEdit" <$> invite^.Invite.uiGoBack

@@ -41,7 +41,7 @@ data Model t
           , __account     :: Account t
           , __auth        :: Auth t
           , __settings    :: Settings t
-          , __environment :: Environment
+          , __environment :: Environment t
           , __router      :: Router t
           }
 
@@ -73,7 +73,7 @@ data Screen t
            , _screenGoHome :: Event t ()
            }
 
-type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment (model t), HasSettings model)
+type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment model, HasSettings model)
 instance HasServer Model where
   server = _server
 
@@ -86,7 +86,7 @@ instance HasAuth Model where
 instance HasSettings Model where
   settings = _settings
 
-instance HasEnvironment (Model t) where
+instance HasEnvironment Model where
   environment = _environment
 
 instance HasRouter Model where
@@ -197,7 +197,7 @@ _auth f model' = (\_auth' -> model' { __auth = _auth' }) <$> f (__auth model')
 _settings :: Lens' (Model t) (Settings t)
 _settings f model' = (\_settings' -> model' { __settings = _settings' }) <$> f (__settings model')
 
-_environment :: Lens' (Model t) Environment
+_environment :: Lens' (Model t) (Environment t)
 _environment f model' = (\_environment' -> model' { __environment = _environment' }) <$> f (__environment model')
 
 _router :: Lens' (Model t) (Router t)

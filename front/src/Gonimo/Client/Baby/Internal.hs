@@ -69,7 +69,7 @@ data UI t
        , _uiRequest         :: Event t [API.ServerRequest]
        }
 
-type HasModel model t = Socket.HasModel model t
+type HasModel model = Socket.HasModel model
 
 uiSwitchPromptly :: forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t (UI t) -> m (UI t)
 uiSwitchPromptly ev
@@ -93,7 +93,7 @@ uiSwitchPromptlyDyn ev
        ( switchPromptlyDyn (_uiSetBabyName <$> ev) )
        ( switchPromptlyDyn (_uiRequest <$> ev) )
 
-baby :: forall model m t. (HasModel model t, GonimoM model t m)
+baby :: forall model m t. (HasModel model, GonimoM model t m)
         => Config t -> m (Baby t)
 baby config = mdo
   createStreamLabels <- getInitialMediaStream -- IMPORTANT: This has to be before retrieving camera devices!

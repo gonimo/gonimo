@@ -28,7 +28,7 @@ import           Gonimo.SocketAPI.Types        (InvitationId)
 import qualified Gonimo.SocketAPI.Types        as API
 import           Gonimo.Types                  (InvitationDelivery (..))
 
-ui :: forall model m t. (HasEnvironment (model t), GonimoM model t m) => App.Loaded t -> Config t -> m (Invite t)
+ui :: forall model m t. (HasEnvironment model, GonimoM model t m) => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo
     model <- ask
     let baseUrl = getBaseLink model

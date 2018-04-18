@@ -74,9 +74,9 @@ data Channels t
              , _remoteStreams :: Dynamic t StreamMap -- Useful to have this separate for rendering. (Don't reload videos on every change to map.)
              }
 
-type HasModel model t = HasEnvironment (model t)
+type HasModel model = HasEnvironment model
 
-channels :: forall model m t. (HasModel model t, GonimoM model t m) => Config t -> m (Channels t)
+channels :: forall model m t. (HasModel model, GonimoM model t m) => Config t -> m (Channels t)
 channels config = mdo
   model <- ask
   (channelEvent, triggerChannelEvent) <- newTriggerEvent
@@ -253,7 +253,7 @@ handleBroadcastStream config channels' = do
     performEvent_ $ pushAlways replaceStreams (updated $ config^.configBroadcastStream)
 
 handleCreateChannel :: ( MonadHold t m, MonadFix m, Reflex t, PerformEvent t m
-                       , MonadJSM (Performable m), HasModel model t
+                       , MonadJSM (Performable m), HasModel model
                        )
                     => model t -> Config t -> (ChannelEvent -> IO ()) -> m (Event t (ChannelMap t -> ChannelMap t))
 handleCreateChannel model config triggerChannelEvent

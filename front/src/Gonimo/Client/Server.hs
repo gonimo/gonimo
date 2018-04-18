@@ -72,7 +72,7 @@ make :: forall model c t m. ( MonadHold t m, MonadFix m, MonadJSM m, MonadJSM (P
                       , HasJSContext m, PerformEvent t m, TriggerEvent t m, PostBuild t m
                       , HasConfig c, HasModel model
                       )
-          => model -> c t -> m (Server t)
+          => model t -> c t -> m (Server t)
 make model conf = mdo
   let
     server' = Server { _onOpen = ws^.WS.webSocket_open

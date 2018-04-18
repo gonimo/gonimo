@@ -32,7 +32,7 @@ import           Gonimo.Client.Util
 
 data BabyScreen = ScreenStart | ScreenRunning
 
-ui :: forall model m t. (HasModel model t, GonimoM model t m) => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
+ui :: forall model m t. (HasModel model, GonimoM model t m) => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configNextCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera

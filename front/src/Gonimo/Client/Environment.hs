@@ -29,7 +29,7 @@ import           Language.Javascript.JSaddle (FromJSVal (..), JSM, JSVal,
 import           Gonimo.Client.Prelude
 
 
-data Environment
+data Environment t -- Dummy `t` for compatibility with other models.
   = Environment { -- | On what server is the frontend running.
                   --
                   --   Example value: "app.gonimo.com"
@@ -80,7 +80,7 @@ data Environment
 -- | Create an Environment.
 --
 --   The environment is loaded from the JavaScript values set in env.js.
-make ::  MonadJSM m => m Environment
+make ::  MonadJSM m => m (Environment t)
 make = liftJSM $ do
   jsEnv               <- jsg ("gonimoEnv" :: Text)
   secure              <- fromJSVal' =<< jsEnv ^. js ("secure" :: Text)
@@ -125,67 +125,70 @@ fromJSVal' jsVal = do
 
 -- Auto generated lenses:
 
-class HasEnvironment a where
-  environment :: Lens' a Environment
 
-  frontendHost :: Lens' a Text
+class HasEnvironment a where
+  environment :: Lens' (a t) (Environment t)
+
+  frontendHost :: Lens' (a t) Text
   frontendHost = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\frontendHost' -> environment' { _frontendHost = frontendHost' }) <$> f (_frontendHost environment')
 
 
-  backendHost :: Lens' a Text
+  backendHost :: Lens' (a t) Text
   backendHost = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\backendHost' -> environment' { _backendHost = backendHost' }) <$> f (_backendHost environment')
 
 
-  backendWSURL :: Lens' a Text
+  backendWSURL :: Lens' (a t) Text
   backendWSURL = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\backendWSURL' -> environment' { _backendWSURL = backendWSURL' }) <$> f (_backendWSURL environment')
 
-  frontendPath :: Lens' a Text
+
+  frontendPath :: Lens' (a t) Text
   frontendPath = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\frontendPath' -> environment' { _frontendPath = frontendPath' }) <$> f (_frontendPath environment')
 
-  httpProtocol :: Lens' a Text
+
+  httpProtocol :: Lens' (a t) Text
   httpProtocol = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\httpProtocol' -> environment' { _httpProtocol = httpProtocol' }) <$> f (_httpProtocol environment')
 
 
-  turnConnection :: Lens' a Text
+  turnConnection :: Lens' (a t) Text
   turnConnection = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\turnConnection' -> environment' { _turnConnection = turnConnection' }) <$> f (_turnConnection environment')
 
 
-  turnUser :: Lens' a Text
+  turnUser :: Lens' (a t) Text
   turnUser = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\turnUser' -> environment' { _turnUser = turnUser' }) <$> f (_turnUser environment')
 
 
-  turnPassword :: Lens' a Text
+  turnPassword :: Lens' (a t) Text
   turnPassword = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\turnPassword' -> environment' { _turnPassword = turnPassword' }) <$> f (_turnPassword environment')
 
 
-  turnCredentialType :: Lens' a Text
+  turnCredentialType :: Lens' (a t) Text
   turnCredentialType = environment . go
     where
-      go :: Lens' Environment Text
+      go :: Lens' (Environment t) Text
       go f environment' = (\turnCredentialType' -> environment' { _turnCredentialType = turnCredentialType' }) <$> f (_turnCredentialType environment')
 
 

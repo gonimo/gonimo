@@ -28,9 +28,9 @@ import           Gonimo.SocketAPI.Types           (DeviceId)
 import           Gonimo.Types                     (_Baby)
 
 
-type HasModel model t = Invite.HasModel model t
+type HasModel model = Invite.HasModel model
 
-ui :: forall model m t. (HasModel model t, GonimoM model t m)
+ui :: forall model m t. (HasModel model, GonimoM model t m)
             => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
 ui appConfig loaded deviceList = mdo
   connections' <- C.connections $ C.Config { C._configResponse = appConfig^.onResponse
