@@ -3,25 +3,28 @@ module Gonimo.Client.App.Types where
 
 import           Control.Lens
 import           Control.Monad
-import           Data.Map                     (Map)
-import qualified Data.Set                     as Set
+import           Data.Map                      (Map)
+import qualified Data.Set                      as Set
 
-import           Gonimo.Client.Account.Impl        (Account, HasAccount)
-import qualified Gonimo.Client.Account.Impl        as Account
-import           Gonimo.Client.Auth.Impl           (Auth, HasAuth)
-import qualified Gonimo.Client.Auth.Impl           as Auth
-import           Gonimo.Client.Environment    (Environment, HasEnvironment(..))
+import           Gonimo.Client.Account         (Account, HasAccount)
+import qualified Gonimo.Client.Account         as Account
+import           Gonimo.Client.Auth            (Auth, HasAuth)
+import qualified Gonimo.Client.Auth            as Auth
+import           Gonimo.Client.Environment     (Environment,
+                                                HasEnvironment (..))
 import           Gonimo.Client.Prelude
-import           Gonimo.Client.Server         (HasServer, Server)
-import qualified Gonimo.Client.Server         as Server
-import           Gonimo.Client.Settings       (HasSettings, Settings)
-import qualified Gonimo.Client.Settings       as Settings
-import           Gonimo.Client.Subscriber.Impl     (SubscriptionsDyn)
-import qualified Gonimo.Client.Subscriber as Subscriber
+import           Gonimo.Client.Router          (HasRouter, Router)
+import qualified Gonimo.Client.Router          as Router
+import           Gonimo.Client.Server          (HasServer, Server)
+import qualified Gonimo.Client.Server          as Server
+import           Gonimo.Client.Settings        (HasSettings, Settings)
+import qualified Gonimo.Client.Settings        as Settings
+import qualified Gonimo.Client.Subscriber      as Subscriber
+import           Gonimo.Client.Subscriber.Impl (SubscriptionsDyn)
 import           Gonimo.I18N
-import qualified Gonimo.SocketAPI             as API
-import qualified Gonimo.SocketAPI.Types       as API
-import qualified Gonimo.Types                 as Gonimo
+import qualified Gonimo.SocketAPI              as API
+import qualified Gonimo.SocketAPI.Types        as API
+import qualified Gonimo.Types                  as Gonimo
 
 
 
@@ -30,6 +33,7 @@ data ModelConfig t
                 , _subscriberConfig :: Subscriber.Config t
                 , _serverConfig     :: Server.Config t
                 , _settingsConfig   :: Settings.Config t
+                , _routerConfig     :: Router.Config t
                 } deriving (Generic)
 
 data Model t
@@ -38,6 +42,7 @@ data Model t
           , __auth        :: Auth t
           , __settings    :: Settings t
           , __environment :: Environment
+          , __router      :: Router t
           }
 
 -- | TODO: Get rid of this.
@@ -84,6 +89,9 @@ instance HasSettings Model where
 instance HasEnvironment (Model t) where
   environment = _environment
 
+instance HasRouter Model where
+  router = _router
+
 instance (Reflex t) => Default (App t) where
   def = App (constDyn Set.empty) never never
 
@@ -112,6 +120,9 @@ instance Server.HasConfig ModelConfig where
 instance Settings.HasConfig ModelConfig where
   config = settingsConfig
 
+instance Router.HasConfig ModelConfig where
+  config = routerConfig
+
 instance Flattenable ModelConfig where
   flattenWith doSwitch ev
     = ModelConfig
@@ -119,6 +130,7 @@ instance Flattenable ModelConfig where
       <*> flattenWith doSwitch (_subscriberConfig <$> ev)
       <*> flattenWith doSwitch (_serverConfig <$> ev)
       <*> flattenWith doSwitch (_settingsConfig <$> ev)
+      <*> flattenWith doSwitch (_routerConfig <$> ev)
 
 appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev
@@ -152,6 +164,7 @@ babyNames loaded =
 
 -- Auto generated lenses:
 
+
 -- Lenses for ModelConfig t:
 
 accountConfig :: Lens' (ModelConfig t) (Account.Config t)
@@ -165,6 +178,10 @@ serverConfig f modelConfig' = (\serverConfig' -> modelConfig' { _serverConfig = 
 
 settingsConfig :: Lens' (ModelConfig t) (Settings.Config t)
 settingsConfig f modelConfig' = (\settingsConfig' -> modelConfig' { _settingsConfig = settingsConfig' }) <$> f (_settingsConfig modelConfig')
+
+routerConfig :: Lens' (ModelConfig t) (Router.Config t)
+routerConfig f modelConfig' = (\routerConfig' -> modelConfig' { _routerConfig = routerConfig' }) <$> f (_routerConfig modelConfig')
+
 
 -- Lenses for Model t:
 
@@ -182,6 +199,9 @@ _settings f model' = (\_settings' -> model' { __settings = _settings' }) <$> f (
 
 _environment :: Lens' (Model t) Environment
 _environment f model' = (\_environment' -> model' { __environment = _environment' }) <$> f (__environment model')
+
+_router :: Lens' (Model t) (Router t)
+_router f model' = (\_router' -> model' { __router = _router' }) <$> f (__router model')
 
 
 -- Lenses for Loaded t:
@@ -215,3 +235,5 @@ screenApp f screen' = (\screenApp' -> screen' { _screenApp = screenApp' }) <$> f
 
 screenGoHome :: Lens' (Screen t) (Event t ())
 screenGoHome f screen' = (\screenGoHome' -> screen' { _screenGoHome = screenGoHome' }) <$> f (_screenGoHome screen')
+
+
