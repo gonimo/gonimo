@@ -6,17 +6,15 @@ module Gonimo.Client.Invite.Internal where
 
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.IO.Class      (liftIO)
+
 import           Control.Monad.Fix           (MonadFix)
 import qualified Data.Aeson                  as Aeson
 import qualified Data.ByteString.Lazy        as BL
 import           Data.Default                (Default (..))
 import           Data.Monoid
 import           Data.Text                   (Text)
-import qualified Data.Text.IO                as T
 import qualified Data.Text.Encoding          as T
 import           Language.Javascript.JSaddle
-import           Language.Javascript.JSaddle.Value
 import           Network.HTTP.Types          (urlEncode)
 import           Reflex.Dom.Core
 
