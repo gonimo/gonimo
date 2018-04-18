@@ -186,7 +186,7 @@ data Config t
              _onClaimInvitation :: Event t [InvitationSecret]
              -- | Answer an invitation. (Decline/accept it.)
            , _onAnswerInvitation :: Event t [(InvitationSecret, InvitationReply)]
-} deriving (Generic)
+           } deriving (Generic)
 ```
 
 So Account can be told to claim an invitation and to respond to an invitation.
@@ -252,7 +252,7 @@ data Account t
   = Account { -- | Invitations currently claimed by the account. (At the moment,
               --   just the ones claimed in this session.)
               _claimedInvitations :: Dynamic t ClaimedInvitations
-}
+            }
 
 type ClaimedInvitations = Map InvitationSecret InvitationInfo
 
@@ -287,7 +287,7 @@ make model conf = do
 
   pure $ ( serverConfig' <> subscriberConfig'
          , Account {..}
-)
+         )
 ```
 
 As you can see, it takes a model which needs to satisfy `HasModel`, the
