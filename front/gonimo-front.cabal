@@ -40,27 +40,28 @@ library
                     , ScopedTypeVariables
                     , FlexibleContexts
                     , GADTs
-  build-depends:      aeson
+  build-depends:      Cabal
+                    , aeson
                     , base >=4.8 && <5.0
-                    , Cabal
-                    , errors
                     , bytestring
-                    , text
+                    , containers
+                    , data-default
+                    , errors
+                    , generic-deriving
                     , ghcjs-dom
                     , gonimo-common
-                    , reflex
-                    , lens
-                    , safe
-                    , containers
-                    , transformers
                     , http-types
-                    , time
-                    , mtl
-                    , data-default
-                    , lifted-base
                     , jsaddle
+                    , lens
+                    , lifted-base
+                    , mtl
+                    , reflex
                     , reflex-dom-core
-                    , generic-deriving
+                    , safe
+                    , text
+                    , time
+                    , transformers
+                    , uri-bytestring >= 0.2.3.3
   if !impl(ghcjs)
      build-depends: jsaddle-dom
   if impl(ghcjs)
@@ -70,16 +71,16 @@ library
                     , Gonimo.Client.AcceptInvitation
                     , Gonimo.Client.AcceptInvitation.UI
                     , Gonimo.Client.AcceptInvitation.UI.I18N
-                    , Gonimo.Client.Account.Impl
                     , Gonimo.Client.Account
+                    , Gonimo.Client.Account.Impl
                     , Gonimo.Client.App
                     , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
                     , Gonimo.Client.App.UI
                     , Gonimo.Client.App.UI.I18N
-                    , Gonimo.Client.Auth.Impl
                     , Gonimo.Client.Auth
                     , Gonimo.Client.Auth.I18N
+                    , Gonimo.Client.Auth.Impl
                     , Gonimo.Client.Baby
                     , Gonimo.Client.Baby.Internal
                     , Gonimo.Client.Baby.Socket
@@ -100,8 +101,6 @@ library
                     , Gonimo.Client.Family.RoleSelector.I18N
                     , Gonimo.Client.Family.UI
                     , Gonimo.Client.Family.UI.I18N
-                    , Gonimo.Client.Settings
-                    , Gonimo.Client.Settings.UI
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.Invite.UI
@@ -126,11 +125,15 @@ library
                     , Gonimo.Client.Reflex.Dom
                     , Gonimo.Client.Reflex.Dom.WebSocket
                     , Gonimo.Client.Reflex.Dom.WebSocket.Internal
+                    , Gonimo.Client.Router
+                    , Gonimo.Client.Router.Impl
                     , Gonimo.Client.Server
+                    , Gonimo.Client.Settings
+                    , Gonimo.Client.Settings.UI
                     , Gonimo.Client.Storage
                     , Gonimo.Client.Storage.Keys
-                    , Gonimo.Client.Subscriber.Impl
                     , Gonimo.Client.Subscriber
+                    , Gonimo.Client.Subscriber.Impl
                     , Gonimo.Client.Util
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.WebRTC.Channels
@@ -141,4 +144,5 @@ library
                     , Gonimo.DOM.Window.Internal
                     , Gonimo.SocketAPI.Translations
                     , Reflex.Class.Extended
+                    , Reflex.Dom.Contrib.Router
                     , Reflex.Dynamic.Extended
