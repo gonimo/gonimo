@@ -59,7 +59,7 @@ type ChannelMap t = Map (API.FromId, Secret) (Channel.Channel t)
 type StreamMap = Map (API.FromId, Secret) MediaStream
 type ChannelsBehavior t = Behavior t (ChannelMap t)
 
-data ChannelSelector = AllChannels | OnlyChannel (DeviceId, Secret)
+data ChannelSelector = AllChannels | OnlyChannel (DeviceId, Secret) deriving Show
 
 -- Channels encapsulate RTCPeerConnections and combine them with a signalling channel.
 data Config t
