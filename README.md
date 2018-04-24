@@ -23,14 +23,15 @@ First, we are going to need a fork of the [reflex-platform](https://github.com/e
 $ git clone -b gonimo git@github.com:eskimor/reflex-platform.git
 ```
 
-Make sure you have the gonimo branch, as specified in the above command.
+Make sure you have the `gonimo` branch, as specified in the above command.
 
 Next we need to clone the Gonimo source code:
 
 ```bash
-$ git clone git@github.com:gonimo/gonimo.git
+$ git clone -b develop git@github.com:gonimo/gonimo.git
 ```
 
+Make sure you have the `develop` branch, as specified in the above command.
 Now we are ready to rumble.
 
 ## Setting up nix and the nix binary cache
