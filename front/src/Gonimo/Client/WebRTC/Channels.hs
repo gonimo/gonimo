@@ -31,6 +31,8 @@ import           GHCJS.DOM.Types                   (MediaStream,
                                                     RTCIceCandidate (..),
                                                     RTCIceCandidateInit (..))
 import           Language.Javascript.JSaddle       (JSM, liftJSM)
+import           GHCJS.DOM.Enums                   (RTCSignalingState(..))
+
 
 import           Gonimo.Client.Environment         (HasEnvironment)
 import           Gonimo.Client.Reflex              (buildDynMap)
@@ -403,6 +405,8 @@ handleRTCEvents ourId chans chanEv = do
                          msg <- handleRejectedWithClose conn
                            $ case rtcEv of
                                 RTCEventNegotiationNeeded -> do
+                                  sigState <- getSignalingState conn
+                                  guard $ sigState == RTCSignalingStateStable -- Recent Chromes trigger Negotiation needed twice, causing setRemoteDescription to fail with: wrong state: stable.
                                   jsOffer <- createOffer conn Nothing
                                   setLocalDescription conn jsOffer
                                   offer <- API.mFromFrontend jsOffer
