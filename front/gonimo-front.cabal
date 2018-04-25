@@ -61,6 +61,7 @@ library
                     , text
                     , time
                     , transformers
+                    , network-uri
                     -- , uri-bytestring >= 0.2.3.3 -- Does depend on TH!
   if !impl(ghcjs)
      build-depends: jsaddle-dom

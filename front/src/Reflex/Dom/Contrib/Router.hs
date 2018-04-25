@@ -1,4 +1,5 @@
 {-- Stolen from reflex-dom-contrib for now, as it fails to build with the current reflex-platform.
+ -- Adapted to use network-uri instead of uri-bytestring in order to get rid of TemplateHaskell. (Cross compiling you know ...)
 --}
 {-# LANGUAGE CPP                      #-}
 {-# LANGUAGE ConstraintKinds          #-}
@@ -17,13 +18,11 @@ module Reflex.Dom.Contrib.Router (
   -- == High-level routers
     route
   , route'
-  , partialPathRoute
 
   -- = Low-level URL bar access
   , getLoc
   , getURI
   , getUrlText
-  , uriOrigin
   , URI
 
   -- = History movement
@@ -32,15 +31,11 @@ module Reflex.Dom.Contrib.Router (
   ) where
 
 ------------------------------------------------------------------------------
-import           Control.Lens                  ((&), (.~), (^.))
-import qualified Data.ByteString.Char8         as BS
-import           Data.Monoid                   ((<>))
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
-import qualified Data.Text.Encoding            as T
 import           GHCJS.DOM.Types               (Location(..))
 import           Reflex.Dom.Core               hiding (EventName, Window)
-import qualified URI.ByteString                as U
+import qualified Network.URI                as U
 import           GHCJS.DOM.Types               (MonadJSM)
 import           GHCJS.DOM.History             (History, back, forward, pushState)
 import           GHCJS.DOM                     (currentWindow)
@@ -57,6 +52,7 @@ import           GHCJS.DOM.Window              (popState)
 import           GHCJS.Marshal.Pure            (pFromJSVal)
 import qualified Language.Javascript.JSaddle   as JS
 import           Language.Javascript.JSaddle   (JSM, liftJSM, Object(..))
+import           Data.Maybe
 ------------------------------------------------------------------------------
 
 
@@ -73,7 +69,7 @@ import           Language.Javascript.JSaddle   (JSM, liftJSM, Object(..))
 route
   :: (HasJSContext m, MonadWidget t m)
   => Event t T.Text
-  -> m (Dynamic t (U.URIRef U.Absolute))
+  -> m (Dynamic t URI)
 route pushTo = do
   loc0    <- getURI
 
@@ -97,7 +93,7 @@ route'
   -> Event t a
   -> m (Dynamic t b)
 route' encode decode routeUpdate = do
-  rec rUri <- route (T.decodeUtf8 . U.serializeURIRef' <$> urlUpdates)
+  rec rUri <- route (T.pack . show <$> urlUpdates)
       let urlUpdates = attachWith encode (current rUri) routeUpdate
   return $ decode <$> rUri
 
@@ -105,47 +101,39 @@ route' encode decode routeUpdate = do
 -------------------------------------------------------------------------------
 -- | Route a single page app according to the part of the path after
 --   pathBase
-partialPathRoute
-  :: forall t m. MonadWidget t m
-  => T.Text  -- ^ The path segments not related to SPA routing
-             --   (leading '/' will be added automaticaly)
-  -> Event t T.Text -- ^ Updates to the path segments used for routing
-                    --   These values will be appended to the base path
-  -> m (Dynamic t [T.Text]) -- ^ Path segments used for routing
-partialPathRoute pathBase pathUpdates = do
-  route' (flip updateUrl) parseParts pathUpdates
-  where
+-- partialPathRoute
+--   :: forall t m. MonadWidget t m
+--   => T.Text  -- ^ The path segments not related to SPA routing
+--              --   (leading '/' will be added automaticaly)
+--   -> Event t T.Text -- ^ Updates to the path segments used for routing
+--                     --   These values will be appended to the base path
+--   -> m (Dynamic t [T.Text]) -- ^ Path segments used for routing
+-- partialPathRoute pathBase pathUpdates = do
+--   route' (flip updateUrl) parseParts pathUpdates
+--   where
 
-    toPath :: T.Text -> BS.ByteString
-    toPath dynpath = T.encodeUtf8 $
-      "/" <> cleanT pathBase <>
-      "/" <> cleanT dynpath
+--     toPath :: T.Text -> BS.ByteString
+--     toPath dynpath = T.encodeUtf8 $
+--       "/" <> cleanT pathBase <>
+--       "/" <> cleanT dynpath
 
-    updateUrl :: T.Text -> URI -> URI
-    updateUrl updateParts u = u & U.pathL .~ toPath updateParts
+--     updateUrl :: T.Text -> URI -> URI
+--     updateUrl updateParts u = u & U.pathL .~ toPath updateParts
 
-    parseParts :: URI -> [T.Text]
-    parseParts u =
-      maybe (error $ pfxErr u pathBase)
-            (T.splitOn "/" . T.decodeUtf8 . cleanB) .
-      BS.stripPrefix (T.encodeUtf8 $ cleanT pathBase) $
-      cleanB (u ^. U.pathL)
+--     parseParts :: URI -> [T.Text]
+--     parseParts u =
+--       maybe (error $ pfxErr u pathBase)
+--             (T.splitOn "/" . T.decodeUtf8 . cleanB) .
+--       BS.stripPrefix (T.encodeUtf8 $ cleanT pathBase) $
+--       cleanB (u ^. U.pathL)
 
-    cleanT = T.dropWhile (=='/')
-    cleanB = BS.dropWhile (== '/')
-
-
--------------------------------------------------------------------------------
-uriOrigin :: U.URIRef U.Absolute -> T.Text
-uriOrigin r = T.decodeUtf8 $ U.serializeURIRef' r'
-  where
-    r' = r { U.uriPath = mempty
-           , U.uriQuery = mempty
-           , U.uriFragment = mempty
-           }
+--     cleanT = T.dropWhile (=='/')
+--     cleanB = BS.dropWhile (== '/')
 
 
 -------------------------------------------------------------------------------
+
+
 getPopState :: (MonadWidget t m) => m (Event t URI)
 getPopState = do
   Just window <- currentWindow
@@ -157,7 +145,7 @@ getPopState = do
 #endif
       <- getLocation window
     locStr <- getHref loc
-    return . hush $ U.parseURI U.laxURIParserOptions (T.encodeUtf8 locStr)
+    return $ U.parseURI locStr
 
 
 -------------------------------------------------------------------------------
@@ -199,20 +187,21 @@ getLoc = do
 
 -------------------------------------------------------------------------------
 -- | (Unsafely) get the URL text of a window
-getUrlText :: (HasJSContext m, MonadJSM m) => m T.Text
+getUrlText :: (HasJSContext m, MonadJSM m) => m Text
 getUrlText = getLoc >>= getHref
 
 
 -------------------------------------------------------------------------------
-type URI = U.URIRef U.Absolute
+type URI = U.URI
 
 
 -------------------------------------------------------------------------------
 getURI :: (HasJSContext m, MonadJSM m) => m URI
 getURI = do
   l <- getUrlText
-  return $ either (error "No parse of window location") id .
-    U.parseURI U.laxURIParserOptions $ T.encodeUtf8 l
+  return
+    $ fromMaybe (error "No parse of window location")
+    . U.parseURI . T.unpack $ l
 
 
 dispatchEvent' :: JSM ()
@@ -230,11 +219,3 @@ dispatchEvent' = do
 hush :: Either e a -> Maybe a
 hush (Right a) = Just a
 hush _ = Nothing
-
-
--------------------------------------------------------------------------------
-pfxErr :: URI -> T.Text -> String
-pfxErr pn pathBase =
-  T.unpack $ "Encountered path (" <> T.decodeUtf8 (U.serializeURIRef' pn)
-            <> ") without expected prefix (" <> pathBase <> ")"
-
