@@ -46,7 +46,7 @@ renderRoute r = "/index" <> ".html" <> -- This artifical split is necessary beca
 -- This function is total, because every unknown route will be routed to 'RouteHome'.
 parseRoute :: Path -> Route
 parseRoute p' =
-  let p = fromMaybe p' $ stripPrefix "/index.html" p'
+  let p = fromMaybe p' $ stripPrefix ("/index" <> ".html") p'
   in
     case p of
       "/createFamily" -> RouteCreateFamily
