@@ -35,7 +35,7 @@ make conf = do
 type Path = String
 
 renderRoute :: Route -> Path
-renderRoute r = "/index.html" <>
+renderRoute r = "/index" <> ".html" <> -- This artifical split is necessary because of our current filename hashing. Otherwise the route gets replaced with index-hash.html.
   case r of
     RouteHome         -> ""
     RouteCreateFamily -> "/createFamily"
