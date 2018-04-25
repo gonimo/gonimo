@@ -213,9 +213,3 @@ dispatchEvent' = do
   JS.objSetPropertyByName obj ("view" :: Text) window
   event <- newPopStateEvent ("popstate" :: Text) $ Just $ pFromJSVal o
   dispatchEvent_ window event
-
-
--------------------------------------------------------------------------------
-hush :: Either e a -> Maybe a
-hush (Right a) = Just a
-hush _ = Nothing

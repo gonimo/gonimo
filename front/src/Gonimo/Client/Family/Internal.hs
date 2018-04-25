@@ -20,7 +20,7 @@ import           Reflex.Dom.Core
 import           Safe                       (headMay)
 
 import qualified Gonimo.Client.App.Types    as App
-import qualified Gonimo.Client.Auth.Impl         as Auth
+import qualified Gonimo.Client.Auth.Impl    as Auth
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Server       hiding (Config)
 import qualified Gonimo.Client.Storage      as GStorage
@@ -31,11 +31,10 @@ import qualified Gonimo.SocketAPI           as API
 import           Gonimo.SocketAPI.Types     (FamilyId)
 import qualified Gonimo.SocketAPI.Types     as API
 import qualified Gonimo.Types               as Gonimo
+import           Gonimo.Client.Router (Route(..))
 
 
 type FamilyMap = Map FamilyId API.Family
-
-data GonimoRole = RoleBaby | RoleParent deriving (Eq, Ord)
 
 data Config t
   = Config { _configResponse      :: Event t API.ServerResponse
@@ -55,13 +54,13 @@ data Family t
            }
 
 data UI t
-  = UI { _uiSelectFamily :: Event t FamilyId
-       , _uiCreateFamily :: Event t ()
-       , _uiLeaveFamily  :: Event t ()
-       , _uiSetName      :: Event t Text
-       , _uiRoleSelected :: Event t GonimoRole
-       , _uiRequest      :: Event t [ API.ServerRequest ]
-       , _uiSelectLang   :: Event t Locale
+  = UI { _uiSelectFamily  :: Event t FamilyId
+       , _uiCreateFamily  :: Event t ()
+       , _uiLeaveFamily   :: Event t ()
+       , _uiSetName       :: Event t Text
+       , _uiRouteSelected :: Event t Route
+       , _uiRequest       :: Event t [ API.ServerRequest ]
+       , _uiSelectLang    :: Event t Locale
        }
 
 data CreateFamilyResult = CreateFamilyCancel | CreateFamilyOk | CreateFamilySetName !Text
@@ -91,7 +90,7 @@ uiSwitchPromptly ev
        <*> switchPromptly never (_uiCreateFamily <$> ev)
        <*> switchPromptly never (_uiLeaveFamily <$> ev)
        <*> switchPromptly never (_uiSetName <$> ev)
-       <*> switchPromptly never (_uiRoleSelected <$> ev)
+       <*> switchPromptly never (_uiRouteSelected <$> ev)
        <*> switchPromptly never (_uiRequest <$> ev)
        <*> switchPromptly never (_uiSelectLang <$> ev)
 
@@ -101,7 +100,7 @@ uiSwitchPromptlyDyn ev
        (switchPromptlyDyn (_uiCreateFamily <$> ev))
        (switchPromptlyDyn (_uiLeaveFamily <$> ev))
        (switchPromptlyDyn (_uiSetName <$> ev))
-       (switchPromptlyDyn (_uiRoleSelected <$> ev))
+       (switchPromptlyDyn (_uiRouteSelected <$> ev))
        (switchPromptlyDyn (_uiRequest <$> ev))
        (switchPromptlyDyn (_uiSelectLang <$> ev))
 
@@ -289,22 +288,6 @@ _CreateFamilySetName = prism' (\t -> CreateFamilySetName t) go
       CreateFamilySetName t -> Just $ t
       _                     -> Nothing
 
-_RoleParent :: Prism' GonimoRole ()
-_RoleParent = prism' (\() -> RoleParent) go
-  where
-    go c = case c of
-      RoleParent -> Just ()
-      _          -> Nothing
-
-_RoleBaby :: Prism' GonimoRole ()
-_RoleBaby = prism' (\() -> RoleBaby) go
-  where
-    go c = case c of
-      RoleBaby -> Just ()
-      _        -> Nothing
-
-
-
 -- Lenses for Config t:
 
 configResponse :: Lens' (Config t) (Event t API.ServerResponse)
@@ -358,8 +341,8 @@ uiLeaveFamily f uI' = (\uiLeaveFamily' -> uI' { _uiLeaveFamily = uiLeaveFamily' 
 uiSetName :: Lens' (UI t) (Event t Text)
 uiSetName f uI' = (\uiSetName' -> uI' { _uiSetName = uiSetName' }) <$> f (_uiSetName uI')
 
-uiRoleSelected :: Lens' (UI t) (Event t GonimoRole)
-uiRoleSelected f uI' = (\uiRoleSelected' -> uI' { _uiRoleSelected = uiRoleSelected' }) <$> f (_uiRoleSelected uI')
+uiRouteSelected :: Lens' (UI t) (Event t Route)
+uiRouteSelected f uI' = (\uiRouteSelected' -> uI' { _uiRouteSelected = uiRouteSelected' }) <$> f (_uiRouteSelected uI')
 
 uiRequest :: Lens' (UI t) (Event t [ API.ServerRequest ])
 uiRequest f uI' = (\uiRequest' -> uI' { _uiRequest = uiRequest' }) <$> f (_uiRequest uI')

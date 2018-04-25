@@ -55,7 +55,7 @@ uiStart =
         $ elAttr' "div" ( "class" =: "input-btn plus next-action"
                        <> "title" =: "Create a family to get started."
                        <> "type"  =: "button"
-                       <> "role"  =: "button"
+                       <> "route"  =: "button"
                         ) blank
 
       pure $ leftmost [ plusClicked, inputFieldClicked, headingClicked ]
@@ -65,7 +65,7 @@ uiStart =
             , _uiCreateFamily = userWantsFamily
             , _uiLeaveFamily  = never
             , _uiSetName      = never
-            , _uiRoleSelected = never
+            , _uiRouteSelected = never
             , _uiRequest      = never
             , _uiSelectLang   = langSelected
             }
@@ -117,7 +117,7 @@ ui appConfig loaded familyGotCreated = do
         dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
         pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
-    roleSelected <- roleSelector
+    routeSelected <- roleSelector
     privacyPolicy
     inviteRequested <- elClass "div" "footer" $
           makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ trText Add_Device
@@ -130,7 +130,7 @@ ui appConfig loaded familyGotCreated = do
               , _uiSetName      = leftmost [ nameChanged
                                            , push (\r -> pure $ r^?_CreateFamilySetName) newFamilyResult
                                            ]
-              , _uiRoleSelected = roleSelected
+              , _uiRouteSelected = routeSelected
               , _uiRequest      = newFamilyReqs <> invite^.Invite.request
               , _uiSelectLang   = langSelected
               }

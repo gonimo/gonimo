@@ -145,5 +145,5 @@ library
                     , Gonimo.DOM.Window.Internal
                     , Gonimo.SocketAPI.Translations
                     , Reflex.Class.Extended
-                    -- , Reflex.Dom.Contrib.Router -- Does depend on TH currently!
+                    , Reflex.Dom.Contrib.Router
                     , Reflex.Dynamic.Extended

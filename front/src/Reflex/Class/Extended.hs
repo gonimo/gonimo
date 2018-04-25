@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-|
@@ -31,7 +32,7 @@ import           Reflex.PostBuild.Class
 
 
 -- | Uses the leftmost event in case of coincidence, but wraps it in a list for
---   use in an API that expects a list of event.s
+--   use in an API that expects a list of events.
 leftmostList :: Reflex t => [Event t a] -> Event t [a]
 leftmostList = fmap (:[]) . leftmost
 
@@ -53,6 +54,7 @@ class Flattenable a where
   -- implementing flattenWith.
   flattenWith :: forall t m. (Reflex t, MonadHold t m)
                   => SwitchHold -> Event t (a t) -> m (a t)
+
 
 -- | Extract a type from an event, with the given initial value.
 flatten :: forall a t m. (Flattenable a, Reflex t, MonadHold t m)

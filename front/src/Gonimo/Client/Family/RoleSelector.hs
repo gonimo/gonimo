@@ -5,16 +5,17 @@ module Gonimo.Client.Family.RoleSelector where
 
 import           Reflex.Dom.Core
 
-import           Gonimo.Client.Family.Internal
+
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Family.RoleSelector.I18N
+import           Gonimo.Client.Router (Route(..))
 
 
 
 
 roleSelector :: forall model t m. GonimoM model t m
-          => m (Event t GonimoRole)
+          => m (Event t Route)
 roleSelector = do
   elClass "div" "btn-box" $ do
     babyClicked <-
@@ -25,6 +26,6 @@ roleSelector = do
       makeClickable . elAttr' "div" (addBtnAttrs "btn-parent") $ do
         elAttr "img" ("src" =: "/pix/button-parent.svg") blank
         el "span" $ trText Parent
-    pure $ leftmost [ const RoleBaby <$> babyClicked
-                    , const RoleParent <$> parentClicked
+    pure $ leftmost [ const RouteBaby <$> babyClicked
+                    , const RouteParent <$> parentClicked
                     ]

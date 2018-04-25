@@ -11,6 +11,7 @@ module Gonimo.Client.Router.Impl ( module Gonimo.Client.Router
 import           Reflex.Dom.Contrib.Router
 import           Network.URI            (uriPath)
 import           Reflex.Dom.Core
+import           Data.List (stripPrefix)
 
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Router
@@ -34,20 +35,22 @@ make conf = do
 type Path = String
 
 renderRoute :: Route -> Path
-renderRoute r =
+renderRoute r = "/index.html" <>
   case r of
-    RouteHome         -> "/"
-    RouteCreateFamily -> "createFamily"
-    RouteInvite       -> "invite"
-    RouteBaby         -> "baby"
-    RouteParent       -> "parent"
+    RouteHome         -> ""
+    RouteCreateFamily -> "/createFamily"
+    RouteInvite       -> "/invite"
+    RouteBaby         -> "/baby"
+    RouteParent       -> "/parent"
 
 -- This function is total, because every unknown route will be routed to 'RouteHome'.
 parseRoute :: Path -> Route
-parseRoute p =
-  case p of
-    "createFamily" -> RouteCreateFamily
-    "invite"       -> RouteInvite
-    "baby"         -> RouteBaby
-    "parent"       -> RouteParent
-    _              -> RouteHome
+parseRoute p' =
+  let p = fromMaybe p' $ stripPrefix "/index.html" p'
+  in
+    case p of
+      "/createFamily" -> RouteCreateFamily
+      "/invite"       -> RouteInvite
+      "/baby"         -> RouteBaby
+      "/parent"       -> RouteParent
+      _               -> RouteHome
