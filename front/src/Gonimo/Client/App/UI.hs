@@ -145,7 +145,7 @@ loadedUI model loaded familyCreated = mdo
       if isAutoStart
       then do
         (ev, trigger) <- newTriggerEvent
-        liftIO $ trigger RouteHome
+        liftIO $ trigger RouteBaby
         pure $ mempty & Router.onSetRoute .~ ev
       else
         pure mempty
