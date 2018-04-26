@@ -12,6 +12,7 @@ import           Reflex.Dom.Contrib.Router
 import           Network.URI            (uriPath)
 import           Reflex.Dom.Core
 import           Data.List (stripPrefix)
+import           System.FilePath (splitPath)
 
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Router
@@ -46,11 +47,13 @@ renderRoute r = "/index" <> ".html" <> -- This artifical split is necessary beca
 -- This function is total, because every unknown route will be routed to 'RouteHome'.
 parseRoute :: Path -> Route
 parseRoute p' =
-  let p = fromMaybe p' $ stripPrefix ("/index" <> ".html") p'
+  let p = case (drop 2 . splitPath) p' of
+            [x] -> x
+            _   -> p'
   in
     case p of
-      "/createFamily" -> RouteCreateFamily
-      "/invite"       -> RouteInvite
-      "/baby"         -> RouteBaby
-      "/parent"       -> RouteParent
-      _               -> RouteHome
+      "createFamily" -> RouteCreateFamily
+      "invite"       -> RouteInvite
+      "baby"         -> RouteBaby
+      "parent"       -> RouteParent
+      _              -> RouteHome
