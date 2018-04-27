@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
 module Gonimo.Client.App.Types where
 
@@ -73,7 +74,21 @@ data Screen t
            , _screenGoHome :: Event t ()
            }
 
-type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment model, HasSettings model)
+
+-- Legacy App t to ModelConfig converter.
+appToModelConfig :: Reflex t => App t -> ModelConfig t
+appToModelConfig app' =
+  mempty & Subscriber.subscriptions .~ _subscriptions app'
+         & Server.onRequest .~ _request app'
+         & Settings.onSelectLocale .~ _selectLang app'
+
+-- Legacy Screen to ModelConfig converter.
+screenToModelConfig :: Reflex t => Screen t -> ModelConfig t
+screenToModelConfig screen =
+  appToModelConfig (_screenApp screen) & Router.onGoBack .~ _screenGoHome screen
+
+type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment model, HasSettings model, HasRouter model)
+
 instance HasServer Model where
   server = _server
 
@@ -144,6 +159,20 @@ screenSwitchPromptlyDyn ev
   = Screen { _screenApp = appSwitchPromptlyDyn (_screenApp <$> ev)
            , _screenGoHome = switchPromptlyDyn $ _screenGoHome <$> ev
            }
+
+instance Flattenable App where
+  flattenWith doSwitch ev = do
+    updatedSubscriptions <- doSwitch never (updated . _subscriptions <$> ev)
+    _subscriptions <- holdDyn Set.empty updatedSubscriptions
+    _request <- doSwitch never (_request <$> ev)
+    _selectLang <- doSwitch never (_selectLang <$> ev)
+    pure $ App{..}
+
+
+instance Flattenable Screen where
+  flattenWith doSwitch ev = do
+    Screen <$> flattenWith doSwitch (_screenApp <$> ev)
+           <*> doSwitch never (_screenGoHome <$> ev)
 
 currentFamilyName :: forall t. Reflex t => Loaded t -> Dynamic t Text
 currentFamilyName loaded =

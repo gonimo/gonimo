@@ -11,16 +11,23 @@ import qualified GHCJS.DOM.MediaStream            as MediaStream
 import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.App.Types          as App
-import qualified Gonimo.Client.Auth.Impl               as Auth
-import           Gonimo.Client.ConfirmationButton (mayAddConfirmation)
+import qualified Gonimo.Client.Auth.Impl          as Auth
+import           Gonimo.Client.ConfirmationButton (mayAddConfirmation,
+                                                   mayAddConfirmation', _No,
+                                                   _Yes)
 import qualified Gonimo.Client.DeviceList         as DeviceList
 import qualified Gonimo.Client.Invite             as Invite
+import           Gonimo.Client.Model              (IsConfig)
 import qualified Gonimo.Client.NavBar             as NavBar
 import qualified Gonimo.Client.Parent.Connections as C
 import           Gonimo.Client.Parent.UI.I18N
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Client.Router             (Route (..), onGoBack,
+                                                   onSetRoute, HasRouter(..))
+import qualified Gonimo.Client.Router             as Router
 import           Gonimo.Client.Server             hiding (HasModel)
+import qualified Gonimo.Client.Server             as Server
 import           Gonimo.Client.WebRTC.Channel     (Channel, ReceivingState (..),
                                                    worstState)
 import qualified Gonimo.Client.WebRTC.Channel     as Channel
@@ -28,17 +35,20 @@ import           Gonimo.SocketAPI.Types           (DeviceId)
 import           Gonimo.Types                     (_Baby)
 
 
-type HasModel model = Invite.HasModel model
 
-ui :: forall model m t. (HasModel model, GonimoM model t m)
-            => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
-ui appConfig loaded deviceList = mdo
-  connections' <- C.connections $ C.Config { C._configResponse = appConfig^.onResponse
+
+type HasModel model = (Invite.HasModel model, HasServer model, Auth.HasAuth model, HasRouter model)
+
+type HasModelConfig c t = (IsConfig c t, Server.HasConfig c, Router.HasConfig c)
+
+ui :: forall model mConf m t. (HasModel model, GonimoM model t m, HasModelConfig mConf t)
+            => App.Loaded t -> DeviceList.DeviceList t -> m (mConf t)
+ui loaded deviceList = mdo
+  model <- ask
+  connections' <- C.connections $ C.Config { C._configResponse = model^.onResponse
                                            , C._configAuthData = loaded^.App.authData
                                            , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
-                                           , C._configDisconnectAll = leftmost [ navBar^.NavBar.backClicked
-                                                                               , navBar^.NavBar.homeClicked
-                                                                               , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
+                                           , C._configDisconnectAll = leftmost [ onCleanupRequested
                                                                                , viewUI^.C.videoViewDisconnectAll
                                                                                ]
                                            , C._configDisconnectBaby = leftmost [ devicesUI^.DeviceList.uiDisconnect
@@ -59,7 +69,7 @@ ui appConfig loaded deviceList = mdo
                                                              ]
   let showInviteView = const "isInviteView" <$> inviteRequested
 
-  let showBroken = fmap not $ (||) <$> connections'^.C.brokenConnections <*> appConfig^.Auth.isOnline
+  let showBroken = fmap not $ (||) <$> connections'^.C.brokenConnections <*> model^.Auth.isOnline
 
   _ <- dyn $ Auth.connectionLossScreen' <$> showBroken
 
@@ -68,60 +78,103 @@ ui appConfig loaded deviceList = mdo
 
   (navBar, devicesUI, inviteRequested) <-
     elDynClass "div" (pure "container has-footer parentManage " <> selectedView) $ do
-      manageUi appConfig loaded deviceList connections'
+      manageUi loaded deviceList connections'
 
   viewUI <-
     elDynClass "div" (pure "container parentView " <> selectedView) $ do
-      viewUi appConfig loaded deviceList connections' parentViewShown
+      viewUi loaded deviceList connections' parentViewShown
 
   invite <-
     elDynClass "div" (pure "container inviteView " <> selectedView) $ do
       firstCreation <- headE inviteRequested
       let inviteUI
             = Invite.ui loaded
-              $ Invite.Config { Invite._configResponse = appConfig^.onResponse
+              $ Invite.Config { Invite._configResponse = model^.onResponse
                               , Invite._configSelectedFamily = loaded^.App.selectedFamily
-                              , Invite._configAuthenticated = appConfig^.Auth.onAuthenticated
+                              , Invite._configAuthenticated = model^.Auth.onAuthenticated
                               , Invite._configCreateInvitation = never
                               }
       dynInvite <- widgetHold (pure def) $ const inviteUI <$> firstCreation
       pure $ Invite.inviteSwitchPromptlyDyn dynInvite
 
-  emptySubs <- holdDyn mempty never
-  let parentApp = App.App { App._subscriptions = emptySubs
-                          , App._request = connections'^.C.request
-                                           <> devicesUI^.DeviceList.uiRequest
-                                           <> invite^.Invite.request
-                                           <> navBar^.NavBar.request
-                                           <> viewUI^.C.videoViewNavBar.NavBar.request
-                          , App._selectLang = never
-                          }
+  (onCleanupRequested, leaveConf) <- askLeaveConfirmation connections'
 
   let goHomeTrigger = leftmost [ navBar^.NavBar.backClicked
                                , navBar^.NavBar.homeClicked
                                , viewUI^.C.videoViewNavBar^.NavBar.homeClicked
                                ]
-  -- Ensure cleanup!
-  goHomeRequested <- hold False $ const True <$> goHomeTrigger
-  let channelsEmpty = Map.null <$> connections'^.C.channelMap
-  let goHome = fmap (const ()) . ffilter id
-               $ leftmost [ tag (current channelsEmpty) goHomeTrigger
-                          , attachWith (&&) goHomeRequested (updated channelsEmpty)
-                          ]
+  let
+    mConf = mempty & Router.onGoBack .~ goHomeTrigger
+                   & Server.onRequest .~ connections'^.C.request
+                                         <> devicesUI^.DeviceList.uiRequest
+                                         <> invite^.Invite.request
+                                         <> navBar^.NavBar.request
+                                         <> viewUI^.C.videoViewNavBar.NavBar.request
+  pure $ mconcat [ mConf
+                 , leaveConf
+                 ]
 
-  pure $ App.Screen { App._screenApp = parentApp
-                    , App._screenGoHome = goHome
-                    }
+-- | Show confirmation dialog on history back navigation.
+--
+--   If confirmed, another history back event gets fired - finally leaving the parent station.
+--   If not confirmed, push another `RouteParent` on the stack so we can ask again
+--   for confirmation next time.
+
+--   The returned event fires, if the user confirmed leaving, but before any
+--   cleanup happened. Thus it can and must be used for triggering the needed
+--   cleanup.
+--
+--   TODO: If the user presses the back button twice - we don't do any cleanup!
+--   Any baby connections will stay alive!
+askLeaveConfirmation :: forall model mConf m t.
+  ( GonimoM model t m, HasRouter model
+  , HasModelConfig mConf t
+  )
+  => C.Connections t -> m (Event t (), mConf t)
+askLeaveConfirmation connections' = do
+  (onAddRoute, triggerAddRoute) <- newTriggerEvent
+  -- Add another page to the history stack, so we can ask for confirmation.
+  liftIO $ triggerAddRoute RouteParent
+
+  let openStreams = connections'^.C.streams
+  route <- view Router.route
+  pos <- view Router.historyPosition
+  let onWantsLeave = push -- User pressed back button.
+                       (\newPos -> do
+                           currentRoute <- sample $ current route
+                           oldPos <- sample $ current pos
+                           let backButtonPressed = newPos < oldPos
+
+                           if currentRoute == RouteParent && backButtonPressed
+                            then pure $ Just ()
+                            else pure $ Nothing
+                       )
+                       (traceEvent "New pos" $ updated pos)
+  confirmed <- mayAddConfirmation' leaveConfirmation onWantsLeave (not . Map.null <$> openStreams)
+
+  let
+    onLeaveReq = fmapMaybe (preview _Yes) confirmed
+    onStay     = fmapMaybe (fmap (const RouteParent) . preview _No) confirmed
+
+  -- Ensure cleanup!
+  leaveRequested <- hold False $ const True <$> onLeaveReq
+  let channelsEmpty = Map.null <$> connections' ^. C.channelMap
+  let onLeave = fmap (const ()) . ffilter id
+                $ leftmost [ tag (current channelsEmpty) onLeaveReq
+                           , attachWith (&&) leaveRequested (updated channelsEmpty)
+                           ]
+
+  let conf = mempty & onSetRoute .~ leftmost [ onStay, onAddRoute ]
+                    & onGoBack   .~ onLeave
+  pure (onLeaveReq, conf)
+
+
 
 manageUi :: forall model m t. GonimoM model t m
-            => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
-manageUi _ loaded deviceList connections' = do
+            => App.Loaded t -> DeviceList.DeviceList t -> C.Connections t -> m (NavBar.NavBar t, DeviceList.UI t, Event t ())
+manageUi loaded deviceList connections' = do
       navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
       let openStreams = connections'^.C.streams
-      navBar' <- NavBar.NavBar
-                 <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.backClicked) (not . Map.null <$> openStreams)
-                 <*> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . Map.null <$> openStreams)
-                 <*> pure (navBar^.NavBar.request)
 
       devicesUI <- DeviceList.ui loaded deviceList
                    (connections'^.C.channelMap)
@@ -129,20 +182,17 @@ manageUi _ loaded deviceList connections' = do
       inviteRequested <- elClass "div" "footer" $
             makeClickable . elAttr' "div" (addBtnAttrs "device-add") $ trText Add_Device
 
-      pure (navBar', devicesUI, inviteRequested)
+      pure (navBar, devicesUI, inviteRequested)
 
 viewUi :: forall model m t. GonimoM model t m
-            => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> C.Connections t
+            => App.Loaded t -> DeviceList.DeviceList t -> C.Connections t
             -> Dynamic t Bool -> m (C.VideoView t)
-viewUi _ loaded deviceList connections isShown = do
+viewUi loaded deviceList connections isShown = do
   let streams = connections^.C.streams
   let singleVideoClass = (\streams' -> if Map.size streams' == 1 then "single-video " else "") <$> streams
   elDynClass "div" (pure "parent " <> singleVideoClass) $ do
     navBar <- NavBar.navBar (NavBar.Config loaded deviceList)
 
-    navBar' <- NavBar.NavBar (navBar^.NavBar.backClicked)
-              <$> mayAddConfirmation leaveConfirmation (navBar^.NavBar.homeClicked) (not . null <$> streams)
-              <*> pure (navBar^.NavBar.request)
 
     _ <- dyn $ renderFakeVideos connections
     closedsEvEv <- dyn $ renderVideos deviceList connections isShown
@@ -150,7 +200,7 @@ viewUi _ loaded deviceList connections isShown = do
     closedEv <- switchPromptly never closedEvEv
     stopAllClicked <- elClass "div" "stream-menu" $
         makeClickable . elAttr' "div" (addBtnAttrs "stop") $ trText Stop_All
-    pure $ C.VideoView navBar' closedEv stopAllClicked
+    pure $ C.VideoView navBar closedEv stopAllClicked
 
 renderFakeVideos :: forall model m t. GonimoM model t m => C.Connections t -> Dynamic t (m ())
 renderFakeVideos connections =

@@ -19,20 +19,29 @@ import qualified Gonimo.Client.App.Types          as App
 import           Gonimo.Client.Baby.Internal
 import qualified Gonimo.Client.Baby.Socket        as Socket
 import           Gonimo.Client.Baby.UI.I18N
-import           Gonimo.Client.ConfirmationButton (mayAddConfirmation)
+import           Gonimo.Client.ConfirmationButton (mayAddConfirmation,
+                                                   mayAddConfirmation', _No,
+                                                   _Yes)
 import qualified Gonimo.Client.DeviceList         as DeviceList
 import           Gonimo.Client.EditStringButton   (editStringEl)
 import qualified Gonimo.Client.NavBar             as NavBar
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Client.Router             (HasRouter (..), Route (..),
+                                                   onGoBack, onSetRoute)
+import qualified Gonimo.Client.Router             as Router
 import           Gonimo.Client.Server             hiding (Config, HasModel)
+import qualified Gonimo.Client.Server             as Server
+import qualified Gonimo.Client.Subscriber         as Subscriber
 import           Gonimo.Client.Util
 
 
 
 data BabyScreen = ScreenStart | ScreenRunning
 
-ui :: forall model m t. (HasModel model, GonimoM model t m) => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (App.Screen t)
+ui :: forall model mConf m t
+  . (HasModel model, GonimoM model t m, HasModelConfig mConf t)
+  => App.Model t -> App.Loaded t -> DeviceList.DeviceList t -> m (mConf t)
 ui appConfig loaded deviceList = mdo
     baby' <- baby $ Config { _configNextCamera = ui'^.uiSelectCamera
                            , _configEnableCamera = ui'^.uiEnableCamera
@@ -40,7 +49,7 @@ ui appConfig loaded deviceList = mdo
                            , _configResponse = appConfig^.onResponse
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = startMonitor
-                           , _configStopMonitor  = leftmost [ui'^.uiGoHome, ui'^.uiStopMonitor]
+                           , _configStopMonitor  = leftmost [onCleanupRequested, ui'^.uiStopMonitor]
                            , _configSetBabyName = ui'^.uiSetBabyName
                            , _configSelectedFamily = loaded^.App.selectedFamily
                            , _configGetUserMedia = errorNewStream
@@ -66,6 +75,8 @@ ui appConfig loaded deviceList = mdo
 
     let ui' = uiSwitchPromptlyDyn uiDyn
 
+    (onCleanupRequested, leaveConf) <- askLeaveConfirmation baby'
+
     errorNewStreamEv <-
       dyn $ showPermissionError <$> baby'^.mediaStream
     errorNewStream <- switchPromptly never $ snd <$> errorNewStreamEv
@@ -78,18 +89,72 @@ ui appConfig loaded deviceList = mdo
     performEvent_ $ const (do
                               cStream <- sample $ current (baby'^.mediaStream)
                               traverse_ stopMediaStream cStream
-                          ) <$> ui'^.uiGoHome
-    let babyApp = App.App { App._subscriptions = baby'^.socket.Socket.subscriptions
-                          , App._request = baby'^.socket.Socket.request <> baby'^.request
-                                           <> ui'^.uiRequest
-                          , App._selectLang = never
-                          }
-    pure $ App.Screen { App._screenApp = babyApp
-                      , App._screenGoHome = leftmost [ui'^.uiGoHome, errorGoHome]
-                      }
+                          ) <$> onCleanupRequested
+
+    let mConf = mempty & Subscriber.subscriptions .~ baby'^.socket.Socket.subscriptions
+                       & Server.onRequest .~ mconcat [ baby'^.socket.Socket.request
+                                                     , baby'^.request
+                                                     , ui'^.uiRequest
+                                                     ]
+                       & Router.onGoBack .~  leftmost [ ui'^.uiGoHome
+                                                      , errorGoHome
+                                                      ]
+    pure $ mconcat [ leaveConf
+                   , mConf
+                   ]
   where
     renderCenter baby' ScreenStart   = uiStart loaded deviceList baby'
     renderCenter baby' ScreenRunning = uiRunning loaded deviceList baby'
+
+-- | Show confirmation dialog on history back navigation.
+--
+--   If confirmed, another history back event gets fired - finally leaving the parent station.
+--   If not confirmed, push another `RouteParent` on the stack so we can ask again
+--   for confirmation next time.
+
+--   The returned event fires, if the user confirmed leaving, but before any
+--   cleanup happened. Thus it can and must be used for triggering the needed
+--   cleanup.
+--
+--   TODO: If the user presses the back button twice - we don't do any cleanup!
+--   Any baby connections will stay alive!
+--
+--   TODO: This is copied from Parent.UI and adapted. We should provide a proper abstraction!
+askLeaveConfirmation :: forall model mConf m t.
+  ( GonimoM model t m, HasRouter model
+  , HasModelConfig mConf t
+  )
+  => Baby t -> m (Event t (), mConf t)
+askLeaveConfirmation baby' = do
+  (onAddRoute, triggerAddRoute) <- newTriggerEvent
+  -- Add another page to the history stack, so we can ask for confirmation.
+  liftIO $ triggerAddRoute RouteBaby
+
+  let needConfirmation = not . Map.null <$> baby'^.socket^.Socket.channels
+
+  route' <- view Router.route
+  pos <- view Router.historyPosition
+  let onWantsLeave = push -- User pressed back button.
+                       (\newPos -> do
+                           currentRoute <- sample $ current route'
+                           oldPos <- sample $ current pos
+                           let backButtonPressed = newPos < oldPos
+
+                           if currentRoute == RouteBaby && backButtonPressed
+                            then pure $ Just ()
+                            else pure $ Nothing
+                       )
+                       (updated pos)
+  confirmed <- mayAddConfirmation' leaveConfirmation onWantsLeave needConfirmation
+
+  let
+    onLeaveReq = fmapMaybe (preview _Yes) confirmed
+    onStay     = fmapMaybe (fmap (const RouteBaby) . preview _No) confirmed
+
+  let conf = mempty & onSetRoute .~ leftmost [ onStay, onAddRoute ]
+                    & onGoBack   .~ onLeaveReq
+  pure (onLeaveReq, conf)
+
 
 uiStart :: forall model m t. GonimoM model t m => App.Loaded t -> DeviceList.DeviceList t -> Baby t
             -> m (UI t)
@@ -150,19 +215,14 @@ uiRunning loaded deviceList baby' =
           el "h2" $ dynText $ baby'^.name <> pure "!"
         elClass "div" "fill-full-screen" blank
         _ <- dyn $ noSleep <$> baby'^.mediaStream
-        let
-          leaveConfirmation :: forall m1. GonimoM model t m1 => m1 ()
-          leaveConfirmation = do
-              el "h3" $ trText Really_stop_baby_monitor
-              el "p" $ trText All_connected_devices_will_be_disconnected
 
         navBar' <- NavBar.navBar (NavBar.Config loaded deviceList)
 
         let needConfirmation = not . Map.null <$> baby'^.socket^.Socket.channels
         navBar <- NavBar.NavBar
                   <$> mayAddConfirmation leaveConfirmation (navBar'^.NavBar.backClicked) needConfirmation
-                  <*> mayAddConfirmation leaveConfirmation (navBar'^.NavBar.homeClicked) needConfirmation
-                  <*> pure (navBar'^.NavBar.request)
+                  <*> pure (navBar' ^. NavBar.homeClicked)
+                  <*> pure (navBar' ^. NavBar.request)
 
         dayNightClicked' <- makeClickable . elAttr' "div" (addBtnAttrs "time") $ blank
         stopClicked <- elClass "div" "stream-menu" $
@@ -198,6 +258,10 @@ uiRunning loaded deviceList baby' =
                             <> "muted" =: "true"
                           )
 
+leaveConfirmation :: forall model m t. GonimoM model t m => m ()
+leaveConfirmation = do
+    el "h3" $ trText Really_stop_baby_monitor
+    el "p" $ trText All_connected_devices_will_be_disconnected
 
 cameraSelect :: forall model m t. GonimoM model t m => Baby t -> m (Event t ())
 cameraSelect baby' =
