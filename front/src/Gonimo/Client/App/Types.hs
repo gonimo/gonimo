@@ -87,7 +87,8 @@ screenToModelConfig :: Reflex t => Screen t -> ModelConfig t
 screenToModelConfig screen =
   appToModelConfig (_screenApp screen) & Router.onGoBack .~ _screenGoHome screen
 
-type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment model, HasSettings model)
+type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment model, HasSettings model, HasRouter model)
+
 instance HasServer Model where
   server = _server
 

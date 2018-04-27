@@ -23,24 +23,32 @@ confirmationEl someButton confirmationText = addConfirmation confirmationText =<
 
 mayAddConfirmation :: forall model t m. GonimoM model t m
                       => m () -> Event t () -> Dynamic t Bool -> m (Event t ())
-mayAddConfirmation confirmationText clicked needsConfirmation = do
+mayAddConfirmation confirmationText clicked needsConfirmation =
+  fmapMaybe (^? _Yes) <$> mayAddConfirmation' confirmationText clicked needsConfirmation
+
+-- | Get confirmation for given event.
+mayAddConfirmation' :: forall model t m. GonimoM model t m
+                      => m () -> Event t () -> Dynamic t Bool -> m (Event t Confirmed)
+mayAddConfirmation' confirmationText clicked needsConfirmation = do
   let
-    go False = pure clicked
-    go True  = addConfirmation confirmationText clicked
+    go False = pure $ Yes <$ clicked
+    go True  = addConfirmation' confirmationText clicked
   evEv <- dyn $ go <$> needsConfirmation
-  switchPromptly never evEv
+  switchHold never evEv
 
 addConfirmation :: forall model t m. GonimoM model t m
                       => m () -> Event t () -> m (Event t ())
-addConfirmation confirmationText clicked = mdo
+addConfirmation confirmationText clicked
+  = fmapMaybe (^? _Yes) <$> addConfirmation' confirmationText clicked
+
+addConfirmation' :: forall model t m. GonimoM model t m
+                      => m () -> Event t () -> m (Event t Confirmed)
+addConfirmation' confirmationText clicked = mdo
   confirmationDialog <- holdDyn (pure never) $ leftmost [ const (confirmationBox confirmationText) <$> clicked
                                                         , const (pure never) <$> gotAnswer
                                                         ]
-  gotAnswer <- switchPromptly never =<< dyn confirmationDialog
-  pure $ push (\answer -> case answer of
-                            No  -> pure Nothing
-                            Yes -> pure $ Just ()
-              ) gotAnswer
+  gotAnswer <- switchHold never =<< dyn confirmationDialog
+  pure gotAnswer
 
 
 confirmationBox :: forall model t m. GonimoM model t m => m () -> m (Event t Confirmed)
@@ -59,3 +67,22 @@ confirmationBox confirmationText = do
       yesClicked <- makeClickable . elAttr' "div" (addBtnAttrs "btn-lang") $ trText OK
       pure $ leftmost [ const No <$> noClicked, const Yes <$> yesClicked ]
 
+-- Prisms:
+
+_No :: Prism' Confirmed ()
+_No
+  = prism
+        (\ () -> No)
+        (\ x
+           -> case x of
+                No -> Right ()
+                _ -> Left x)
+
+_Yes :: Prism' Confirmed ()
+_Yes
+  = prism
+        (\ () -> Yes)
+        (\ x
+           -> case x of
+                Yes -> Right ()
+                _ -> Left x)

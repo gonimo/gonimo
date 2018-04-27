@@ -37,7 +37,6 @@ import           Gonimo.Client.Util             (getBrowserProperty,
                                                  getBrowserVersion)
 import qualified Gonimo.SocketAPI               as API
 
-
 ui :: forall m t. GonimoM Model t m => m (ModelConfig t)
 ui = mdo
   model <- ask
@@ -111,7 +110,11 @@ loadedUI model loaded familyCreated = mdo
                                                             }
     autoStartConf <- handleAutoStart
 
-    evPair <- networkView $ renderCenter deviceList False <$> model^.Router.route
+    -- We use double routes for being able to ask the user for confirmation before leave, thus
+    -- we need to filter out multiple identical routes:
+    uniqRoute <- holdUniqDyn $ model ^. Router.route
+
+    evPair <- networkView $ renderCenter deviceList False <$> uniqRoute
 
     centerConf <- flatten . fmap fst $ evPair
     familyUI <- Family.uiSwitchPromptly . fmap snd $ evPair
@@ -136,7 +139,7 @@ loadedUI model loaded familyCreated = mdo
             Auth.connectionLossScreen model
             (, def) . screenToModelConfig <$> Baby.ui model loaded deviceList
           -- Parent renders connection loss screen itself. (Should not be rendered when there is an alarm.)
-          RouteParent -> (,def) . screenToModelConfig <$> Parent.ui model loaded deviceList
+          RouteParent -> (, def) <$> Parent.ui loaded deviceList
 
     -- An event that triggers once, if autostart is enabled.
     -- handleAutoStart :: forall mConf. (IsConfig mConf, Router.HasConfig mConf) => m (mConf t)

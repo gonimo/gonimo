@@ -11,7 +11,6 @@ module Gonimo.Client.Router.Impl ( module Gonimo.Client.Router
 import           Reflex.Dom.Contrib.Router
 import           Network.URI            (uriPath)
 import           Reflex.Dom.Core
-import           Data.List (stripPrefix)
 import           System.FilePath (splitPath)
 
 import           Gonimo.Client.Prelude
@@ -23,6 +22,11 @@ make :: (MonadWidget t m , HasConfig c)
 make conf = do
     _route <- route' encode decode (conf ^. onSetRoute)
     performEvent_ $ goBack <$ conf ^. onGoBack
+
+    histPos0 <- getHistoryPosition
+    newHistPos <- performEvent $ getHistoryPosition <$ updated _route
+    _historyPosition <- holdDyn histPos0 newHistPos
+
     pure $ Router {..}
   where
     encode :: URI -> Route -> URI
@@ -32,15 +36,12 @@ make conf = do
     decode = parseRoute . uriPath
 
 
-
 type Path = String
 
 renderRoute :: Route -> Path
 renderRoute r = "/index" <> ".html" <> -- This artifical split is necessary because of our current filename hashing. Otherwise the route gets replaced with index-hash.html.
   case r of
     RouteHome         -> ""
-    RouteCreateFamily -> "/createFamily"
-    RouteInvite       -> "/invite"
     RouteBaby         -> "/baby"
     RouteParent       -> "/parent"
 
@@ -52,8 +53,6 @@ parseRoute p' =
             _   -> p'
   in
     case p of
-      "createFamily" -> RouteCreateFamily
-      "invite"       -> RouteInvite
       "baby"         -> RouteBaby
       "parent"       -> RouteParent
       _              -> RouteHome

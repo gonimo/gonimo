@@ -28,31 +28,39 @@ module Reflex.Dom.Contrib.Router (
   -- = History movement
   , goForward
   , goBack
+  , getHistoryLength
+  , getHistoryPosition
   ) where
 
 ------------------------------------------------------------------------------
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
-import           GHCJS.DOM.Types               (Location(..))
-import           Reflex.Dom.Core               hiding (EventName, Window)
-import qualified Network.URI                as U
-import           GHCJS.DOM.Types               (MonadJSM)
-import           GHCJS.DOM.History             (History, back, forward, pushState)
 import           GHCJS.DOM                     (currentWindow)
 import           GHCJS.DOM.EventM              (on)
 import           GHCJS.DOM.EventTarget         (dispatchEvent_)
+import           GHCJS.DOM.History             (History, back, forward,
+                                                pushState)
+import qualified GHCJS.DOM.History             as History
 import           GHCJS.DOM.Location            (getHref)
 import           GHCJS.DOM.PopStateEvent
+import           GHCJS.DOM.Types               (Location (..))
+import           GHCJS.DOM.Types               (MonadJSM,
+                                                SerializedScriptValue (..))
 import           GHCJS.DOM.Window              (getHistory, getLocation)
+import qualified Network.URI                   as U
+import           Reflex.Dom.Core               hiding (EventName, Window)
 #if MIN_VERSION_ghcjs_dom(0,8,0)
 import           GHCJS.DOM.WindowEventHandlers (popState)
 #else
 import           GHCJS.DOM.Window              (popState)
 #endif
-import           GHCJS.Marshal.Pure            (pFromJSVal)
-import qualified Language.Javascript.JSaddle   as JS
-import           Language.Javascript.JSaddle   (JSM, liftJSM, Object(..))
+import           Control.Monad.IO.Class        (liftIO)
+import           Data.IORef
 import           Data.Maybe
+import           GHCJS.Marshal.Pure            (pFromJSVal)
+import           Language.Javascript.JSaddle   (JSM, Object (..),
+                                                fromJSVal, liftJSM)
+import qualified Language.Javascript.JSaddle   as JS
 ------------------------------------------------------------------------------
 
 
@@ -72,6 +80,9 @@ route
   -> m (Dynamic t URI)
 route pushTo = do
   loc0    <- getURI
+  -- history.length only tells you the complete history length, not the current position,
+  -- therefore we store an index in the history state.
+  historyIndexRef <- liftIO $ newIORef (1 :: Double)
 
   _ <- performEvent $ ffor pushTo $ \t -> do
     let newState =
@@ -80,7 +91,9 @@ route pushTo = do
 #else
           t
 #endif
-    withHistory $ \h -> pushState h (0 :: Double) ("" :: T.Text) (newState :: Maybe T.Text)
+    index <- liftIO $ readIORef historyIndexRef
+    liftIO $ modifyIORef historyIndexRef (+1)
+    withHistory $ \h -> pushState h index ("" :: T.Text) (newState :: Maybe T.Text)
     liftJSM dispatchEvent'
 
   locUpdates <- getPopState
@@ -159,6 +172,18 @@ goBack = withHistory back
 
 
 -------------------------------------------------------------------------------
+
+getHistoryLength :: (HasJSContext m, MonadJSM m) => m Word
+getHistoryLength = withHistory History.getLength
+
+-------------------------------------------------------------------------------
+
+getHistoryPosition :: (HasJSContext m, MonadJSM m) => m Double
+getHistoryPosition = fmap (fromMaybe 0) . liftJSM . fromJSVal . unSerializedScriptValue
+                     =<< withHistory History.getState
+
+-------------------------------------------------------------------------------
+
 withHistory :: (HasJSContext m, MonadJSM m) => (History -> m a) -> m a
 withHistory act = do
   Just w <- currentWindow

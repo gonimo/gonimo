@@ -27,14 +27,14 @@ data Config t
 
 data Router t
   = Router { _route :: Dynamic t Route
+           , _historyPosition :: Dynamic t Double
            }
 
 
 data Route = RouteHome
-           | RouteCreateFamily
-           | RouteInvite
            | RouteBaby
            | RouteParent
+           deriving (Eq, Show)
 
 
 instance Reflex t => Default (Config t) where
@@ -81,6 +81,7 @@ class HasConfig a where
 instance HasConfig Config where
   config = id
 
+
 class HasRouter a where
   router :: Lens' (a t) (Router t)
 
@@ -89,6 +90,13 @@ class HasRouter a where
     where
       go :: Lens' (Router t) (Dynamic t Route)
       go f router' = (\route' -> router' { _route = route' }) <$> f (_route router')
+
+
+  historyPosition :: Lens' (a t) (Dynamic t Double)
+  historyPosition = router . go
+    where
+      go :: Lens' (Router t) (Dynamic t Double)
+      go f router' = (\historyPosition' -> router' { _historyPosition = historyPosition' }) <$> f (_historyPosition router')
 
 
 instance HasRouter Router where
