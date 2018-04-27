@@ -137,7 +137,7 @@ loadedUI model loaded familyCreated = mdo
             (def,) <$> Family.ui model loaded familyCreated'
           RouteBaby -> do
             Auth.connectionLossScreen model
-            (, def) . screenToModelConfig <$> Baby.ui model loaded deviceList
+            (, def) <$> Baby.ui model loaded deviceList
           -- Parent renders connection loss screen itself. (Should not be rendered when there is an alarm.)
           RouteParent -> (, def) <$> Parent.ui loaded deviceList
 
