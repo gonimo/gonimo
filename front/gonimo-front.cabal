@@ -129,6 +129,8 @@ library
                     , Gonimo.Client.Reflex.Dom.WebSocket.Internal
                     , Gonimo.Client.Router
                     , Gonimo.Client.Router.Impl
+                    , Gonimo.Client.Router.Impl.Browser
+                    , Gonimo.Client.Router.Impl.Native
                     , Gonimo.Client.Server
                     , Gonimo.Client.Settings
                     , Gonimo.Client.Settings.UI

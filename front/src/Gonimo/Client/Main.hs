@@ -12,21 +12,22 @@ import           Control.Concurrent
 import           Control.Lens
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
-import qualified Language.Javascript.JSaddle   as JS
-import           Reflex.Dom.Core               hiding
-                                                (webSocketConfig_reconnect,
-                                                webSocketConfig_send)
+import qualified Language.Javascript.JSaddle      as JS
+import           Reflex.Dom.Core                  hiding
+                                                   (webSocketConfig_reconnect,
+                                                   webSocketConfig_send)
 
-import qualified Gonimo.Client.Account.Impl    as Account
-import           Gonimo.Client.App             as App
-import qualified Gonimo.Client.Auth.Impl       as Auth
-import qualified Gonimo.Client.Environment     as Environment
-import           Gonimo.Client.Prelude         hiding (app)
-import qualified Gonimo.Client.Router.Impl     as Router
-import qualified Gonimo.Client.Server          as Server
-import qualified Gonimo.Client.Settings        as Settings
-import qualified Gonimo.Client.Subscriber.Impl as Subscriber
-import           Gonimo.Types                  (InvitationSecret)
+import qualified Gonimo.Client.Account.Impl       as Account
+import           Gonimo.Client.App                as App
+import qualified Gonimo.Client.Auth.Impl          as Auth
+import qualified Gonimo.Client.Environment        as Environment
+import           Gonimo.Client.Prelude            hiding (app)
+import qualified Gonimo.Client.Router.Impl        as Router
+import qualified Gonimo.Client.Router.Impl.Native as NativeRouter
+import qualified Gonimo.Client.Server             as Server
+import qualified Gonimo.Client.Settings           as Settings
+import qualified Gonimo.Client.Subscriber.Impl    as Subscriber
+import           Gonimo.Types                     (InvitationSecret)
 
 
 -- | Configuration coming from the outside.
@@ -39,13 +40,14 @@ import           Gonimo.Types                  (InvitationSecret)
 --   the time being) at runtime.
 data Config
   = Config { -- | Have the app accept an invitation.
-             _newInvitation :: MVar InvitationSecret
+             _newInvitation     :: MVar InvitationSecret
+           , _useBrowserHistory :: Bool
            }
 
 -- | Make an empty 'Config'.
 mkEmptyConfig :: IO Config
 mkEmptyConfig = do
-  Config <$> newEmptyMVar
+  Config <$> newEmptyMVar <*> pure True
 
 -- | What does our application need, well here it is ... ;-)
 type AppConstraint t m = MonadWidget t m
@@ -84,7 +86,7 @@ app conf' = build $ \ ~(modelConf, model) -> do
 
   __environment            <- Environment.make
 
-  __router                 <- Router.make modelConf
+  __router                 <- makeRouter modelConf
 
   __server                 <- Server.make model modelConf
 
@@ -114,6 +116,8 @@ app conf' = build $ \ ~(modelConf, model) -> do
     makeUI :: Model t -> m (ModelConfig t)
     makeUI = networkViewFlatten . constDyn . runReaderT ui
 
+    makeRouter = if conf' ^. useBrowserHistory then Router.make else NativeRouter.make
+
 
 
 main :: Config -> JS.JSM ()
@@ -135,7 +139,13 @@ toModelConfig conf = do
 
 -- Generated lenses:
 
+
 -- Lenses for Config:
 
 newInvitation :: Lens' Config (MVar InvitationSecret)
 newInvitation f config' = (\newInvitation' -> config' { _newInvitation = newInvitation' }) <$> f (_newInvitation config')
+
+useBrowserHistory :: Lens' Config Bool
+useBrowserHistory f config' = (\useBrowserHistory' -> config' { _useBrowserHistory = useBrowserHistory' }) <$> f (_useBrowserHistory config')
+
+
