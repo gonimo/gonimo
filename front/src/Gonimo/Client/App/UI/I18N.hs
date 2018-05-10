@@ -12,6 +12,8 @@ data Message = Loading_stay_tight
              | We_either_never_tested_gonimo_with_your_browser
              | Thank_you
              | OK
+             | Really_stop_gonimo
+             | Really_leave_the_app
              -- iOS:
              | IOS_support_is_in_the_works
              | We_are_sorry_right_now_iOS_devices_might_not_work_as_expected
@@ -77,3 +79,12 @@ instance I18N Message where
           = " to stay up to date on the progress."
   i18n DE_DE To_stay_up_to_date_on_the_progress
           = " um über den Fortschritt am Laufenden zu bleiben."
+
+  i18n EN_GB Really_stop_gonimo
+          = "Really stop Gonimo?"
+  i18n DE_DE Really_stop_gonimo
+          = "Gonimo wirklich beenden?"
+  i18n EN_GB Really_leave_the_app
+          = "You definitely want to leave the app?"
+  i18n DE_DE Really_leave_the_app
+          = "Willst du die App wirklich verlassen?"

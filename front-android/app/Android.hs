@@ -25,7 +25,7 @@ import           Gonimo.Types                  ()
 
 main :: IO ()
 main = do
-  conf <- Gonimo.mkEmptyConfig
+  conf <- (\c -> c { Gonimo._useBrowserHistory = False}) <$> Gonimo.mkEmptyConfig
   let
     handleIntent :: String -> IO ()
     handleIntent url = do
@@ -50,7 +50,7 @@ runWithIntent handleIntent jsm = do
   continueWithCallbacks $ def
     { _activityCallbacks_onCreateWithIntent = \_ intent intentData -> do
         a <- getHaskellActivity
-        let startPage = fromString $ "file:///android_asset/index.html" ++ dropWhile (/= '?') intentData
+        let startPage = fromString $ "file:///index.html" ++ dropWhile (/= '?') intentData
         putStrLn $ "gonimo:  intent: " <> intent
         putStrLn $ "gonimo: intent data: " <> intentData
         startMainWidget a startPage jsm

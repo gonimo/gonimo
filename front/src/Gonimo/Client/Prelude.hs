@@ -11,15 +11,16 @@ module Gonimo.Client.Prelude ( MonadFix
                              , module Reflex.Dynamic.Extended
                              , module Reflex
                              , module MonadReader
+                             , module GHCJS.DOM.Types
                              ) where
 
 import           Control.Monad.Fix          (MonadFix)
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Maybe  (MaybeT)
 #ifndef __GHCJS__
-import           GHCJS.DOM.Types            (MonadJSM (..))
+import           GHCJS.DOM.Types            (MonadJSM (..), liftJSM)
 #else
-import           GHCJS.DOM.Types            (MonadJSM)
+import           GHCJS.DOM.Types            (MonadJSM, liftJSM)
 #endif
 import           Control.Monad.Reader.Class
 import           Gonimo.Client.Settings     as Settings (HasSettings (..),
