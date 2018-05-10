@@ -36,6 +36,10 @@ currentRouteJSVar = "gonimoHistoryCurrentRoute"
 goBackJSFunc :: Text
 goBackJSFunc = "gonimoHistoryGoBack"
 
+-- | TODO: Should be wrapped with proper "Host" component.
+nativeHost :: Text
+nativeHost = "nativeHost"
+
 make :: forall t m c. (MonadWidget t m , HasConfig c)
      => c t -> m (Router t)
 make conf' = do
@@ -47,19 +51,23 @@ make conf' = do
       canGoBack = not . null <$> history
       onValidGoBack = fmap (const ()) . ffilter id . tag (current canGoBack) $ conf ^. onGoBack
 
+      onInvalidGoBack = fmap (const ()) . ffilter not . tag (current canGoBack) $ conf ^. onGoBack
+
       _route = headDef RouteHome <$> history
 
     tellJSAboutCanGoBack False
     performEvent_ $ tellJSAboutCanGoBack <$> updated canGoBack
 
-    performEvent_ $ tellJSCurrentRoute <$> updated _route
+    performEvent_ $ tellJSCurrentRoute <$> updated history
+
+    performEvent_ $ quitApp <$ onInvalidGoBack
 
     pure $ Router {..}
   where
     tellJSAboutCanGoBack :: forall f. MonadJSM f => Bool -> f ()
     tellJSAboutCanGoBack = liftJSM . (JS.global JS.<# canGoBackJSVar)
 
-    tellJSCurrentRoute :: forall f. MonadJSM f => Route -> f ()
+    tellJSCurrentRoute :: forall f. MonadJSM f => [ Route ] -> f ()
     tellJSCurrentRoute = liftJSM . (JS.global JS.<# currentRouteJSVar) . T.pack . show
 
     handleJSGoBack :: m (c t)
@@ -79,4 +87,9 @@ make conf' = do
 
       pure $ c & onGoBack .~ onGoBack'
                & onSetRoute .~ onSetRoute'
+
+    quitApp = void . runMaybeT $ do
+      win    <- liftJSM $ JS.jsg ("window"    :: Text)
+      nativeHost'     <- MaybeT $ liftJSM $ JS.maybeNullOrUndefined =<< win JS.! nativeHost
+      liftJSM $ nativeHost' ^. JS.js0 ("killApp" :: Text)
 
