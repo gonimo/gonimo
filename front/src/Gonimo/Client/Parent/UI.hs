@@ -33,6 +33,7 @@ import           Gonimo.Client.WebRTC.Channel     (Channel, ReceivingState (..),
 import qualified Gonimo.Client.WebRTC.Channel     as Channel
 import           Gonimo.SocketAPI.Types           (DeviceId)
 import           Gonimo.Types                     (_Baby)
+import           Gonimo.Client.Reflex
 
 
 
@@ -137,19 +138,17 @@ askLeaveConfirmation connections' = do
   liftIO $ triggerAddRoute RouteParent
 
   let openStreams = connections'^.C.streams
-  route <- view Router.route
-  pos <- view Router.historyPosition
-  let onWantsLeave = push -- User pressed back button.
-                       (\newPos -> do
-                           currentRoute <- sample $ current route
-                           oldPos <- sample $ current pos
-                           let backButtonPressed = newPos < oldPos
+  route' <- view Router.route
+  onWantsLeave <- everySecond -- Ignore building up events (onSetRoute below) ..
+    $ push -- User pressed back button.
+        (\newRoute -> do
+            currentRoute <- sample $ current route'
 
-                           if currentRoute == RouteParent && backButtonPressed
-                            then pure $ Just ()
-                            else pure $ Nothing
-                       )
-                       (traceEvent "New pos" $ updated pos)
+            if currentRoute == RouteParent && newRoute == RouteParent
+            then pure $ Just ()
+            else pure $ Nothing
+        )
+        (updated route')
   confirmed <- mayAddConfirmation' leaveConfirmation onWantsLeave (not . Map.null <$> openStreams)
 
   let

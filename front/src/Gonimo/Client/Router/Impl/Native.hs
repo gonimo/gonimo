@@ -48,9 +48,6 @@ make conf' = do
       onValidGoBack = fmap (const ()) . ffilter id . tag (current canGoBack) $ conf ^. onGoBack
 
       _route = headDef RouteHome <$> history
-    _historyPosition <- foldDyn id 0 $ leftmost [ (+1)       <$ conf ^. onSetRoute
-                                                , subtract 1 <$ onValidGoBack
-                                                ]
 
     tellJSAboutCanGoBack False
     performEvent_ $ tellJSAboutCanGoBack <$> updated canGoBack

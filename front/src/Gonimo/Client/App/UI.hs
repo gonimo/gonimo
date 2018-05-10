@@ -82,18 +82,15 @@ askLeaveConfirmation = do
     liftIO $ triggerAddRoute RouteHome
 
     route' <- view Router.route
-    pos <- view Router.historyPosition
-    let onWantsLeave = push -- User pressed back button.
-                        (\newPos -> do
-                            currentRoute <- sample $ current route'
-                            oldPos <- sample $ current pos
-                            let backButtonPressed = newPos < oldPos
-
-                            if currentRoute == RouteHome && backButtonPressed
-                              then pure $ Just ()
-                              else pure $ Nothing
-                        )
-                        (updated pos)
+    onWantsLeave <- everySecond -- Ignore building up events (onSetRoute below) ..
+      $ push -- About to leave
+          (\newRoute -> do
+              currentRoute <- sample $ current route'
+              if currentRoute == RouteHome && newRoute == RouteHome
+                then pure $ Just ()
+                else pure $ Nothing
+          )
+          (updated route')
     confirmed <- addConfirmation' leaveConfirmation onWantsLeave
 
     let

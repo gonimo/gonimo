@@ -34,6 +34,7 @@ import           Gonimo.Client.Server             hiding (Config, HasModel)
 import qualified Gonimo.Client.Server             as Server
 import qualified Gonimo.Client.Subscriber         as Subscriber
 import           Gonimo.Client.Util
+import           Gonimo.Client.Reflex
 
 
 
@@ -133,18 +134,15 @@ askLeaveConfirmation baby' = do
   let needConfirmation = not . Map.null <$> baby'^.socket^.Socket.channels
 
   route' <- view Router.route
-  pos <- view Router.historyPosition
-  let onWantsLeave = push -- User pressed back button.
-                       (\newPos -> do
-                           currentRoute <- sample $ current route'
-                           oldPos <- sample $ current pos
-                           let backButtonPressed = newPos < oldPos
-
-                           if currentRoute == RouteBaby && backButtonPressed
-                            then pure $ Just ()
-                            else pure $ Nothing
-                       )
-                       (updated pos)
+  onWantsLeave <- everySecond
+    $ push
+        (\newRoute -> do
+            currentRoute <- sample $ current route'
+            if currentRoute == RouteBaby  && newRoute == RouteBaby
+            then pure $ Just ()
+            else pure $ Nothing
+        )
+        (updated route')
   confirmed <- mayAddConfirmation' leaveConfirmation onWantsLeave needConfirmation
 
   let

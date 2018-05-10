@@ -15,6 +15,21 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set ((\\))
 
+
+-- | Only pass through every second instance of an event.
+--
+--   Events [1, 2, 3, 4] would result in events [ 2, 4 ].
+everySecond :: forall t m a. (MonadHold t m, Reflex t , MonadFix m) => Event t a -> m (Event t a)
+everySecond ev = do
+  isValid <- toggle False $ ev
+  pure $ push (\a -> do
+                 isValid' <- sample $ current isValid
+                 if isValid'
+                   then pure $ Just a
+                   else pure Nothing
+              )
+              ev
+
 buildDynMap :: (Ord k, Eq k, Reflex t) => Behavior t (Map k v) -> [Event t (Map k v -> Map k v)] -> Event t (Map k v)
 buildDynMap bMap = pushAlways (\builder -> do
                                   cMap <- sample bMap
