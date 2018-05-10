@@ -23,7 +23,7 @@ import qualified Gonimo.Client.Parent           as Parent
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Router           (Route (..))
+import           Gonimo.Client.Router           (Route (..), onGoBack, onSetRoute)
 import qualified Gonimo.Client.Router           as Router
 import           Gonimo.Client.Server           hiding (Config, HasModel, Model,
                                                  config)
@@ -36,6 +36,7 @@ import qualified Gonimo.Client.Subscriber.Impl  as Subscriber
 import           Gonimo.Client.Util             (getBrowserProperty,
                                                  getBrowserVersion)
 import qualified Gonimo.SocketAPI               as API
+import           Gonimo.Client.ConfirmationButton (addConfirmation', _Yes, _No)
 
 ui :: forall m t. GonimoM Model t m => m (ModelConfig t)
 ui = mdo
@@ -51,6 +52,8 @@ ui = mdo
 
   msgBox <- MessageBox.ui $ MessageBox.fromApp model
 
+  leaveConf <- askLeaveConfirmation
+
   let msgSwitchFamily = push (\actions -> case actions of
                                 [MessageBox.SelectFamily fid] -> pure $ Just fid
                                 _ -> pure Nothing -- Dirty: We ignore selectfamily if multiple events occurred ...
@@ -63,7 +66,48 @@ ui = mdo
                     & Server.onRequest %~ (family ^. Family.request <>)
                     & Subscriber.subscriptions %~ (family ^. Family.subscriptions <>)
                     & settingsConfig . onSelectLocale %~ (familyUI ^. Family.uiSelectLang <>)
-  pure $ withFamConf <> accept
+  pure $ withFamConf <> accept <> leaveConf
+
+-- | Show confirmation dialog on history back navigation.
+--
+--   If confirmed, another history back event gets fired - finally leaving the app.
+--   If not confirmed, push another `RouteHome` on the stack so we can ask again
+--   for confirmation next time.
+
+--   TODO: This is copied from Parent.UI and adapted. We should provide a proper abstraction!
+askLeaveConfirmation :: forall m t. (GonimoM Model t m) => m (ModelConfig t)
+askLeaveConfirmation = do
+    (onAddRoute, triggerAddRoute) <- newTriggerEvent
+    -- Add another page to the history stack, so we can ask for confirmation.
+    liftIO $ triggerAddRoute RouteHome
+
+    route' <- view Router.route
+    pos <- view Router.historyPosition
+    let onWantsLeave = push -- User pressed back button.
+                        (\newPos -> do
+                            currentRoute <- sample $ current route'
+                            oldPos <- sample $ current pos
+                            let backButtonPressed = newPos < oldPos
+
+                            if currentRoute == RouteHome && backButtonPressed
+                              then pure $ Just ()
+                              else pure $ Nothing
+                        )
+                        (updated pos)
+    confirmed <- addConfirmation' leaveConfirmation onWantsLeave
+
+    let
+      onLeaveReq = fmapMaybe (preview _Yes) confirmed
+      onStay     = fmapMaybe (fmap (const RouteHome) . preview _No) confirmed
+
+    pure $ mempty & onSetRoute .~ leftmost [ onStay, onAddRoute ]
+                  & onGoBack   .~ onLeaveReq
+
+-- | Ask leave confirmation text for askLeaveConfirmation.
+leaveConfirmation :: forall model m t. GonimoM model t m => m ()
+leaveConfirmation = do
+    el "h3" $ trText Really_stop_gonimo
+    el "p"  $ trText Really_leave_the_app
 
 runLoaded :: forall model m t. (HasModel model t, GonimoM model t m)
       => Model t -> Family.Family t -> m (ModelConfig t, Family.UI t)
