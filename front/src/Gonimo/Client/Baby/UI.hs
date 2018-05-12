@@ -33,6 +33,7 @@ import qualified Gonimo.Client.Router             as Router
 import           Gonimo.Client.Server             hiding (Config, HasModel)
 import qualified Gonimo.Client.Server             as Server
 import qualified Gonimo.Client.Subscriber         as Subscriber
+import qualified Gonimo.Client.Host         as Host
 import           Gonimo.Client.Util
 import           Gonimo.Client.Reflex
 
@@ -50,7 +51,7 @@ ui appConfig loaded deviceList = mdo
                            , _configResponse = appConfig^.onResponse
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = startMonitor
-                           , _configStopMonitor  = leftmost [onCleanupRequested, ui'^.uiStopMonitor]
+                           , _configStopMonitor  = stopMonitor
                            , _configSetBabyName = ui'^.uiSetBabyName
                            , _configSelectedFamily = loaded^.App.selectedFamily
                            , _configGetUserMedia = errorNewStream
@@ -73,7 +74,12 @@ ui appConfig loaded deviceList = mdo
     let startMonitor = leftmost [ ui'^.uiStartMonitor
                                 , autoStartEv
                                 ]
-
+    let stopMonitor = leftmost [ onCleanupRequested
+                               , ui'^.uiStopMonitor
+                               ]
+    killMask <- hold True $ leftmost [ False <$ startMonitor
+                                     , True <$ stopMonitor
+                                     ]
     let ui' = uiSwitchPromptlyDyn uiDyn
 
     (onCleanupRequested, leaveConf) <- askLeaveConfirmation baby'
@@ -100,6 +106,7 @@ ui appConfig loaded deviceList = mdo
                        & Router.onGoBack .~  leftmost [ ui'^.uiGoHome
                                                       , errorGoHome
                                                       ]
+                       & Host.appKillMask .~ killMask
     pure $ mconcat [ leaveConf
                    , mConf
                    ]
