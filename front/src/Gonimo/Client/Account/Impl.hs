@@ -8,7 +8,6 @@ At the moment this is only about managing of claimed invitations.
 module Gonimo.Client.Account.Impl ( -- * Interface
                                module API
                                -- * Types
-                             , Model
                              , ModelConfig(..)
                              , HasModel
                              , HasModelConfig
@@ -17,35 +16,33 @@ module Gonimo.Client.Account.Impl ( -- * Interface
                              ) where
 
 
-import qualified Data.Aeson                   as Aeson
-import qualified Data.Map                     as Map
-import           Data.Set                     (Set)
-import qualified Data.Set                     as Set
-import qualified Data.Text                    as T
-import qualified Data.Text.Encoding           as T
-import qualified GHCJS.DOM                    as DOM
-import qualified GHCJS.DOM.History            as History
-import qualified GHCJS.DOM.Location           as Location
-import           GHCJS.DOM.Types              (MonadJSM, liftJSM, toJSVal)
-import qualified GHCJS.DOM.Window             as Window
-import           Network.HTTP.Types           (urlDecode)
+import qualified Data.Aeson               as Aeson
+import qualified Data.Map                 as Map
+import           Data.Set                 (Set)
+import qualified Data.Set                 as Set
+import qualified Data.Text                as T
+import qualified Data.Text.Encoding       as T
+import qualified GHCJS.DOM                as DOM
+import qualified GHCJS.DOM.History        as History
+import qualified GHCJS.DOM.Location       as Location
+import           GHCJS.DOM.Types          (MonadJSM, liftJSM, toJSVal)
+import qualified GHCJS.DOM.Window         as Window
+import           Network.HTTP.Types       (urlDecode)
 
 import           Gonimo.Client.Account    as API
+import           Gonimo.Client.Host       (Intent)
+import qualified Gonimo.Client.Host       as Host
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
-import           Gonimo.Client.Server         (Server)
-import qualified Gonimo.Client.Server         as Server
+import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
 import           Gonimo.SocketAPI
-import           Gonimo.SocketAPI.Types       (InvitationInfo)
-import           Gonimo.Types                 (InvitationSecret)
+import           Gonimo.SocketAPI.Types   (InvitationInfo)
+import           Gonimo.Types             (InvitationSecret)
 
-
--- | Simple data type fulfilling our 'HasModel' constraint.
-type Model t = Server t
 
 -- | Our dependencies
-type HasModel model = Server.HasServer model
+type HasModel model = (Server.HasServer model, Host.HasHost model)
 
 -- | Example datatype fulfilling 'HasModelConfig'.
 data ModelConfig t
@@ -73,7 +70,10 @@ make :: ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
         , HasModel model, HasConfig c, HasModelConfig mConf t
         )
      => model t -> c t -> m (mConf t, Account t)
-make model conf = do
+make model conf' = do
+  let
+    conf = handleInvitationIntent model conf'
+
   _claimedInvitations <- makeClaimedInvitations model
   let
     serverConfig' = answerInvitations conf
@@ -83,6 +83,21 @@ make model conf = do
   pure $ ( serverConfig' <> subscriberConfig'
          , Account {..}
          )
+
+handleInvitationIntent :: ( Reflex t , HasModel model, HasConfig c)
+                       => model t -> c t -> c t
+handleInvitationIntent model conf
+    = conf & onClaimInvitation %~ (<> fmapMaybe handleIntent (model ^. Host.onNewIntent) )
+  where
+    handleIntent :: Intent -> Maybe [InvitationSecret]
+    handleIntent intent =
+      let
+        query = T.dropWhile (/= '?') intent
+        encodedSecret = T.drop 1 . T.dropWhile (/= '=') $ query
+        urlJson = T.encodeUtf8 encodedSecret
+        json = urlDecode True urlJson
+      in
+        (:[]) <$> Aeson.decodeStrict json
 
 -- | Provide the dynamic of claimed invitations.
 --

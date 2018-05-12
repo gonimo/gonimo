@@ -33,7 +33,9 @@ import qualified Gonimo.Client.Router             as Router
 import           Gonimo.Client.Server             hiding (Config, HasModel)
 import qualified Gonimo.Client.Server             as Server
 import qualified Gonimo.Client.Subscriber         as Subscriber
+import qualified Gonimo.Client.Host         as Host
 import           Gonimo.Client.Util
+import           Gonimo.Client.Reflex
 
 
 
@@ -49,7 +51,7 @@ ui appConfig loaded deviceList = mdo
                            , _configResponse = appConfig^.onResponse
                            , _configAuthData = loaded^.App.authData
                            , _configStartMonitor = startMonitor
-                           , _configStopMonitor  = leftmost [onCleanupRequested, ui'^.uiStopMonitor]
+                           , _configStopMonitor  = stopMonitor
                            , _configSetBabyName = ui'^.uiSetBabyName
                            , _configSelectedFamily = loaded^.App.selectedFamily
                            , _configGetUserMedia = errorNewStream
@@ -72,7 +74,12 @@ ui appConfig loaded deviceList = mdo
     let startMonitor = leftmost [ ui'^.uiStartMonitor
                                 , autoStartEv
                                 ]
-
+    let stopMonitor = leftmost [ onCleanupRequested
+                               , ui'^.uiStopMonitor
+                               ]
+    killMask <- hold True $ leftmost [ False <$ startMonitor
+                                     , True <$ stopMonitor
+                                     ]
     let ui' = uiSwitchPromptlyDyn uiDyn
 
     (onCleanupRequested, leaveConf) <- askLeaveConfirmation baby'
@@ -99,6 +106,7 @@ ui appConfig loaded deviceList = mdo
                        & Router.onGoBack .~  leftmost [ ui'^.uiGoHome
                                                       , errorGoHome
                                                       ]
+                       & Host.appKillMask .~ killMask
     pure $ mconcat [ leaveConf
                    , mConf
                    ]
@@ -133,18 +141,15 @@ askLeaveConfirmation baby' = do
   let needConfirmation = not . Map.null <$> baby'^.socket^.Socket.channels
 
   route' <- view Router.route
-  pos <- view Router.historyPosition
-  let onWantsLeave = push -- User pressed back button.
-                       (\newPos -> do
-                           currentRoute <- sample $ current route'
-                           oldPos <- sample $ current pos
-                           let backButtonPressed = newPos < oldPos
-
-                           if currentRoute == RouteBaby && backButtonPressed
-                            then pure $ Just ()
-                            else pure $ Nothing
-                       )
-                       (updated pos)
+  onWantsLeave <- everySecond
+    $ push
+        (\newRoute -> do
+            currentRoute <- sample $ current route'
+            if currentRoute == RouteBaby  && newRoute == RouteBaby
+            then pure $ Just ()
+            else pure $ Nothing
+        )
+        (updated route')
   confirmed <- mayAddConfirmation' leaveConfirmation onWantsLeave needConfirmation
 
   let

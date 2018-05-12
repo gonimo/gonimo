@@ -16,15 +16,17 @@ import           Gonimo.Client.ConfirmationButton (mayAddConfirmation,
                                                    mayAddConfirmation', _No,
                                                    _Yes)
 import qualified Gonimo.Client.DeviceList         as DeviceList
+import qualified Gonimo.Client.Host               as Host
 import qualified Gonimo.Client.Invite             as Invite
 import           Gonimo.Client.Model              (IsConfig)
 import qualified Gonimo.Client.NavBar             as NavBar
 import qualified Gonimo.Client.Parent.Connections as C
 import           Gonimo.Client.Parent.UI.I18N
 import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Client.Router             (Route (..), onGoBack,
-                                                   onSetRoute, HasRouter(..))
+import           Gonimo.Client.Router             (HasRouter (..), Route (..),
+                                                   onGoBack, onSetRoute)
 import qualified Gonimo.Client.Router             as Router
 import           Gonimo.Client.Server             hiding (HasModel)
 import qualified Gonimo.Client.Server             as Server
@@ -39,7 +41,7 @@ import           Gonimo.Types                     (_Baby)
 
 type HasModel model = (Invite.HasModel model, HasServer model, Auth.HasAuth model, HasRouter model)
 
-type HasModelConfig c t = (IsConfig c t, Server.HasConfig c, Router.HasConfig c)
+type HasModelConfig c t = (IsConfig c t, Server.HasConfig c, Router.HasConfig c, Host.HasConfig c)
 
 ui :: forall model mConf m t. (HasModel model, GonimoM model t m, HasModelConfig mConf t)
             => App.Loaded t -> DeviceList.DeviceList t -> m (mConf t)
@@ -110,6 +112,7 @@ ui loaded deviceList = mdo
                                          <> invite^.Invite.request
                                          <> navBar^.NavBar.request
                                          <> viewUI^.C.videoViewNavBar.NavBar.request
+                   & Host.appKillMask .~ (current $ Map.null <$> connections'^.C.streams)
   pure $ mconcat [ mConf
                  , leaveConf
                  ]
@@ -137,19 +140,17 @@ askLeaveConfirmation connections' = do
   liftIO $ triggerAddRoute RouteParent
 
   let openStreams = connections'^.C.streams
-  route <- view Router.route
-  pos <- view Router.historyPosition
-  let onWantsLeave = push -- User pressed back button.
-                       (\newPos -> do
-                           currentRoute <- sample $ current route
-                           oldPos <- sample $ current pos
-                           let backButtonPressed = newPos < oldPos
+  route' <- view Router.route
+  onWantsLeave <- everySecond -- Ignore building up events (onSetRoute below) ..
+    $ push -- User pressed back button.
+        (\newRoute -> do
+            currentRoute <- sample $ current route'
 
-                           if currentRoute == RouteParent && backButtonPressed
-                            then pure $ Just ()
-                            else pure $ Nothing
-                       )
-                       (traceEvent "New pos" $ updated pos)
+            if currentRoute == RouteParent && newRoute == RouteParent
+            then pure $ Just ()
+            else pure $ Nothing
+        )
+        (updated route')
   confirmed <- mayAddConfirmation' leaveConfirmation onWantsLeave (not . Map.null <$> openStreams)
 
   let

@@ -153,7 +153,7 @@ shareLink = do
   nav    <- liftJSM $ jsg ("navigator" :: Text)
   win    <- liftJSM $ jsg ("window"    :: Text)
   mNativeShare      <- liftJSM $ maybeNullOrUndefined =<< nav ! ("share"        :: Text)
-  mAndroidShare     <- liftJSM $ maybeNullOrUndefined =<< win ! ("androidShare" :: Text)
+  mAndroidShare     <- liftJSM $ maybeNullOrUndefined =<< win ! ("nativeHost" :: Text)
   case (mNativeShare, mAndroidShare) of
     (Just _share, _) ->
       let shareFunc linkUrl = void $ liftJSM $ do

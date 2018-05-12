@@ -25,9 +25,9 @@ make conf = do
     _route <- route' encode decode (conf ^. onSetRoute)
     performEvent_ $ goBack <$ conf ^. onGoBack
 
-    histPos0 <- getHistoryPosition
-    newHistPos <- performEvent $ getHistoryPosition <$ updated _route
-    _historyPosition <- holdDyn histPos0 newHistPos
+    -- histPos0 <- getHistoryPosition
+    -- newHistPos <- performEvent $ getHistoryPosition <$ updated _route
+    -- _historyPosition <- holdDyn histPos0 newHistPos
 
     pure $ Router {..}
   where

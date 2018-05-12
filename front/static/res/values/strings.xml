@@ -7,4 +7,5 @@
     <string name="gonimo_stopped">Gonimo stopped</string>
     <string name="gonimo_must_run_in_the_foreground">Gonimo must be run in the foreground</string>
     <string name="please_switch_back_to_gonimo">for working reliably.</string>
+    <string name="share_using">Share invitation link via ...?</string>
 </resources>

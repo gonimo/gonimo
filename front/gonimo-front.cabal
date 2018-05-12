@@ -103,6 +103,8 @@ library
                     , Gonimo.Client.Family.RoleSelector.I18N
                     , Gonimo.Client.Family.UI
                     , Gonimo.Client.Family.UI.I18N
+                    , Gonimo.Client.Host
+                    , Gonimo.Client.Host.Impl
                     , Gonimo.Client.Invite
                     , Gonimo.Client.Invite.Internal
                     , Gonimo.Client.Invite.UI

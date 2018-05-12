@@ -30,7 +30,7 @@ import           GHCJS.DOM.Types                   (MediaStream,
                                                     MediaStreamTrack, MonadJSM,
                                                     RTCIceCandidate (..),
                                                     RTCIceCandidateInit (..))
-import           Language.Javascript.JSaddle       (JSM, liftJSM)
+import           Language.Javascript.JSaddle       (JSM)
 import           GHCJS.DOM.Enums                   (RTCSignalingState(..))
 
 
