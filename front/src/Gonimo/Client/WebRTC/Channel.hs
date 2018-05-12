@@ -34,8 +34,8 @@ import           Gonimo.Types                   (Secret)
 import           GHCJS.DOM.Enums                (RTCIceConnectionState (..))
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
-import           Language.Javascript.JSaddle    (liftJSM, (<#))
-import qualified Language.Javascript.JSaddle    as JS
+import           Language.Javascript.JSaddle    ((<#))
+import qualified Language.Javascript.JSaddle as JS
 
 import           Safe                           (fromJustNote)
 
