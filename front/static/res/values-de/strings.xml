@@ -6,4 +6,5 @@
     <string name="gonimo_stopped">Gonimo beendet</string>
     <string name="gonimo_must_run_in_the_foreground">Gonimo muss im Vordergrund laufen</string>
     <string name="please_switch_back_to_gonimo">um zuverlässig zu funktionieren.</string>
+    <string name="share_using">Einladungslink teilen mit ...?</string>
 </resources>
