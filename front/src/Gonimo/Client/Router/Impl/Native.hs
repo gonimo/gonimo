@@ -11,6 +11,10 @@ to reload.) I was not able to track down what exactly was going on there, but
 luckily, thanks to this module, I no longer have to.
 -}
 module Gonimo.Client.Router.Impl.Native ( module Gonimo.Client.Router
+                                        -- * Types
+                                        , ModelConfig
+                                        , HasModelConfig
+                                        -- * Creation
                                          , make
                                          ) where
 
@@ -21,6 +25,15 @@ import           Safe                        (headDef, tailSafe)
 
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Router
+import qualified Gonimo.Client.Host         as Host
+import           Gonimo.Client.Model
+
+
+-- | Example datatype fulfilling 'HasModelConfig'.
+type ModelConfig t = Host.Config t
+
+-- | Configurations we provide for the model as inputs.
+type HasModelConfig c t = (IsConfig c t, Host.HasConfig c)
 
 -- | A JS variable we will set to true or false,
 --
@@ -36,12 +49,10 @@ currentRouteJSVar = "gonimoHistoryCurrentRoute"
 goBackJSFunc :: Text
 goBackJSFunc = "gonimoHistoryGoBack"
 
--- | TODO: Should be wrapped with proper "Host" component.
-nativeHost :: Text
-nativeHost = "nativeHost"
 
-make :: forall t m c. (MonadWidget t m , HasConfig c)
-     => c t -> m (Router t)
+make :: forall t m c mConf
+        . (MonadWidget t m , HasConfig c, HasModelConfig mConf t)
+      => c t -> m (mConf t, Router t)
 make conf' = do
     conf <- breakCausalityLoop =<< handleJSGoBack
     history <- foldDyn id [] $ leftmost [ tailSafe <$  conf ^. onGoBack
@@ -49,7 +60,6 @@ make conf' = do
                                         ]
     let
       canGoBack = not . null <$> history
-      onValidGoBack = fmap (const ()) . ffilter id . tag (current canGoBack) $ conf ^. onGoBack
 
       onInvalidGoBack = fmap (const ()) . ffilter not . tag (current canGoBack) $ conf ^. onGoBack
 
@@ -60,9 +70,10 @@ make conf' = do
 
     performEvent_ $ tellJSCurrentRoute <$> updated history
 
-    performEvent_ $ quitApp <$ onInvalidGoBack
+    let
+      mConf = mempty & Host.onKillApp .~ onInvalidGoBack
 
-    pure $ Router {..}
+    pure (mConf, Router {..})
   where
     tellJSAboutCanGoBack :: forall f. MonadJSM f => Bool -> f ()
     tellJSAboutCanGoBack = liftJSM . (JS.global JS.<# canGoBackJSVar)
@@ -88,8 +99,4 @@ make conf' = do
       pure $ c & onGoBack .~ onGoBack'
                & onSetRoute .~ onSetRoute'
 
-    quitApp = void . runMaybeT $ do
-      win    <- liftJSM $ JS.jsg ("window"    :: Text)
-      nativeHost'     <- MaybeT $ liftJSM $ JS.maybeNullOrUndefined =<< win JS.! nativeHost
-      liftJSM $ nativeHost' ^. JS.js0 ("killApp" :: Text)
 
