@@ -74,6 +74,7 @@ make hostConf conf = do
   -- Kill on Kill request ...
   performEvent_ $ quitApp <$ ffilter id (tag (conf ^. appKillMask) (conf ^. onKillApp))
 
+  warnOnStopped host' conf
   pure host'
 
 -- | Quit the app `onStop` with `quitDelay` if no `onStart` occurred.
@@ -105,6 +106,24 @@ quitAppDelayed host' conf = do
 
     performEvent_ $ quitApp <$ push filterQuitEvent onDelayedStopWithTime
 
+
+
+-- | Warn user when app is stoppedn and something is still running.
+--
+--   Warn user on stop when `appKillMask` is `False`.
+warnOnStopped :: forall t m c.
+                  ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
+                  , TriggerEvent t m, PerformEvent t m, MonadJSM (Performable m)
+                  , MonadIO (Performable m), HasConfig c
+                  )
+               => Host t -> c t -> m ()
+warnOnStopped host' conf = void . runMaybeT $ do
+  nativeHost' <- getNativeHost
+  let
+    warnUser :: forall m1. MonadJSM m1 => m1 ()
+    warnUser = void . liftJSM $ nativeHost' ^. JS.js0 ("requestStoppedWarning" :: Text)
+
+  lift . performEvent_ $ warnUser <$ ffilter not (tag (conf ^. appKillMask) (host' ^. onStop))
 
 -- | Quit the application, if the host supports it:
 quitApp :: forall m. MonadJSM m => m ()
