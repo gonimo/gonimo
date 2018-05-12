@@ -4,9 +4,9 @@ module Gonimo.Client.JS.Audio where
 
 import           Control.Concurrent.MVar
 import           GHCJS.DOM.AudioBufferSourceNode (AudioBufferSourceNode (..))
-import           Language.Javascript.JSaddle     (JSVal, MonadJSM, eval, jsg,
-                                                  liftJSM)
-import qualified Language.Javascript.JSaddle     as JS
+import           Language.Javascript.JSaddle     (JSVal, eval, jsg)
+import qualified Language.Javascript.JSaddle     as JS hiding (MonadJSM,
+                                                        liftJSM)
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
 -- import GHCJS.DOM.AudioParam             as AudioParam

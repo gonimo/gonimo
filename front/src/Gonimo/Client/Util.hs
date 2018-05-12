@@ -21,7 +21,7 @@ module Gonimo.Client.Util ( module OYD
 
 
 import           Control.Lens
-import           Language.Javascript.JSaddle (JSVal, MonadJSM, liftJSM)
+import           Language.Javascript.JSaddle (JSVal)
 
 import qualified Language.Javascript.JSaddle as JS
 

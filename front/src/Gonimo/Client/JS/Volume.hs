@@ -4,7 +4,7 @@ module Gonimo.Client.JS.Volume where
 
 
 import           GHCJS.DOM.MediaStream       as MediaStream
-import           Language.Javascript.JSaddle (JSVal, MonadJSM, eval, liftJSM)
+import           Language.Javascript.JSaddle (JSVal, eval)
 import qualified Language.Javascript.JSaddle as JS
 -- import GHCJS.DOM.AudioContext             as Ctx
 -- import GHCJS.DOM.GainNode             as GainNode
