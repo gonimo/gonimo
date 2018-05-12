@@ -13,17 +13,18 @@ import           Language.Javascript.JSaddle.Run        (syncPoint)
 import           Language.Javascript.JSaddle.Types      (JSM)
 import           Language.Javascript.JSaddle.WebSockets
 import           Network.Wai.Middleware.Static
-import           System.IO
 import           System.Directory
-import           System.FilePath (splitFileName)
+import           System.FilePath                        (splitFileName)
+import           System.IO
 
+import qualified Gonimo.Client.Host.Impl                as Gonimo
 import qualified Gonimo.Client.Main                     as Gonimo
 
 
 main :: IO ()
 -- main = run 3709 $ mainWidget app
 main = do
-  conf <- Gonimo.mkEmptyConfig
+  conf <- Gonimo.makeEmptyHostVars
   gonimoRun 3709 $ Gonimo.main conf
 
 

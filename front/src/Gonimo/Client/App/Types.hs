@@ -1,5 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards   #-}
 module Gonimo.Client.App.Types where
 
 import           Control.Lens
@@ -13,6 +13,8 @@ import           Gonimo.Client.Auth            (Auth, HasAuth)
 import qualified Gonimo.Client.Auth            as Auth
 import           Gonimo.Client.Environment     (Environment,
                                                 HasEnvironment (..))
+import           Gonimo.Client.Host            (HasHost (..), Host)
+import qualified Gonimo.Client.Host            as Host
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Router          (HasRouter, Router)
 import qualified Gonimo.Client.Router          as Router
@@ -35,6 +37,7 @@ data ModelConfig t
                 , _serverConfig     :: Server.Config t
                 , _settingsConfig   :: Settings.Config t
                 , _routerConfig     :: Router.Config t
+                , _hostConfig       :: Host.Config t
                 } deriving (Generic)
 
 data Model t
@@ -44,6 +47,7 @@ data Model t
           , __settings    :: Settings t
           , __environment :: Environment t
           , __router      :: Router t
+          , __host        :: Host t
           }
 
 -- | TODO: Get rid of this.
@@ -87,7 +91,7 @@ screenToModelConfig :: Reflex t => Screen t -> ModelConfig t
 screenToModelConfig screen =
   appToModelConfig (_screenApp screen) & Router.onGoBack .~ _screenGoHome screen
 
-type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment model, HasSettings model, HasRouter model)
+type HasModel model t = (HasServer model, HasAccount model, HasAuth model, HasEnvironment model, HasSettings model, HasRouter model, HasHost model)
 
 instance HasServer Model where
   server = _server
@@ -106,6 +110,9 @@ instance HasEnvironment Model where
 
 instance HasRouter Model where
   router = _router
+
+instance HasHost Model where
+  host = _host
 
 instance (Reflex t) => Default (App t) where
   def = App (constDyn Set.empty) never never
@@ -138,6 +145,9 @@ instance Settings.HasConfig ModelConfig where
 instance Router.HasConfig ModelConfig where
   config = routerConfig
 
+instance Host.HasConfig ModelConfig where
+  config = hostConfig
+
 instance Flattenable ModelConfig where
   flattenWith doSwitch ev
     = ModelConfig
@@ -146,6 +156,7 @@ instance Flattenable ModelConfig where
       <*> flattenWith doSwitch (_serverConfig <$> ev)
       <*> flattenWith doSwitch (_settingsConfig <$> ev)
       <*> flattenWith doSwitch (_routerConfig <$> ev)
+      <*> flattenWith doSwitch (_hostConfig <$> ev)
 
 appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev
@@ -193,7 +204,6 @@ babyNames loaded =
 
 -- Auto generated lenses:
 
-
 -- Lenses for ModelConfig t:
 
 accountConfig :: Lens' (ModelConfig t) (Account.Config t)
@@ -210,6 +220,11 @@ settingsConfig f modelConfig' = (\settingsConfig' -> modelConfig' { _settingsCon
 
 routerConfig :: Lens' (ModelConfig t) (Router.Config t)
 routerConfig f modelConfig' = (\routerConfig' -> modelConfig' { _routerConfig = routerConfig' }) <$> f (_routerConfig modelConfig')
+
+hostConfig :: Lens' (ModelConfig t) (Host.Config t)
+hostConfig f modelConfig' = (\hostConfig' -> modelConfig' { _hostConfig = hostConfig' }) <$> f (_hostConfig modelConfig')
+
+
 
 
 -- Lenses for Model t:
@@ -231,6 +246,10 @@ _environment f model' = (\_environment' -> model' { __environment = _environment
 
 _router :: Lens' (Model t) (Router t)
 _router f model' = (\_router' -> model' { __router = _router' }) <$> f (__router model')
+
+_host :: Lens' (Model t) (Host t)
+_host f model' = (\_host' -> model' { __host = _host' }) <$> f (__host model')
+
 
 
 -- Lenses for Loaded t:

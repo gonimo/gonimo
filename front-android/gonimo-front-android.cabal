@@ -46,3 +46,4 @@ executable gonimo-front-android
                     , gonimo-common
                     , utf8-string
                     , lens
+                    , text
