@@ -109,14 +109,15 @@ leaveConfirmation = do
 runLoaded :: forall model m t. (HasModel model t, GonimoM model t m)
       => Model t -> Family.Family t -> m (ModelConfig t, Family.UI t)
 runLoaded model family = do
-  let mkFuncPair fa fb = (,) <$> fa <*> fb
   evReady <- waitForJust
-             $ zipDynWith mkFuncPair (model^.Auth.authData) (family^.Family.families)
-  familyGotCreated <- hold False $ push (\res ->
-                                            case res of
-                                              API.ResCreatedFamily _ -> pure $ Just True
-                                              _ -> pure Nothing
-                                        ) (model^.onResponse)
+             $ zipDynWith (liftM2 (,)) (model^.Auth.authData) (family^.Family.families)
+  familyGotCreated <- hold False $ leftmost [ push (\res ->
+                                                       case res of
+                                                         API.ResCreatedFamily _ -> pure $ Just True
+                                                         _ -> pure Nothing
+                                                   ) (model^.onResponse)
+                                            , False <$ ffilter isNothing (updated (family ^. Family.selectedFamily))
+                                            ]
 
   let onReady dynAuthFamilies =
         fromMaybeDyn
@@ -154,8 +155,6 @@ loadedUI model loaded familyCreated = mdo
     -- We use double routes for being able to ask the user for confirmation before leave, thus
     -- we need to filter out multiple identical routes:
     uniqRoute <- holdUniqDyn $ model ^. Router.route
-
-    initialRoute <- sample $ current uniqRoute
 
     -- Ugly hack, but I don't care for now as this code will get replaced soon anyway.
     familyCreatedBeh <- hold familyCreated $ False <$ updated uniqRoute
