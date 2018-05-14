@@ -155,7 +155,12 @@ loadedUI model loaded familyCreated = mdo
     -- we need to filter out multiple identical routes:
     uniqRoute <- holdUniqDyn $ model ^. Router.route
 
-    evPair <- networkView $ renderCenter deviceList False <$> uniqRoute
+    initialRoute <- sample $ current uniqRoute
+
+    -- Ugly hack, but I don't care for now as this code will get replaced soon anyway.
+    familyCreatedBeh <- hold familyCreated $ False <$ updated uniqRoute
+
+    evPair <- networkView $ renderCenter deviceList familyCreatedBeh <$> uniqRoute
 
     centerConf <- flatten . fmap fst $ evPair
     familyUI <- Family.uiSwitchPromptly . fmap snd $ evPair
@@ -170,7 +175,7 @@ loadedUI model loaded familyCreated = mdo
 
     pure (fullConf, familyUI)
   where
-    renderCenter :: DeviceList.DeviceList t -> Bool -> Route -> m (ModelConfig t, Family.UI t)
+    renderCenter :: DeviceList.DeviceList t -> Behavior t Bool -> Route -> m (ModelConfig t, Family.UI t)
     renderCenter deviceList familyCreated' route =
       case route of
           RouteHome -> do
