@@ -218,10 +218,24 @@ createFamily appConfig loaded familyGotCreated = mdo
                                                                          , const Nothing <$> gotValidFamilyId'
                                                                          ]
 
-  let gotValidFamilyId' = push (\fid -> do
-                                  cFamilies <- sample . current $ loaded^.App.families
-                                  pure $ cFamilies ^. at fid
-                                ) familyCreated
+  -- This is really really ugly and should get replaced by something proper soon!
+
+  familyCreationPending <- hold False $ leftmost [ True <$ familyCreated
+                                                 , False <$ newFamilyAppeared -- Waaaaaaaah.
+                                                 ]
+  let newFamilyAppeared = push (\cFamilies -> do -- OMG
+                                 mFid <- sample $ current mFamilyId'
+                                 pure $ do
+                                   fid <- mFid
+                                   cFamilies ^. at fid
+                               ) (updated (loaded^.App.families))
+
+  let gotValidFamilyId' = leftmost [ push (\fid -> do
+                                           cFamilies <- sample . current $ loaded^.App.families
+                                           pure $ cFamilies ^. at fid
+                                          ) familyCreated
+                                   , fmap snd . ffilter fst . attach familyCreationPending $ newFamilyAppeared -- Really?!
+                                   ]
   let uiTrue = elClass "div" "fullScreenOverlay" $ createFamily' appConfig loaded
   let uiFalse = pure (never, never)
 
