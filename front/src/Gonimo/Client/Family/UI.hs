@@ -78,7 +78,7 @@ privacyPolicy = do
       elDynAttr "a" (privacyLinkAttrs <$> currentLocale) $
         trText Privacy_Policy
 ui :: forall model m t. (HasModel model, GonimoM model t m)
-  => App.Model t -> App.Loaded t -> Bool -> m (UI t)
+  => App.Model t -> App.Loaded t -> Behavior t Bool -> m (UI t)
 ui appConfig loaded familyGotCreated = do
   (newFamilyResult, newFamilyReqs) <-
     createFamily appConfig loaded familyGotCreated
@@ -203,7 +203,7 @@ renderFamilySelector _ family' selected' = do
           $ (Gonimo.familyNameName . API.familyName <$> family') <> ffor selected' (\selected -> if selected then " ✔" else "")
 
 
-createFamily :: forall model m t. (HasModel model, GonimoM model t m) => App.Model t -> App.Loaded t -> Bool
+createFamily :: forall model m t. (HasModel model, GonimoM model t m) => App.Model t -> App.Loaded t -> Behavior t Bool
   -> m (Event t CreateFamilyResult, Event t [API.ServerRequest])
 createFamily appConfig loaded familyGotCreated = mdo
   let response' = appConfig^.onResponse
@@ -232,7 +232,8 @@ createFamily appConfig loaded familyGotCreated = mdo
   let uiTrue = elClass "div" "fullScreenOverlay" $ createFamily' appConfig loaded
   let uiFalse = pure (never, never)
 
-  let startUI = if familyGotCreated then uiTrue else uiFalse
+  familyGotCreated' <- sample familyGotCreated
+  let startUI = if familyGotCreated' then uiTrue else uiFalse
 
   let uiEv = leftmost [ const uiTrue <$> gotValidFamilyId'
                       , const uiFalse
