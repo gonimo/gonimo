@@ -46,9 +46,9 @@ makeEmptyHostVars = do
 
 -- | Time after onStop when app should be killed if possible.
 --
---   This is for power savings on Android. We currently default to one minute.
+--   This is for power savings on Android. We currently default to two minutes.
 quitDelay :: NominalDiffTime
-quitDelay = 60
+quitDelay = 120
 
 -- | JavaScript object providing native functionality.
 nativeHost :: Text

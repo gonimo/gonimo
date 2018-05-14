@@ -218,17 +218,10 @@ createFamily appConfig loaded familyGotCreated = mdo
                                                                          , const Nothing <$> gotValidFamilyId'
                                                                          ]
 
-  let gotValidFamilyId' = leftmost [ push (\fid -> do
-                                           cFamilies <- sample . current $ loaded^.App.families
-                                           pure $ cFamilies ^. at fid
-                                          ) familyCreated
-                                   , push (\cFamilies -> do
-                                           mFid <- sample $ current mFamilyId'
-                                           pure $ do
-                                             fid <- mFid
-                                             cFamilies ^. at fid
-                                          ) (updated (loaded^.App.families))
-                                     ]
+  let gotValidFamilyId' = push (\fid -> do
+                                  cFamilies <- sample . current $ loaded^.App.families
+                                  pure $ cFamilies ^. at fid
+                                ) familyCreated
   let uiTrue = elClass "div" "fullScreenOverlay" $ createFamily' appConfig loaded
   let uiFalse = pure (never, never)
 
