@@ -8,8 +8,8 @@ let
                    then "app.gonimo.com"
                    else "app.alpha.gonimo.com";
 
-  androidVersionCode = "8";
-  androidVersionName = "1.0.1.4";
+  androidVersionCode = "9";
+  androidVersionName = "1.0.2.0";
 
   androidIsRelease = builtins.pathExists ./release-key.nix;
 in
@@ -41,7 +41,7 @@ in
   in
   {
     executableName = "gonimo-front-android";
-    applicationId = if androidIsRelease then "com.gonimo.baby" else "org.gonimo.gonimo";
+    applicationId = "com.gonimo.baby";
     version = { code = androidVersionCode;
                 name = androidVersionName;
               };
