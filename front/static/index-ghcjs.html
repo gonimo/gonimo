@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+      <title>gonimo App</title> <!-- title for Browsers -->
       <script>
        window.WebSocket.prototype.origSend = window.WebSocket.prototype.send;
        window.WebSocket.prototype.send = function(msg) {
@@ -33,6 +34,13 @@
     <script language="javascript" src="/js/env.js"></script>
     <script language="javascript" src="/resources/js/screenfull.js"></script>
     <script language="javascript" src="/resources/js/bowser.min.js"></script>
+
+    <script src="/resources/material-components-web/dist/material-components-web.js"></script> <!-- Material Design JS -->
+	  <link rel="stylesheet" href="/resources/material-components-web/dist/material-components-web.css"> <!-- Material design CSS -->
+	  <link rel="stylesheet" href="/resources/css/icons.css"> <!-- Material icons CSS -->
+	  <link rel="stylesheet" href="/css/style-browser.css"> <!-- Custom CSS -->
+
+
 
     <!--  Prefetch world, so it will be in cache when needed on connection loss! -->
     <link rel="prefetch" href="/pix/gonimo-Welt-animation_460x460px.gif">

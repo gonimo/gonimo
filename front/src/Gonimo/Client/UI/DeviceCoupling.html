@@ -1,0 +1,41 @@
+<main class="container"> <!-- Main Container for Design. EVERYTHING goes in here!! -->
+  <header class="mdc-toolbar mdc-toolbar--fixed"> <!-- Toolbar -->
+    <div class="mdc-toolbar__row">
+      <section class="mdc-toolbar__section mdc-toolbar__section--align-start"> <!-- left Toolbar -->
+        <i class="material-icons mdc-toolbar__menu-icon btn" id="nav-drawer">menu</i> <!-- button for nv drawer -->
+        <div class="mdc-menu-anchor">
+          <div class="family-toggle btn">
+            <i class="material-icons mdc-toolbar__menu-icon">group</i>
+            <span class="mdc-toolbar__title" id="current-family">Family_1</span> <!-- current family -->
+          </div>
+          <div class="mdc-simple-menu" tabindex="-1" id="family-menu">
+            <ul class="mdc-simple-menu__items mdc-list" role="menu" aria-hidden="true">
+              <a class="mdc-list-item btn" role="menuitem" tabindex="0">Family_1</a> <!-- current family should be the first item -->
+              <a class="mdc-list-item btn" role="menuitem" tabindex="0">Another Family</a> <!-- 1 <li></li> Element per family -->
+              <a class="mdc-list-item btn" role="menuitem" tabindex="0">so much Family</a>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+  </header>
+  
+  <div class="mdc-layout-grid max-width"> 
+    <div class="mdc-layout-grid__inner">
+      <div class="mdc-card mdc-layout-grid__cell mdc-layout-grid__cell--span-12 invite">
+        <section class="mdc-card__primary">
+          <h1 class="mdc-card__title mdc-card__title--large">Gerätekopplung</h1>
+        </section>
+        <section class="invite-img-wrapper"><img class="invite-img" src="resource/img/team.jpg"></section>
+        <section class="mdc-card__supporting-text">
+          Erklärung zur Kopplung.
+        </section>
+        <section class="mdc-card__actions">
+          <button class="mdc-button mdc-button--raised mdc-card__action btn" id="generate-code"><i class="material-icons" aria-hidden="true">code</i> Code generieren</button>
+          <button class="mdc-button mdc-button--raised mdc-card__action btn" id="enter-code"><i class="material-icons" aria-hidden="true">input</i> Code eingeben</button>
+        </section>
+      </div>
+    </div>
+  </div>
+  
+</main>

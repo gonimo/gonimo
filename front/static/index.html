@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <title>gonimo App</title> <!-- title for Browsers -->
     <script language="javascript" src="/resources/js/adapter.js"></script>
     <script language="javascript" src="/js/webrtc-shim.js"></script>
     <script language="javascript" src="/js/env.js"></script>
     <script language="javascript" src="/resources/js/screenfull.js"></script>
     <script language="javascript" src="/resources/js/bowser.min.js"></script>
+
+    <script src="/resources/material-components-web/dist/material-components-web.js"></script> <!-- Material Design JS -->
+	  <link rel="stylesheet" href="/resources/material-components-web/dist/material-components-web.css"> <!-- Material design CSS -->
+	  <link rel="stylesheet" href="/resources/css/icons.css"> <!-- Material icons CSS -->
+	  <link rel="stylesheet" href="/css/style-browser.css"> <!-- Custom CSS -->
 
     <!--  Prefetch world, so it will be in cache when needed on connection loss! -->
     <link rel="prefetch" href="/pix/gonimo-Welt-animation_460x460px.gif">
@@ -49,9 +55,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
   </head>
   <body>
-      <div id="app">
+      <main id="app" class="container">
         Loading your gonimo, stay tight .....
-      </div>
+      </main>
       <script language="javascript" src="/jsaddle.js"></script>
   </body>
 </html>
