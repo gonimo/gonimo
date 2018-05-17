@@ -28,16 +28,11 @@ library
 
   exposed-modules: Gonimo.SocketAPI
                  , Gonimo.SocketAPI.Types
-                 , Gonimo.SocketAPI.Internal
-                 , Gonimo.SocketAPI.Invitation
-                 , Gonimo.SocketAPI.Invitation.Internal
-                 , Gonimo.SocketAPI.Invitation.Legacy
                  , Gonimo.Types
                  , Gonimo.Server.Error
                  , Gonimo.Prelude
                  , Gonimo.I18N
                  , Gonimo.Constants
-                 , Gonimo.SocketAPI.CRUD
 
   default-extensions: ConstraintKinds
                     , DataKinds

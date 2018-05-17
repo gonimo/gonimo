@@ -3,14 +3,14 @@
 
 module Gonimo.Db.PersistFields () where
 
-import           Database.Persist.Class      (PersistField, fromPersistValue,
-                                              toPersistValue)
-import           Database.Persist.Sql        (PersistFieldSql, sqlType)
+import           Database.Persist.Class (PersistField, fromPersistValue,
+                                         toPersistValue)
+import           Database.Persist.Sql   (PersistFieldSql, sqlType)
 import           Database.Persist.TH
-import           Database.Persist.Types      (PersistValue (PersistText),
-                                              SqlType (SqlString))
+import           Database.Persist.Types (PersistValue (PersistText),
+                                         SqlType (SqlString))
 
-import           Gonimo.SocketAPI.Invitation (InvitationDelivery)
+import           Gonimo.SocketAPI.Types (InvitationDelivery)
 import           Gonimo.Types
 
 derivePersistField "Secret"

@@ -24,7 +24,6 @@ import           Gonimo.Server.Db.Internal       (UpdateT, updateRecord)
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error             (ServerError (NoSuchFamily))
 import           Gonimo.SocketAPI.Types
-import           Gonimo.SocketAPI.Invitation.Legacy
 import           Gonimo.Types
 
 type UpdateFamilyT m a = UpdateT Family m a

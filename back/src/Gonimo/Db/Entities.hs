@@ -13,18 +13,16 @@ module Gonimo.Db.Entities where
 import           Database.Persist.TH
 
 
-import           Data.Aeson.Types                     (FromJSON, ToJSON (..),
-                                                       defaultOptions,
-                                                       genericToEncoding,
-                                                       genericToJSON)
-import           Data.Text                            (Text)
-import           Data.Time                            (UTCTime)
-import           GHC.Generics                         (Generic)
+import           Data.Aeson.Types        (FromJSON, ToJSON (..), defaultOptions,
+                                          genericToEncoding, genericToJSON)
+import           Data.Text               (Text)
+import           Data.Time               (UTCTime)
+import           GHC.Generics            (Generic)
 
-import           Gonimo.Db.PersistFields              ()
-import           Gonimo.SocketAPI.Invitation.Internal hiding (InvitationId)
-import           Gonimo.Types                         hiding (FamilyName)
-import qualified Gonimo.Types                         as Server
+import           Gonimo.Db.PersistFields ()
+import           Gonimo.SocketAPI.Types  (InvitationDelivery)
+import           Gonimo.Types            hiding (FamilyName)
+import qualified Gonimo.Types            as Server
 
 share [mkPersist (sqlSettings { mpsGeneric = False }),  mkMigrate "migrateAll"] [persistLowerCase|
   Account

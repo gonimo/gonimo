@@ -10,21 +10,22 @@ module Gonimo.Client.Main where
 
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
-import qualified Language.Javascript.JSaddle      as JS
-import           Reflex.Dom.Core                  hiding
-                                                   (webSocketConfig_reconnect,
-                                                   webSocketConfig_send)
+import qualified Language.Javascript.JSaddle     as JS
+import           Reflex.Dom.Core                 hiding
+                                                  (webSocketConfig_reconnect,
+                                                  webSocketConfig_send)
 
-import qualified Gonimo.Client.Account.Impl       as Account
-import           Gonimo.Client.App                as App
-import qualified Gonimo.Client.Auth.Impl          as Auth
-import qualified Gonimo.Client.Environment        as Environment
-import qualified Gonimo.Client.Host.Impl          as Host
-import           Gonimo.Client.Prelude            hiding (app)
-import qualified Gonimo.Client.Router.Impl        as Router
-import qualified Gonimo.Client.Server             as Server
-import qualified Gonimo.Client.Settings           as Settings
-import qualified Gonimo.Client.Subscriber.Impl    as Subscriber
+import qualified Gonimo.Client.Account.Impl      as Account
+import           Gonimo.Client.App               as App
+import qualified Gonimo.Client.Auth.Impl         as Auth
+import qualified Gonimo.Client.Environment       as Environment
+import qualified Gonimo.Client.Host.Impl         as Host
+import           Gonimo.Client.Prelude           hiding (app)
+import qualified Gonimo.Client.Router.Impl       as Router
+import qualified Gonimo.Client.Server            as Server
+import qualified Gonimo.Client.Settings          as Settings
+import qualified Gonimo.Client.Subscriber.Impl   as Subscriber
+import qualified Gonimo.Client.UI.DeviceCoupling as DeviceCoupling
 
 
 -- | What does our application need, well here it is ... ;-)
@@ -94,7 +95,7 @@ app hostVars = build $ \ ~(modelConf, model) -> do
 
     -- Delay UI rendering until network is ready.
     makeUI :: Model t -> m (ModelConfig t)
-    makeUI = networkViewFlatten . constDyn . runReaderT ui
+    makeUI = networkViewFlatten . constDyn . runReaderT DeviceCoupling.ui
 
 
 main :: Host.HostVars -> JS.JSM ()
