@@ -195,6 +195,8 @@ handleAuthServerRequest sub req = case req of
                                              pure $ ResSentInvitation sendInv
   ReqClaimInvitation secret            -> ResClaimedInvitation secret <$> claimInvitationR secret
   ReqAnswerInvitation secret reply     -> ResAnsweredInvitation secret reply <$> answerInvitationR secret reply
+  ReqGetFamilyInvitations familyId     -> ResGotFamilyInvitations familyId <$> getFamilyInvitationsR familyId
+  ReqGetInvitation invId               -> ResGotInvitation invId <$> getInvitationR invId
 
   ReqSetSubscriptions subs             -> do
     accountId <- view authAccountId
