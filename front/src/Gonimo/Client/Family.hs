@@ -35,19 +35,21 @@ data Config t
              --   Once created, `activeInvitationCode` will be set accordingly.
            , _onCreateCode :: Event t ()
 
-           -- To be implemented ...
-           -- , _onSetDeviceName :: Event t (DeviceId, Text)
+             -- | Change the name of a device in this family.
+           , _onSetDeviceName :: Event t (DeviceId, Text)
            } deriving (Generic)
 
 -- | Family data.
 --   All data belonging to the current active family should go here. Like
 --   claimed invitations or user name, ...
 data Family t
-  = Family { -- | Invitations currently open for this family.
+  = Family { -- | The `API.FamilyId` of this very family.
+             identifier :: API.FamilyId
+             -- | Invitations currently open for this family.
              --
              --   That is all invitations for this family that still exist: They
              --   were neither rejected nor accepted.
-             _openInvitations :: Dynamic t Invitations
+           , _openInvitations :: Dynamic t Invitations
 
              -- | The last invitation created by this device that was not yet accepted/rejected.
            , _activeInvitation :: Dynamic t (Maybe InvitationId)
