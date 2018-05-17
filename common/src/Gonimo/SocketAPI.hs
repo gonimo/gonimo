@@ -6,11 +6,14 @@ import           Control.Lens
 import           Data.Aeson.Types       (FromJSON, ToJSON (..), defaultOptions,
                                          genericToEncoding)
 import           Data.Text              (Text)
+import           Data.Time              (DiffTime)
 import           GHC.Generics           (Generic)
+
 import           Gonimo.Server.Error    (ServerError)
 import           Gonimo.SocketAPI.Types (AccountId, DeviceId, Family, FamilyId,
-                                         FromId, Invitation, InvitationId,
-                                         InvitationInfo, InvitationReply,
+                                         FromId, Invitation, InvitationCode,
+                                         InvitationId, InvitationInfo,
+                                         InvitationReply, InvitationSecret,
                                          Message, ToId)
 import qualified Gonimo.SocketAPI.Types as Client
 import           Gonimo.Types           (AuthToken, DeviceType, Secret)
@@ -37,9 +40,18 @@ data ServerRequest
   | ReqCreateInvitation !FamilyId
   | ReqSendInvitation !Client.SendInvitation
   | ReqClaimInvitation !Secret
+
+    -- | Claim an invitation by a given short lived `InvitationCode`.
+  | ReqClaimInvitationByCode !InvitationCode
+
+    -- | Answer an invitation you have previously claimed.
   | ReqAnswerInvitation !Secret !InvitationReply
+
   | ReqGetFamilyInvitations !FamilyId
   | ReqGetInvitation !InvitationId
+
+    -- | Create a user readable and writable code for the given invitation.
+  | ReqCreateInvitationCode !InvitationId
 
   | ReqSetSubscriptions ![ServerRequest]
 
@@ -77,10 +89,17 @@ data ServerResponse
 
   | ResCreatedInvitation !(InvitationId, Invitation)
   | ResSentInvitation !Client.SendInvitation
-  | ResClaimedInvitation !Secret !InvitationInfo
-  | ResAnsweredInvitation !Secret !InvitationReply !(Maybe FamilyId)
+  | ResClaimedInvitation !InvitationSecret !InvitationInfo
+  | ResClaimedInvitationByCode !InvitationCode !InvitationSecret !InvitationInfo
+  | ResAnsweredInvitation !InvitationSecret !InvitationReply !(Maybe FamilyId)
   | ResGotFamilyInvitations !FamilyId ![InvitationId]
   | ResGotInvitation !InvitationId !Invitation
+
+    -- | Made an `InvitationId` corresponding to the given `InvitationId`
+    --
+    --   The code will be valid for the given time in seconds of the last parameter.
+  | ResCreatedInvitationCode !InvitationId !InvitationCode !Int
+
 
   | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
 

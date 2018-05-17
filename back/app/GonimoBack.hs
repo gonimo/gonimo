@@ -3,37 +3,38 @@ module Main where
 
 import           Control.Concurrent.STM        (atomically)
 import           Control.Concurrent.STM.TVar
-import           Control.Monad.Logger
-import           Database.Persist.Sqlite
-import           Gonimo.Server.Subscriber
-import           Network.Wai
-import           Network.Wai.Handler.Warp
-
 import           Control.Exception             (Exception)
 import           Control.Monad.IO.Class        (MonadIO)
+import           Control.Monad.Logger
 import           Crypto.Random                 (newGenIO)
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import qualified Data.Text.Encoding            as T
 import           Data.Typeable
 import           Database.Persist.Postgresql
+import           Database.Persist.Sqlite
 import           GHC.Generics
+import           Network.HTTP.Types.Status
+import           Network.Wai
+import           Network.Wai.Handler.Warp
+import           Safe                          (readMay)
+import           System.Environment            (lookupEnv)
+#ifdef DEVELOPMENT
+import           Network.Wai.Middleware.Static
+import           System.Directory
+import           System.FilePath               (splitFileName)
+import           System.IO
+#endif
+
 import           Gonimo.Db.Entities
-import           Gonimo.Server.Config         (Config (..))
+import qualified Gonimo.Server.CodeInvitation  as CodeInvitation
+import           Gonimo.Server.Config          (Config (..))
 import           Gonimo.Server.Error           (fromMaybeErr)
 import qualified Gonimo.Server.Messenger       as Messenger
 import           Gonimo.Server.NameGenerator   (loadFamilies, loadPredicates)
+import           Gonimo.Server.Subscriber
 import           Gonimo.SocketServer           (serve)
-import           Network.HTTP.Types.Status
-import           Safe                          (readMay)
-import           System.Environment            (lookupEnv)
 
-#ifdef DEVELOPMENT
-import           System.IO
-import           System.Directory
-import           System.FilePath (splitFileName)
-import           Network.Wai.Middleware.Static
-#endif
 
 data StartupError
   = NO_GONIMO_FRONTEND_URL
@@ -58,6 +59,7 @@ devMain = do
   predicates <- loadPredicates
   generator <- newTVarIO =<< newGenIO
   gonimoLogFunc <- getGonimoLogFunc
+  liveCodes <- CodeInvitation.makeLiveCodes
   let config = Config {
     _configPool = pool
   , _configMessenger  = messenger
@@ -67,6 +69,7 @@ devMain = do
   , _configFrontendURL = "http://localhost:8081/index.html"
   , _configRandom = generator
   , _configLogFunc = gonimoLogFunc
+  , _configLiveCodes = liveCodes
   }
   checkAndFixCurrentDirectory
   run 8081 . addDevServer $ serve config

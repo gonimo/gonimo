@@ -194,9 +194,11 @@ handleAuthServerRequest sub req = case req of
   ReqSendInvitation sendInv            -> do sendInvitationR sendInv
                                              pure $ ResSentInvitation sendInv
   ReqClaimInvitation secret            -> ResClaimedInvitation secret <$> claimInvitationR secret
+  ReqClaimInvitationByCode invCode     -> uncurry (ResClaimedInvitationByCode invCode) <$> claimInvitationByCodeR invCode
   ReqAnswerInvitation secret reply     -> ResAnsweredInvitation secret reply <$> answerInvitationR secret reply
   ReqGetFamilyInvitations familyId     -> ResGotFamilyInvitations familyId <$> getFamilyInvitationsR familyId
   ReqGetInvitation invId               -> ResGotInvitation invId <$> getInvitationR invId
+  ReqCreateInvitationCode invId        -> uncurry (ResCreatedInvitationCode invId) <$> createInvitationCodeR invId
 
   ReqSetSubscriptions subs             -> do
     accountId <- view authAccountId

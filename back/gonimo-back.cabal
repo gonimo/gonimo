@@ -32,16 +32,19 @@ library
                         , ssl
 
   exposed-modules:  Gonimo.Database.Effects.Servant
+                  , Control.Monad.RIO
+                  , Data.IndexedTable
                   , Gonimo.Db.Entities
                   , Gonimo.Db.PersistFields
                   , Gonimo.Server.Auth
+                  , Gonimo.Server.CodeInvitation
+                  , Gonimo.Server.Config
                   , Gonimo.Server.Db.Account
                   , Gonimo.Server.Db.Device
                   , Gonimo.Server.Db.Family
                   , Gonimo.Server.Db.Internal
                   , Gonimo.Server.Db.Invitation
                   , Gonimo.Server.Db.IsDb
-                  , Gonimo.Server.Config
                   , Gonimo.Server.EmailInvitation
                   , Gonimo.Server.Handlers
                   , Gonimo.Server.Handlers.Auth
@@ -53,8 +56,6 @@ library
                   , Gonimo.Server.Subscriber
                   , Gonimo.Server.Subscriber.Types
                   , Gonimo.SocketServer
-                  , Control.Monad.RIO
-                  , Data.IndexedTable
 
   other-modules:  Utils.Control.Monad.Trans.Maybe
                 , Utils.System.Random

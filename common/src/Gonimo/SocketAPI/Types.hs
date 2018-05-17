@@ -182,7 +182,10 @@ newtype InvitationId = InvitationId DbKey deriving (Show, Generic, Eq, Ord, From
 type InvitationSecret = Secret
 
 -- | Invitation code data type for use in code based invitation.
+--
+--   These codes are `codeLength` base32 digits.
 data InvitationCode = InvitationCode Text deriving (Show, Read, Eq, Ord, Generic)
+
 
 instance FromJSON InvitationCode
 instance ToJSON InvitationCode where

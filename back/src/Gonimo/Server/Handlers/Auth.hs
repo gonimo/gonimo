@@ -52,6 +52,7 @@ import           Gonimo.SocketAPI.Types          (Invitation (..),
 import           Gonimo.SocketAPI.Types          as API
 import           Gonimo.Types                    (Secret)
 import qualified Gonimo.Types                    as Server
+import qualified Gonimo.Server.CodeInvitation    as CodeInvitation
 
 createInvitationR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env (InvitationId, Invitation)
 createInvitationR fid = do
@@ -90,6 +91,14 @@ claimInvitationR invSecret = do
     pure (invId', invInfo')
   notify $ ReqGetInvitation invId
   pure invInfo
+
+-- | Claim an invitation by providing a short code.
+claimInvitationByCodeR :: (HasAuthData env, HasConfig env) => InvitationCode -> RIO env (InvitationSecret, InvitationInfo)
+claimInvitationByCodeR invCode = do
+  invId <- CodeInvitation.getIdByCode invCode
+  invSecret <- fmap invitationSecret . runDb $ Invitation.get invId
+  info <- claimInvitationR invSecret
+  pure (invSecret, info)
 
 -- | Actually accept or decline an invitation.
 answerInvitationR :: (HasAuthData env, HasConfig env) => Secret -> InvitationReply -> RIO env (Maybe FamilyId)
@@ -164,6 +173,13 @@ getInvitationR invId = do
   inv <- runDb $ Invitation.get invId
   authorize =<< isFamilyMember (invitationFamilyId inv)
   pure inv
+
+createInvitationCodeR :: (HasAuthData env, HasConfig env) => InvitationId -> RIO env (InvitationCode, Int)
+createInvitationCodeR invId = do
+  void $ getInvitationR invId -- Check that we are allowed to retrieve the invitation.
+  code <- CodeInvitation.makeCode invId
+  pure (code, CodeInvitation.codeValidTimeout)
+
 
 getFamilyMembersR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env [AccountId]
 getFamilyMembersR familyId = do

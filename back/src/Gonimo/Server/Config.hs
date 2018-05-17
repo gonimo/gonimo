@@ -19,6 +19,10 @@ module Gonimo.Server.Config (
   , runRIO
   , Config (..)
   , HasConfig (..)
+  , LiveCode (..)
+  , codeCreated
+  , codeCode
+  , LiveCodes
   , atomically
   , genRandomBytes
   , genRandomBytesSTM
@@ -64,13 +68,14 @@ import           System.Random                  (StdGen)
 import           Network.Mail.SMTP              (sendMail)
 #endif
 import           Control.Concurrent.STM.TVar    (readTVar, writeTVar)
-import           Control.Lens                   (makeClassy, view, (^.))
+import           Control.Lens                   (makeClassy, makeLenses, view, (^.))
 import           Control.Monad.RIO
 import           Crypto.Classes.Exceptions      (genBytes)
 import           Crypto.Random                  (SystemRandom)
 import           Data.Text                      (Text)
 import qualified Data.Time.Clock                as Clock
 import           System.Random                  (getStdRandom)
+import           Data.Map.Strict             (Map)
 
 
 import           Gonimo.Server.Messenger        (MessengerVar)
@@ -79,9 +84,23 @@ import qualified Gonimo.Server.NameGenerator    as Gen
 import           Gonimo.Server.Subscriber
 import           Gonimo.Server.Subscriber.Types
 import           Gonimo.SocketAPI               (ServerRequest)
+import           Gonimo.SocketAPI.Types         (InvitationCode, InvitationId)
+import           Data.IndexedTable           (IndexedTable)
 
 type DbPool = Pool SqlBackend
 
+-- | Code for code based invitations.
+data LiveCode = LiveCode {
+                           -- | Time stamp when the code was created.
+                           _codeCreated :: UTCTime
+
+                           -- | The actual 'InvitationCode'.
+                         , _codeCode    :: InvitationCode
+                         }
+$(makeLenses 'LiveCode)
+
+-- | 'LiveCode' table with lookup based on 'InvitationId' and on 'InvitationCode'.
+type LiveCodes = IndexedTable InvitationCode Map InvitationId LiveCode
 -- TODO: Create HasConfig - make it polymorph, so we can simply add an additional constraint instead of AuthReader.
 
 data Config = Config {
@@ -93,6 +112,9 @@ data Config = Config {
   , _configFrontendURL :: !Text
   , _configRandom      :: !(TVar SystemRandom)
   , _configLogFunc     :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+
+    -- | Currently available codes for accepting invitations.
+  , _configLiveCodes       :: TVar LiveCodes
   }
 
 
@@ -110,6 +132,7 @@ secretLength = 16
 --   See https://www.fpcomplete.com/blog/2017/07/the-rio-monad for details.
 --   Modules should use RIO with some polymorphic env for increased modularity and easy testability.
 type ServerIO = RIO Config
+
 
 
 
