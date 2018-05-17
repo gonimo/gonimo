@@ -1,60 +1,65 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# LANGUAGE RankNTypes      #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies    #-}
 
 module Gonimo.Server.Handlers.Auth where
 
-import           Control.Applicative                  ((<|>))
-import           Control.Concurrent.STM               (STM, TVar, readTVar)
+import           Control.Applicative                ((<|>))
+import           Control.Concurrent.STM             (STM, TVar, readTVar)
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Extra                  (whenM)
-import           Control.Monad.Reader                 (ask)
-import           Control.Monad.State.Class            (gets, modify)
-import           Control.Monad.STM.Class              (liftSTM)
-import           Control.Monad.Trans.Class            (lift)
-import           Control.Monad.Trans.Identity         (IdentityT, runIdentityT)
-import           Control.Monad.Trans.Maybe            (MaybeT (MaybeT),
-                                                       runMaybeT)
-import           Control.Monad.Trans.Maybe            (MaybeT (..), runMaybeT)
-import           Control.Monad.Trans.State            (StateT (..))
-import qualified Data.Map.Strict                      as M
-import           Data.Maybe                           (fromMaybe)
+import           Control.Monad.Catch                as X (MonadThrow (..))
+import           Control.Monad.Extra                (whenM)
+import           Control.Monad.Reader               (ask)
+import           Control.Monad.State.Class          (gets, modify)
+import           Control.Monad.STM.Class            (liftSTM)
+import           Control.Monad.Trans.Class          (lift)
+import           Control.Monad.Trans.Identity       (IdentityT, runIdentityT)
+import           Control.Monad.Trans.Maybe          (MaybeT (MaybeT), runMaybeT)
+import           Control.Monad.Trans.Maybe          (MaybeT (..), runMaybeT)
+import           Control.Monad.Trans.State          (StateT (..))
+import qualified Data.Map.Strict                    as M
+import           Data.Maybe                         (fromMaybe)
 import           Data.Monoid
-import           Data.Proxy                           (Proxy (..))
-import qualified Data.Set                             as S
-import           Data.Text                            (Text)
-import qualified Data.Text                            as T
-import           Database.Persist                     (Entity (..), (==.))
+import           Data.Proxy                         (Proxy (..))
+import qualified Data.Set                           as S
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
+import           Database.Persist                   (Entity (..), (==.))
 import           Database.Persist.Class
-import qualified Database.Persist.Class               as Db
+import qualified Database.Persist.Class             as Db
+import           Unsafe.Coerce
+import           Utils.Control.Monad.Trans.Maybe    (maybeT)
 
-import           Gonimo.Database.Effects.Servant      as Db
-import           Gonimo.Server.Auth                   as Auth
-import           Gonimo.Server.Effects                as Eff
+import           Gonimo.Database.Effects.Servant    as Db
+import           Gonimo.Server.Auth                 as Auth
+import           Gonimo.Server.Config               as Eff
+import qualified Gonimo.Server.Db.Account           as Account
+import qualified Gonimo.Server.Db.Device            as Device
+import qualified Gonimo.Server.Db.Family            as Family
+import qualified Gonimo.Server.Db.Invitation.Legacy as Invitation
 import           Gonimo.Server.EmailInvitation
 import           Gonimo.Server.Error
-import           Gonimo.SocketAPI.Types                  (InvitationInfo (..),
-                                                       InvitationReply (..))
-import           Gonimo.SocketAPI.Types                  as API
-import           Gonimo.SocketAPI (ServerRequest(..))
-import           Unsafe.Coerce
-import           Utils.Control.Monad.Trans.Maybe      (maybeT)
-import qualified Gonimo.Server.Db.Account             as Account
-import qualified Gonimo.Server.Db.Device              as Device
-import qualified Gonimo.Server.Db.Family              as Family
-import qualified Gonimo.Server.Db.Invitation              as Invitation
-import qualified Gonimo.Types.Extended   as Server
-import           Gonimo.Types.Extended   (Secret, InvitationDelivery(..))
+import           Gonimo.SocketAPI                   (ServerRequest (..))
+import           Gonimo.SocketAPI.Invitation.Legacy (Invitation (..),
+                                                     InvitationDelivery (..),
+                                                     InvitationId,
+                                                     InvitationInfo (..),
+                                                     InvitationReply (..),
+                                                     InvitationSecret,
+                                                     SendInvitation (..))
+import           Gonimo.SocketAPI.Types             as API
+import           Gonimo.Types                       (Secret)
+import qualified Gonimo.Types                       as Server
 
-createInvitationR :: (AuthReader m, MonadServer m) => FamilyId -> m (InvitationId, Invitation)
+createInvitationR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env (InvitationId, Invitation)
 createInvitationR fid = do
-  authorizeAuthData $ isFamilyMember fid
+  authorize =<< isFamilyMember fid
   now <- getCurrentTime
   isecret <- generateSecret
   -- family <- getFamily fid  -- defined but not used (yet).
-  senderId' <- authView $ authDeviceId
+  senderId' <- view authDeviceId
   let inv = Invitation {
     invitationSecret = isecret
     , invitationFamilyId = fid
@@ -68,9 +73,9 @@ createInvitationR fid = do
 
 -- | Receive an invitation and mark it as received - it can no longer be claimed
 --   by any other device.
-claimInvitationR :: (AuthReader m, MonadServer m) => Secret -> m InvitationInfo
+claimInvitationR :: (HasAuthData env, HasConfig env) => Secret -> RIO env InvitationInfo
 claimInvitationR invSecret = do
-  aid <- authView $ authAccountId
+  aid <- view authAccountId
   runDb $ do
     (_, inv) <- Invitation.claim aid invSecret
     invFamily  <- Family.get $ invitationFamilyId inv
@@ -83,16 +88,16 @@ claimInvitationR invSecret = do
                 }
 
 -- | Actually accept or decline an invitation.
-answerInvitationR :: (AuthReader m, MonadServer m) => Secret -> InvitationReply -> m (Maybe FamilyId)
+answerInvitationR :: (HasAuthData env, HasConfig env) => Secret -> InvitationReply -> RIO env (Maybe FamilyId)
 answerInvitationR invSecret reply = do
-  authData <- ask
-  let aid = authData ^. authAccountId
+  authData' <- ask
+  let aid = authData' ^. authAccountId
   now <- getCurrentTime
   inv <- runDb $ do
     (iid, inv) <- Invitation.getBySecret invSecret
     guardWith InvitationAlreadyClaimed
       $ case invitationReceiverId inv of
-          Nothing -> True
+          Nothing          -> True
           Just receiverId' -> receiverId' == aid
     Invitation.delete iid
     return inv
@@ -100,7 +105,7 @@ answerInvitationR invSecret reply = do
   runDb $ do -- Separate transaction - we want the invitation to be deleted now!
     when (reply == InvitationAccept ) $ do
       guardWith (AlreadyFamilyMember (invitationFamilyId inv))
-        $ not $ isFamilyMember (invitationFamilyId inv) authData
+        $ not $ isFamilyMember (invitationFamilyId inv) authData'
       Account.joinFamily predPool $ FamilyAccount {
           familyAccountAccountId = aid
         , familyAccountFamilyId = invitationFamilyId inv
@@ -115,66 +120,67 @@ answerInvitationR invSecret reply = do
     _ -> pure Nothing
 
 
-sendInvitationR :: (AuthReader m, MonadServer m) => API.SendInvitation -> m ()
-sendInvitationR (API.SendInvitation iid d@(EmailInvitation email)) = do
-  authData <- ask -- Only allowed if user is member of the inviting family!
+sendInvitationR :: (HasAuthData env, HasConfig env) => SendInvitation -> RIO env ()
+sendInvitationR (SendInvitation iid d@(EmailInvitation email)) = do
+  authData' <- ask -- Only allowed if user is member of the inviting family!
   (secret, famName, devName) <- runDb $ do
     inv <- Invitation.get iid
-    authorize (isFamilyMember (invitationFamilyId inv)) authData
+    authorize $ isFamilyMember (invitationFamilyId inv) authData'
     newInv <- Invitation.updateDelivery d iid
     family <- Family.get (invitationFamilyId inv)
     sendingDevice <- Device.get (invitationSenderId inv)
     let devName = fromMaybe "device with no name" $ deviceName sendingDevice
     let famName = API.familyName family
-    let secret = API.invitationSecret newInv
+    let secret = invitationSecret newInv
     return (secret, famName, devName)
   baseURL <- getFrontendURL
   sendEmail $ makeInvitationEmail baseURL secret email (Server.familyNameName famName) devName
 
-sendInvitationR (API.SendInvitation _ OtherDelivery) = throwServer CantSendInvitation
+sendInvitationR (SendInvitation _ OtherDelivery) = throwM CantSendInvitation
 
-getFamilyMembersR :: (AuthReader m, MonadServer m) => FamilyId -> m [AccountId]
+getFamilyMembersR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env [AccountId]
 getFamilyMembersR familyId = do
-  authorizeAuthData $ isFamilyMember familyId
+  authorize =<< isFamilyMember familyId
   runDb $ Family.getAccountIds familyId
 
-getDevicesR :: (AuthReader m, MonadServer m) => AccountId -> m [DeviceId]
+getDevicesR :: (HasAuthData env, HasConfig env) => AccountId -> RIO env [DeviceId]
 getDevicesR accountId' = do
   (result, inFamilies) <- runDb $ do
     inFamilies' <- Account.getFamilyIds accountId'
     result' <- map fst <$> Account.getDevices accountId'
     pure (result', inFamilies')
-  authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
+
+  authorize =<< (or <$> traverse isFamilyMember inFamilies)
   pure result
 
-getDeviceInfoR :: (AuthReader m, MonadServer m) => DeviceId -> m API.DeviceInfo
+getDeviceInfoR :: (HasAuthData env, HasConfig env) => DeviceId -> RIO env API.DeviceInfo
 getDeviceInfoR deviceId' = do
   (result, inFamilies) <- runDb $ do
     device <- Device.get deviceId'
     inFamilies' <- Account.getFamilyIds (deviceAccountId device)
     pure (API.fromDevice device, inFamilies')
-  -- authorizeAuthData $ or (map isFamilyMember inFamilies)
-  authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
+
+  authorize =<< (or <$> traverse isFamilyMember inFamilies)
   pure result
 
-setDeviceNameR :: (AuthReader m, MonadServer m) => DeviceId -> Text -> m ()
+setDeviceNameR :: (HasAuthData env, HasConfig env) => DeviceId -> Text -> RIO env ()
 setDeviceNameR deviceId' name = do
   inFamilies <- runDb $ do
     device <- Device.get deviceId'
     inFamilies' <- Account.getFamilyIds (deviceAccountId device)
     pure inFamilies'
-  -- authorizeAuthData $ or (map isFamilyMember inFamilies)
-  authorizeAuthData (or . \authData -> map (`isFamilyMember` authData) inFamilies)
+
+  authorize =<< (or <$> traverse isFamilyMember inFamilies)
 
   _ :: Maybe () <- runDb $ runMaybeT . Device.update deviceId' $ Device.setName name
   notify $ ReqGetDeviceInfo deviceId'
   pure ()
 
-createFamilyR :: (AuthReader m, MonadServer m) =>  m FamilyId
+createFamilyR :: (HasAuthData env, HasConfig env) => RIO env FamilyId
 createFamilyR = do
   -- no authorization: - any valid user can create a family.
   now <- getCurrentTime
-  aid <- askAccountId
+  aid <- view authAccountId
   n <- generateFamilyName
   predPool <- getPredicatePool
   fid <- runDb $ do
@@ -194,17 +200,17 @@ createFamilyR = do
   notify $ ReqGetFamilies aid
   return fid
 
-setFamilyNameR :: (AuthReader m, MonadServer m) => FamilyId -> Text -> m ()
+setFamilyNameR :: (HasAuthData env, HasConfig env) => FamilyId -> Text -> RIO env ()
 setFamilyNameR familyId' name = do
-  authorizeAuthData $ isFamilyMember familyId'
+  authorize =<< isFamilyMember familyId'
 
   _ :: Maybe () <- runDb . runMaybeT $ Family.update familyId' (Family.setFamilyName name)
   notify $ ReqGetFamily familyId'
 
-leaveFamilyR :: (AuthReader m, MonadServer m) => AccountId -> FamilyId -> m ()
+leaveFamilyR :: (HasAuthData env, HasConfig env) => AccountId -> FamilyId -> RIO env ()
 leaveFamilyR accountId' familyId' = do
   -- authorizeAuthData $ isAccount accountId' -- Not needed - any member can kick another member.
-  authorizeAuthData $ isFamilyMember familyId'
+  authorize =<< isFamilyMember familyId'
 
   runDb $ do
     Family.deleteMember accountId' familyId'
@@ -215,14 +221,14 @@ leaveFamilyR accountId' familyId' = do
   notify $ ReqGetFamilyMembers familyId'
 
 
-getFamiliesR :: (AuthReader m, MonadServer m) => AccountId -> m [FamilyId]
+getFamiliesR :: (HasAuthData env, HasConfig env) => AccountId -> RIO env [FamilyId]
 getFamiliesR accountId' = do
-  authorizeAuthData $ isAccount accountId'
+  authorize =<< isAccount accountId'
   runDb $ Account.getFamilyIds accountId'
 
-getFamilyR :: (AuthReader m, MonadServer m) => FamilyId -> m Family
+getFamilyR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env Family
 getFamilyR familyId' = do
-  authorizeAuthData $ isFamilyMember familyId'
+  authorize =<< isFamilyMember familyId'
   runDb $ Family.get familyId'
 
 -- Internal function for debugging:

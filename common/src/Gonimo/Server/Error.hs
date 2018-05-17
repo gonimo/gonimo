@@ -1,19 +1,20 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleContexts   #-}
 module Gonimo.Server.Error where
 
 
-import           Control.Exception             (Exception)
-import           Control.Monad                 (unless, MonadPlus, (<=<))
-import           Control.Monad.Base             (MonadBase)
-import           Control.Exception.Lifted       (throwIO)
-import           Control.Monad.Trans.Maybe     (MaybeT)
+import           Control.Exception         (Exception)
+
+import           Control.Monad             (MonadPlus, unless, (<=<))
+import           Control.Monad.Catch       as X (MonadThrow (..))
+import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Maybe (MaybeT)
 import           Data.Aeson
+import           Data.Typeable             (Typeable)
 import           GHC.Generics
-import           Gonimo.SocketAPI.Types      (FamilyId, DeviceId, AccountId)
-import           Control.Monad.Trans.Class            (lift)
-import           Data.Typeable (Typeable)
+
+import           Gonimo.SocketAPI.Types    (AccountId, DeviceId, FamilyId)
 
 -- Define an error type, so handling errors is easier at the client side.
 data ServerError = InvalidAuthToken
@@ -32,6 +33,8 @@ data ServerError = InvalidAuthToken
                  | TransactionTimeout
                  | SessionInvalid -- There exists a session for this device, but it does not match
                  | NoActiveSession -- There is no sessino for this device.
+                 | TooManyOpenCodes -- Avoid guessable codes, due to too many taken ones.
+                 | NoSuchInvitationCode -- Thrown if a given code could not be found.
                  | InternalServerError deriving (Generic, Eq, Show, Typeable)
 
 instance Exception ServerError
@@ -43,29 +46,31 @@ class ToServerError e where
 instance ToServerError ServerError where
   toServerError = return
 
-fromMaybeErr :: (MonadBase IO m, Exception e) => e -> Maybe a -> m a
+fromMaybeErr :: (MonadThrow m, Exception e) => e -> Maybe a -> m a
 fromMaybeErr err ma = case ma of
-  Nothing -> throwIO err
+  Nothing -> throwM err
   Just a  -> return a
 
-throwLeft :: MonadBase IO m => Either ServerError a -> m a
+throwLeft :: MonadThrow m => Either ServerError a -> m a
 throwLeft = either throwServer return
 
 -- | Throw left if actually a ServerError, otherwise return Nothing
-mayThrowLeft :: (MonadBase IO m, ToServerError e) => Either e a -> MaybeT m a
+mayThrowLeft :: (MonadThrow m, ToServerError e) => Either e a -> MaybeT m a
 mayThrowLeft = either (lift . throwServer <=< toServerError) return
 
-throwServer :: MonadBase IO m => ServerError -> m a
-throwServer = throwIO
+{-# Deprecated throwServer "Use throwM  directly instead." #-}
+throwServer :: MonadThrow m => ServerError -> m a
+throwServer = throwM
 
-guardWith :: MonadBase IO m => ServerError -> Bool -> m ()
+guardWith :: MonadThrow m => ServerError -> Bool -> m ()
 guardWith exc cond = unless cond $ throwServer exc
 
-guardWithM :: MonadBase IO m => ServerError -> m Bool -> m ()
+guardWithM :: MonadThrow m => ServerError -> m Bool -> m ()
 guardWithM exc mCond = guardWith exc =<< mCond
 
-throwException :: (MonadBase IO m, Exception e) => e -> m a
-throwException = throwIO
+{-# Deprecated throwException "Use throwM directly instead." #-}
+throwException :: (MonadThrow m, Exception e) => e -> m a
+throwException = throwM
 
 instance ToJSON ServerError where
     toEncoding = genericToEncoding defaultOptions

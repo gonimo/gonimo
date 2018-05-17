@@ -3,52 +3,172 @@
 module Gonimo.SocketAPI where
 
 import           Control.Lens
-import           Data.Aeson.Types       (FromJSON, ToJSON (..), defaultOptions,
-                                         genericToEncoding)
-import           Data.Text              (Text)
-import           GHC.Generics           (Generic)
-import           Gonimo.Server.Error    (ServerError)
-import           Gonimo.SocketAPI.Types (FromId, InvitationInfo,
-                                         InvitationReply, Message, ToId, AccountId, DeviceId, Family, FamilyId, Invitation, InvitationId)
-import qualified Gonimo.SocketAPI.Types as Client
-import Gonimo.Types (AuthToken, Secret, DeviceType)
+import           Data.Aeson.Types                   (FromJSON, ToJSON (..),
+                                                     defaultOptions,
+                                                     genericToEncoding)
+import           Data.Text                          (Text)
+import           GHC.Generics                       (Generic)
+
+import           Gonimo.Server.Error                (ServerError)
+import           Gonimo.SocketAPI.CRUD
+import           Gonimo.SocketAPI.Invitation
+import qualified Gonimo.SocketAPI.Invitation.Legacy as Legacy
+import           Gonimo.SocketAPI.Types             (AccountId, DeviceId,
+                                                     Family, FamilyId, FromId,
+                                                     Message, ToId)
+import qualified Gonimo.SocketAPI.Types             as Client
+import           Gonimo.Types                       (AuthToken, DeviceType,
+                                                     Secret)
 
 type MessageId = Int
 
 data ServerRequest
   = ReqPing -- We can't rely on WebSocket ping control messages, because the client can't see them!
-  | ReqAuthenticate !AuthToken
+  | ReqAuthenticate             !AuthToken
 
-  | ReqMakeDevice !(Maybe Text)
-  | ReqGetDeviceInfo !DeviceId
-  | ReqSetDeviceType !DeviceId !DeviceType
-  | ReqSetDeviceName !DeviceId !Text
-  | ReqSwitchFamily  !DeviceId !FamilyId
+  | ReqMakeDevice               !(Maybe Text)
+  | ReqGetDeviceInfo            !DeviceId
+  | ReqSetDeviceType            !DeviceId !DeviceType
+  | ReqSetDeviceName            !DeviceId !Text
+  | ReqSwitchFamily             !DeviceId !FamilyId
 
   | ReqCreateFamily
-  | ReqSetFamilyName !FamilyId !Text
-  | ReqGetFamily !FamilyId
-  | ReqGetFamilyMembers !FamilyId
-  | ReqGetOnlineDevices !FamilyId
-  | ReqSaveBabyName !FamilyId !Text
+  | ReqSetFamilyName            !FamilyId !Text
+  | ReqGetFamily                !FamilyId
+  | ReqGetFamilyMembers         !FamilyId
+  | ReqGetOnlineDevices         !FamilyId
+  | ReqSaveBabyName             !FamilyId !Text
 
-  | ReqCreateInvitation !FamilyId
-  | ReqSendInvitation !Client.SendInvitation
-  | ReqClaimInvitation !Secret
-  | ReqAnswerInvitation !Secret !InvitationReply
+  | ReqInvitation (ReqCRUD InvitationR)
 
-  | ReqSetSubscriptions ![ServerRequest]
+  -- Deprecated on March 21th, 2018:
+  | ReqCreateInvitation         !FamilyId
+  | ReqSendInvitation           !Legacy.SendInvitation
+  | ReqClaimInvitation          !InvitationSecret
+  | ReqAnswerInvitation         !InvitationSecret !InvitationReply
+  -- End of deprecation.
 
-  | ReqGetFamilies !AccountId
-  | ReqGetDevices !AccountId
-  | ReqLeaveFamily !AccountId !FamilyId
+  -- To be implemented:
+  --  ReqGetClaimedInvitations !AccountId
 
-  | ReqCreateChannel !FromId !ToId
-  | ReqSendMessage !FromId !ToId !Secret Message
+
+
+    -- | Invite a client per code.
+    --
+    --   Have the server create a code, which can then be used with
+    --   'ReqGetCodeInvite' to retrieve the invitation secret. The code will
+    --   only be valid for 'InviteCodeDurability' seconds, a 'ResDeletedCodeInvite' will be triggered
+    --   when the time is up.
+    --
+    --   There is always just one code per invitation. If you send
+    --   'ReqMakeCodeInvite' again, the old code will be replaced (and the timer
+    --   will be restarted).
+    --
+    --   On reception of this message the server will respond with a
+    --   'ResMadeCodeInvite' message containing the generated code.
+  | ReqMakeCodeInvite           !InvitationSecret
+
+    -- | Manually request deletion of an invite code.
+    --
+    --   The server will automatically delete the invite code after thirty
+    --   seconds, if you want to get rid of it early you can send this message.
+    --   The server will respond with 'ResDeletedCodeInvite'.
+  | ReqDeleteCodeInvite         !InvitationSecret
+
+    -- | Retrieve an invitation by code.
+    --
+    --   The server will respond with 'ResGotCodeInvite' containing the
+    --   Invitation secret, which you should use with 'ReqClaimInvitation'.
+  | ReqGetCodeInvite          !InvitationCode
+
+
+
+  | ReqSetSubscriptions         ![ServerRequest]
+
+  | ReqGetFamilies              !AccountId
+  | ReqGetDevices               !AccountId
+  | ReqLeaveFamily              !AccountId !FamilyId
+
+  | ReqCreateChannel            !FromId !ToId
+  | ReqSendMessage              !FromId !ToId !Secret Message
   deriving (Generic, Ord, Eq, Show)
 
 instance FromJSON ServerRequest
 instance ToJSON ServerRequest where
+  toEncoding = genericToEncoding defaultOptions
+
+
+-- | Constructors starting with "Res" are responses to requests.
+--   Constructors starting with Event happen without any request.
+data ServerResponse
+  = ResPong
+  | ResAuthenticated
+  | ResMadeDevice               !Client.AuthData
+  | ResGotDeviceInfo            !DeviceId !Client.DeviceInfo
+  | ResSetDeviceType            !DeviceId
+  | ResSetDeviceName            !DeviceId
+  | ResSwitchedFamily           !DeviceId !FamilyId
+
+
+  | ResCreatedFamily            !FamilyId
+  | ResSetFamilyName            !FamilyId
+  | ResGotFamily                !FamilyId !Family
+  | ResGotFamilyMembers         !FamilyId ![AccountId]
+  | ResGotOnlineDevices         !FamilyId ![(DeviceId, DeviceType)]
+  | ResSavedBabyName
+
+  | ResInvitation (ResCRUD InvitationR)
+
+  -- Deprecated March 21th, 2018:
+  | ResCreatedInvitation        !(InvitationId, Legacy.Invitation)
+  | ResSentInvitation           !Legacy.SendInvitation
+  | ResClaimedInvitation        !Secret !Legacy.InvitationInfo
+  | ResAnsweredInvitation       !Secret !InvitationReply !(Maybe FamilyId)
+  -- End of deprecation
+
+
+    -- | Created 'InvitationCode'.
+    --
+    --   This message is sent in response to 'ReqmakeCodeInvite' and contains
+    --   the generated code, which can then be passed on to another device which
+    --   will issue 'ReqGetCodeInvite' with it to retrieve the actual
+    --   invitation.
+  | ResMadeCodeInvite           !InvitationSecret !InvitationCode
+
+    -- | An 'InvitationCode' got deleted.
+    --
+    --   Either due to a received 'ReqDeleteCodeInvite' or due to the automatic
+    --   invalidation, which happens afer 'InviteCodeDurability' seconds.
+  | ResDeletedCodeInvite        !InvitationSecret
+
+    -- | Retrieve an 'InvitationSecret' by code.
+    --
+    --   This message is sent in response to 'ReqGetCodeInvite' and contains the
+    --   'InvitationSecret' which can be used with 'ReqClaimInvitation' for
+    --   actual invitation retrieval.
+  | ResGotCodeInvite            !InvitationCode !InvitationSecret
+
+
+
+  | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
+
+  | ResGotFamilies              !AccountId ![FamilyId]
+  | ResGotDevices               !AccountId ![DeviceId]
+  | ResLeftFamily               !AccountId !FamilyId
+
+  | ResCreatedChannel           !FromId !ToId !Secret
+  | ResSentMessage -- Dummy
+
+
+  | ResError                    !ServerRequest !ServerError
+
+  | EventSessionGotStolen
+  | EventChannelRequested       !FromId !Secret
+  | EventMessageReceived        !FromId !Secret Message
+  deriving (Generic, Show)
+
+instance FromJSON ServerResponse
+instance ToJSON ServerResponse where
   toEncoding = genericToEncoding defaultOptions
 
 class AsServerRequest r where
@@ -67,7 +187,7 @@ class AsServerRequest r where
   _ReqGetOnlineDevices :: Prism' r FamilyId
   _ReqSaveBabyName :: Prism' r (FamilyId, Text)
   _ReqCreateInvitation :: Prism' r FamilyId
-  _ReqSendInvitation :: Prism' r Client.SendInvitation
+  _ReqSendInvitation :: Prism' r Legacy.SendInvitation
   _ReqClaimInvitation :: Prism' r Secret
   _ReqAnswerInvitation :: Prism' r (Secret, InvitationReply)
   _ReqSetSubscriptions :: Prism' r [ServerRequest]
@@ -108,154 +228,154 @@ instance AsServerRequest ServerRequest where
         (\ x
            -> case x of
                 ReqPing -> Right ()
-                _ -> Left x)
+                _       -> Left x)
   _ReqAuthenticate
     = prism
         (\ x1 -> ReqAuthenticate x1)
         (\ x
            -> case x of
                 ReqAuthenticate y1 -> Right y1
-                _ -> Left x)
+                _                  -> Left x)
   _ReqMakeDevice
     = prism
         (\ x1 -> ReqMakeDevice x1)
         (\ x
            -> case x of
                 ReqMakeDevice y1 -> Right y1
-                _ -> Left x)
+                _                -> Left x)
   _ReqGetDeviceInfo
     = prism
         (\ x1 -> ReqGetDeviceInfo x1)
         (\ x
            -> case x of
                 ReqGetDeviceInfo y1 -> Right y1
-                _ -> Left x)
+                _                   -> Left x)
   _ReqSetDeviceType
     = prism
         (\ (x1, x2) -> ReqSetDeviceType x1 x2)
         (\ x
            -> case x of
                 ReqSetDeviceType y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                      -> Left x)
   _ReqSetDeviceName
     = prism
         (\ (x1, x2) -> ReqSetDeviceName x1 x2)
         (\ x
            -> case x of
                 ReqSetDeviceName y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                      -> Left x)
   _ReqSwitchFamily
     = prism
         (\ (x1, x2) -> ReqSwitchFamily x1 x2)
         (\ x
            -> case x of
                 ReqSwitchFamily y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                     -> Left x)
   _ReqCreateFamily
     = prism
         (\ () -> ReqCreateFamily)
         (\ x
            -> case x of
                 ReqCreateFamily -> Right ()
-                _ -> Left x)
+                _               -> Left x)
   _ReqSetFamilyName
     = prism
         (\ (x1, x2) -> ReqSetFamilyName x1 x2)
         (\ x
            -> case x of
                 ReqSetFamilyName y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                      -> Left x)
   _ReqGetFamily
     = prism
         (\ x1 -> ReqGetFamily x1)
         (\ x
            -> case x of
                 ReqGetFamily y1 -> Right y1
-                _ -> Left x)
+                _               -> Left x)
   _ReqGetFamilyMembers
     = prism
         (\ x1 -> ReqGetFamilyMembers x1)
         (\ x
            -> case x of
                 ReqGetFamilyMembers y1 -> Right y1
-                _ -> Left x)
+                _                      -> Left x)
   _ReqGetOnlineDevices
     = prism
         (\ x1 -> ReqGetOnlineDevices x1)
         (\ x
            -> case x of
                 ReqGetOnlineDevices y1 -> Right y1
-                _ -> Left x)
+                _                      -> Left x)
   _ReqSaveBabyName
     = prism
         (\ (x1, x2) -> ReqSaveBabyName x1 x2)
         (\ x
            -> case x of
                 ReqSaveBabyName y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                     -> Left x)
   _ReqCreateInvitation
     = prism
         (\ x1 -> ReqCreateInvitation x1)
         (\ x
            -> case x of
                 ReqCreateInvitation y1 -> Right y1
-                _ -> Left x)
+                _                      -> Left x)
   _ReqSendInvitation
     = prism
         (\ x1 -> ReqSendInvitation x1)
         (\ x
            -> case x of
                 ReqSendInvitation y1 -> Right y1
-                _ -> Left x)
+                _                    -> Left x)
   _ReqClaimInvitation
     = prism
         (\ x1 -> ReqClaimInvitation x1)
         (\ x
            -> case x of
                 ReqClaimInvitation y1 -> Right y1
-                _ -> Left x)
+                _                     -> Left x)
   _ReqAnswerInvitation
     = prism
         (\ (x1, x2) -> ReqAnswerInvitation x1 x2)
         (\ x
            -> case x of
                 ReqAnswerInvitation y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                         -> Left x)
   _ReqSetSubscriptions
     = prism
         (\ x1 -> ReqSetSubscriptions x1)
         (\ x
            -> case x of
                 ReqSetSubscriptions y1 -> Right y1
-                _ -> Left x)
+                _                      -> Left x)
   _ReqGetFamilies
     = prism
         (\ x1 -> ReqGetFamilies x1)
         (\ x
            -> case x of
                 ReqGetFamilies y1 -> Right y1
-                _ -> Left x)
+                _                 -> Left x)
   _ReqGetDevices
     = prism
         (\ x1 -> ReqGetDevices x1)
         (\ x
            -> case x of
                 ReqGetDevices y1 -> Right y1
-                _ -> Left x)
+                _                -> Left x)
   _ReqLeaveFamily
     = prism
         (\ (x1, x2) -> ReqLeaveFamily x1 x2)
         (\ x
            -> case x of
                 ReqLeaveFamily y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                    -> Left x)
   _ReqCreateChannel
     = prism
         (\ (x1, x2) -> ReqCreateChannel x1 x2)
         (\ x
            -> case x of
                 ReqCreateChannel y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                      -> Left x)
   _ReqSendMessage
     = prism
         (\ (x1, x2, x3, x4)
@@ -265,52 +385,6 @@ instance AsServerRequest ServerRequest where
                 ReqSendMessage y1 y2 y3 y4
                   -> Right (y1, y2, y3, y4)
                 _ -> Left x)
-
--- | Constructors starting with "Res" are responses to requests.
---   Constructors starting with Event happen without any request.
-data ServerResponse
-  = ResPong
-  | ResAuthenticated
-  | ResMadeDevice !Client.AuthData
-  | ResGotDeviceInfo !DeviceId !Client.DeviceInfo
-  | ResSetDeviceType !DeviceId
-  | ResSetDeviceName !DeviceId
-  | ResSwitchedFamily !DeviceId !FamilyId
-
-
-  | ResCreatedFamily !FamilyId
-  | ResSetFamilyName !FamilyId
-  | ResGotFamily !FamilyId !Family
-  | ResGotFamilyMembers !FamilyId ![AccountId]
-  | ResGotOnlineDevices !FamilyId ![(DeviceId, DeviceType)]
-  | ResSavedBabyName
-
-  | ResCreatedInvitation !(InvitationId, Invitation)
-  | ResSentInvitation !Client.SendInvitation
-  | ResClaimedInvitation !Secret !InvitationInfo
-  | ResAnsweredInvitation !Secret !InvitationReply !(Maybe FamilyId)
-
-  | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
-
-  | ResGotFamilies !AccountId ![FamilyId]
-  | ResGotDevices !AccountId ![DeviceId]
-  | ResLeftFamily !AccountId !FamilyId
-
-  | ResCreatedChannel !FromId !ToId !Secret
-  | ResSentMessage -- Dummy
-
-
-  | ResError !ServerRequest !ServerError
-
-  | EventSessionGotStolen
-  | EventChannelRequested !FromId !Secret
-  | EventMessageReceived !FromId !Secret Message
-  deriving (Generic, Show)
-
-instance FromJSON ServerResponse
-instance ToJSON ServerResponse where
-  toEncoding = genericToEncoding defaultOptions
-
 class AsServerResponse r where
   _ServerResponse :: Prism' r ServerResponse
   _ResPong :: Prism' r ()
@@ -326,9 +400,9 @@ class AsServerResponse r where
   _ResGotFamilyMembers :: Prism' r (FamilyId, [AccountId])
   _ResGotOnlineDevices :: Prism' r (FamilyId, [(DeviceId, DeviceType)])
   _ResSavedBabyName :: Prism' r ()
-  _ResCreatedInvitation :: Prism' r (InvitationId, Invitation)
-  _ResSentInvitation :: Prism' r Client.SendInvitation
-  _ResClaimedInvitation :: Prism' r (Secret, InvitationInfo)
+  _ResCreatedInvitation :: Prism' r (InvitationId, Legacy.Invitation)
+  _ResSentInvitation :: Prism' r Legacy.SendInvitation
+  _ResClaimedInvitation :: Prism' r (Secret, Legacy.InvitationInfo)
   _ResAnsweredInvitation :: Prism' r (Secret, InvitationReply, Maybe FamilyId)
   _ResSubscribed :: Prism' r ()
   _ResGotFamilies :: Prism' r (AccountId, [FamilyId])
@@ -376,105 +450,105 @@ instance AsServerResponse ServerResponse where
         (\ x
            -> case x of
                 ResPong -> Right ()
-                _ -> Left x)
+                _       -> Left x)
   _ResAuthenticated
     = prism
         (\ () -> ResAuthenticated)
         (\ x
            -> case x of
                 ResAuthenticated -> Right ()
-                _ -> Left x)
+                _                -> Left x)
   _ResMadeDevice
     = prism
         (\ x1 -> ResMadeDevice x1)
         (\ x
            -> case x of
                 ResMadeDevice y1 -> Right y1
-                _ -> Left x)
+                _                -> Left x)
   _ResGotDeviceInfo
     = prism
         (\ (x1, x2) -> ResGotDeviceInfo x1 x2)
         (\ x
            -> case x of
                 ResGotDeviceInfo y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                      -> Left x)
   _ResSetDeviceType
     = prism
         (\ x1 -> ResSetDeviceType x1)
         (\ x
            -> case x of
                 ResSetDeviceType y1 -> Right y1
-                _ -> Left x)
+                _                   -> Left x)
   _ResSetDeviceName
     = prism
         (\ x1 -> ResSetDeviceName x1)
         (\ x
            -> case x of
                 ResSetDeviceName y1 -> Right y1
-                _ -> Left x)
+                _                   -> Left x)
   _ResSwitchedFamily
     = prism
         (\ (x1, x2) -> ResSwitchedFamily x1 x2)
         (\ x
            -> case x of
                 ResSwitchedFamily y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                       -> Left x)
   _ResCreatedFamily
     = prism
         (\ x1 -> ResCreatedFamily x1)
         (\ x
            -> case x of
                 ResCreatedFamily y1 -> Right y1
-                _ -> Left x)
+                _                   -> Left x)
   _ResSetFamilyName
     = prism
         (\ x1 -> ResSetFamilyName x1)
         (\ x
            -> case x of
                 ResSetFamilyName y1 -> Right y1
-                _ -> Left x)
+                _                   -> Left x)
   _ResGotFamily
     = prism
         (\ (x1, x2) -> ResGotFamily x1 x2)
         (\ x
            -> case x of
                 ResGotFamily y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                  -> Left x)
   _ResGotFamilyMembers
     = prism
         (\ (x1, x2) -> ResGotFamilyMembers x1 x2)
         (\ x
            -> case x of
                 ResGotFamilyMembers y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                         -> Left x)
   _ResGotOnlineDevices
     = prism
         (\ (x1, x2) -> ResGotOnlineDevices x1 x2)
         (\ x
            -> case x of
                 ResGotOnlineDevices y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                         -> Left x)
   _ResSavedBabyName
     = prism
         (\ () -> ResSavedBabyName)
         (\ x
            -> case x of
                 ResSavedBabyName -> Right ()
-                _ -> Left x)
+                _                -> Left x)
   _ResCreatedInvitation
     = prism
         (\ x1 -> ResCreatedInvitation x1)
         (\ x
            -> case x of
                 ResCreatedInvitation y1 -> Right y1
-                _ -> Left x)
+                _                       -> Left x)
   _ResSentInvitation
     = prism
         (\ x1 -> ResSentInvitation x1)
         (\ x
            -> case x of
                 ResSentInvitation y1 -> Right y1
-                _ -> Left x)
+                _                    -> Left x)
   _ResClaimedInvitation
     = prism
         (\ (x1, x2) -> ResClaimedInvitation x1 x2)
@@ -498,28 +572,28 @@ instance AsServerResponse ServerResponse where
         (\ x
            -> case x of
                 ResSubscribed -> Right ()
-                _ -> Left x)
+                _             -> Left x)
   _ResGotFamilies
     = prism
         (\ (x1, x2) -> ResGotFamilies x1 x2)
         (\ x
            -> case x of
                 ResGotFamilies y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                    -> Left x)
   _ResGotDevices
     = prism
         (\ (x1, x2) -> ResGotDevices x1 x2)
         (\ x
            -> case x of
                 ResGotDevices y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                   -> Left x)
   _ResLeftFamily
     = prism
         (\ (x1, x2) -> ResLeftFamily x1 x2)
         (\ x
            -> case x of
                 ResLeftFamily y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _                   -> Left x)
   _ResCreatedChannel
     = prism
         (\ (x1, x2, x3)
@@ -535,21 +609,21 @@ instance AsServerResponse ServerResponse where
         (\ x
            -> case x of
                 ResSentMessage -> Right ()
-                _ -> Left x)
+                _              -> Left x)
   _ResError
     = prism
         (\ (x1, x2) -> ResError x1 x2)
         (\ x
            -> case x of
                 ResError y1 y2 -> Right (y1, y2)
-                _ -> Left x)
+                _              -> Left x)
   _EventSessionGotStolen
     = prism
         (\ () -> EventSessionGotStolen)
         (\ x
            -> case x of
                 EventSessionGotStolen -> Right ()
-                _ -> Left x)
+                _                     -> Left x)
   _EventChannelRequested
     = prism
         (\ (x1, x2) -> EventChannelRequested x1 x2)

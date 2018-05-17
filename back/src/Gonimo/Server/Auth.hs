@@ -1,13 +1,16 @@
+{-# LANGUAGE RankNTypes      #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
 module Gonimo.Server.Auth where
 
 import           Control.Lens
-import           Control.Monad                 (unless)
-import           Control.Monad.Base            (MonadBase)
-import           Control.Monad.Reader          (MonadReader, ask)
-import           Gonimo.SocketAPI.Types        hiding (AuthData, deviceId, accountId)
+import           Control.Monad          (unless)
+import           Control.Monad.Base     (MonadBase)
+import           Control.Monad.Reader   (MonadReader)
+import           Control.Monad.RIO
+import           Control.Monad.Catch  as X (MonadThrow (..))
+
 import           Gonimo.Server.Error
+import           Gonimo.SocketAPI.Types hiding (AuthData, accountId, deviceId)
 
 data AuthData = AuthData { _authAccountId   :: !AccountId
                          , _authAccount     :: !Account
@@ -17,39 +20,73 @@ data AuthData = AuthData { _authAccountId   :: !AccountId
                          , _authDeviceId    :: !DeviceId
                          , _authDevice      :: !Device
                          }
-$(makeLenses ''AuthData)
+$(makeClassy ''AuthData)
 
 type AuthReader = MonadReader AuthData
 
 type AuthConstraint m = (MonadReader AuthData m, MonadBase IO m)
 
 
-askAccountId :: AuthReader m => m AccountId
-askAccountId = _authAccountId <$> ask
+{-# DEPRECATED askAccountId "Use 'view authAccountId' instead." #-}
+askAccountId :: HasAuthData env => RIO env AccountId
+askAccountId = view authAccountId
 
-authView :: AuthReader m => Getter AuthData a -> m a
-authView g = (^. g) <$> ask
+{-# DEPRECATED authView "Use view instead." #-}
+authView :: HasAuthData env => Getter env a -> RIO env a
+authView = view
 
+{-# DEPRECATED deviceKey "Use authDeviceId instead." #-}
 deviceKey :: AuthData -> DeviceId
 deviceKey = _authDeviceId
 
+{-# DEPRECATED accountKey "Use authAccountId instead." #-}
 accountKey :: AuthData -> AccountId
 accountKey = _authAccountId
 
-isFamilyMember :: FamilyId -> AuthData -> Bool
-isFamilyMember fid = (fid `elem`) . _allowedFamilies
+-- * Property checkers for Authentication:
+--
+--   Those checkers operate on a 'MonadReader' instance. Note:
+--   Due to the fact that (env ->) has a 'MonadReader' instance, those
+--   functions can be used as pure functions. 'isFamilyMember' for example can
+--   be seen as if it had the signature:
+--
+-- > isFamilyMember :: HasAuthData env => FamilyId -> env -> Bool
+--
+--   and used with authorize accordingly:
+--
+--   authorize $ isFamilyMember someFamilyId myAuthData
 
-isDevice :: DeviceId -> AuthData -> Bool
-isDevice deviceId = (== deviceId) . _authDeviceId
+-- | Check whether the given 'FamilyId' is member of on of our families.
+isFamilyMember :: (HasAuthData env, MonadReader env m) => FamilyId -> m Bool
+isFamilyMember fid = (fid `elem`) <$> view allowedFamilies
 
-isAccount :: AccountId -> AuthData -> Bool
-isAccount accountId = (== accountId) . _authAccountId
+-- | Check whether the given 'DeviceId' is us (the currently connected client).
+isDevice :: (HasAuthData env, MonadReader env m) => DeviceId -> m Bool
+isDevice deviceId = (== deviceId) <$> view authDeviceId
 
-authorize :: MonadBase IO m => (a -> Bool) -> a -> m ()
-authorize check x = unless (check x) (throwServer Forbidden)
+-- | Check whether the given 'AccountId' is us (belongs to the currently connected client).
+isAccount :: (HasAuthData env, MonadReader env m) => AccountId -> m Bool
+isAccount accountId = (== accountId) <$> view authAccountId
 
-authorizeJust :: MonadBase IO m => (a -> Maybe b) -> a -> m b
-authorizeJust check x = fromMaybeErr Forbidden . check $ x
 
-authorizeAuthData :: (AuthReader m, MonadBase IO m) => (AuthData -> Bool) -> m ()
-authorizeAuthData check = authorize check =<< ask
+-- * Authorize access:
+
+-- | Throws 'Forbidden' if called with False, otherwise does nothing.
+--
+--   Expected to be called something like this:
+--
+-- > authorize =<< isFamilyMember fid
+--
+--   Or in a pure setting (isFamilyMember gets simply applied as a function to a given authData):
+--
+-- > authorize $ isFamilyMember (invitationFamilyId inv) authData
+--
+authorize :: MonadThrow m => Bool -> m ()
+authorize check = unless check (throwM Forbidden)
+
+-- | Similar to 'authorize', but throws on Nothing.
+--
+--   A 'Just' value is just passed on. On 'Nothing', this function throws
+--   'Forbidden'.
+authorizeJust :: MonadThrow m => Maybe a -> m a
+authorizeJust check = fromMaybeErr Forbidden check

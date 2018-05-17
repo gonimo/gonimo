@@ -41,7 +41,7 @@ in
   in
   {
     executableName = "gonimo-front-android";
-    applicationId = "com.gonimo.baby";
+    applicationId = if androidIsRelease then "com.gonimo.baby" else "org.gonimo.gonimo";
     version = { code = androidVersionCode;
                 name = androidVersionName;
               };

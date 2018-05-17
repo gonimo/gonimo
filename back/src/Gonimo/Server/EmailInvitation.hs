@@ -19,6 +19,8 @@ import           Gonimo.Types
 import qualified Data.Aeson as Aeson
 
 
+type EmailAddress = Text
+
 #ifdef DEVELOPMENT
 invitationMail :: Text -> Text -> Text -> (Text, Text)
 invitationMail invURL famName _ = (textStuff, "")

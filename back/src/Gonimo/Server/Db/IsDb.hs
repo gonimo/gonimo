@@ -1,16 +1,19 @@
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 -- SocketAPI/DB Translations ...
 module Gonimo.Server.Db.IsDb where
 
+import           Control.Monad.State.Strict           (StateT (..))
 import           Database.Persist.Sql
-import           Control.Monad.State.Strict (StateT(..))
 
-import Gonimo.SocketAPI.Types as API
-import Gonimo.Db.Entities as Db
+import           Gonimo.Db.Entities                   as Db
+import qualified Gonimo.SocketAPI.Invitation          as API
+import qualified Gonimo.SocketAPI.Invitation.Internal as API
+import qualified Gonimo.SocketAPI.Invitation.Legacy   as Legacy
+import           Gonimo.SocketAPI.Types               as API
 
 -- | Types that have a representation in the db.
 class IsDbType apiType where
@@ -53,6 +56,7 @@ instance IsDbType API.InvitationId where
   type DbType API.InvitationId = Db.InvitationId
   fromDb = API.InvitationId . fromSqlKey
   toDb (API.InvitationId key) = toSqlKey key
+
 
 instance IsDbType API.FamilyAccountId where
   type DbType API.FamilyAccountId = Db.FamilyAccountId
@@ -106,22 +110,40 @@ instance IsDbType API.FamilyAccount where
 
 instance IsDbType API.Invitation where
   type DbType API.Invitation = Db.Invitation
-  fromDb dbFam = API.Invitation { API.invitationSecret = Db.invitationSecret dbFam
-                                , API.invitationFamilyId = fromDb $ Db.invitationFamilyId dbFam
-                                , API.invitationCreated = Db.invitationCreated dbFam
-                                , API.invitationDelivery = Db.invitationDelivery dbFam
-                                , API.invitationSenderId = fromDb $ Db.invitationSenderId dbFam
-                                , API.invitationReceiverId = fromDb <$> Db.invitationReceiverId dbFam
+  fromDb dbFam = API.Invitation { API._secret = Db.invitationSecret dbFam
+                                , API._familyId = fromDb $ Db.invitationFamilyId dbFam
+                                , API._created = Db.invitationCreated dbFam
+                                , API._delivery = Db.invitationDelivery dbFam
+                                , API._senderId = fromDb $ Db.invitationSenderId dbFam
+                                , API._receiverId = fromDb <$> Db.invitationReceiverId dbFam
+                                , API._code = Nothing
                                 }
 
-  toDb apiFam = Db.Invitation  { Db.invitationSecret = API.invitationSecret apiFam
-                               , Db.invitationFamilyId = toDb $ API.invitationFamilyId apiFam
-                               , Db.invitationCreated = API.invitationCreated apiFam
-                               , Db.invitationDelivery = API.invitationDelivery apiFam
-                               , Db.invitationSenderId = toDb $ API.invitationSenderId apiFam
-                               , Db.invitationReceiverId = toDb <$> API.invitationReceiverId apiFam
+  toDb apiFam = Db.Invitation  { Db.invitationSecret   = API._secret apiFam
+                               , Db.invitationFamilyId = toDb $ API._familyId apiFam
+                               , Db.invitationCreated  = API._created apiFam
+                               , Db.invitationDelivery = API._delivery apiFam
+                               , Db.invitationSenderId = toDb $ API._senderId apiFam
+                               , Db.invitationReceiverId = toDb <$> API._receiverId apiFam
                                }
 
+instance IsDbType Legacy.Invitation where
+  type DbType Legacy.Invitation = Db.Invitation
+  fromDb dbFam = Legacy.Invitation { Legacy.invitationSecret = Db.invitationSecret dbFam
+                                , Legacy.invitationFamilyId = fromDb $ Db.invitationFamilyId dbFam
+                                , Legacy.invitationCreated = Db.invitationCreated dbFam
+                                , Legacy.invitationDelivery = Db.invitationDelivery dbFam
+                                , Legacy.invitationSenderId = fromDb $ Db.invitationSenderId dbFam
+                                , Legacy.invitationReceiverId = fromDb <$> Db.invitationReceiverId dbFam
+                                }
+
+  toDb apiFam = Db.Invitation  { Db.invitationSecret = Legacy.invitationSecret apiFam
+                               , Db.invitationFamilyId = toDb $ Legacy.invitationFamilyId apiFam
+                               , Db.invitationCreated = Legacy.invitationCreated apiFam
+                               , Db.invitationDelivery = Legacy.invitationDelivery apiFam
+                               , Db.invitationSenderId = toDb $ Legacy.invitationSenderId apiFam
+                               , Db.invitationReceiverId = toDb <$> Legacy.invitationReceiverId apiFam
+                               }
 
 instance IsDbType API.User where
   type DbType API.User = Db.User

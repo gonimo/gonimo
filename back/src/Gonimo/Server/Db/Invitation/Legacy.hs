@@ -1,27 +1,28 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | Functions for working with Family entity
 --   This module is intended to be imported qualified as FamilyAccount
-module Gonimo.Server.Db.Invitation (insert, get, claim, delete, getBySecret, updateDelivery) where
+module Gonimo.Server.Db.Invitation.Legacy
+  (insert, get, claim, delete, getBySecret, updateDelivery) where
 
 
-import           Control.Monad.Catch             as X (MonadThrow (..))
-import           Control.Monad.IO.Class          (MonadIO)
-import           Control.Monad.Trans.Reader      (ReaderT (..))
-import           Data.Bifunctor                  (bimap)
-import           Database.Persist                (Entity (..))
-import qualified Database.Persist.Class          as Db
-import           Database.Persist.Sql            (SqlBackend)
+import           Control.Monad.Catch                as X (MonadThrow (..))
+import           Control.Monad.IO.Class             (MonadIO)
+import           Control.Monad.Trans.Reader         (ReaderT (..))
+import           Data.Bifunctor                     (bimap)
+import           Database.Persist                   (Entity (..))
+import qualified Database.Persist.Class             as Db
+import           Database.Persist.Sql               (SqlBackend)
 
-import           Gonimo.Database.Effects.Servant as Db
-import qualified Gonimo.Db.Entities              as Db
+import           Gonimo.Database.Effects.Servant    as Db
+import qualified Gonimo.Db.Entities                 as Db
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error
-import           Gonimo.SocketAPI.Invitation     (Invitation,
-                                                  InvitationDelivery (..),
-                                                  InvitationId)
-import qualified Gonimo.SocketAPI.Invitation     as API
-import           Gonimo.SocketAPI.Types          as API
-import           Gonimo.Types                    (Secret)
+import           Gonimo.SocketAPI.Invitation.Legacy (Invitation,
+                                                     InvitationDelivery (..),
+                                                     InvitationId)
+import qualified Gonimo.SocketAPI.Invitation.Legacy as API
+import           Gonimo.SocketAPI.Types             as API
+import           Gonimo.Types                       (Secret)
 
 
 
@@ -46,18 +47,17 @@ updateDelivery d iid' = do
   pure $ fromDb newInv
 
 claim :: (MonadThrow m, MonadIO m)
-      => InvitationId -> AccountId -> ReaderT SqlBackend m API.Invitation
-claim invId' aid' = do
+      => AccountId -> Secret -> ReaderT SqlBackend m (API.InvitationId, API.Invitation)
+claim aid' secret = do
   let aid = toDb aid'
-  let invId = toDb invId'
-  inv <- getErr NoSuchInvitation invId
+  (invId, inv) <- getBySecret' secret
   guardWithM InvitationAlreadyClaimed
     $ case Db.invitationReceiverId inv of
       Nothing -> do
         Db.replace invId $ inv { Db.invitationReceiverId = Just aid }
         return True
       Just receiverId' -> return $ receiverId' == aid
-  pure $ fromDb inv
+  pure (fromDb invId, fromDb inv)
 
 getBySecret :: (MonadThrow m, MonadIO m) => Secret -> ReaderT SqlBackend m (API.InvitationId, API.Invitation)
 getBySecret = fmap (bimap fromDb fromDb) . getBySecret'

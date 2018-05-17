@@ -2,13 +2,13 @@
 module Gonimo.Server.Db.Internal where
 
 import           Control.Lens
+import           Control.Monad.Catch              as X (MonadThrow (..))
+import           Control.Monad.IO.Class           (MonadIO)
 import           Control.Monad.State.Class
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Maybe        (MaybeT)
 import           Control.Monad.Trans.Reader       (ReaderT (..))
 import           Control.Monad.Trans.State.Strict (StateT (..))
-import           Control.Monad.Base               (MonadBase)
-import           Control.Monad.IO.Class           (MonadIO)
 import           Database.Persist.Class           (Key, PersistRecordBackend)
 import qualified Database.Persist.Class           as Db
 import           Database.Persist.Sql             (SqlBackend)
@@ -21,7 +21,7 @@ type UpdateT entity m a = StateT entity (MaybeT m) a
 
 -- | Update db entity as specified by the given UpdateT - on Nothing, no update occurs.
 updateRecord' :: ( PersistRecordBackend record SqlBackend
-                , MonadIO m, MonadBase IO m )
+                , MonadIO m, MonadThrow m )
                 => ServerError -> Key record
                 -> UpdateT record (ReaderT SqlBackend m) a
                 -> MaybeT (ReaderT SqlBackend m) a
@@ -35,7 +35,7 @@ updateRecord' noSuchRecord recordId f = do
   pure $ r^._1
 
 updateRecord :: ( PersistRecordBackend record SqlBackend
-                , MonadIO m, MonadBase IO m, IsDbType recordId, IsDbType apiRecord, record ~ DbType apiRecord
+                , MonadIO m, MonadThrow m, IsDbType recordId, IsDbType apiRecord, record ~ DbType apiRecord
                 , DbType recordId ~ Key record )
                 => (recordId -> ServerError) -> recordId
                 -> UpdateT apiRecord (ReaderT SqlBackend m) a
