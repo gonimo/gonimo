@@ -40,7 +40,6 @@ library
                   , Gonimo.Server.Db.Family
                   , Gonimo.Server.Db.Internal
                   , Gonimo.Server.Db.Invitation
-                  , Gonimo.Server.Db.Invitation.Legacy
                   , Gonimo.Server.Db.IsDb
                   , Gonimo.Server.Config
                   , Gonimo.Server.EmailInvitation

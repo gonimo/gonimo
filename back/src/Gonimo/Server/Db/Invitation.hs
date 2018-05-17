@@ -16,10 +16,9 @@ import           Gonimo.Database.Effects.Servant as Db
 import qualified Gonimo.Db.Entities              as Db
 import           Gonimo.Server.Db.IsDb
 import           Gonimo.Server.Error
-import           Gonimo.SocketAPI.Invitation     (Invitation,
+import           Gonimo.SocketAPI.Types          (Invitation,
                                                   InvitationDelivery (..),
                                                   InvitationId)
-import qualified Gonimo.SocketAPI.Invitation     as API
 import           Gonimo.SocketAPI.Types          as API
 import           Gonimo.Types                    (Secret)
 
@@ -46,18 +45,17 @@ updateDelivery d iid' = do
   pure $ fromDb newInv
 
 claim :: (MonadThrow m, MonadIO m)
-      => InvitationId -> AccountId -> ReaderT SqlBackend m API.Invitation
-claim invId' aid' = do
+      => AccountId -> Secret -> ReaderT SqlBackend m (API.InvitationId, API.Invitation)
+claim aid' secret = do
   let aid = toDb aid'
-  let invId = toDb invId'
-  inv <- getErr NoSuchInvitation invId
+  (invId, inv) <- getBySecret' secret
   guardWithM InvitationAlreadyClaimed
     $ case Db.invitationReceiverId inv of
       Nothing -> do
         Db.replace invId $ inv { Db.invitationReceiverId = Just aid }
         return True
       Just receiverId' -> return $ receiverId' == aid
-  pure $ fromDb inv
+  pure (fromDb invId, fromDb inv)
 
 getBySecret :: (MonadThrow m, MonadIO m) => Secret -> ReaderT SqlBackend m (API.InvitationId, API.Invitation)
 getBySecret = fmap (bimap fromDb fromDb) . getBySecret'
