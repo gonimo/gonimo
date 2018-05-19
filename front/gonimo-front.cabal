@@ -90,6 +90,8 @@ library
                     , Gonimo.Client.Baby.UI.I18N
                     , Gonimo.Client.ConfirmationButton
                     , Gonimo.Client.ConfirmationButton.I18N
+                    , Gonimo.Client.Device
+                    , Gonimo.Client.Device.Impl
                     , Gonimo.Client.DeviceList
                     , Gonimo.Client.DeviceList.Internal
                     , Gonimo.Client.DeviceList.UI
@@ -98,11 +100,7 @@ library
                     , Gonimo.Client.EditStringButton.I18N
                     , Gonimo.Client.Environment
                     , Gonimo.Client.Family
-                    , Gonimo.Client.Family.Internal
-                    , Gonimo.Client.Family.RoleSelector
-                    , Gonimo.Client.Family.RoleSelector.I18N
-                    , Gonimo.Client.Family.UI
-                    , Gonimo.Client.Family.UI.I18N
+                    , Gonimo.Client.Family.Impl
                     , Gonimo.Client.Host
                     , Gonimo.Client.Host.Impl
                     , Gonimo.Client.Invite
@@ -140,6 +138,7 @@ library
                     , Gonimo.Client.Storage.Keys
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Subscriber.Impl
+                    , Gonimo.Client.UI.DeviceCoupling
                     , Gonimo.Client.Util
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.WebRTC.Channels
@@ -152,4 +151,3 @@ library
                     , Reflex.Class.Extended
                     , Reflex.Dom.Contrib.Router
                     , Reflex.Dynamic.Extended
-                    , Gonimo.Client.UI.DeviceCoupling

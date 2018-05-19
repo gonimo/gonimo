@@ -16,6 +16,7 @@ module Reflex.Class.Extended ( -- * Re-exported modules
                              , flatten
                              , flattenDynamic
                              , networkViewFlatten
+                             , networkViewFlattenPair
                              ) where
 
 
@@ -75,3 +76,12 @@ networkViewFlatten :: ( Reflex t, NotReady t m, Adjustable t m, PostBuild t m
                   , Flattenable a, MonadHold t m)
                => Dynamic t (m (a t)) -> m (a t)
 networkViewFlatten = flatten <=< networkView
+
+-- | Flatte pairs of `Flattenable`s.
+networkViewFlattenPair :: ( Reflex t, NotReady t m, Adjustable t m, PostBuild t m
+                          , Flattenable a, Flattenable b, MonadHold t m
+                          )
+               => Dynamic t (m (a t, b t)) -> m (a t, b t)
+networkViewFlattenPair dynAction = do
+  wrapped <- networkView dynAction
+  (,) <$> flatten (fst <$> wrapped) <*> flatten (snd <$> wrapped)
