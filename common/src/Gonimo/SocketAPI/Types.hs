@@ -3,7 +3,9 @@
 -- They are either accepted from the device or sent to the device but have no further use
 -- on the server side.
 
-module Gonimo.SocketAPI.Types where
+module Gonimo.SocketAPI.Types ( module Gonimo.SocketAPI.Types
+                              , module Gonimo.Types
+                              )where
 
 import           Data.Aeson.Types (FromJSON, ToJSON (..), defaultOptions,
                                    genericToEncoding)
