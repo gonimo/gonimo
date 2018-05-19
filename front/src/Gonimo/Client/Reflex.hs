@@ -108,9 +108,43 @@ fromMaybeDyn' onNothing action mDyn = do
   holdDyn widgetInit widgetEvent
 
 
+-- | A `Map` with `Dynamic` values.
+type DynamicMap t key val = Map key (Dynamic t val)
+
+-- | Build a Map with `buildMap` but hold back its value, until fully loaded.
+--
+--   Until fully loaded the value will always be a `Just`.
+buildBufferedMap :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
+                 => Dynamic t [key] -> Event t (key, val)
+                 -> m (MDynamic t (DynamicMap t key val))
+buildBufferedMap keys gotNewKeyVal = do
+  unbuffered <- buildMap keys gotNewKeyVal
+  let
+    ubufferedSize = Map.size <$> unbuffered
+    keysSize = length <$> keys
+    isFullDyn = liftM2 (==) ubufferedSize keysSize
+    isFullEv = ffilter id . updated $ isFullDyn
+  -- Once the list of keys and the size of the Map have the same size it can be
+  -- assumed that the initial load of data is completed.
+  isReady <- holdUniqDyn <=< holdDyn False $ True <$ isFullEv
+
+  pure $ do
+    isReadyNow <- isReady
+    if isReadyNow
+      then Just <$> unbuffered
+      else pure Nothing
+
+
+-- | Build a Map based on a list of keys and events poulating the keys with values.
+--
+--   The Map will always strive for holding exactly the values to the given
+--   `keys` parameter. Although this is not guranteed as the Map can only be
+--   filled when `gotNewKeyVal'` triggers.
+--
+--   If you prefer a buffered map, where you get `Nothing` when the Map is not complete yet - use `buildBufferedMap`.
 buildMap :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
                  => Dynamic t [key] -> Event t (key, val)
-                 -> m (Dynamic t (Map key (Dynamic t val)))
+                 -> m (Dynamic t (DynamicMap t key val))
 buildMap keys gotNewKeyVal' = mdo
   let
     gotNewKeyVal = push (\p@(k,_) -> do
