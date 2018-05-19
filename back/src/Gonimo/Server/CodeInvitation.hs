@@ -44,15 +44,6 @@ import           Gonimo.SocketAPI.Types      as API
 
 -- import Gonimo.Server.CodeInvitation.Type
 
--- | We use Base32 based codes, where each digit responds to 5 bits.
---
---   Currently we use 6 digits, resulting in about 10^9 possibilities.
-codeLength :: Int
-codeLength = 6
-
--- | Timeout in seconds until the code can be considered invalid.
-codeValidTimeout :: Int
-codeValidTimeout = 30
 
 
 -- | Creates an empty table and a thread pruning old codes.

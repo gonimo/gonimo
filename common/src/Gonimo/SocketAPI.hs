@@ -96,8 +96,8 @@ data ServerResponse
 
     -- | Made an `InvitationId` corresponding to the given `InvitationId`
     --
-    --   The code will be valid for the given time in seconds of the last parameter.
-  | ResCreatedInvitationCode !InvitationId !InvitationCode !Int
+    --   The code will be valid for `codeValidTimeout` seconds.
+  | ResCreatedInvitationCode !InvitationId !InvitationCode
 
 
   | ResSubscribed -- Pretty dumb response, but we don't need more information on the client side right now.
