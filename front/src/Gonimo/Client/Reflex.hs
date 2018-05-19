@@ -16,6 +16,20 @@ import qualified Data.Set as Set
 import Data.Set ((\\))
 
 
+-- | Dynamics with a payload wrapped in a `Maybe`.
+--
+--   This is usually used for data coming from a server. It will be `Nothing`
+--   until it is fully loaded.
+type MDynamic t a = Dynamic t (Maybe a)
+
+-- | A `Dynamic` containing another `FRP` value, for example a nested `Dynamic`.
+type NestedDynamic t a = Dynamic t (a t)
+
+-- | A nested `Dynamic` wrapped in a `Maybe`.
+--
+--   A combination of `MDynamic` and `NestedDynamic`.
+type MNestedDynamic t a = Dynamic t (Maybe (a t))
+
 -- | Only pass through every second instance of an event.
 --
 --   Events [1, 2, 3, 4] would result in events [ 2, 4 ].
