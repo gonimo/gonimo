@@ -16,6 +16,8 @@ module Gonimo.Client.Family.Impl ( -- * Interface
                              ) where
 
 
+import           Control.Arrow            (second)
+import           Control.Monad.Fix        (mfix)
 import qualified Data.Aeson               as Aeson
 import qualified Data.Map                 as Map
 import           Data.Set                 (Set)
@@ -29,6 +31,8 @@ import qualified GHCJS.DOM.Location       as Location
 import           GHCJS.DOM.Types          (MonadJSM, liftJSM, toJSVal)
 import qualified GHCJS.DOM.Window         as Window
 import           Network.HTTP.Types       (urlDecode)
+import           Reflex.Network
+import           Reflex.NotReady.Class
 
 import           Gonimo.Client.Family
 import           Gonimo.Client.Host       (Intent)
@@ -81,7 +85,7 @@ type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfi
 --
 make
   :: forall t m model mConf c
-     . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
+     . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m, NotReady t m, Adjustable t m, PostBuild t m
        , HasModel model, HasConfig c, HasModelConfig mConf t
        )
      => model t -> c t -> m (mConf t, MDynamic t (Family t))
@@ -92,25 +96,32 @@ make model conf = do
 
       onRequestInvitationIds = ReqGetFamilyInvitations <$> onSelectedFamily
 
-      onFamily =  make' model conf <$> onSelectedFamily
+      makeJustFamily :: API.FamilyId -> m (mConf t, Maybe (Family t))
+      makeJustFamily = fmap (second Just) . makeFamily model conf
+
+      onFamily =  makeJustFamily <$> onSelectedFamily
 
     -- TODO: Missing: We have to clear the selection when the family list gets
     -- empty and we have to update it if our current id gets deleted:
-    dynInit <- holdDyn (pure Nothing) $ Just <$> onFamily
+    initEv <- networkView =<< holdDyn (pure (mempty, Nothing)) onFamily
 
-    networkViewFlattenPair dynInit
+    mConf <- flatten $ fst <$> initEv
+    dynFamily <- holdDyn Nothing $ snd <$> initEv
+
+    pure (mConf, dynFamily)
 
 
 -- | Create a Family based on a FamilyId.
-make' :: forall t m model mConf c
-         . ( Reflex t, MonadHold t m, MonadFix m
-           , HasModel model, HasConfig c, HasModelConfig mConf t
-           )
-      => model t -> c t -> API.FamilyId -> m (mConf t, Family t)
-make' model conf selectedFamilyId = mfix $ \(mConf, family') -> do
+makeFamily :: forall t m model mConf c
+              . ( Reflex t, MonadHold t m, MonadFix m
+                , HasModel model, HasConfig c, HasModelConfig mConf t
+                )
+           => model t -> c t -> API.FamilyId -> m (mConf t, Family t)
+makeFamily model conf selectedFamilyId = mfix $ \(mConf, family') -> do
     ourSubscriptions <- holdDyn Set.empty . fmap Set.fromList $ onRequestInvitations
 
-    _openInvitations <- buildBufferedMap onGotInvitationIds onGotInvitation
+    invitationIds <- holdDyn [] onGotInvitationIds
+    _openInvitations <- buildBufferedMap invitationIds onGotInvitation
 
     _activeInvitationCode <- getInvitationCode model family'
 
