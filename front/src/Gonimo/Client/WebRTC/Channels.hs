@@ -35,7 +35,6 @@ import           GHCJS.DOM.Enums                   (RTCSignalingState(..))
 
 
 import           Gonimo.Client.Environment         (HasEnvironment)
-import           Gonimo.Client.Reflex              (buildDynMap)
 import           Gonimo.Client.Util                (fromPromiseM,
                                                     getTransmissionInfo)
 import           Gonimo.Client.WebRTC.Channel      (Channel (..),
@@ -90,14 +89,17 @@ channels config = mdo
   updateReceivingState <- handleConnectionStateUpdate (current channels') channelEvent
   updateMuteState <- handleMuteUpdate (current channels') channelEvent
 
-  channels' <- holdDyn Map.empty . buildDynMap (current channels') $ [insertChannel, removeChannel, updateStreamChannels] <> updateReceivingState <> updateMuteState
+  channels' <- foldDyn id Map.empty . mergeWith (.) $ [ insertChannel
+                                                      , removeChannel
+                                                      , updateStreamChannels
+                                                      ] <> updateReceivingState <> updateMuteState
 
   rtcRequest <- handleRTCEvents (current $ config^.configOurId) (current channels') channelEvent
 
   handleBroadcastStream config channels'
   msgRequest <- handleMessages config (current channels')
 
-  rStreams <- holdDyn Map.empty . buildDynMap (current rStreams) $ [updateStreams]
+  rStreams <- foldDyn id Map.empty . mergeWith (.) $ [updateStreams]
 
   pure $ Channels { _request = sendCloseRequest <> msgRequest <> rtcRequest
                   , _channelMap = channels'

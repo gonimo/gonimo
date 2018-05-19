@@ -30,12 +30,6 @@ everySecond ev = do
               )
               ev
 
-buildDynMap :: (Ord k, Eq k, Reflex t) => Behavior t (Map k v) -> [Event t (Map k v -> Map k v)] -> Event t (Map k v)
-buildDynMap bMap = pushAlways (\builder -> do
-                                  cMap <- sample bMap
-                                  pure $ builder cMap
-                              ) . mergeWith (.)
-
 -- class FlattenAble a where
 --   flattenEvent ::  forall t m. (MonadHold t m, Reflex t, MonadFix m) => Event t a -> m a
 
@@ -139,5 +133,5 @@ buildMap keys gotNewKeyVal' = mdo
                            else pure $ Just $ \oldMap -> foldr Map.delete oldMap deletedKeys
                      ) (updated keys)
 
-  resultMap <- holdDyn Map.empty . buildDynMap (current resultMap) $ [ insertKeys, deleteKeys ]
+  resultMap <- foldDyn id Map.empty $ mergeWith (.) [ insertKeys, deleteKeys ]
   pure resultMap
