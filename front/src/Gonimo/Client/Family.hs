@@ -44,7 +44,7 @@ data Config t
 --   claimed invitations or user name, ...
 data Family t
   = Family { -- | The `API.FamilyId` of this very family.
-             _identifier            :: MDynamic t API.FamilyId
+             _identifier            :: API.FamilyId
              -- | Invitations currently open for this family.
              --
              --   That is all invitations for this family that still exist: They
@@ -98,13 +98,13 @@ instance Flattenable Config where
       <*> doSwitch never (_onCreateCode <$> ev)
       <*> doSwitch never (_onSetDeviceName <$> ev)
 
-instance Flattenable Family where
-  flattenWith doSwitch ev
-    = Family
-      <$> flattenDynamic doSwitch (_identifier <$> ev)
-      <*> flattenDynamic doSwitch (_openInvitations <$> ev)
-      <*> flattenDynamic doSwitch (_activeInvitation <$> ev)
-      <*> flattenDynamic doSwitch (_activeInvitationCode <$> ev)
+-- instance Flattenable Family where
+--   flattenWith doSwitch ev
+--     = Family
+--       <$> flattenDynamic doSwitch (_identifier <$> ev)
+--       <*> flattenDynamic doSwitch (_openInvitations <$> ev)
+--       <*> flattenDynamic doSwitch (_activeInvitation <$> ev)
+--       <*> flattenDynamic doSwitch (_activeInvitationCode <$> ev)
 
 -- Auto generated lenses:
 
@@ -148,10 +148,10 @@ instance HasConfig Config where
 class HasFamily a where
   family :: Lens' (a t) (Family t)
 
-  identifier :: Lens' (a t) (MDynamic t API.FamilyId)
+  identifier :: Lens' (a t) API.FamilyId
   identifier = family . go
     where
-      go :: Lens' (Family t) (MDynamic t API.FamilyId)
+      go :: Lens' (Family t) API.FamilyId
       go f family' = (\identifier' -> family' { _identifier = identifier' }) <$> f (_identifier family')
 
 
@@ -162,17 +162,17 @@ class HasFamily a where
       go f family' = (\openInvitations' -> family' { _openInvitations = openInvitations' }) <$> f (_openInvitations family')
 
 
-  activeInvitation :: Lens' (a t) (Dynamic t (Maybe API.InvitationId))
+  activeInvitation :: Lens' (a t) (MDynamic t API.InvitationId)
   activeInvitation = family . go
     where
-      go :: Lens' (Family t) (Dynamic t (Maybe API.InvitationId))
+      go :: Lens' (Family t) (MDynamic t API.InvitationId)
       go f family' = (\activeInvitation' -> family' { _activeInvitation = activeInvitation' }) <$> f (_activeInvitation family')
 
 
-  activeInvitationCode :: Lens' (a t) (Dynamic t (Maybe API.InvitationCode))
+  activeInvitationCode :: Lens' (a t) (MDynamic t API.InvitationCode)
   activeInvitationCode = family . go
     where
-      go :: Lens' (Family t) (Dynamic t (Maybe API.InvitationCode))
+      go :: Lens' (Family t) (MDynamic t API.InvitationCode)
       go f family' = (\activeInvitationCode' -> family' { _activeInvitationCode = activeInvitationCode' }) <$> f (_activeInvitationCode family')
 
 
