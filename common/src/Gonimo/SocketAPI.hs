@@ -6,7 +6,6 @@ import           Control.Lens
 import           Data.Aeson.Types       (FromJSON, ToJSON (..), defaultOptions,
                                          genericToEncoding)
 import           Data.Text              (Text)
-import           Data.Time              (DiffTime)
 import           GHC.Generics           (Generic)
 
 import           Gonimo.Server.Error    (ServerError)
@@ -356,6 +355,8 @@ class AsServerResponse r where
   _ResSentInvitation :: Prism' r Client.SendInvitation
   _ResClaimedInvitation :: Prism' r (Secret, InvitationInfo)
   _ResAnsweredInvitation :: Prism' r (Secret, InvitationReply, Maybe FamilyId)
+  _ResGotFamilyInvitations :: Prism' r (FamilyId, [InvitationId])
+  _ResGotInvitation :: Prism' r (InvitationId, Invitation)
   _ResSubscribed :: Prism' r ()
   _ResGotFamilies :: Prism' r (AccountId, [FamilyId])
   _ResGotDevices :: Prism' r (AccountId, [DeviceId])
@@ -517,6 +518,24 @@ instance AsServerResponse ServerResponse where
            -> case x of
                 ResAnsweredInvitation y1 y2 y3
                   -> Right (y1, y2, y3)
+                _ -> Left x)
+  _ResGotFamilyInvitations
+    = prism
+        (\ (x1, x2)
+           -> ResGotFamilyInvitations x1 x2)
+        (\ x
+           -> case x of
+                ResGotFamilyInvitations y1 y2
+                  -> Right (y1, y2)
+                _ -> Left x)
+  _ResGotInvitation
+    = prism
+        (\ (x1, x2)
+           -> ResGotInvitation x1 x2)
+        (\ x
+           -> case x of
+                ResGotInvitation y1 y2
+                  -> Right (y1, y2)
                 _ -> Left x)
   _ResSubscribed
     = prism
