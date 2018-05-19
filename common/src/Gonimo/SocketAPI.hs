@@ -357,6 +357,7 @@ class AsServerResponse r where
   _ResAnsweredInvitation :: Prism' r (Secret, InvitationReply, Maybe FamilyId)
   _ResGotFamilyInvitations :: Prism' r (FamilyId, [InvitationId])
   _ResGotInvitation :: Prism' r (InvitationId, Invitation)
+  _ResCreatedInvitationCode :: Prism' r (InvitationId, InvitationCode)
   _ResSubscribed :: Prism' r ()
   _ResGotFamilies :: Prism' r (AccountId, [FamilyId])
   _ResGotDevices :: Prism' r (AccountId, [DeviceId])
@@ -535,6 +536,15 @@ instance AsServerResponse ServerResponse where
         (\ x
            -> case x of
                 ResGotInvitation y1 y2
+                  -> Right (y1, y2)
+                _ -> Left x)
+  _ResCreatedInvitationCode
+    = prism
+        (\ (x1, x2)
+           -> ResCreatedInvitationCode x1 x2)
+        (\ x
+           -> case x of
+                ResCreatedInvitationCode y1 y2
                   -> Right (y1, y2)
                 _ -> Left x)
   _ResSubscribed
