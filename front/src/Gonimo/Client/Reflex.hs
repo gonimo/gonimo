@@ -30,6 +30,9 @@ type NestedDynamic t a = Dynamic t (a t)
 --   A combination of `MDynamic` and `NestedDynamic`.
 type MNestedDynamic t a = Dynamic t (Maybe (a t))
 
+-- | A `Map` with `Dynamic` values.
+type DynamicMap t key val = Map key (Dynamic t val)
+
 -- | Only pass through every second instance of an event.
 --
 --   Events [1, 2, 3, 4] would result in events [ 2, 4 ].
@@ -107,9 +110,6 @@ fromMaybeDyn' onNothing action mDyn = do
                          ) (updated mDyn)
   holdDyn widgetInit widgetEvent
 
-
--- | A `Map` with `Dynamic` values.
-type DynamicMap t key val = Map key (Dynamic t val)
 
 -- | Build a Map with `buildMap` but hold back its value, until fully loaded.
 --
