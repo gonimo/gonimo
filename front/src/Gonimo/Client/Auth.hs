@@ -9,12 +9,13 @@ module Gonimo.Client.Auth where
 
 import           Gonimo.Client.Prelude
 import qualified Gonimo.SocketAPI.Types as API
+import           Gonimo.Client.Reflex (MDynamic)
 
 
 
 data Auth t
   = Auth { -- | Our Authentication data, if available.
-           _authData :: Dynamic t (Maybe API.AuthData)
+           _authData :: MDynamic t API.AuthData
 
            -- | Authenticate sucessful. Connection is fully established.
            --

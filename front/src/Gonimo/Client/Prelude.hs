@@ -12,16 +12,19 @@ module Gonimo.Client.Prelude ( MonadFix
                              , module Reflex
                              , module MonadReader
                              , module GHCJS.DOM.Types
+                             , module Gonimo.Client.Reflex
                              ) where
 
 import           Control.Monad.Fix          (MonadFix)
 import           Control.Monad.Trans.Class  (lift)
-import           Control.Monad.Trans.Maybe  (MaybeT)
+import           Control.Monad.Trans.Maybe  (MaybeT(..))
 #ifndef __GHCJS__
 import           GHCJS.DOM.Types            (MonadJSM (..), liftJSM)
 #else
 import           GHCJS.DOM.Types            (MonadJSM, liftJSM)
 #endif
+import           Control.Monad.Reader.Class as MonadReader (ask)
+import           Gonimo.Client.Reflex       (MDynamic)
 import           Gonimo.Client.Settings     as Settings (HasSettings (..),
                                                          trDynText, trText)
 import           Gonimo.Prelude             as GonimoPrelude
@@ -30,7 +33,6 @@ import           Reflex.Class.Extended
 import           Reflex.Dom.Class           hiding (Alt)
 import           Reflex.Dom.Core
 import           Reflex.Dynamic.Extended
-import           Control.Monad.Reader.Class as MonadReader (ask)
 
 
 -- | Constraint on a Monad m, to be suitable for Gonimo UI code.

@@ -25,27 +25,35 @@ module Gonimo.Client.Device.Impl ( -- * Interface
 
 
 
-import           GHCJS.DOM.Types          (MonadJSM, liftJSM, toJSVal)
+import           Control.Arrow             (second)
+import           GHCJS.DOM.Types           (MonadJSM)
+
+import           Gonimo.Client.Server      (onResponse)
+import           Reflex.Network
+import           Reflex.NotReady.Class
 
 
 
 import           Gonimo.Client.Device
-
-import qualified Gonimo.Client.Host       as Host
+import           Gonimo.Client.Family      (Family)
+import qualified Gonimo.Client.Family.Impl as Family
+import qualified Gonimo.Client.Host        as Host
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
-import qualified Gonimo.Client.Server     as Server
-import qualified Gonimo.Client.Subscriber as Subscriber
-import           Gonimo.SocketAPI         as API
-import qualified Gonimo.SocketAPI.Types   as API
-import           Gonimo.SocketAPI.Types   (InvitationInfo, InvitationSecret)
-import           Gonimo.Client.Family (Family)
-import           Gonimo.Client.Reflex (buildMap)
+
+import qualified Gonimo.Client.Auth        as Auth
+import qualified Gonimo.Client.Server      as Server
+import qualified Gonimo.Client.Subscriber  as Subscriber
+import           Gonimo.SocketAPI          as API
+import           Gonimo.SocketAPI.Types    (InvitationInfo, InvitationSecret)
+import qualified Gonimo.SocketAPI.Types    as API
 
 
 
 -- | Our dependencies
-type HasModel model = (Server.HasServer model, Host.HasHost model)
+type HasModel model = (Server.HasServer model, Host.HasHost model, Auth.HasAuth model
+                      , Family.HasModel model
+                      )
 
 -- | Example datatype fulfilling 'HasModelConfig'.
 data ModelConfig t
@@ -62,16 +70,49 @@ data ModelConfig t
 -- | Configurations we provide for the model as inputs.
 type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfig c)
 
--- | Create an Device.
---
---   You can claim invitations and answer them.
---   At the moment we don't yet have a means for getting claimed invitations
---   from the server (ReqGetClaimedInvitations), so we only provide the ones of
---   the current session. If you restart gonimo, your claimed invitations are no
---   longer visible.
-make :: ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
-        , HasModel model, HasConfig c, HasModelConfig mConf t
-        )
-     => model t -> c t -> m (mConf t, Device t)
-make model conf' = undefined
 
+-- | Create a Device.
+--
+make
+  :: forall t m model mConf c
+     . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m, NotReady t m, Adjustable t m, PostBuild t m
+       , PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)
+       , HasModel model, HasConfig c, HasModelConfig mConf t
+       )
+     => model t -> c t -> m (mConf t, Device t)
+make model conf = do
+  let
+    _identifier = fmap API.deviceId <$> model ^. Auth.authData
+  (mConf, _selectedFamily) <- makeFamily model conf
+  pure (mConf, Device {..})
+
+makeFamily
+  :: forall t m model mConf c
+     . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m, NotReady t m, Adjustable t m, PostBuild t m
+       , PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)
+       , HasModel model, HasConfig c, HasModelConfig mConf t
+       )
+     => model t -> c t -> m (mConf t, MDynamic t (Family t))
+makeFamily model conf = do
+    let
+      onSelectedFamily :: Event t API.FamilyId
+      onSelectedFamily = fmapMaybe (^? API._ResSwitchedFamily . _2) $ model ^. onResponse
+
+      onRequestInvitationIds = ReqGetFamilyInvitations <$> onSelectedFamily
+
+      makeJustFamily :: API.FamilyId -> m (mConf t, Maybe (Family t))
+      makeJustFamily = fmap (second Just) . Family.make model (conf ^. familyConfig)
+
+      onFamily =  makeJustFamily <$> onSelectedFamily
+
+    -- TODO: Missing: We have to clear the selection when the family list gets
+    -- empty and we have to update it if our current id gets deleted and we have to initialize it from storage:
+    initEv <- networkView =<< holdDyn (pure (mempty, Nothing)) onFamily
+
+    famMConf <- flatten $ fst <$> initEv
+    subscriberConf <- Subscriber.fromServerRequests $ (:[]) <$> onRequestInvitationIds
+    dynFamily <- holdDyn Nothing $ snd <$> initEv
+
+    pure ( famMConf <> subscriberConf
+         , dynFamily
+         )

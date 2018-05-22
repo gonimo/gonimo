@@ -16,8 +16,10 @@ import           Reflex.Dom.Core                 hiding
                                                   webSocketConfig_send)
 
 import qualified Gonimo.Client.Account.Impl      as Account
-import           Gonimo.Client.App               as App
+
+import           Gonimo.Client.App.Types         as App
 import qualified Gonimo.Client.Auth.Impl         as Auth
+import qualified Gonimo.Client.Device.Impl       as Device
 import qualified Gonimo.Client.Environment       as Environment
 import qualified Gonimo.Client.Host.Impl         as Host
 import           Gonimo.Client.Prelude           hiding (app)
@@ -73,6 +75,8 @@ app hostVars = build $ \ ~(modelConf, model) -> do
 
   (authConf, __auth)       <- Auth.make model
 
+  (deviceConf, __device)   <- Device.make model modelConf
+
   (accountConf, __account) <- Account.make model modelConf
 
   subscriberConf           <- Subscriber.make model modelConf
@@ -83,6 +87,7 @@ app hostVars = build $ \ ~(modelConf, model) -> do
 
   pure ( mconcat [ routerConf
                  , authConf
+                 , deviceConf
                  , accountConf
                  , subscriberConf
                  , uiConf

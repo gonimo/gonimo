@@ -11,6 +11,8 @@ import           Gonimo.Client.Account         (Account, HasAccount)
 import qualified Gonimo.Client.Account         as Account
 import           Gonimo.Client.Auth            (Auth, HasAuth)
 import qualified Gonimo.Client.Auth            as Auth
+import           Gonimo.Client.Device          (Device, HasDevice)
+import qualified Gonimo.Client.Device          as Device
 import           Gonimo.Client.Environment     (Environment,
                                                 HasEnvironment (..))
 import           Gonimo.Client.Host            (HasHost (..), Host)
@@ -38,6 +40,7 @@ data ModelConfig t
                 , _settingsConfig   :: Settings.Config t
                 , _routerConfig     :: Router.Config t
                 , _hostConfig       :: Host.Config t
+                , _deviceConfig     :: Device.Config t
                 } deriving (Generic)
 
 data Model t
@@ -48,6 +51,7 @@ data Model t
           , __environment :: Environment t
           , __router      :: Router t
           , __host        :: Host t
+          , __device      :: Device t
           }
 
 -- | TODO: Get rid of this.
@@ -114,6 +118,9 @@ instance HasRouter Model where
 instance HasHost Model where
   host = _host
 
+instance HasDevice Model where
+  device = _device
+
 instance (Reflex t) => Default (App t) where
   def = App (constDyn Set.empty) never never
 
@@ -148,6 +155,9 @@ instance Router.HasConfig ModelConfig where
 instance Host.HasConfig ModelConfig where
   config = hostConfig
 
+instance Device.HasConfig ModelConfig where
+  config = deviceConfig
+
 instance Flattenable ModelConfig where
   flattenWith doSwitch ev
     = ModelConfig
@@ -157,6 +167,7 @@ instance Flattenable ModelConfig where
       <*> flattenWith doSwitch (_settingsConfig <$> ev)
       <*> flattenWith doSwitch (_routerConfig <$> ev)
       <*> flattenWith doSwitch (_hostConfig <$> ev)
+      <*> flattenWith doSwitch (_deviceConfig <$> ev)
 
 appSwitchPromptlyDyn :: forall t. Reflex t => Dynamic t (App t) -> App t
 appSwitchPromptlyDyn ev
@@ -224,6 +235,8 @@ routerConfig f modelConfig' = (\routerConfig' -> modelConfig' { _routerConfig = 
 hostConfig :: Lens' (ModelConfig t) (Host.Config t)
 hostConfig f modelConfig' = (\hostConfig' -> modelConfig' { _hostConfig = hostConfig' }) <$> f (_hostConfig modelConfig')
 
+deviceConfig :: Lens' (ModelConfig t) (Device.Config t)
+deviceConfig f modelConfig' = (\deviceConfig' -> modelConfig' { _deviceConfig = deviceConfig' }) <$> f (_deviceConfig modelConfig')
 
 
 
@@ -250,6 +263,8 @@ _router f model' = (\_router' -> model' { __router = _router' }) <$> f (__router
 _host :: Lens' (Model t) (Host t)
 _host f model' = (\_host' -> model' { __host = _host' }) <$> f (__host model')
 
+_device :: Lens' (Model t) (Device t)
+_device f model' = (\_device' -> model' { __device = _device' }) <$> f (__device model')
 
 
 -- Lenses for Loaded t:

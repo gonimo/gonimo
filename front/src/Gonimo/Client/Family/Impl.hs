@@ -16,31 +16,20 @@ module Gonimo.Client.Family.Impl ( -- * Interface
                              ) where
 
 
-import           Control.Arrow            (second)
 import           Control.Monad.Fix        (mfix)
-import qualified Data.Aeson               as Aeson
+import           Data.Foldable            (maximumBy)
+import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
-import           Data.Set                 (Set)
-import qualified Data.Set                 as Set
-import qualified Data.Text                as T
-import qualified Data.Text.Encoding       as T
-import           Data.Time                (NominalDiffTime)
-import qualified GHCJS.DOM                as DOM
-import qualified GHCJS.DOM.History        as History
-import qualified GHCJS.DOM.Location       as Location
-import           GHCJS.DOM.Types          (MonadJSM, liftJSM, toJSVal)
-import qualified GHCJS.DOM.Window         as Window
-import           Network.HTTP.Types       (urlDecode)
-import           Reflex.Network
-import           Reflex.NotReady.Class
 
+import           Data.Time                (NominalDiffTime)
+
+import qualified Gonimo.Client.Device     as Device
 import           Gonimo.Client.Family
-import           Gonimo.Client.Host       (Intent)
 import qualified Gonimo.Client.Host       as Host
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex     (MDynamic, buildBufferedMap)
-import           Gonimo.Client.Server     (onRequest, onResponse)
+import           Gonimo.Client.Server     (onResponse)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
 import           Gonimo.SocketAPI         as API
@@ -49,7 +38,7 @@ import qualified Gonimo.SocketAPI.Types   as API
 
 
 -- | Our dependencies
-type HasModel model = (Server.HasServer model, Host.HasHost model)
+type HasModel model = (Server.HasServer model, Host.HasHost model, Device.HasDevice model)
 
 -- | Example datatype fulfilling 'HasModelConfig'.
 data ModelConfig t
@@ -68,57 +57,22 @@ type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfi
 
 
 
--- | Create a Dynamic Family, representing the currently selected family.
+
+
+-- | Create a Family based on a FamilyId.
 --
 --   Clients always operate on one particular family they have selected. They
 --   are considered online in this family and can connect to baby stations in
 --   this family or become baby stations themselves.
 --
---   If the returned `Dynamic` contains `Nothing` this either means that no
---   `FamilyId` was selected yet or that the `FamilyId`s of this account have
---   not yet been loaded. You can distinguish the two cases by checking the
---   `Account.famililies` `Dynamic`. If it is `Nothing` then families are not
---   loaded yet. The difference is not only for display purposes relevant, but
---   also if the families are not yet loaded, no action is required (just wait
---   for it to be loaded), if they are loaded but this is still `Nothing` you
---   might want to perform some action so some `Family` is selected.
---
-make
-  :: forall t m model mConf c
-     . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m, NotReady t m, Adjustable t m, PostBuild t m
-       , HasModel model, HasConfig c, HasModelConfig mConf t
-       )
-     => model t -> c t -> m (mConf t, MDynamic t (Family t))
-make model conf = do
-    let
-      onSelectedFamily :: Event t API.FamilyId
-      onSelectedFamily = fmapMaybe (^? API._ResSwitchedFamily . _2) $ model ^. onResponse
-
-      onRequestInvitationIds = ReqGetFamilyInvitations <$> onSelectedFamily
-
-      makeJustFamily :: API.FamilyId -> m (mConf t, Maybe (Family t))
-      makeJustFamily = fmap (second Just) . makeFamily model conf
-
-      onFamily =  makeJustFamily <$> onSelectedFamily
-
-    -- TODO: Missing: We have to clear the selection when the family list gets
-    -- empty and we have to update it if our current id gets deleted:
-    initEv <- networkView =<< holdDyn (pure (mempty, Nothing)) onFamily
-
-    mConf <- flatten $ fst <$> initEv
-    dynFamily <- holdDyn Nothing $ snd <$> initEv
-
-    pure (mConf, dynFamily)
-
-
--- | Create a Family based on a FamilyId.
-makeFamily :: forall t m model mConf c
-              . ( Reflex t, MonadHold t m, MonadFix m
+make :: forall t m model mConf c
+              . ( Reflex t, MonadHold t m, MonadFix m, PerformEvent t m
+                , TriggerEvent t m, MonadIO (Performable m)
                 , HasModel model, HasConfig c, HasModelConfig mConf t
                 )
            => model t -> c t -> API.FamilyId -> m (mConf t, Family t)
-makeFamily model conf _identifier = mfix $ \(mConf, family') -> do
-    ourSubscriptions <- holdDyn Set.empty . fmap Set.fromList $ onRequestInvitations
+make model conf _identifier = mfix $ \ ~(_, family') -> do
+    subscriberConf <- Subscriber.fromServerRequests onRequestInvitations
 
     invitationIds <- holdDyn [] onGotInvitationIds
     _openInvitations <- buildBufferedMap invitationIds onGotInvitation
@@ -126,12 +80,12 @@ makeFamily model conf _identifier = mfix $ \(mConf, family') -> do
     _activeInvitationCode <- getInvitationCode model family'
 
     let
-      _activeInvitation = getActiveInvitation <$> _openInvitations
+      _activeInvitation = getActiveInvitation (model ^. Device.identifier) _openInvitations
 
-      mConf = mempty & Server.onRequest .~ sendServerRequests conf family'
-                     & Subscriber.subscriptions .~ ourSubscriptions
 
-    pure (mConf, Family {..})
+    pure ( subscriberConf & Server.onRequest .~ sendServerRequests conf family'
+         , Family {..}
+         )
   where
     onGotInvitationIds :: Event t [API.InvitationId]
     onGotInvitationIds = filterSelfFixed _identifier
@@ -143,8 +97,49 @@ makeFamily model conf _identifier = mfix $ \(mConf, family') -> do
 
     onRequestInvitations = map ReqGetInvitation <$> onGotInvitationIds
 
+
+-- | Get the currently active invitation.
+--
+--   For details see `getActiveInvitationPure`. We use `joinDynThroughMap` from
+--   "Reflex.Dynamic" in order to get rid of the inner `Dynamic`s of the `Map`.
+getActiveInvitation :: forall t .  Reflex t
+                    => MDynamic t API.DeviceId -> MDynamic t (Invitations t)
+                    -> MDynamic t API.InvitationId
+getActiveInvitation mDevId mInvitations =
+    liftA2 getActiveInvitationPure mDevId joinedMaybeMap
+  where
+    -- Ignore the `Maybe` for a sec, so we can apply `joinDynThroughMap`
+    joinedJustMap = joinDynThroughMap $ fromMaybe Map.empty <$> mInvitations
+
+    -- Restore the `Maybe`
+    joinedMaybeMap :: MDynamic t (Map API.InvitationId API.Invitation)
+    joinedMaybeMap = do
+      mInvitations' <- mInvitations
+      if isNothing mInvitations'
+        then pure Nothing
+        else Just <$> joinedJustMap
+
+
+-- | Get the currently active invitation.
+--
+--   The currently active invitation is the youngest invitation in existence for
+--   this family that was issued by this device.
+getActiveInvitationPure
+  :: Maybe API.DeviceId -> Maybe (Map API.InvitationId API.Invitation) -> Maybe API.InvitationId
+getActiveInvitationPure mDevId mInvitations = do
+  devId <- mDevId
+  invitations <- mInvitations
+
+  let
+    ourInvitations = Map.toList $ Map.filter ((== devId) . API.invitationSenderId) invitations
+    lastInvitation = maximumBy compareByCreated ourInvitations
+    compareByCreated a b = compare (API.invitationCreated . snd $ a) (API.invitationCreated . snd $ b)
+  -- maximumBy is partial:
+  guard $ (not . null) ourInvitations
+  pure $ fst lastInvitation
+
 -- | Handle requests in conf that result in server requests.
-sendServerRequests :: forall t m c
+sendServerRequests :: forall t c
                      . ( Reflex t , HasConfig c )
                   => c t -> Family t -> Event t [API.ServerRequest]
 sendServerRequests conf family' =
@@ -175,7 +170,8 @@ sendServerRequests conf family' =
 --
 --   Also takes care of invalidating it after approximately `codeValidTimeout`.
 getInvitationCode :: forall t m model
-                     . ( Reflex t, MonadHold t m, MonadFix m
+                     . ( Reflex t, MonadHold t m, MonadFix m, PerformEvent t m
+                       , TriggerEvent t m, MonadIO (Performable m)
                        , HasModel model
                        )
                   => model t -> Family t -> m (MDynamic t API.InvitationCode)
@@ -189,12 +185,13 @@ getInvitationCode model family' = do
     timeout = fromIntegral $ codeValidTimeout - flightTime
 
     -- Make sure the code belongs to our current invitation.
-    filterOurCode = push (\(invId, invCode) -> runMaybeT $ do
-                                cInv <- sample $ current (family ^. activeInvitation)
-                                guard $  invId == cInv
-                                pure invCode
-                            )
-    onOurCode = filterOurCode
+    filterOurCode :: (API.InvitationId, API.InvitationCode) -> PushM t (Maybe API.InvitationCode)
+    filterOurCode (invId, invCode) = runMaybeT $ do
+      cInv <- MaybeT . sample . current $ family' ^. activeInvitation
+      guard $  invId == cInv
+      pure invCode
+
+    onOurCode = push filterOurCode
                 . fmapMaybe (^? API._ResCreatedInvitationCode)
                 $ model ^. onResponse
     -- Time up:
