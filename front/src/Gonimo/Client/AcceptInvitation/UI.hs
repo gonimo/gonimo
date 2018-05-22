@@ -13,14 +13,15 @@ import           Data.Text                              (Text)
 import           Reflex.Dom.Core
 
 import           Gonimo.Client.AcceptInvitation.UI.I18N
-import           Gonimo.Client.Account              (ClaimedInvitations,
+import           Gonimo.Client.Account                  (ClaimedInvitations,
                                                          HasAccount (..),
                                                          HasConfig (..))
-import qualified Gonimo.Client.Account              as Account
+import qualified Gonimo.Client.Account                  as Account
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
-import           Gonimo.SocketAPI.Invitation.Legacy     (InvitationInfo (..),
-                                                         InvitationReply (..), InvitationSecret)
+import           Gonimo.SocketAPI.Types                 (InvitationInfo (..),
+                                                         InvitationReply (..),
+                                                         InvitationSecret)
 import qualified Gonimo.Types                           as Gonimo
 
 

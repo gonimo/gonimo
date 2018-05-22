@@ -60,6 +60,12 @@ enterPressed = push (\key -> pure $ if key == 13
                                     else Nothing
                     )
 
+-- | A generic "button" tag, with arbitrary contents and classes.
+buttonClass :: DomBuilder t m => Text -> m () -> m (Event t ())
+buttonClass classes inner = do
+  (e, _) <- elClass' "button" classes inner
+  return $ domEvent Click e
+
 addBtnAttrs :: Text -> Map Text Text
 addBtnAttrs className = "class" =: className <> "type" =: "button" <> "role" =: "button"
 

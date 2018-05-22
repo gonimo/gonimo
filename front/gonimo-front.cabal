@@ -75,53 +75,53 @@ library
                     , Gonimo.Client.AcceptInvitation.UI.I18N
                     , Gonimo.Client.Account
                     , Gonimo.Client.Account.Impl
-                    , Gonimo.Client.App
-                    , Gonimo.Client.App.Internal
+                    -- , Gonimo.Client.App
+                    -- , Gonimo.Client.App.Internal
                     , Gonimo.Client.App.Types
-                    , Gonimo.Client.App.UI
-                    , Gonimo.Client.App.UI.I18N
+                    -- , Gonimo.Client.App.UI
+                    -- , Gonimo.Client.App.UI.I18N
                     , Gonimo.Client.Auth
                     , Gonimo.Client.Auth.I18N
                     , Gonimo.Client.Auth.Impl
-                    , Gonimo.Client.Baby
-                    , Gonimo.Client.Baby.Internal
-                    , Gonimo.Client.Baby.Socket
-                    , Gonimo.Client.Baby.UI
-                    , Gonimo.Client.Baby.UI.I18N
-                    , Gonimo.Client.ConfirmationButton
-                    , Gonimo.Client.ConfirmationButton.I18N
+                    -- , Gonimo.Client.Baby
+                    -- , Gonimo.Client.Baby.Internal
+                    -- , Gonimo.Client.Baby.Socket
+                    -- , Gonimo.Client.Baby.UI
+                    -- , Gonimo.Client.Baby.UI.I18N
+                    -- , Gonimo.Client.ConfirmationButton
+                    -- , Gonimo.Client.ConfirmationButton.I18N
                     , Gonimo.Client.Device
                     , Gonimo.Client.Device.Impl
-                    , Gonimo.Client.DeviceList
-                    , Gonimo.Client.DeviceList.Internal
-                    , Gonimo.Client.DeviceList.UI
-                    , Gonimo.Client.DeviceList.UI.I18N
-                    , Gonimo.Client.EditStringButton
-                    , Gonimo.Client.EditStringButton.I18N
+                    -- , Gonimo.Client.DeviceList
+                    -- , Gonimo.Client.DeviceList.Internal
+                    -- , Gonimo.Client.DeviceList.UI
+                    -- , Gonimo.Client.DeviceList.UI.I18N
+                    -- , Gonimo.Client.EditStringButton
+                    -- , Gonimo.Client.EditStringButton.I18N
                     , Gonimo.Client.Environment
                     , Gonimo.Client.Family
                     , Gonimo.Client.Family.Impl
                     , Gonimo.Client.Host
                     , Gonimo.Client.Host.Impl
-                    , Gonimo.Client.Invite
-                    , Gonimo.Client.Invite.Internal
-                    , Gonimo.Client.Invite.UI
-                    , Gonimo.Client.Invite.UI.I18N
+                    -- , Gonimo.Client.Invite
+                    -- , Gonimo.Client.Invite.Internal
+                    -- , Gonimo.Client.Invite.UI
+                    -- , Gonimo.Client.Invite.UI.I18N
                     , Gonimo.Client.JS.Audio
                     , Gonimo.Client.JS.OYD
                     , Gonimo.Client.JS.Volume
-                    , Gonimo.Client.MessageBox
-                    , Gonimo.Client.MessageBox.Internal
-                    , Gonimo.Client.MessageBox.UI
-                    , Gonimo.Client.MessageBox.UI.I18N
+                    -- , Gonimo.Client.MessageBox
+                    -- , Gonimo.Client.MessageBox.Internal
+                    -- , Gonimo.Client.MessageBox.UI
+                    -- , Gonimo.Client.MessageBox.UI.I18N
                     , Gonimo.Client.Model
-                    , Gonimo.Client.NavBar
-                    , Gonimo.Client.NavBar.Internal
-                    , Gonimo.Client.NavBar.UI
-                    , Gonimo.Client.Parent
-                    , Gonimo.Client.Parent.Connections
-                    , Gonimo.Client.Parent.UI
-                    , Gonimo.Client.Parent.UI.I18N
+                    -- , Gonimo.Client.NavBar
+                    -- , Gonimo.Client.NavBar.Internal
+                    -- , Gonimo.Client.NavBar.UI
+                    -- , Gonimo.Client.Parent
+                    -- , Gonimo.Client.Parent.Connections
+                    -- , Gonimo.Client.Parent.UI
+                    -- , Gonimo.Client.Parent.UI.I18N
                     , Gonimo.Client.Prelude
                     , Gonimo.Client.Reflex
                     , Gonimo.Client.Reflex.Dom

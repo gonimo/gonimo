@@ -8,8 +8,7 @@ module Gonimo.Client.Account where
 import           Data.Map               (Map)
 
 import           Gonimo.Client.Prelude
-import           Gonimo.SocketAPI.Types (InvitationInfo, InvitationReply)
-import           Gonimo.Types           (InvitationSecret)
+import           Gonimo.SocketAPI.Types (InvitationInfo, InvitationReply, InvitationSecret)
 
 
 

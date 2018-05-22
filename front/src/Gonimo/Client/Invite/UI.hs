@@ -14,20 +14,21 @@ import qualified GHCJS.DOM.Element             as Element
 import           Network.HTTP.Types            (urlEncode)
 import           Reflex.Dom.Core
 
-import qualified Gonimo.Client.App.Types            as App
-import           Gonimo.Client.Environment          (HasEnvironment)
+import qualified Gonimo.Client.App.Types       as App
+import           Gonimo.Client.Environment     (HasEnvironment)
 import           Gonimo.Client.Invite.Internal
 import           Gonimo.Client.Invite.UI.I18N
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import qualified Gonimo.Client.Settings             as Settings
+import qualified Gonimo.Client.Settings        as Settings
 import           Gonimo.Client.Util
 import           Gonimo.I18N
-import qualified Gonimo.SocketAPI                   as API
-import           Gonimo.SocketAPI.Invitation.Legacy (Invitation,
-                                                     InvitationDelivery (..),
-                                                     InvitationId,
-                                                     SendInvitation (..))
+import qualified Gonimo.SocketAPI              as API
+import           Gonimo.SocketAPI.Types        (Invitation,
+                                                InvitationDelivery (..),
+                                                InvitationId,
+                                                SendInvitation (..))
+import qualified Gonimo.SocketAPI.Types        as API
 
 ui :: forall model m t. (HasEnvironment model, GonimoM model t m) => App.Loaded t -> Config t -> m (Invite t)
 ui loaded config = mdo

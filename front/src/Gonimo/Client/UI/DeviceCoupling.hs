@@ -9,6 +9,7 @@ import           Reflex.Dom.Core
 
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Model               (IsConfig)
+import           Gonimo.Client.Reflex.Dom
 
 
 -- type HasModel model = Invite.HasModel model
@@ -34,16 +35,16 @@ ui = do
       elClass "div" "mdc-card mdc-layout-grid__cell mdc-layout-grid__cell--span-12 invite" $ do
         elClass "section" "mdc-card__primary" $ do
           elClass "h1" "mdc-card__title mdc-card__title--large" $ text "Gerätekopplung"
-        elClass "section" "invite-img-wrapper" $ elAttr "img" ("class" =: "invite-img" <> "src" =: "resource/img/team.jpg") blank
+        elClass "section" "invite-img-wrapper" $ elAttr "img" ("class" =: "invite-img" <> "src" =: "pix/device-coupling.gif") blank
         elClass "section" "mdc-card__supporting-text" $ text "Erklärung zur Kopplung."
         elClass "section" "mdc-card__actions" $ do
           inviteClicked <-
-            button "mdc-button mdc-button--raised mdc-card__action btn" $ do
+            buttonClass "mdc-button mdc-button--raised mdc-card__action btn" $ do
               elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "code"
               text "Code generieren"
           acceptInviteClicked <-
-            button "mdc-button mdc-button--raised mdc-card__action btn" $ do
+            buttonClass "mdc-button mdc-button--raised mdc-card__action btn" $ do
               elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "input"
               text "Code eingeben"
-          
-    pure ()
+          pure (inviteClicked, acceptInviteClicked)
+    pure mempty

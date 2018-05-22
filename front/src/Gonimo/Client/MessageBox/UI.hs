@@ -5,16 +5,16 @@
 module Gonimo.Client.MessageBox.UI where
 
 import           Control.Lens
-import           Data.Text                          (Text)
+import           Data.Text                         (Text)
 import           Reflex.Dom.Core
 
 import           Gonimo.Client.MessageBox.Internal
-import qualified Gonimo.Client.MessageBox.UI.I18N   as I18N
+import qualified Gonimo.Client.MessageBox.UI.I18N  as I18N
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
-import           Gonimo.Server.Error                (ServerError (..))
-import qualified Gonimo.SocketAPI                   as API
-import           Gonimo.SocketAPI.Invitation.Legacy (InvitationReply (..))
+import           Gonimo.Server.Error               (ServerError (..))
+import qualified Gonimo.SocketAPI                  as API
+import           Gonimo.SocketAPI.Types            (InvitationReply (..))
 
 ui :: forall model m t. GonimoM model t m
       => Config t -> m (MessageBox t)

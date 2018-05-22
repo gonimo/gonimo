@@ -20,8 +20,7 @@ import           Reflex.Dom.Core
 
 import qualified Gonimo.Client.Environment   as Env
 import qualified Gonimo.SocketAPI            as API
-import           Gonimo.SocketAPI.Types      (FamilyId, InvitationId)
-import qualified Gonimo.SocketAPI.Types      as API
+import           Gonimo.SocketAPI.Types      (FamilyId, InvitationId, Invitation(..))
 
 invitationQueryParam :: Text
 invitationQueryParam = "acceptInvitation"
