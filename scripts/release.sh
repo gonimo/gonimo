@@ -17,7 +17,10 @@ do
     sed -i "s/^version:.*/version:             ${name}/1" ${i}
     git add ${i}
 done
-
+git checkout master
+git merge develop
 git commit -m "Version bump"
 git tag -s v${name}
+git push
+git checkout develop
 
