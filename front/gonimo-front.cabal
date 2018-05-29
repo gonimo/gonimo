@@ -47,6 +47,7 @@ library
                     , containers
                     , data-default
                     , errors
+                    , filepath
                     , generic-deriving
                     , ghcjs-dom
                     , gonimo-common
@@ -55,14 +56,13 @@ library
                     , lens
                     , lifted-base
                     , mtl
+                    , network-uri
                     , reflex
                     , reflex-dom-core
                     , safe
                     , text
                     , time
                     , transformers
-                    , network-uri
-                    , filepath
                     -- , uri-bytestring >= 0.2.3.3 -- Does depend on TH!
   if !impl(ghcjs)
      build-depends: jsaddle-dom
