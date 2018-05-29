@@ -6,11 +6,12 @@ Copyright   : (c) Robert Klotzner, 2018
 module Gonimo.Client.UI.DeviceCoupling where
 
 import           Reflex.Dom.Core
-import qualified Reflex.Dom.MDC.Dialog as Dialog
+
 
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Model               (IsConfig)
 import           Gonimo.Client.Reflex.Dom
+import qualified Gonimo.Client.UI.Dialogs.Invite as Invite
 
 
 -- type HasModel model = Invite.HasModel model
@@ -50,12 +51,6 @@ ui = do
                   elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "input"
                   text "Code eingeben"
               pure (inviteClicked, acceptInviteClicked)
-  dialog :: Dialog.Dialog t () <-
-    Dialog.make $ Dialog.ConfigBase { Dialog._onOpen = inviteClicked
-                                    , Dialog._onClose = never
-                                    , Dialog._onDestroy = never
-                                    , Dialog._header = Dialog.DialogHeaderHeading (pure "hhuhu")
-                                    , Dialog._body = Dialog.separator
-                                    , Dialog._footer = Dialog.separator
-                                    }
-  pure mempty
+  Invite.ui $ Invite.Config { Invite._onOpen = inviteClicked
+                            , Invite._onClose = never
+                            }

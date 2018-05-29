@@ -139,6 +139,8 @@ library
                     , Gonimo.Client.Subscriber
                     , Gonimo.Client.Subscriber.Impl
                     , Gonimo.Client.UI.DeviceCoupling
+                    , Gonimo.Client.UI.Dialogs.Invite
+                    , Gonimo.Client.UI.Dialogs.Invite.I18N
                     , Gonimo.Client.Util
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.WebRTC.Channels

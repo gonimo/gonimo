@@ -14,11 +14,12 @@ module Reflex.Dom.MDC.Dialog ( -- * Types and Classes
                              , Config
                              , Dialog(..)
                              , HasDialog(..)
-                             , DialogHeaderBase(..)
-                             , DialogHeader
+                             , HeaderBase(..)
+                             , Header
                              -- * Creation
                              , make
                              -- * Utilities
+                             , cancelOnlyFooter
                              , separator
                              ) where
 
@@ -46,18 +47,18 @@ data ConfigBase text t m a
                , _onDestroy :: Event t ()
                -- , _AriaLabel       :: Dynamic t text -- We will take care of aria stuff at some later point in time properly.
                -- , _AriaDescription :: Dynamic t text
-               , _header    :: DialogHeaderBase text t m
+               , _header    :: HeaderBase text t m
                , _body      :: m a
                , _footer    :: m ()
                }
 
 
-data DialogHeaderBase text t m = DialogHeaderHeading (Dynamic t text)
-                               | DialogHeaderBare (m ())
+data HeaderBase text t m = HeaderHeading (Dynamic t text)
+                               | HeaderBare (m ())
 
 type Config t m a = ConfigBase Text t m a
 
-type DialogHeader t m = DialogHeaderBase Text t m
+type Header t m = HeaderBase Text t m
 
 data Dialog t a
   = Dialog { _dialogOnAccepted :: Event t ()
@@ -117,10 +118,16 @@ make conf = mdo
     removeClass :: Text -> Text -> Text
     removeClass className classes = T.unwords . delete className . T.words $ classes
 
--- data DialogHtmlConfig
---   = DialogHtmlConfig { dialogHtmlConfigAttrs :: Dynamic t (Map Text Text)
---                      , dialogHtmlConfigBodyClass :: Dynamic t Text
---                      }
+
+-- | Simple footer, consisting only of a Cancel button.
+--
+--   The given `Dynamic` `Text` will be the label of the button. Applied to a
+--   `Dynamic` `Text` this can be used as `_footer`.
+cancelOnlyFooter :: MDCConstraint t m => Dynamic t Text -> m ()
+cancelOnlyFooter btnText = elAttr "button" ("type" =: "button" <> "class" =: "mdc-button mdc-dialog__footer__button mdc-dialog__footer__button--cancel") $ dynText btnText
+
+
+-- | Little helper for cleaning up the type signature of `html`.
 type ElementTuple t m a = (Element EventResult (DomBuilderSpace m) t, a)
 
 html :: forall t m a. (DomBuilder t m, PostBuild t m)
@@ -138,16 +145,16 @@ html conf dynAttrs = do
     elClass "div" "mdc-dialog__backdrop" blank
     pure r
   where
-    renderHeader :: DialogHeader t m -> m ()
-    renderHeader (DialogHeaderHeading dt) = elClass "h2" "mdc-dialog__header__title" $ dynText dt
-    renderHeader (DialogHeaderBare m)     = m
+    renderHeader :: Header t m -> m ()
+    renderHeader (HeaderHeading dt) = elClass "h2" "mdc-dialog__header__title" $ dynText dt
+    renderHeader (HeaderBare m)     = m
 
 
 testDialog :: forall t m. MonadWidget t m => m (Dialog t ())
 testDialog = make $ ConfigBase { _onOpen = never
                                , _onClose = never
                                , _onDestroy = never
-                               , _header = DialogHeaderHeading (pure "hhuhu")
+                               , _header = HeaderHeading (pure "hhuhu")
                                , _body = separator
                                , _footer = separator
                                }
@@ -176,10 +183,10 @@ class HasConfigBase a42 where
       go f configBase' = (\onDestroy' -> configBase' { _onDestroy = onDestroy' }) <$> f (_onDestroy configBase')
 
 
-  header :: Lens' (a42 text t m a) (DialogHeaderBase text t m)
+  header :: Lens' (a42 text t m a) (HeaderBase text t m)
   header = configBase . go
     where
-      go :: Lens' (ConfigBase text t m a) (DialogHeaderBase text t m)
+      go :: Lens' (ConfigBase text t m a) (HeaderBase text t m)
       go f configBase' = (\header' -> configBase' { _header = header' }) <$> f (_header configBase')
 
 
@@ -226,32 +233,3 @@ class HasDialog a42 where
 
 instance HasDialog Dialog where
   dialog = id
-
--- Content:
-            -- elClass "div" "code-txt" $ do
-            --   elClass "h2" "code-field" $ text "randomCode"
-            --   elAttr "div" ("role" =: "progressbar" <> "class" =: "mdc-linear-progress") $ do
-            --     elClass "div" "mdc-linear-progress__bar mdc-linear-progress__primary-bar"  $ do
-            --       elClass "span" "mdc-linear-progress__bar-inner" blank
-            --   elAttr "p" ("class" =: "mdc-text-field-helper-text--persistent" <> "aria-hidden" =: "true") $ do
-            --     elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "schedule"
-            --     elClass "span" "code-time" $ text "0:30"
-            --   elClass "div" "mdc-menu-anchor" $ do
-            --     elAttr "button" ("type" =: "button" <> "class" =: "mdc-button mdc-button--flat btn share-btn") $ do
-            --       elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "share"
-            --       text "Teilen"
-            --     elAttr "div" ("class" =: "mdc-simple-menu" <> "tabindex" =: "-1") $ do
-            --       elAttr "ul" ("class" =: "mdc-simple-menu__items mdc-list" <> "role" =: "menu" <> "aria-hidden" =: "true") $ do
-            --         elAttr "li" ("class" =: "mdc-list-item" <> "role" =: "menuitem" <> "tabindex" =: "0") $ do
-            --           elClass "i" "material-icons" $ text "mail"
-            --           text "Mail"
-            --         elAttr "li" ("class" =: "mdc-list-item" <> "role" =: "menuitem" <> "tabindex" =: "0") $ do
-            --           elClass "i" "material-icons" $ text "content_copy"
-            --           text "Kopieren"
-            -- el "br" blank
-            -- separator
-            -- el "br" blank
-
--- Footer:
-
-            -- elAttr "button" ("type" =: "button" <> "class" =: "mdc-button mdc-dialog__footer__button mdc-dialog__footer__button--cancel") $ text "Abbrechen"
