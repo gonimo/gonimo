@@ -150,4 +150,7 @@ library
                     , Gonimo.SocketAPI.Translations
                     , Reflex.Class.Extended
                     , Reflex.Dom.Contrib.Router
+                    , Reflex.Dom.MDC
+                    , Reflex.Dom.MDC.Internal
+                    , Reflex.Dom.MDC.Dialog
                     , Reflex.Dynamic.Extended
