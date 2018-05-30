@@ -1,12 +1,19 @@
 {-# LANGUAGE RecursiveDo #-}
 
-module Gonimo.Client.Server ( Config(..)
+module Gonimo.Client.Server ( -- * Types and Classes
+                              Config(..)
                             , Server(..)
                             , HasConfig(..)
                             , HasServer(..)
                             , Model
                             , HasModel
+                              -- * Make it
                             , make
+                              -- * Utility functions
+                              -- ** Filter server messages based on some id.
+                            , filterMaybeSelf
+                            , filterSelf
+                            , filterSelfFixed
                             ) where
 
 import           Control.Lens
@@ -99,6 +106,25 @@ make model conf = mdo
   pure server'
 
 
+-- -- | Same as `filterSelf` but takes into account that we might not even exist.
+filterMaybeSelf :: (Reflex t, Eq someId) => Behavior t (Maybe someId) -> Event t (someId, someVal) -> Event t someVal
+filterMaybeSelf mayId = filterSelf mayId . fmap (first Just)
+
+-- -- | Filter an event with someid.
+-- --
+-- --   Only pass the event through if it matches our id, which is passed via a
+-- --   `Behavior`.
+filterSelf :: (Reflex t, Eq someId) => Behavior t someId -> Event t (someId, someVal) -> Event t someVal
+filterSelf ourId = push (\(evId, evVal) -> do
+                              self <- sample ourId
+                              if self == evId
+                                then pure $ Just evVal
+                                else pure Nothing
+                           )
+
+-- | same as `filterSelf`, but with a fixed id.
+filterSelfFixed :: (Reflex t, Eq someId) => someId -> Event t (someId, someVal) -> Event t someVal
+filterSelfFixed someId = fmap snd . ffilter ((== someId) . fst)
 
 -- We need to handle ping/pong at the application level so the client can detect a broken connection.
 -- Otherwise if the client has no data to send, but just waits for data (baby station), a broken connection will never be detected and the baby is unreachable - this is bad!
