@@ -6,7 +6,7 @@ Copyright   : (c) Robert Klotzner, 2018
 At the moment this is only about managing of claimed invitations.
 -}
 module Gonimo.Client.Family.Impl ( -- * Interface
-                               module API
+                               module Gonimo.Client.Family
                                -- * Types
                              , ModelConfig(..)
                              , HasModel
@@ -32,7 +32,6 @@ import           Gonimo.Client.Reflex     (MDynamic, buildBufferedMap)
 import           Gonimo.Client.Server     (onResponse, filterSelfFixed)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
-import           Gonimo.SocketAPI.Types   (codeValidTimeout)
 import qualified Gonimo.SocketAPI         as API
 
 

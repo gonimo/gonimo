@@ -51,6 +51,11 @@ data Device t
   = Device { -- The `API.DeviceId` of this device.
              _identifier     :: MDynamic t API.DeviceId
              -- | The currently selected family (if any).
+             --
+             --   Beware, as we hold on to the last family until the next one is
+             --   loaded, it might happen temporarely that `_selectedFamily`
+             --   points to a family that no longer exists in
+             --   `Account._families`.
            , _selectedFamily :: MDynamic t (Family t)
            , _deviceType     :: Dynamic t DeviceType
            }

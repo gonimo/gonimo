@@ -39,6 +39,12 @@ data Config t
 --   claimed invitations or user name, ...
 data Account t
   = Account { -- | The `API.AccountId` of this account
+              --
+              --   Although `_identifier` is a `Dynamic`, it is basically
+              --   assumed that it won't change once set. If this assumption is
+              --   broken, there might be temporary glitches in the
+              --   representation of `_families` or the selected family in
+              --   "Gonimo.Client.Device".
               _identifier         :: MDynamic t API.AccountId
               -- | Invitations currently claimed by the account. (At the moment,
               --   just the ones claimed in this session.)
