@@ -13,6 +13,7 @@ module Gonimo.Client.Family where
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex   (DynamicMap, MDynamic)
 import qualified Gonimo.SocketAPI.Types as API
+import           Gonimo.SocketAPI.Types   (codeValidTimeout)
 
 
 
@@ -64,9 +65,21 @@ data Family t
              --   user in order to retrieve an invitation.
              --
              --   This code always belongs to `activeInvitation`. It is
-             --   `Nothing` if none was created yet.
+             --   `Nothing` if none was created yet. It stays valid for `codeTimeout` seconds.
            , _activeInvitationCode :: MDynamic t API.InvitationCode
             }
+
+
+-- We Assume server/client roundtrip does not take longer than five seconds.
+flightTime :: Int
+flightTime = 5
+
+-- | Delay afther a new `_activeInvitationCode` got created until it will be invalid again.
+--
+--   This is an approximate value, useful for displaying timeout animations to the user.
+--   The value is in seconds.
+codeTimeout :: Int
+codeTimeout = codeValidTimeout - flightTime
 
 -- | Map type for open invitations.
 type Invitations t = DynamicMap t API.InvitationId API.Invitation

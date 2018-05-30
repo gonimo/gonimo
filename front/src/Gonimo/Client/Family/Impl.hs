@@ -29,12 +29,11 @@ import qualified Gonimo.Client.Host       as Host
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex     (MDynamic, buildBufferedMap)
-import           Gonimo.Client.Server     (onResponse)
+import           Gonimo.Client.Server     (onResponse, filterSelfFixed)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
-import           Gonimo.SocketAPI         as API
 import           Gonimo.SocketAPI.Types   (codeValidTimeout)
-import qualified Gonimo.SocketAPI.Types   as API
+import qualified Gonimo.SocketAPI         as API
 
 
 -- | Our dependencies
@@ -95,7 +94,7 @@ make model conf _identifier = mfix $ \ ~(_, family') -> do
     onGotInvitation :: Event t (API.InvitationId, API.Invitation)
     onGotInvitation = fmapMaybe (^? API._ResGotInvitation) $ model ^. onResponse
 
-    onRequestInvitations = map ReqGetInvitation <$> onGotInvitationIds
+    onRequestInvitations = map API.ReqGetInvitation <$> onGotInvitationIds
 
 
 -- | Get the currently active invitation.
@@ -177,12 +176,8 @@ getInvitationCode :: forall t m model
                   => model t -> Family t -> m (MDynamic t API.InvitationCode)
 getInvitationCode model family' = do
   let
-    -- We Assume server/client roundtrip does not take longer than five seconds.
-    flightTime :: Int
-    flightTime = 5
-
     timeout :: NominalDiffTime
-    timeout = fromIntegral $ codeValidTimeout - flightTime
+    timeout = fromIntegral codeTimeout
 
     -- Make sure the code belongs to our current invitation.
     filterOurCode :: (API.InvitationId, API.InvitationCode) -> PushM t (Maybe API.InvitationCode)
@@ -201,25 +196,3 @@ getInvitationCode model family' = do
   holdDyn Nothing $ leftmost [ Just    <$> onOurCode
                              , Nothing <$  onInvalidCode
                              ]
-
-
--- -- | Same as `filterOurSelf` but takes into account that we might not even exist.
--- filterMaybeSelf :: (Reflex t, Eq someId) => Behavior t (Maybe someId) -> Event t (someId, someVal) -> Event t someVal
--- filterMaybeSelf mayId = filterOurSelf mayId . fmap (first Just)
-
--- -- | Filter an event with someid.
--- --
--- --   Only pass the event through if it matches our id, which is passed via a
--- --   `Behavior`.
--- filterOurSelf :: (Reflex t, Eq someId) => Behavior t someId -> Event t (someId, someVal) -> Event t someVal
--- filterOurSelf ourId = push (\(evId, evVal) -> do
---                               self <- sample ourId
---                               if self == evId
---                                 then pure $ Just evVal
---                                 else pure Nothing
---                            )
-
--- | same as filterOurSelf, but with a fixed id.
-filterSelfFixed :: (Reflex t, Eq someId) => someId -> Event t (someId, someVal) -> Event t someVal
-filterSelfFixed someId = fmap snd . ffilter ((== someId) . fst)
-
