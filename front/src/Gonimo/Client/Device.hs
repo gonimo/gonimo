@@ -51,7 +51,7 @@ data Device t
   = Device { -- The `API.DeviceId` of this device.
              _identifier     :: MDynamic t API.DeviceId
              -- | The currently selected family (if any).
-           , _selectedFamily :: Dynamic t (Maybe (Family t))
+           , _selectedFamily :: MDynamic t (Family t)
            , _deviceType     :: Dynamic t DeviceType
            }
 
