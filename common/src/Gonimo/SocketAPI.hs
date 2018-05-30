@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-module Gonimo.SocketAPI where
+module Gonimo.SocketAPI ( module Gonimo.SocketAPI
+                        , module Gonimo.SocketAPI.Types
+                        ) where
 
 import           Control.Lens
 import           Data.Aeson.Types       (FromJSON, ToJSON (..), defaultOptions,
@@ -9,11 +11,7 @@ import           Data.Text              (Text)
 import           GHC.Generics           (Generic)
 
 import           Gonimo.Server.Error    (ServerError)
-import           Gonimo.SocketAPI.Types (AccountId, DeviceId, Family, FamilyId,
-                                         FromId, Invitation, InvitationCode,
-                                         InvitationId, InvitationInfo,
-                                         InvitationReply, InvitationSecret,
-                                         Message, ToId)
+import           Gonimo.SocketAPI.Types
 import qualified Gonimo.SocketAPI.Types as Client
 import           Gonimo.Types           (AuthToken, DeviceType, Secret)
 
