@@ -113,7 +113,7 @@ fromMaybeDyn' onNothing action mDyn = do
 
 -- | Build a Map with `buildMap` but hold back its value, until fully loaded.
 --
---   Until fully loaded the value will always be a `Just`.
+--   Once fully loaded, the value will always be a `Just`.
 buildBufferedMap :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
                  => Dynamic t [key] -> Event t (key, val)
                  -> m (MDynamic t (DynamicMap t key val))
