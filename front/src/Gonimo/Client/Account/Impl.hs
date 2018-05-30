@@ -16,6 +16,7 @@ module Gonimo.Client.Account.Impl ( -- * Interface
                              ) where
 
 
+import           Control.Monad.Fix        (mfix)
 import qualified Data.Aeson               as Aeson
 import qualified Data.Map                 as Map
 import           Data.Set                 (Set)
@@ -29,19 +30,22 @@ import           GHCJS.DOM.Types          (MonadJSM, liftJSM, toJSVal)
 import qualified GHCJS.DOM.Window         as Window
 import           Network.HTTP.Types       (urlDecode)
 
-import           Gonimo.Client.Account    as API
+import           Gonimo.Client.Account
 import           Gonimo.Client.Host       (Intent)
 import qualified Gonimo.Client.Host       as Host
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex     (buildBufferedMap)
+import           Gonimo.Client.Server     (filterMaybeSelf, onResponse)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
-import           Gonimo.SocketAPI
+import qualified Gonimo.SocketAPI         as API
 import           Gonimo.SocketAPI.Types   (InvitationInfo, InvitationSecret)
+import qualified Gonimo.Client.Auth        as Auth
 
 
 -- | Our dependencies
-type HasModel model = (Server.HasServer model, Host.HasHost model)
+type HasModel model = (Server.HasServer model, Host.HasHost model, Auth.HasAuth model)
 
 -- | Example datatype fulfilling 'HasModelConfig'.
 data ModelConfig t
@@ -65,21 +69,30 @@ type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfi
 --   from the server (ReqGetClaimedInvitations), so we only provide the ones of
 --   the current session. If you restart gonimo, your claimed invitations are no
 --   longer visible.
-make :: ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
-        , HasModel model, HasConfig c, HasModelConfig mConf t
-        )
+make :: forall t m model c mConf
+        . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
+          , HasModel model, HasConfig c, HasModelConfig mConf t
+          )
      => model t -> c t -> m (mConf t, Account t)
-make model conf' = do
+make model conf' = mfix $ \ ~(_, ourAccount) -> do
   let
     conf = handleInvitationIntent model conf'
 
   _claimedInvitations <- makeClaimedInvitations model
   let
-    serverConfig' = answerInvitations conf
+    userReqsConf = sendUserServerRequests conf
 
-  subscriberConfig' <- subscribeInvitationClaims conf
+  invClaimConf <- subscribeInvitationClaims conf
 
-  pure $ ( serverConfig' <> subscriberConfig'
+  (famConf, _families) <- getFamilies model ourAccount
+
+  let
+    _identifier = fmap API.accountId <$> model ^. Auth.authData
+
+  pure $ ( mconcat [ userReqsConf
+                   , invClaimConf
+                   , famConf
+                   ]
          , Account {..}
          )
 
@@ -108,30 +121,36 @@ makeClaimedInvitations
 makeClaimedInvitations model =
   let
     onClaimedInvitation :: Event t (InvitationSecret, InvitationInfo)
-    onClaimedInvitation = fmapMaybe (^?_ResClaimedInvitation) $ model ^. Server.onResponse
+    onClaimedInvitation = fmapMaybe (^?API._ResClaimedInvitation)
+                          $ model ^. Server.onResponse
 
     onAnsweredInvitation :: Event t InvitationSecret
-    onAnsweredInvitation = fmapMaybe (^?_ResAnsweredInvitation._1) $ model ^. Server.onResponse
+    onAnsweredInvitation = fmapMaybe (^?API._ResAnsweredInvitation._1)
+                           $ model ^. Server.onResponse
 
     onError :: Event t InvitationSecret
-    onError = fmapMaybe (^?_ResError . _1 . _ReqAnswerInvitation . _1) $ model ^. Server.onResponse
+    onError = fmapMaybe (^?API._ResError . _1 . API._ReqAnswerInvitation . _1)
+              $ model ^. Server.onResponse
   in
     foldDyn id Map.empty $ leftmost [ uncurry Map.insert <$> onClaimedInvitation
                                     , Map.delete <$> onAnsweredInvitation
                                     , Map.delete <$> onError
                                     ]
 
--- | Handle invitation answering.
+-- | Send server requests coming from `Config`.
 --
 --   The resulting ModelConfig will issue the needed server commands for
---   accepting/declining an invitation.
-answerInvitations :: (Reflex t, HasConfig c, IsConfig mconf t, Server.HasConfig mconf)
+--   accepting/declining an invitation and creating families.
+sendUserServerRequests :: (Reflex t, HasConfig c, IsConfig mconf t, Server.HasConfig mconf)
   => c t -> mconf t
-answerInvitations conf =
+sendUserServerRequests conf =
   let
-    onAnswer = map (uncurry ReqAnswerInvitation) <$> conf^.onAnswerInvitation
+    onAnswer = map (uncurry API.ReqAnswerInvitation) <$> conf ^. onAnswerInvitation
+    onReqCreateFamily = [API.ReqCreateFamily] <$ conf ^. onCreateFamily
   in
-    mempty & Server.onRequest .~ onAnswer
+    mempty & Server.onRequest .~ mconcat [ onAnswer
+                                         , onReqCreateFamily
+                                         ]
 
 
 -- | We currently subscribe invitation claims, to ensure they get through even on a lousy internet connection.
@@ -154,11 +173,46 @@ subscribeInvitationClaims conf = do
     pure $ mempty & Subscriber.subscriptions .~ fmap makeSubscriptions invitationsToClaim
 
   where
-    makeSubscriptions :: Set InvitationSecret -> Set ServerRequest
-    makeSubscriptions = Set.fromList . map ReqClaimInvitation . Set.toList
+    makeSubscriptions :: Set InvitationSecret -> Set API.ServerRequest
+    makeSubscriptions = Set.fromList . map API.ReqClaimInvitation . Set.toList
 
     doAll :: (a -> b -> b) -> [a] -> b -> b
     doAll f = foldr (.) id . map f
+
+-- | Retrieve our accounts families.
+getFamilies :: forall t m model mconf.
+               ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
+               , HasModel model, HasModelConfig mconf t
+               )
+            => model t -> Account t -> m (mconf t, MDynamic t (Families t))
+getFamilies model ourAccount = do
+    subs <- holdDyn Set.empty $ Set.fromList <$> onRequestFamilies
+    let
+      allSubs = baseSubscriptions <> subs
+
+    familyIds <- holdDyn [] onGotFamilyIds
+    ourFamilies <- buildBufferedMap familyIds onGotFamily
+
+    pure ( mempty & Subscriber.subscriptions .~ allSubs
+         , ourFamilies
+         )
+  where
+    ourIdentifier = ourAccount ^. identifier
+
+    baseSubscriptions = maybe Set.empty (Set.singleton . API.ReqGetFamilies)
+                        <$> ourAccount ^. identifier
+
+    onGotFamilyIds :: Event t [API.FamilyId]
+    onGotFamilyIds = filterMaybeSelf (current ourIdentifier)
+                     . fmapMaybe (^? API._ResGotFamilies)
+                     $ model ^. onResponse
+
+    onGotFamily :: Event t (API.FamilyId, API.Family)
+    onGotFamily = fmapMaybe (^? API._ResGotFamily) $ model ^. onResponse
+
+    onRequestFamilies = map API.ReqGetFamily <$> onGotFamilyIds
+
+
 
 -- | Get the invitation secret from the query string in the browser address bar.
 --
