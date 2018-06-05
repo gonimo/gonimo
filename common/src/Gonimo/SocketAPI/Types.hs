@@ -188,6 +188,9 @@ type InvitationSecret = Secret
 --   These codes are `codeLength` base32 digits.
 data InvitationCode = InvitationCode Text deriving (Show, Read, Eq, Ord, Generic)
 
+-- | Get the `Text` representation of the given `InvitationCode`.
+codeToText :: InvitationCode -> Text
+codeToText (InvitationCode code) = code
 
 instance FromJSON InvitationCode
 instance ToJSON InvitationCode where
