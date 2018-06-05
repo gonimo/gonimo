@@ -5,6 +5,7 @@ import           Gonimo.I18N
 
 data Message = Invitation_Code
              | Cancel
+             | Loading
              deriving (Show, Eq)
 
 instance I18N Message where
@@ -16,3 +17,7 @@ instance I18N Message where
           = "Cancel"
   i18n DE_DE Cancel
           = "Abbrechen"
+  i18n EN_GB Loading
+          = "Loading ..."
+  i18n DE_DE Loading
+          = "Lade ..."

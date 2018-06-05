@@ -6,31 +6,38 @@ Copyright   : (c) Robert Klotzner, 2018
 module Gonimo.Client.UI.Dialogs.Invite where
 
 import           Reflex.Dom.Core
-import qualified Reflex.Dom.MDC.Dialog               as Dialog
+import qualified Reflex.Dom.MDC.Dialog                as Dialog
 
-import           Gonimo.Client.Model                 (IsConfig)
+import qualified Data.Text                            as T
+import           Gonimo.Client.Model                  (IsConfig)
 import           Gonimo.Client.Prelude
 
-import qualified Gonimo.Client.Settings              as Settings
+import qualified Gonimo.Client.Account                as Account
+import qualified Gonimo.Client.Device                 as Device
+import qualified Gonimo.Client.Family                 as Family
+import qualified Gonimo.Client.Settings               as Settings
 import           Gonimo.Client.UI.Dialogs.Invite.I18N
-import           Gonimo.I18N                         (i18n)
+import           Gonimo.I18N                          (i18n)
+import qualified Gonimo.SocketAPI.Types               as API
 
 
-type HasModelConfig c t = (IsConfig c t)
 
--- type HasModel model = Settings.HasSettings model
+type HasModelConfig c t = (IsConfig c t, Account.HasConfig c, Device.HasConfig c)
+
+type HasModel model = (Account.HasAccount model, Device.HasDevice model)
 
 
 data Config t
-  = Config { _onOpen :: Event t ()
+  = Config { _onOpen  :: Event t ()
            , _onClose :: Event t ()
            }
 
-ui :: forall model mConf m t. (HasModelConfig mConf t, GonimoM model t m)
+ui :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m)
   => Config t -> m (mConf t)
 ui conf = do
   loc <- view Settings.locale
-  Dialog.make
+  model <- ask
+  void . Dialog.make
     $ Dialog.ConfigBase
     { Dialog._onOpen    = _onOpen conf
     , Dialog._onClose   = _onClose conf
@@ -38,7 +45,7 @@ ui conf = do
     , Dialog._header    = Dialog.HeaderHeading $ liftA2 i18n loc (pure Invitation_Code)
     , Dialog._body      = do
         elClass "div" "code-txt" $ do
-          elClass "h2" "code-field" $ text "randomCode"
+          elClass "h2" "code-field" $ dynText (showCode model)
           elAttr "div" ("role" =: "progressbar" <> "class" =: "mdc-linear-progress") $ do
             elClass "div" "mdc-linear-progress__bar mdc-linear-progress__primary-bar"  $ do
               elClass "span" "mdc-linear-progress__bar-inner" blank
@@ -62,4 +69,49 @@ ui conf = do
         el "br" blank
     , Dialog._footer    = Dialog.cancelOnlyFooter $ liftA2 i18n loc (pure Cancel)
     }
-  pure mempty
+  controller conf
+
+showCode :: (Reflex t, Device.HasDevice model, Settings.HasSettings model)
+  => model t -> Dynamic t Text
+showCode model = do
+  let loc = model ^. Settings.locale
+  mCode <- runMaybeT $ do
+    fam <- MaybeT $ model ^. Device.selectedFamily
+    MaybeT $ fam ^. Family.activeInvitationCode
+  loadingStr <- liftA2 i18n loc (pure Loading)
+  pure $ maybe loadingStr API.codeToText $ mCode
+
+-- showCode :: (Reflex t, Device.HasDevice model, Settings.HasSettings model)
+--   => model t -> Dynamic t Text
+-- showCode model = do
+--   let loc = model ^. Settings.locale
+--   mCode <- runMaybeT $ do
+--     fam <- MaybeT $ model ^. Device.selectedFamily
+--     pure $ fam ^. Family.identifier
+--   loadingStr <- liftA2 i18n loc (pure Loading)
+--   pure $ maybe loadingStr (T.pack . show) $ mCode
+
+controller :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m)
+  => Config t -> m (mConf t)
+controller conf = do
+  model <- ask
+  onCreateFamily     <- Account.ifFamiliesEmpty model $ conf ^. onOpen
+  onCreateInvitation <- Device.filterWithFamily model Family.ifNoActiveInvitation $ conf ^.onOpen
+  onCreateCode       <- Device.filterWithFamily model Family.ifNoActiveInvitationCode $ conf ^. onOpen
+  let
+    famConf = mempty & Family.onCreateInvitation .~ onCreateInvitation
+                     & Family.onCreateCode .~ onCreateCode
+  pure $ mempty & Account.onCreateFamily .~ onCreateFamily
+                & Device.familyConfig .~ famConf
+
+-- Auto generated lenses ..
+
+-- Lenses for Config t:
+
+onOpen :: Lens' (Config t) (Event t ())
+onOpen f config' = (\onOpen' -> config' { _onOpen = onOpen' }) <$> f (_onOpen config')
+
+onClose :: Lens' (Config t) (Event t ())
+onClose f config' = (\onClose' -> config' { _onClose = onClose' }) <$> f (_onClose config')
+
+

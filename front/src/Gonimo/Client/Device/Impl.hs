@@ -44,7 +44,8 @@ import qualified Gonimo.Client.Family.Impl as Family
 import qualified Gonimo.Client.Host        as Host
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
-
+import qualified Gonimo.Client.Storage      as GStorage
+import qualified Gonimo.Client.Storage.Keys as GStorage
 import qualified Gonimo.Client.Account     as Account
 import qualified Gonimo.Client.Auth        as Auth
 import qualified Gonimo.Client.Server      as Server
@@ -80,7 +81,7 @@ type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfi
 make
   :: forall t m model mConf c
      . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m, NotReady t m, Adjustable t m, PostBuild t m
-       , PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)
+       , PerformEvent t m, TriggerEvent t m, MonadIO (Performable m), MonadJSM (Performable m)
        , HasModel model, HasConfig c, HasModelConfig mConf t
        )
      => model t -> c t -> m (mConf t, Device t)
@@ -93,7 +94,7 @@ make model conf = mfix $ \ ~(_, ourDevice) -> do
 makeFamily
   :: forall t m model mConf c
      . ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m, NotReady t m, Adjustable t m, PostBuild t m
-       , PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)
+       , PerformEvent t m, TriggerEvent t m, MonadIO (Performable m), MonadJSM (Performable m)
        , HasModel model, HasConfig c, HasModelConfig mConf t
        )
      => model t -> c t -> Device t -> m (mConf t, MDynamic t (Family t))
@@ -109,44 +110,73 @@ makeFamily model conf ourDevice = do
 
       onFamily =  makeJustFamily <$> onSelectedFamily
 
-    -- TODO: Missing: We have to clear the selection when the family list gets
-    -- empty and we have to update it if our current id gets deleted and we have to initialize it from storage:
-    initEv <- networkView =<< holdDyn (pure (mempty, Nothing)) onFamily
+      -- When there are no families, we have to clear out our current selection.
+      -- In all other cases `selectFamily` will simply pick a new family and we
+      -- stick to what we have, until that succeeded.
+      onNoFamilies =  pure (mempty, Nothing) <$ Account.onFamiliesEmpty model
+
+    initEv <- networkView
+              <=< holdDyn (pure (mempty, Nothing)) $ leftmost [ onFamily
+                                                              , onNoFamilies
+                                                              ]
 
     famMConf <- flatten $ fst <$> initEv
     subscriberConf <- Subscriber.fromServerRequests $ (:[]) <$> onRequestInvitationIds
     dynFamily <- holdDyn Nothing $ snd <$> initEv
 
-    let selectFamConf = selectFamily model conf ourDevice
+    selectFamConf <- selectFamilyWithStorage model conf ourDevice
 
     pure ( mconcat [ famMConf
-                   ,subscriberConf
+                   , subscriberConf
                    , selectFamConf
                    ]
          , dynFamily
          )
 
+-- | Provide `API.ReqSwitchFamily` messages for switching the family.
+--
+--   The initial family id gets red from local storage and all updates are written to localstorage.
+selectFamilyWithStorage
+  :: forall t m model mConf c
+     . ( Reflex t , HasModel model, HasConfig c, HasModelConfig mConf t, MonadJSM m, PerformEvent t m
+       , MonadJSM (Performable m)
+       )
+     => model t -> c t -> Device t -> m (mConf t)
+selectFamilyWithStorage model conf ourDevice = do
+    loadedFamilyId <- GStorage.getItemLocal GStorage.currentFamily
+    liftIO $ putStrLn $ "Loaded family id: " <> show loadedFamilyId
+    let
+      onSelect :: Event t API.FamilyId
+      onSelect = selectFamily model conf ourDevice loadedFamilyId
+
+    performEvent_
+      $ GStorage.setItemLocal GStorage.currentFamily <$> onSelect
+
+    let
+      currentIdentifier = current $ ourDevice ^. identifier
+
+      onReq = fmap (:[]) . fmapMaybe id
+              . attachWith (<*>) (fmap API.ReqSwitchFamily <$> currentIdentifier)
+              $ pure <$> onSelect
+
+    pure $ mempty & Server.onRequest .~ onReq
+
+
 -- | Select a family based on user selection and available families.
 --
 --   We switch family once our current family gets deleted, we also switch
 --   families if a new family becomes available.
+--
+--   Initially we retrieve a family id from local storage, and write it there on every change.
 selectFamily
-  :: forall t model mConf c
-     . ( Reflex t , HasModel model, HasConfig c, HasModelConfig mConf t)
-     => model t -> c t -> Device t -> mConf t
-selectFamily model conf ourDevice = mempty & Server.onRequest .~ onReq
+  :: forall t model c
+     . ( Reflex t , HasModel model, HasConfig c)
+     => model t -> c t -> Device t -> Maybe API.FamilyId -> Event t API.FamilyId
+selectFamily model conf ourDevice mInitialId
+  = leftmost [ conf ^. onSelectFamily
+             , onNeededSwitch
+             ]
   where
-    onReq = fmap (:[]) . fmapMaybe id
-            . attachWith (<*>) (fmap API.ReqSwitchFamily <$> currentIdentifier)
-            $ pure <$> onSelect
-
-    onSelect :: Event t API.FamilyId
-    onSelect = leftmost [ conf ^. onSelectFamily
-                        , onNeededSwitch
-                        ]
-
-    currentIdentifier = current $ ourDevice ^. identifier
-
     ourFamily = ourDevice ^. selectedFamily
     -- If we take into account that `_identifier` might change once set, we
     -- should not extrace [API.FamilyId] from families, but from the actual
@@ -162,10 +192,13 @@ selectFamily model conf ourDevice = mempty & Server.onRequest .~ onReq
     -- switch to this newly created/joined family.
     onNeededSwitch = push (\mNewFamilies -> do
                               mOldFamilies <- sample $ current ourFamIds
-                              mcSelected <- sample $ current famIdentifier
+                              mOurFamId <- sample $ current famIdentifier
+                              let
+                                mcSelected = mOurFamId <|> mInitialId
                               case (mOldFamilies, mNewFamilies) of
                                 (_, Nothing) -> pure Nothing -- No data, nothing to fix
-                                (Nothing, Just newFams) -> pure $ fixInvalidKey mcSelected newFams
+                                (Nothing, Just newFams) -> pure
+                                  $ fixInvalidKey mcSelected newFams <|> mcSelected
                                 (Just oldFams, Just newFams) -> do
                                   let oldKeys = Set.fromList oldFams
                                   let newKeys = Set.fromList newFams

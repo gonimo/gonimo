@@ -15,9 +15,11 @@ import qualified Gonimo.Client.UI.Dialogs.Invite as Invite
 
 
 -- type HasModel model = Invite.HasModel model
-type HasModelConfig c t = (IsConfig c t)
+type HasModelConfig c t = (IsConfig c t, Invite.HasModelConfig c t)
 
-ui :: forall model mConf m t. (HasModelConfig mConf t, GonimoM model t m) => m (mConf t)
+type HasModel model = Invite.HasModel model
+
+ui :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m) => m (mConf t)
 ui = do
   (inviteClicked, acceptInviteClicked) <-
     elClass "main" "container" $ do
