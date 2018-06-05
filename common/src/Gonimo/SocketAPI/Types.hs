@@ -208,7 +208,7 @@ codeLength = 6
 --   value would be a breaking change, affecting old clients - having a
 --   seemingly valid code that is not accepted.
 codeValidTimeout :: Int
-codeValidTimeout = 30
+codeValidTimeout = 45
 
 -- Family Account:
 
