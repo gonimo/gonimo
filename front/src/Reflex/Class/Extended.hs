@@ -9,6 +9,7 @@ Copyright   : (c) Robert Klotzner, 2017
 module Reflex.Class.Extended ( -- * Re-exported modules
                                module Reflex
                                -- * Functions
+                             , ffilter_
                              , leftmostList
                              , mergeAsList
                              , Flattenable(..)
@@ -29,6 +30,10 @@ import           Reflex.Network
 import           Reflex.NotReady.Class
 import           Reflex.PostBuild.Class
 
+
+-- | Variant of ffilter that discards the event's value.
+ffilter_ :: Reflex t => (a -> Bool) -> Event t a -> Event t ()
+ffilter_ p = fmap (const ()) . ffilter p
 
 
 -- | Filter event occurrences based on the `Bool` in the `Dynamic`.
