@@ -197,7 +197,12 @@ getInvitationCode model family' = do
                                           pure (code, deadLine)
                                       ) <$> onOurCode
   -- Time up:
-  onInvalidCode <- delay timeout onOurCode
+  onTimeUp <- delay timeout onOurCode
+
+  let
+    onInvalidCode = leftmost [ const () <$> onTimeUp
+                             , const () <$> updated (family' ^. activeInvitation)
+                             ]
 
   -- Put together:
   holdDyn Nothing $ leftmost [ Just <$> onNewCodeDeadline
