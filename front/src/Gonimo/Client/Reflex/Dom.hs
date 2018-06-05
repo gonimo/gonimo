@@ -1,29 +1,46 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE GADTs #-}
 -- | Reflex helper functions
 module Gonimo.Client.Reflex.Dom where
 
-import Control.Monad.IO.Class
-import Reflex.Dom.Core
-import Control.Monad.Fix (MonadFix)
-import Data.Monoid
-import Data.Map (Map)
-import Data.Text (Text)
-import qualified Data.Map as Map
-import Data.Maybe (listToMaybe)
-import Control.Lens
-import GHCJS.DOM.Types (MediaStream, liftJSM, MonadJSM)
-import qualified Language.Javascript.JSaddle                       as JS
-import Data.Time.Clock
-import Gonimo.Client.Prelude hiding ((<>))
-import Gonimo.Client.Util
-import GHCJS.DOM.EventM (on)
-import qualified GHCJS.DOM.MediaStream             as MediaStream
-import           GHCJS.DOM.MediaStreamTrack     (ended)
+import           Control.Lens
+import           Control.Monad.Fix           (MonadFix)
+import           Control.Monad.IO.Class
+import           Data.List                   (delete)
+import           Data.Map                    (Map)
+import qualified Data.Map                    as Map
+import           Data.Maybe                  (listToMaybe)
+import           Data.Monoid
+import           Data.Text                   (Text)
+import qualified Data.Text                   as T
+import           Data.Time.Clock
+import           GHCJS.DOM.EventM            (on)
+import qualified GHCJS.DOM.MediaStream       as MediaStream
+import           GHCJS.DOM.MediaStreamTrack  (ended)
+import           GHCJS.DOM.Types             (MediaStream, MonadJSM, liftJSM)
+import           Gonimo.Client.Prelude       hiding ((<>))
+import           Gonimo.Client.Util
+import qualified Language.Javascript.JSaddle as JS
+import           Reflex.Dom.Core
 
+
+-- * Functions for dealing with dynamic classes:
+
+addClassAttr :: Text -> Map Text Text -> Map Text Text
+addClassAttr className = at "class" . non T.empty %~ addClass className
+
+removeClassAttr :: Text -> Map Text Text -> Map Text Text
+removeClassAttr className = at "class" . non T.empty %~ removeClass className
+
+addClass :: Text -> Text -> Text
+addClass className classes = classes <> " " <> className
+
+removeClass :: Text -> Text -> Text
+removeClass className classes = T.unwords . delete className . T.words $ classes
+
+-- * Other functions
 
 renderVolumemeter :: forall model m t. GonimoM model t m => Event t Double -> m ()
 renderVolumemeter volEvent = do
