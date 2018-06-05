@@ -5,18 +5,20 @@ Copyright   : (c) Robert Klotzner, 2018
 -}
 module Gonimo.Client.UI.Dialogs.Invite where
 
+import           Data.Map.Strict                      (Map)
+import qualified Data.Text                            as T
+import           Data.Time                            (diffUTCTime,
+                                                       getCurrentTime)
 import           Reflex.Dom.Core
 import qualified Reflex.Dom.MDC.Dialog                as Dialog
-import qualified Data.Text as T
-import           Data.Time (getCurrentTime, diffUTCTime)
 
-
-import           Gonimo.Client.Model                  (IsConfig)
-import           Gonimo.Client.Prelude
 
 import qualified Gonimo.Client.Account                as Account
 import qualified Gonimo.Client.Device                 as Device
 import qualified Gonimo.Client.Family                 as Family
+import           Gonimo.Client.Model                  (IsConfig)
+import           Gonimo.Client.Prelude
+import           Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.Settings               as Settings
 import           Gonimo.Client.UI.Dialogs.Invite.I18N
 import           Gonimo.I18N                          (i18n)
@@ -40,7 +42,11 @@ ui conf = do
   loc <- view Settings.locale
   model <- ask
   remTime <- showRemainingTime model
-  void . Dialog.make
+  primaryBarAnimAttrs <- makeAnimationAttrs $ "class" =: "mdc-linear-progress__bar mdc-linear-progress__primary-bar"
+  progressAnimAttrs <- makeAnimationAttrs $ "class" =: "mdc-linear-progress__bar-inner"
+  codeFieldAnimAttrs <- makeAnimationAttrs $ "class" =: "code-field"
+  codeTimeAnimAttrs <- makeAnimationAttrs $ "class" =: "code-time"
+  dialog <- Dialog.make
     $ Dialog.ConfigBase
     { Dialog._onOpen    = _onOpen conf
     , Dialog._onClose   = _onClose conf
@@ -48,13 +54,13 @@ ui conf = do
     , Dialog._header    = Dialog.HeaderHeading $ liftA2 i18n loc (pure Invitation_Code)
     , Dialog._body      = do
         elClass "div" "code-txt" $ do
-          elClass "h2" "code-field" $ dynText (showCode model)
+          elDynAttr "h2" codeFieldAnimAttrs $ dynText (showCode model)
           elAttr "div" ("role" =: "progressbar" <> "class" =: "mdc-linear-progress") $ do
-            elClass "div" "mdc-linear-progress__bar mdc-linear-progress__primary-bar"  $ do
-              elClass "span" "mdc-linear-progress__bar-inner" blank
+            elDynAttr "div" primaryBarAnimAttrs $ do
+              elDynAttr "span" progressAnimAttrs blank
           elAttr "p" ("class" =: "mdc-text-field-helper-text--persistent" <> "aria-hidden" =: "true") $ do
             elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "schedule"
-            elClass "span" "code-time" $ dynText remTime
+            elDynAttr "span" codeTimeAnimAttrs $ dynText remTime
           elClass "div" "mdc-menu-anchor" $ do
             elAttr "button" ("type" =: "button" <> "class" =: "mdc-button mdc-button--flat btn share-btn") $ do
               elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "share"
@@ -72,10 +78,37 @@ ui conf = do
         el "br" blank
     , Dialog._footer    = Dialog.cancelOnlyFooter $ liftA2 i18n loc (pure Cancel)
     }
-  controller conf
+  controller dialog conf
+
+makeAnimationAttrs :: forall model m t. (HasModel model, GonimoM model t m)
+  => Map Text Text -> m (Dynamic t (Map Text Text))
+makeAnimationAttrs staticAttrs = do
+    model <- ask
+    let
+      onAnimationEvents = updated $ do
+        mFam <- model ^. Device.selectedFamily
+        case mFam of
+          Nothing  -> pure False
+          Just fam -> isJust <$> fam ^. Family.activeInvitationCode
+
+      onAnimationStart = ffilter_ id onAnimationEvents
+      onAnimationEnd = ffilter_ not onAnimationEvents
+
+    foldDyn id staticAttrs $ leftmost [ addAnimAttrs <$ onAnimationStart
+                                      , removeAnimAttrs <$ onAnimationEnd
+                                      ]
+  where
+    removeAnimAttrs = (at "style" .~ Nothing) . removeClassAttr "anim"
+
+    addAnimAttrs = addAnimDuration . addClassAttr "anim"
+
+    addAnimDuration = at "style" .~ Just ("animation-duration: " <> animDurationText <> ";")
+
+    animDurationText = (T.pack . show) Family.codeTimeout <> "s"
 
 showRemainingTime :: ( Reflex t, Device.HasDevice model, Settings.HasSettings model
-                     , MonadIO m, PerformEvent t m, MonadIO (Performable m), PostBuild t m, TriggerEvent t m, MonadFix m, MonadHold t m
+                     , MonadIO m, PerformEvent t m, MonadIO (Performable m)
+                     , PostBuild t m, TriggerEvent t m, MonadFix m, MonadHold t m
                      )
                   => model t -> m (Dynamic t Text)
 showRemainingTime model = do
@@ -96,7 +129,7 @@ showRemainingTime model = do
     showSeconds = T.pack . ("0:" ++) . fillWithZeros . takeWhile (/= '.') . show
 
     fillWithZeros (x:[]) = '0' : x : []
-    fillWithZeros xs = xs
+    fillWithZeros xs     = xs
 
 showCode :: (Reflex t, Device.HasDevice model, Settings.HasSettings model)
   => model t -> Dynamic t Text
@@ -112,15 +145,17 @@ showCode model = do
 --
 --   Created a modelconfig based on the current state of affairs.
 controller :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m)
-  => Config t -> m (mConf t)
-controller conf = do
+  => Dialog.Dialog t () -> Config t -> m (mConf t)
+controller dialog conf = do
   model <- ask
   onCreateFamily     <- Account.ifFamiliesEmpty model $ conf ^. onOpen
-  onCreateInvitation <- Device.filterWithFamily model Family.ifNoActiveInvitation $ conf ^.onOpen
+  onCreateInvitation <- Device.filterWithFamily model Family.ifNoActiveInvitation $ conf ^. onOpen
   onCreateCodeStart  <- Device.filterWithFamily model Family.ifNoActiveInvitationCode $ conf ^. onOpen
 
   isOpen <- hold False $ leftmost [ True <$ conf ^. onOpen
-                                  , False <$ conf ^. onClose
+                                  , False <$ leftmost [ dialog ^. Dialog.dialogOnCanceled
+                                                      , dialog ^. Dialog.dialogOnAccepted
+                                                      ]
                                   ]
 
   let
