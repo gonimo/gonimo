@@ -8,7 +8,7 @@ module Gonimo.Client.UI.Dialogs.Invite where
 import           Reflex.Dom.Core
 import qualified Reflex.Dom.MDC.Dialog                as Dialog
 
-import qualified Data.Text                            as T
+
 import           Gonimo.Client.Model                  (IsConfig)
 import           Gonimo.Client.Prelude
 
@@ -97,10 +97,27 @@ controller conf = do
   model <- ask
   onCreateFamily     <- Account.ifFamiliesEmpty model $ conf ^. onOpen
   onCreateInvitation <- Device.filterWithFamily model Family.ifNoActiveInvitation $ conf ^.onOpen
-  onCreateCode       <- Device.filterWithFamily model Family.ifNoActiveInvitationCode $ conf ^. onOpen
+  onCreateCodeStart  <- Device.filterWithFamily model Family.ifNoActiveInvitationCode $ conf ^. onOpen
+
+  isOpen <- hold False $ leftmost [ True <$ conf ^. onOpen
+                                  , False <$ conf ^. onClose
+                                  ]
+
+  let
+    onCodeInvalid = ffilter_ id
+                    . updated $ do
+                        mFam <- model ^. Device.selectedFamily
+                        case mFam of
+                          Nothing  -> pure False
+                          Just fam -> isNothing <$> fam ^. Family.activeInvitationCode
+
+    onCreateCodeReload = fmap (const ()) . ffilter id . tag isOpen $ onCodeInvalid
+
   let
     famConf = mempty & Family.onCreateInvitation .~ onCreateInvitation
-                     & Family.onCreateCode .~ onCreateCode
+                     & Family.onCreateCode .~ leftmost [ onCreateCodeStart
+                                                       , onCreateCodeReload
+                                                       ]
   pure $ mempty & Account.onCreateFamily .~ onCreateFamily
                 & Device.familyConfig .~ famConf
 
