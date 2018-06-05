@@ -7,6 +7,8 @@ module Gonimo.Client.UI.Dialogs.Invite where
 
 import           Reflex.Dom.Core
 import qualified Reflex.Dom.MDC.Dialog                as Dialog
+import qualified Data.Text as T
+import           Data.Time (getCurrentTime, diffUTCTime)
 
 
 import           Gonimo.Client.Model                  (IsConfig)
@@ -37,6 +39,7 @@ ui :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM m
 ui conf = do
   loc <- view Settings.locale
   model <- ask
+  remTime <- showRemainingTime model
   void . Dialog.make
     $ Dialog.ConfigBase
     { Dialog._onOpen    = _onOpen conf
@@ -51,7 +54,7 @@ ui conf = do
               elClass "span" "mdc-linear-progress__bar-inner" blank
           elAttr "p" ("class" =: "mdc-text-field-helper-text--persistent" <> "aria-hidden" =: "true") $ do
             elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "schedule"
-            elClass "span" "code-time" $ text "0:30"
+            elClass "span" "code-time" $ dynText remTime
           elClass "div" "mdc-menu-anchor" $ do
             elAttr "button" ("type" =: "button" <> "class" =: "mdc-button mdc-button--flat btn share-btn") $ do
               elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "share"
@@ -71,6 +74,30 @@ ui conf = do
     }
   controller conf
 
+showRemainingTime :: ( Reflex t, Device.HasDevice model, Settings.HasSettings model
+                     , MonadIO m, PerformEvent t m, MonadIO (Performable m), PostBuild t m, TriggerEvent t m, MonadFix m, MonadHold t m
+                     )
+                  => model t -> m (Dynamic t Text)
+showRemainingTime model = do
+    onPostBuild <- getPostBuild
+    now <- liftIO getCurrentTime
+    let
+      validUntil = current . runMaybeT $ do
+        fam <- MaybeT $ model ^. Device.selectedFamily
+        MaybeT $ fam ^. Family.codeValidUntil
+
+    ticker <- tag validUntil <$> tickLossyFrom 1 now onPostBuild
+
+    onRem <- performEvent $ calcRemTime <$> ticker
+    holdDyn "-:--" onRem
+  where
+    calcRemTime Nothing = pure "-:--"
+    calcRemTime (Just deadLine) = showSeconds . diffUTCTime deadLine <$> liftIO getCurrentTime
+    showSeconds = T.pack . ("0:" ++) . fillWithZeros . takeWhile (/= '.') . show
+
+    fillWithZeros (x:[]) = '0' : x : []
+    fillWithZeros xs = xs
+
 showCode :: (Reflex t, Device.HasDevice model, Settings.HasSettings model)
   => model t -> Dynamic t Text
 showCode model = do
@@ -81,16 +108,9 @@ showCode model = do
   loadingStr <- liftA2 i18n loc (pure Loading)
   pure $ maybe loadingStr API.codeToText $ mCode
 
--- showCode :: (Reflex t, Device.HasDevice model, Settings.HasSettings model)
---   => model t -> Dynamic t Text
--- showCode model = do
---   let loc = model ^. Settings.locale
---   mCode <- runMaybeT $ do
---     fam <- MaybeT $ model ^. Device.selectedFamily
---     pure $ fam ^. Family.identifier
---   loadingStr <- liftA2 i18n loc (pure Loading)
---   pure $ maybe loadingStr (T.pack . show) $ mCode
-
+-- | "Business logic" of this screen.
+--
+--   Created a modelconfig based on the current state of affairs.
 controller :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m)
   => Config t -> m (mConf t)
 controller conf = do

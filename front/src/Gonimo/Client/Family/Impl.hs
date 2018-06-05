@@ -192,11 +192,14 @@ getInvitationCode model family' = do
                 . fmapMaybe (^? API._ResCreatedInvitationCode)
                 $ model ^. onResponse
 
-  validUntil <- liftIO $ addUTCTime timeout <$> getCurrentTime
+  onNewCodeDeadline <- performEvent $ (\code -> do
+                                          deadLine <- liftIO $ addUTCTime timeout <$> getCurrentTime
+                                          pure (code, deadLine)
+                                      ) <$> onOurCode
   -- Time up:
   onInvalidCode <- delay timeout onOurCode
 
   -- Put together:
-  holdDyn Nothing $ leftmost [ Just . (, validUntil)    <$> onOurCode
+  holdDyn Nothing $ leftmost [ Just <$> onNewCodeDeadline
                              , Nothing <$  onInvalidCode
                              ]
