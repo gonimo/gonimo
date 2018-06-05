@@ -7,13 +7,12 @@ import           Data.Maybe                (fromMaybe)
 import           Data.Text                 (Text)
 
 import           Gonimo.Server.Auth        as Auth
+import           Gonimo.Server.Config
 import qualified Gonimo.Server.Db.Device   as Device
 import qualified Gonimo.Server.Db.Family   as Family
-import           Gonimo.Server.Config
 import           Gonimo.Server.Messenger
-import           Gonimo.SocketAPI
-import           Gonimo.SocketAPI.Types    hiding (Message, deviceId)
-import           Gonimo.Types
+import           Gonimo.SocketAPI          hiding (Message, deviceId)
+
 
 -- | A device registers itself (happens at authentication)
 --

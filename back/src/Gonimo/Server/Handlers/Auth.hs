@@ -174,11 +174,10 @@ getInvitationR invId = do
   authorize =<< isFamilyMember (invitationFamilyId inv)
   pure inv
 
-createInvitationCodeR :: (HasAuthData env, HasConfig env) => InvitationId -> RIO env (InvitationCode, Int)
+createInvitationCodeR :: (HasAuthData env, HasConfig env) => InvitationId -> RIO env InvitationCode
 createInvitationCodeR invId = do
   void $ getInvitationR invId -- Check that we are allowed to retrieve the invitation.
-  code <- CodeInvitation.makeCode invId
-  pure (code, CodeInvitation.codeValidTimeout)
+  CodeInvitation.makeCode invId
 
 
 getFamilyMembersR :: (HasAuthData env, HasConfig env) => FamilyId -> RIO env [AccountId]

@@ -8,7 +8,7 @@ import           Gonimo.Server.Db.Device as Device
 import           Gonimo.Server.Db.Account as Account
 import           Gonimo.Server.Config
 import           Gonimo.SocketAPI.Types  as Client
-import           Gonimo.Types
+
 
 
 

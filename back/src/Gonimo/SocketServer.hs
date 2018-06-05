@@ -34,9 +34,9 @@ import           Gonimo.Server.Auth               (AuthData (..),
                                                    HasAuthData (..),
                                                    allowedFamilies)
 
+import           Gonimo.Server.Config             as Server
 import qualified Gonimo.Server.Db.Account         as Account
 import qualified Gonimo.Server.Db.Device          as Device
-import           Gonimo.Server.Config            as Server
 import           Gonimo.Server.Error              (ServerError (..))
 import           Gonimo.Server.Handlers
 import           Gonimo.Server.Handlers.Auth
@@ -45,8 +45,7 @@ import           Gonimo.Server.Handlers.Socket
 import           Gonimo.Server.Messenger          (Message (..))
 import qualified Gonimo.Server.Subscriber         as Subscriber
 import qualified Gonimo.Server.Subscriber.Types   as Subscriber
-import           Gonimo.SocketAPI
-import           Gonimo.SocketAPI.Types           hiding (AuthData (..),
+import           Gonimo.SocketAPI                 hiding (AuthData (..),
                                                    Message (..))
 import           Gonimo.Types                     (AuthToken (..))
 
@@ -198,7 +197,7 @@ handleAuthServerRequest sub req = case req of
   ReqAnswerInvitation secret reply     -> ResAnsweredInvitation secret reply <$> answerInvitationR secret reply
   ReqGetFamilyInvitations familyId     -> ResGotFamilyInvitations familyId <$> getFamilyInvitationsR familyId
   ReqGetInvitation invId               -> ResGotInvitation invId <$> getInvitationR invId
-  ReqCreateInvitationCode invId        -> uncurry (ResCreatedInvitationCode invId) <$> createInvitationCodeR invId
+  ReqCreateInvitationCode invId        -> ResCreatedInvitationCode invId <$> createInvitationCodeR invId
 
   ReqSetSubscriptions subs             -> do
     accountId <- view authAccountId
