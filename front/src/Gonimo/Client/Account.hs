@@ -66,6 +66,22 @@ type Families t = DynamicMap t API.FamilyId API.Family
 --   InvitationId InvitationInfo
 type ClaimedInvitations = Map InvitationSecret InvitationInfo
 
+
+-- | Event that triggers once `_families` becomes the empty list.
+--
+--   fmap null <$> updated _families -> True
+onFamiliesEmpty :: (Reflex t, HasAccount model) => model t -> Event t ()
+onFamiliesEmpty = void . ffilter id . fmap (maybe False null) . updated . view families
+
+-- | Only forward an event if `_families` contains the empty list.
+--
+--   If `_families` was not loaded yet, the event is delayed until the empty
+--   family list is loaded.
+ifFamiliesEmpty :: forall t a m model
+  . (Reflex t, MonadHold t m, HasAccount model)
+  => model t -> Event t a -> m (Event t a)
+ifFamiliesEmpty model = waitAndFilter (fmap null <$> model ^. families)
+
 instance Reflex t => Default (Config t) where
   def = Config never never never
 
