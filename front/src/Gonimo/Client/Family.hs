@@ -84,6 +84,32 @@ codeTimeout = codeValidTimeout - flightTime
 -- | Map type for open invitations.
 type Invitations t = DynamicMap t API.InvitationId API.Invitation
 
+-- | Only forward an event if `_activeInvitation` is `Nothing`.
+--
+--   If `_openInvitations` still contains `Nothing` (invitations have not yet been
+--   loaded), then the event gets delayed.
+ifNoActiveInvitation :: forall t model
+  . (Reflex t, HasFamily model) => model t -> MDynamic t Bool
+ifNoActiveInvitation model = do
+      cInvitations <- model ^. openInvitations
+      cInvitation  <- model ^. activeInvitation
+      pure $ if isNothing cInvitations
+             then Nothing
+             else Just $ isNothing cInvitation
+
+-- | Only forward an event if `_activeInvitationCode` is `Nothing`.
+--
+--   If `_activeInvitation` still contains `Nothing`, then the event gets
+--   delayed until `_activeInvitation` hold an invitation.
+ifNoActiveInvitationCode :: forall t model
+  . (Reflex t, HasFamily model)
+  => model t -> MDynamic t Bool
+ifNoActiveInvitationCode model = do
+      cInvitation <- model ^. activeInvitation
+      cCode  <- model ^. activeInvitationCode
+      pure $ if isNothing cInvitation
+             then Nothing
+             else Just $ isNothing cCode
 
 instance Reflex t => Default (Config t) where
   def = mempty

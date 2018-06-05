@@ -60,6 +60,23 @@ data Device t
            , _deviceType     :: Dynamic t DeviceType
            }
 
+-- | `waitAndFilter` with `Dynamic`s from `Family.Family`.
+--
+--   To be used with the `if..` functions from "Gonimo.Client.Family", like so:
+--
+-- > ifNoActiveInvitation = filterWithFamily model Family.ifNoActiveInvitation
+--
+filterWithFamily
+  :: forall t a m model . (Reflex t, MonadHold t m, HasDevice model)
+  => model t -> (Family t -> MDynamic t Bool) -> Event t a -> m (Event t a)
+filterWithFamily model f = waitAndFilter withFilter
+  where
+    withFilter :: MDynamic t Bool
+    withFilter = do
+      selected <- model ^. selectedFamily
+      case selected of
+        Nothing -> pure Nothing
+        Just fam -> f fam
 
 instance Reflex t => Default (Config t) where
   def = mempty
