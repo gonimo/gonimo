@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RecordWildCards #-}
 {-|
 Module      : Gonimo.Client.Family.Impl
@@ -21,7 +22,7 @@ import           Data.Foldable            (maximumBy)
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
 
-import           Data.Time                (NominalDiffTime)
+import           Data.Time                (NominalDiffTime, addUTCTime, UTCTime, getCurrentTime)
 
 import qualified Gonimo.Client.Device     as Device
 import           Gonimo.Client.Family
@@ -65,7 +66,7 @@ type HasModelConfig c t = (IsConfig c t, Subscriber.HasConfig c, Server.HasConfi
 --
 make :: forall t m model mConf c
               . ( Reflex t, MonadHold t m, MonadFix m, PerformEvent t m
-                , TriggerEvent t m, MonadIO (Performable m)
+                , TriggerEvent t m, MonadIO (Performable m), MonadIO m
                 , HasModel model, HasConfig c, HasModelConfig mConf t
                 )
            => model t -> c t -> API.FamilyId -> m (mConf t, Family t)
@@ -75,9 +76,11 @@ make model conf _identifier = mfix $ \ ~(_, family') -> do
     invitationIds <- holdDyn [] onGotInvitationIds
     _openInvitations <- buildBufferedMap invitationIds onGotInvitation
 
-    _activeInvitationCode <- getInvitationCode model family'
+    activeInvitationCodeAndValid <- getInvitationCode model family'
 
     let
+      _activeInvitationCode = fmap fst <$> activeInvitationCodeAndValid
+      _codeValidUntil = fmap snd <$> activeInvitationCodeAndValid
       _activeInvitation = getActiveInvitation (model ^. Device.identifier) _openInvitations
 
 
@@ -169,10 +172,10 @@ sendServerRequests conf family' =
 --   Also takes care of invalidating it after approximately `codeValidTimeout`.
 getInvitationCode :: forall t m model
                      . ( Reflex t, MonadHold t m, MonadFix m, PerformEvent t m
-                       , TriggerEvent t m, MonadIO (Performable m)
+                       , TriggerEvent t m, MonadIO (Performable m), MonadIO m
                        , HasModel model
                        )
-                  => model t -> Family t -> m (MDynamic t API.InvitationCode)
+                  => model t -> Family t -> m (MDynamic t (API.InvitationCode, UTCTime))
 getInvitationCode model family' = do
   let
     timeout :: NominalDiffTime
@@ -188,10 +191,12 @@ getInvitationCode model family' = do
     onOurCode = push filterOurCode
                 . fmapMaybe (^? API._ResCreatedInvitationCode)
                 $ model ^. onResponse
-    -- Time up:
+
+  validUntil <- liftIO $ addUTCTime timeout <$> getCurrentTime
+  -- Time up:
   onInvalidCode <- delay timeout onOurCode
 
   -- Put together:
-  holdDyn Nothing $ leftmost [ Just    <$> onOurCode
+  holdDyn Nothing $ leftmost [ Just . (, validUntil)    <$> onOurCode
                              , Nothing <$  onInvalidCode
                              ]

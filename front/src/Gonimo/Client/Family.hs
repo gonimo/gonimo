@@ -9,11 +9,12 @@ rename the family, rename devices in this family, ...
 module Gonimo.Client.Family where
 
 
+import           Data.Time.Clock        (UTCTime)
 
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex   (DynamicMap, MDynamic)
+import           Gonimo.SocketAPI.Types (codeValidTimeout)
 import qualified Gonimo.SocketAPI.Types as API
-import           Gonimo.SocketAPI.Types   (codeValidTimeout)
 
 
 
@@ -45,7 +46,7 @@ data Config t
 --   claimed invitations or user name, ...
 data Family t
   = Family { -- | The `API.FamilyId` of this very family.
-             _identifier            :: API.FamilyId
+             _identifier           :: API.FamilyId
              -- | Invitations currently open for this family.
              --
              --   That is all invitations for this family that still exist: They
@@ -67,6 +68,9 @@ data Family t
              --   This code always belongs to `activeInvitation`. It is
              --   `Nothing` if none was created yet. It stays valid for `codeTimeout` seconds.
            , _activeInvitationCode :: MDynamic t API.InvitationCode
+
+             -- | For the currently active invitation code, how long does it stay valid?
+           , _codeValidUntil       :: MDynamic t UTCTime
             }
 
 
@@ -183,36 +187,42 @@ instance HasConfig Config where
   config = id
 
 
+class HasFamily a42 where
+  family :: Lens' (a42 t) (Family t)
 
-class HasFamily a where
-  family :: Lens' (a t) (Family t)
-
-  identifier :: Lens' (a t) API.FamilyId
+  identifier :: Lens' (a42 t) API.FamilyId
   identifier = family . go
     where
       go :: Lens' (Family t) API.FamilyId
       go f family' = (\identifier' -> family' { _identifier = identifier' }) <$> f (_identifier family')
 
 
-  openInvitations :: Lens' (a t) (MDynamic t (Invitations t))
+  openInvitations :: Lens' (a42 t) (MDynamic t (Invitations t))
   openInvitations = family . go
     where
       go :: Lens' (Family t) (MDynamic t (Invitations t))
       go f family' = (\openInvitations' -> family' { _openInvitations = openInvitations' }) <$> f (_openInvitations family')
 
 
-  activeInvitation :: Lens' (a t) (MDynamic t API.InvitationId)
+  activeInvitation :: Lens' (a42 t) (MDynamic t API.InvitationId)
   activeInvitation = family . go
     where
       go :: Lens' (Family t) (MDynamic t API.InvitationId)
       go f family' = (\activeInvitation' -> family' { _activeInvitation = activeInvitation' }) <$> f (_activeInvitation family')
 
 
-  activeInvitationCode :: Lens' (a t) (MDynamic t API.InvitationCode)
+  activeInvitationCode :: Lens' (a42 t) (MDynamic t API.InvitationCode)
   activeInvitationCode = family . go
     where
       go :: Lens' (Family t) (MDynamic t API.InvitationCode)
       go f family' = (\activeInvitationCode' -> family' { _activeInvitationCode = activeInvitationCode' }) <$> f (_activeInvitationCode family')
+
+
+  codeValidUntil :: Lens' (a42 t) (MDynamic t UTCTime)
+  codeValidUntil = family . go
+    where
+      go :: Lens' (Family t) (MDynamic t UTCTime)
+      go f family' = (\codeValidUntil' -> family' { _codeValidUntil = codeValidUntil' }) <$> f (_codeValidUntil family')
 
 
 instance HasFamily Family where
