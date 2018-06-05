@@ -1,6 +1,6 @@
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-|
 Module      : Reflex.Class.Extended
 Description : Some convenience functions missing from Reflex.
@@ -17,11 +17,13 @@ module Reflex.Class.Extended ( -- * Re-exported modules
                              , flattenDynamic
                              , networkViewFlatten
                              , networkViewFlattenPair
+                             , waitAndFilter
                              ) where
 
 
 import           Control.Monad          ((<=<))
 import           Data.Default
+import           Data.Maybe
 import           Reflex.Class           as Reflex
 import           Reflex.Network
 import           Reflex.NotReady.Class
@@ -29,7 +31,39 @@ import           Reflex.PostBuild.Class
 
 
 
+-- | Filter event occurrences based on the `Bool` in the `Dynamic`.
+--
+--   If the `Dynamic` holds a `Nothing` any event occurrence will be delayed
+--   until the `Dynamic` becomes "Just True". If the `Dynamic` becomes "Just
+--   False", any occurred event will be dropped. This function only has a queue
+--   of size one, that means if the event occurs more than once while the
+--   `Dynamic` is `Nothing`, then only the last occurrence will be passed on on
+--   "Just True".
+--
+--   Example:
+--
+--  >   waitAndFilter (fmap null <$> model ^. families)
+--
+--   Waits until some `families` Dynamic is ready (isJust), then filters the
+--   event on whether or not the contained list is empty.
+waitAndFilter :: forall t a m
+  . (Reflex t, MonadHold t m)
+  => Dynamic t (Maybe Bool) -> Event t a -> m (Event t a)
+waitAndFilter waitFor onInput = do
+    -- Pending input event?
+    inputQueue <- hold Nothing $ leftmost [ Just <$> onInput
+                                          , Nothing <$ ffilter isJust (updated waitFor)
+                                          ]
+    let
+      onReady = push (\ newWaitFor -> do
+                         case newWaitFor of
+                           Nothing    -> pure Nothing
+                           Just False -> pure Nothing
+                           Just True  -> sample inputQueue
+                     ) (updated waitFor)
 
+      onFiltered = fmap snd . ffilter ((== Just True) . fst) . attach (current waitFor) $ onInput
+    pure $ leftmost [ onFiltered, onReady ]
 
 
 -- | Uses the leftmost event in case of coincidence, but wraps it in a list for
