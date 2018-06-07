@@ -30,7 +30,7 @@ import qualified Gonimo.Client.Host       as Host
 import           Gonimo.Client.Model
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex     (MDynamic, buildBufferedMap)
-import           Gonimo.Client.Server     (onResponse, filterSelfFixed)
+import           Gonimo.Client.Server     (onResponse, filterMaybeSelf)
 import qualified Gonimo.Client.Server     as Server
 import qualified Gonimo.Client.Subscriber as Subscriber
 import qualified Gonimo.SocketAPI         as API
@@ -69,12 +69,12 @@ make :: forall t m model mConf c
                 , TriggerEvent t m, MonadIO (Performable m), MonadIO m
                 , HasModel model, HasConfig c, HasModelConfig mConf t
                 )
-           => model t -> c t -> API.FamilyId -> m (mConf t, Family t)
+           => model t -> c t -> MDynamic t API.FamilyId -> m (mConf t, Family t)
 make model conf _identifier = mfix $ \ ~(_, family') -> do
     subscriberConf <- Subscriber.fromServerRequests onRequestInvitations
 
     invitationIds <- holdDyn [] onGotInvitationIds
-    _openInvitations <- buildBufferedMap invitationIds onGotInvitation
+    _openInvitations <- buildBufferedMap (updated . void $ _identifier) invitationIds onGotInvitation
 
     activeInvitationCodeAndValid <- getInvitationCode model family'
 
@@ -84,12 +84,12 @@ make model conf _identifier = mfix $ \ ~(_, family') -> do
       _activeInvitation = getActiveInvitation (model ^. Device.identifier) _openInvitations
 
 
-    pure ( subscriberConf & Server.onRequest .~ sendServerRequests conf family'
+    pure ( subscriberConf & Server.onRequest .~ sendServerRequests conf
          , Family {..}
          )
   where
     onGotInvitationIds :: Event t [API.InvitationId]
-    onGotInvitationIds = filterSelfFixed _identifier
+    onGotInvitationIds = filterMaybeSelf (current _identifier)
                         . fmapMaybe (^? API._ResGotFamilyInvitations)
                         $ model ^. onResponse
 
@@ -142,21 +142,14 @@ getActiveInvitationPure mDevId mInvitations = do
 -- | Handle requests in conf that result in server requests.
 sendServerRequests :: forall t c
                      . ( Reflex t , HasConfig c )
-                  => c t -> Family t -> Event t [API.ServerRequest]
-sendServerRequests conf family' =
+                  => c t -> Event t [API.ServerRequest]
+sendServerRequests conf =
   let
-    fid = family' ^. identifier
+    onReqSetName = uncurry API.ReqSetFamilyName <$> conf ^. onSetName
 
-    currentInv :: Behavior t (Maybe API.InvitationId)
-    currentInv = current $ family' ^. activeInvitation
+    onReqCreateInvitation = API.ReqCreateInvitation <$> conf ^. onCreateInvitation
 
-    onReqSetName = API.ReqSetFamilyName fid <$> conf ^. onSetName
-
-    onReqCreateInvitation = API.ReqCreateInvitation fid <$ conf ^. onCreateInvitation
-
-    onReqCreateCode = fmapMaybe id
-                      . tag (fmap API.ReqCreateInvitationCode <$> currentInv)
-                      $ conf ^. onCreateCode
+    onReqCreateCode = API.ReqCreateInvitationCode <$> conf ^. onCreateCode
 
     onReqSetDeviceName = uncurry API.ReqSetDeviceName <$> conf ^. onSetDeviceName
 

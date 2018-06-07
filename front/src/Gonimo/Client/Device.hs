@@ -56,27 +56,9 @@ data Device t
              --   loaded, it might happen temporarely that `_selectedFamily`
              --   points to a family that no longer exists in
              --   `Account._families`.
-           , _selectedFamily :: MDynamic t (Family t)
+           , _selectedFamily :: Family t
            , _deviceType     :: Dynamic t DeviceType
            }
-
--- | `waitAndFilter` with `Dynamic`s from `Family.Family`.
---
---   To be used with the `if..` functions from "Gonimo.Client.Family", like so:
---
--- > ifNoActiveInvitation = filterWithFamily model Family.ifNoActiveInvitation
---
-filterWithFamily
-  :: forall t a m model . (Reflex t, MonadHold t m, HasDevice model)
-  => model t -> (Family t -> MDynamic t Bool) -> Event t a -> m (Event t a)
-filterWithFamily model f = waitAndFilter withFilter
-  where
-    withFilter :: MDynamic t Bool
-    withFilter = do
-      selected <- model ^. selectedFamily
-      case selected of
-        Nothing -> pure Nothing
-        Just fam -> f fam
 
 instance Reflex t => Default (Config t) where
   def = mempty
@@ -129,24 +111,24 @@ instance HasConfig Config where
   config = id
 
 
-class HasDevice a where
-  device :: Lens' (a t) (Device t)
+class HasDevice a42 where
+  device :: Lens' (a42 t) (Device t)
 
-  identifier :: Lens' (a t) (MDynamic t API.DeviceId)
+  identifier :: Lens' (a42 t) (MDynamic t API.DeviceId)
   identifier = device . go
     where
       go :: Lens' (Device t) (MDynamic t API.DeviceId)
       go f device' = (\identifier' -> device' { _identifier = identifier' }) <$> f (_identifier device')
 
 
-  selectedFamily :: Lens' (a t) (Dynamic t (Maybe (Family t)))
+  selectedFamily :: Lens' (a42 t) (Family t)
   selectedFamily = device . go
     where
-      go :: Lens' (Device t) (Dynamic t (Maybe (Family t)))
+      go :: Lens' (Device t) (Family t)
       go f device' = (\selectedFamily' -> device' { _selectedFamily = selectedFamily' }) <$> f (_selectedFamily device')
 
 
-  deviceType :: Lens' (a t) (Dynamic t DeviceType)
+  deviceType :: Lens' (a42 t) (Dynamic t DeviceType)
   deviceType = device . go
     where
       go :: Lens' (Device t) (Dynamic t DeviceType)

@@ -113,11 +113,11 @@ fromMaybeDyn' onNothing action mDyn = do
 
 -- | Build a Map with `buildMap` but hold back its value, until fully loaded.
 --
---   Once fully loaded, the value will always be a `Just`.
+--   Once fully loaded, the value will always be a `Just` untio `onReset` occurs.
 buildBufferedMap :: forall m t key val . (MonadFix m, Reflex t, MonadHold t m, Ord key)
-                 => Dynamic t [key] -> Event t (key, val)
+                 => Event t () -> Dynamic t [key] -> Event t (key, val)
                  -> m (MDynamic t (DynamicMap t key val))
-buildBufferedMap keys gotNewKeyVal = do
+buildBufferedMap onReset keys gotNewKeyVal = do
   unbuffered <- buildMap keys gotNewKeyVal
   let
     ubufferedSize = Map.size <$> unbuffered
@@ -126,7 +126,9 @@ buildBufferedMap keys gotNewKeyVal = do
     isFullEv = ffilter id . updated $ isFullDyn
   -- Once the list of keys and the size of the Map have the same size it can be
   -- assumed that the initial load of data is completed.
-  isReady <- holdUniqDyn <=< holdDyn False $ True <$ isFullEv
+  isReady <- holdUniqDyn <=< holdDyn False $ leftmost [ True <$ isFullEv
+                                                      , False <$ onReset
+                                                      ]
 
   pure $ do
     isReadyNow <- isReady

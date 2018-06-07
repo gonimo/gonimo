@@ -83,16 +83,15 @@ ui conf = do
 makeAnimationAttrs :: forall model m t. (HasModel model, GonimoM model t m)
   => Map Text Text -> m (Dynamic t (Map Text Text))
 makeAnimationAttrs staticAttrs = do
-    model <- ask
+    fam <- view Device.selectedFamily
     let
-      onAnimationEvents = updated $ do
-        mFam <- model ^. Device.selectedFamily
-        case mFam of
-          Nothing  -> pure False
-          Just fam -> isJust <$> fam ^. Family.activeInvitationCode
+      onAnimationEvents = updated $ isJust <$> fam ^. Family.activeInvitationCode
 
       onAnimationStart = ffilter_ id onAnimationEvents
       onAnimationEnd = ffilter_ not onAnimationEvents
+
+    -- Small delay so the animation starts reliably.
+    -- onAnimationStart <- delay 1 $ ffilter_ id onAnimationEvents
 
     foldDyn id staticAttrs $ leftmost [ addAnimAttrs <$ onAnimationStart
                                       , removeAnimAttrs <$ onAnimationEnd
@@ -115,9 +114,8 @@ showRemainingTime model = do
     onPostBuild <- getPostBuild
     now <- liftIO getCurrentTime
     let
-      validUntil = current . runMaybeT $ do
-        fam <- MaybeT $ model ^. Device.selectedFamily
-        MaybeT $ fam ^. Family.codeValidUntil
+      fam = model ^. Device.selectedFamily
+      validUntil = current $ fam ^. Family.codeValidUntil
 
     ticker <- tag validUntil <$> tickLossyFrom 1 now onPostBuild
 
@@ -135,9 +133,9 @@ showCode :: (Reflex t, Device.HasDevice model, Settings.HasSettings model)
   => model t -> Dynamic t Text
 showCode model = do
   let loc = model ^. Settings.locale
-  mCode <- runMaybeT $ do
-    fam <- MaybeT $ model ^. Device.selectedFamily
-    MaybeT $ fam ^. Family.activeInvitationCode
+  let fam = model ^. Device.selectedFamily
+
+  mCode <- fam ^. Family.activeInvitationCode
   loadingStr <- liftA2 i18n loc (pure Loading)
   pure $ maybe loadingStr API.codeToText $ mCode
 
@@ -148,9 +146,11 @@ controller :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, G
   => Dialog.Dialog t () -> Config t -> m (mConf t)
 controller dialog conf = do
   model <- ask
+  let fam = model ^. Device.selectedFamily
+
   onCreateFamily     <- Account.ifFamiliesEmpty model $ conf ^. onOpen
-  onCreateInvitation <- Device.filterWithFamily model Family.ifNoActiveInvitation $ conf ^. onOpen
-  onCreateCodeStart  <- Device.filterWithFamily model Family.ifNoActiveInvitationCode $ conf ^. onOpen
+  onCreateInvitation <- Family.ifNoActiveInvitation fam $ conf ^. onOpen
+  onCreateCodeStart  <- Family.withInvitation fam $ conf ^. onOpen
 
   isOpen <- hold False $ leftmost [ True <$ conf ^. onOpen
                                   , False <$ leftmost [ dialog ^. Dialog.dialogOnCanceled
@@ -160,13 +160,11 @@ controller dialog conf = do
 
   let
     onCodeInvalid = ffilter_ id
-                    . updated $ do
-                        mFam <- model ^. Device.selectedFamily
-                        case mFam of
-                          Nothing  -> pure False
-                          Just fam -> isNothing <$> fam ^. Family.activeInvitationCode
+                    . fmap isNothing . updated
+                    $ fam ^. Family.activeInvitationCode
 
-    onCreateCodeReload = fmap (const ()) . ffilter id . tag isOpen $ onCodeInvalid
+  onCreateCodeReload <- Family.withInvitation fam
+                        . ffilter_ id . tag isOpen $ onCodeInvalid
 
   let
     famConf = mempty & Family.onCreateInvitation .~ onCreateInvitation

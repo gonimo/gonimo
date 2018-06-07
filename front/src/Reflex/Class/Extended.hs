@@ -1,5 +1,9 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-|
 Module      : Reflex.Class.Extended
@@ -19,22 +23,80 @@ module Reflex.Class.Extended ( -- * Re-exported modules
                              , networkViewFlatten
                              , networkViewFlattenPair
                              , waitAndFilter
+                             , withKey
+                             , withKey_
+                             , withKeyMay
+                             , withKeyMay_
                              ) where
 
 
-import           Control.Monad          ((<=<))
+import           Control.Monad             ((<=<))
+import           Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import           Data.Default
 import           Data.Maybe
-import           Reflex.Class           as Reflex
+import           Reflex.Class              as Reflex
 import           Reflex.Network
 import           Reflex.NotReady.Class
 import           Reflex.PostBuild.Class
+
 
 
 -- | Variant of ffilter that discards the event's value.
 ffilter_ :: Reflex t => (a -> Bool) -> Event t a -> Event t ()
 ffilter_ p = fmap (const ()) . ffilter p
 
+-- | Same as `withKey` but `val` gets discarded.
+withKey_ :: forall t m key val. (Reflex t, MonadHold t m)
+         => Dynamic t (Maybe key) -> Event t val -> m (Event t key)
+withKey_ keyDyn inEv = fmap fst <$> withKey keyDyn inEv
+
+
+-- | Forward an event with a given key stored in a Dynamic.
+--
+--   The key may be `Nothing` in this case, the `updated` event of the `Dynamic`
+--   will be forwarded, once it becomes `Just` iff the input event happend
+--   during the time it was `Nothing`.
+withKey :: forall t m key val. (Reflex t, MonadHold t m)
+        => Dynamic t (Maybe key) -> Event t val -> m (Event t (key, val))
+withKey keyDyn inEv = do
+  let
+    unHandledEv = fmap snd  . ffilter (isNothing . fst) . attach (current keyDyn) $ inEv
+  evHappened <- holdDyn Nothing $ leftmost [ Just <$> unHandledEv
+                                           , Nothing <$ ffilter isJust (updated keyDyn)
+                                           ]
+  let
+    onEv = push (\val -> runMaybeT $ do
+                    key <- MaybeT . sample . current $ keyDyn
+                    pure (key, val)
+                ) inEv
+    onReady = push (\mKey -> runMaybeT $ do
+                      val <- MaybeT . sample . current $ evHappened
+                      key <- MaybeT . pure $ mKey
+                      pure (key, val)
+                   ) (updated keyDyn)
+  pure $ leftmost [ onEv, onReady ]
+  -- Don't use the code below! The Applicative instance of Dynamic does relate
+  -- the two updated events with each other if they happen at the same time,
+  -- instead of sampling the other event. So the code below is not equivalent to
+  -- the code above!
+  -- pure
+  --   . fmapMaybe id . updated . runMaybeT
+  --   $ liftA2 (,) (MaybeT keyDyn) (MaybeT evHappened)
+
+
+-- | Similar to withKey, but simply drops the event if the key behavior holds a `Nothing`.
+withKeyMay :: forall t key val. Reflex t
+           => Behavior t (Maybe key) -> Event t val -> Event t (key, val)
+withKeyMay keyBeh inEv = fmapMaybe id . fmap unwrap . attach keyBeh $ inEv
+  where
+    unwrap :: forall a b. (Maybe a, b) -> Maybe (a, b)
+    unwrap (Nothing, _) = Nothing
+    unwrap (Just a, b) = Just (a, b)
+
+
+withKeyMay_ :: forall t key val. Reflex t
+            => Behavior t (Maybe key) -> Event t val -> Event t key
+withKeyMay_ keyBeh inEv = fst <$> withKeyMay keyBeh inEv
 
 -- | Filter event occurrences based on the `Bool` in the `Dynamic`.
 --
@@ -54,21 +116,7 @@ ffilter_ p = fmap (const ()) . ffilter p
 waitAndFilter :: forall t a m
   . (Reflex t, MonadHold t m)
   => Dynamic t (Maybe Bool) -> Event t a -> m (Event t a)
-waitAndFilter waitFor onInput = do
-    -- Pending input event?
-    inputQueue <- hold Nothing $ leftmost [ Just <$> onInput
-                                          , Nothing <$ ffilter isJust (updated waitFor)
-                                          ]
-    let
-      onReady = push (\ newWaitFor -> do
-                         case newWaitFor of
-                           Nothing    -> pure Nothing
-                           Just False -> pure Nothing
-                           Just True  -> sample inputQueue
-                     ) (updated waitFor)
-
-      onFiltered = fmap snd . ffilter ((== Just True) . fst) . attach (current waitFor) $ onInput
-    pure $ leftmost [ onFiltered, onReady ]
+waitAndFilter waitFor onInput = fmap snd . ffilter fst <$> withKey waitFor onInput
 
 
 -- | Uses the leftmost event in case of coincidence, but wraps it in a list for

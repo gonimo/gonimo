@@ -21,32 +21,44 @@ import qualified Gonimo.SocketAPI.Types as API
 -- | Configuration for creating a `Family`.
 --
 data Config t
-  = Config { -- | Claim an invitation by providing it's secret.
+  = Config { -- | Set the family's name.
              --
-             --   When the user clicks an invitation link it gets claimed,
-             --   making the invitation unavailable for other parties.
-             _onSetName          :: Event t Text
+             --   If `identifier` is Nothing, this event will have no effect. In
+             --   case this is undesired behaviour at some point, we will change
+             --   `_onSetName` to take the `API.FamilyId` too.
+             _onSetName          :: Event t (API.FamilyId, Text)
 
              -- | A new invitation will be created.
              --
-             --   And will become the next `activeInvitation`.
-           , _onCreateInvitation :: Event t ()
+             --   And will become the next `activeInvitation` if the given
+             --   `API.FamilyId` matches `_identifier`.
+           , _onCreateInvitation :: Event t API.FamilyId
 
-             -- | Create a short human readable code for the current `activeInvitation`.
+             -- | Create a short human readable code for the given invitation.
              --
-             --   Once created, `activeInvitationCode` will be set accordingly.
-           , _onCreateCode       :: Event t ()
+             --   Most likely you want to use `requestInvitationCode` for
+             --   requesting a code for the current invitation, no matter
+             --   whether it is ready yet or not.
+             --
+             --   We don't simply sample `_activeInvitationCode` ourselves,
+             --   because this becomes nasty in those cases you want to send
+             --   once it gets ready (as accomplished by
+             --   `requestInvitationCode`). If we did the sampling - the code
+             --   would not be ready on the `updated` event.
+           , _onCreateCode       :: Event t API.InvitationId
 
              -- | Change the name of a device in this family.
            , _onSetDeviceName    :: Event t (API.DeviceId, Text)
            } deriving (Generic)
 
 -- | Family data.
+--
 --   All data belonging to the current active family should go here. Like
---   claimed invitations or user name, ...
+--   open invitations, online devices, ...
 data Family t
   = Family { -- | The `API.FamilyId` of this very family.
-             _identifier           :: API.FamilyId
+            _identifier           :: MDynamic t API.FamilyId
+
              -- | Invitations currently open for this family.
              --
              --   That is all invitations for this family that still exist: They
@@ -71,8 +83,25 @@ data Family t
 
              -- | For the currently active invitation code, how long does it stay valid?
            , _codeValidUntil       :: MDynamic t UTCTime
-            }
+           }
 
+
+-- | Add the current `identifier` to a given event.
+--
+--   if `_identifier` is currently `Nothing`, the event will trigger once it
+--   becomes a `Just`.
+withFamily :: forall t m model val. (Reflex t, MonadHold t m, HasFamily model)
+                      => model t -> Event t val -> m (Event t (API.FamilyId, val))
+withFamily model = withKey (model ^. identifier)
+
+withFamily_ :: forall t m model val. (Reflex t, MonadHold t m, HasFamily model)
+                      => model t -> Event t val -> m (Event t API.FamilyId)
+withFamily_ model = withKey_ (model ^. identifier)
+
+
+withFamilyMay_ :: forall t model. (Reflex t, HasFamily model)
+                      => model t -> Event t () -> Event t API.FamilyId
+withFamilyMay_ model = withKeyMay_ (current $ model ^. identifier)
 
 -- We Assume server/client roundtrip does not take longer than five seconds.
 flightTime :: Int
@@ -88,13 +117,33 @@ codeTimeout = codeValidTimeout - flightTime
 -- | Map type for open invitations.
 type Invitations t = DynamicMap t API.InvitationId API.Invitation
 
+
+-- | Provide an event suitable for `_onCreateCode`.
+--
+--   The event will be tagged with `_activeInvitation`. If `_activeInvitation`
+--   currently is `Nothing` then the event will be postponed until it becomes a
+--   `Just`.
+--
+--   This means you can use this function, even if `_activeInvitation` is not
+--   loaded yet, if you know it will be loaded eventually.
+withInvitation :: forall t m model. (Reflex t, MonadHold t m, HasFamily model)
+                      => model t -> Event t () -> m (Event t API.InvitationId)
+withInvitation model = withKey_ (model ^. activeInvitation)
+
+withInvitationMay_ :: forall t model. (Reflex t, HasFamily model)
+                      => model t -> Event t () -> Event t API.InvitationId
+withInvitationMay_ model = withKeyMay_ (current $ model ^. activeInvitation)
+
 -- | Only forward an event if `_activeInvitation` is `Nothing`.
 --
 --   If `_openInvitations` still contains `Nothing` (invitations have not yet been
 --   loaded), then the event gets delayed.
-ifNoActiveInvitation :: forall t model
-  . (Reflex t, HasFamily model) => model t -> MDynamic t Bool
-ifNoActiveInvitation model = do
+ifNoActiveInvitation :: forall t model m
+                        . (Reflex t, MonadHold t m, HasFamily model)
+                     => model t -> Event t () -> m (Event t API.FamilyId)
+ifNoActiveInvitation model = withFamily_ model <=< waitAndFilter noInvitation
+  where
+    noInvitation = do
       cInvitations <- model ^. openInvitations
       cInvitation  <- model ^. activeInvitation
       pure $ if isNothing cInvitations
@@ -141,42 +190,45 @@ instance Flattenable Config where
       <*> doSwitch never (_onCreateCode <$> ev)
       <*> doSwitch never (_onSetDeviceName <$> ev)
 
--- instance Flattenable Family where
---   flattenWith doSwitch ev
---     = Family
---       <$> flattenDynamic doSwitch (_identifier <$> ev)
---       <*> flattenDynamic doSwitch (_openInvitations <$> ev)
---       <*> flattenDynamic doSwitch (_activeInvitation <$> ev)
---       <*> flattenDynamic doSwitch (_activeInvitationCode <$> ev)
+instance Flattenable Family where
+  flattenWith doSwitch ev
+    = Family
+      <$> flattenDynamic doSwitch (_identifier <$> ev)
+      <*> flattenDynamic doSwitch (_openInvitations <$> ev)
+      <*> flattenDynamic doSwitch (_activeInvitation <$> ev)
+      <*> flattenDynamic doSwitch (_activeInvitationCode <$> ev)
+      <*> flattenDynamic doSwitch (_codeValidUntil <$> ev)
+
+instance Reflex t => Default (Family t) where
+  def = Family (pure Nothing) (pure Nothing) (pure Nothing) (pure Nothing) (pure Nothing)
 
 -- Auto generated lenses:
 
+class HasConfig a42 where
+  config :: Lens' (a42 t) (Config t)
 
-class HasConfig a where
-  config :: Lens' (a t) (Config t)
-
-  onSetName :: Lens' (a t) (Event t Text)
+  onSetName :: Lens' (a42 t) (Event t (API.FamilyId, Text))
   onSetName = config . go
     where
-      go :: Lens' (Config t) (Event t Text)
+      go :: Lens' (Config t) (Event t (API.FamilyId, Text))
       go f config' = (\onSetName' -> config' { _onSetName = onSetName' }) <$> f (_onSetName config')
 
 
-  onCreateInvitation :: Lens' (a t) (Event t ())
+  onCreateInvitation :: Lens' (a42 t) (Event t API.FamilyId)
   onCreateInvitation = config . go
     where
-      go :: Lens' (Config t) (Event t ())
+      go :: Lens' (Config t) (Event t API.FamilyId)
       go f config' = (\onCreateInvitation' -> config' { _onCreateInvitation = onCreateInvitation' }) <$> f (_onCreateInvitation config')
 
 
-  onCreateCode :: Lens' (a t) (Event t ())
+  onCreateCode :: Lens' (a42 t) (Event t API.InvitationId)
   onCreateCode = config . go
     where
-      go :: Lens' (Config t) (Event t ())
+      go :: Lens' (Config t) (Event t API.InvitationId)
       go f config' = (\onCreateCode' -> config' { _onCreateCode = onCreateCode' }) <$> f (_onCreateCode config')
 
 
-  onSetDeviceName :: Lens' (a t) (Event t (API.DeviceId, Text))
+  onSetDeviceName :: Lens' (a42 t) (Event t (API.DeviceId, Text))
   onSetDeviceName = config . go
     where
       go :: Lens' (Config t) (Event t (API.DeviceId, Text))
@@ -186,14 +238,13 @@ class HasConfig a where
 instance HasConfig Config where
   config = id
 
-
 class HasFamily a42 where
   family :: Lens' (a42 t) (Family t)
 
-  identifier :: Lens' (a42 t) API.FamilyId
+  identifier :: Lens' (a42 t) (MDynamic t API.FamilyId)
   identifier = family . go
     where
-      go :: Lens' (Family t) API.FamilyId
+      go :: Lens' (Family t) (MDynamic t API.FamilyId)
       go f family' = (\identifier' -> family' { _identifier = identifier' }) <$> f (_identifier family')
 
 

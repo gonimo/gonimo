@@ -191,7 +191,7 @@ getFamilies model ourAccount = do
       allSubs = baseSubscriptions <> subs
 
     familyIds <- holdDyn [] onGotFamilyIds
-    ourFamilies <- buildBufferedMap familyIds onGotFamily
+    ourFamilies <- buildBufferedMap (updated . void $ ourAccount ^. identifier) familyIds onGotFamily
 
     pure ( mempty & Subscriber.subscriptions .~ allSubs
          , ourFamilies

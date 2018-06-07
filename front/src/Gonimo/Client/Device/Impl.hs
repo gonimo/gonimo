@@ -25,7 +25,7 @@ module Gonimo.Client.Device.Impl ( -- * Interface
 
 
 
-import           Control.Arrow             (second)
+
 import           GHCJS.DOM.Types           (MonadJSM)
 
 import           Control.Monad.Fix         (mfix)
@@ -33,9 +33,8 @@ import qualified Data.Map                  as Map
 import           Data.Set                  ((\\))
 import qualified Data.Set                  as Set
 import           Gonimo.Client.Server      (onResponse)
-import           Reflex.Network
-import           Reflex.NotReady.Class
 
+import           Reflex.NotReady.Class
 
 
 import           Gonimo.Client.Device
@@ -97,7 +96,7 @@ makeFamily
        , PerformEvent t m, TriggerEvent t m, MonadIO (Performable m), MonadJSM (Performable m)
        , HasModel model, HasConfig c, HasModelConfig mConf t
        )
-     => model t -> c t -> Device t -> m (mConf t, MDynamic t (Family t))
+     => model t -> c t -> Device t -> m (mConf t, Family t)
 makeFamily model conf ourDevice = do
     let
       onSelectedFamily :: Event t API.FamilyId
@@ -105,24 +104,11 @@ makeFamily model conf ourDevice = do
 
       onRequestInvitationIds = API.ReqGetFamilyInvitations <$> onSelectedFamily
 
-      makeJustFamily :: API.FamilyId -> m (mConf t, Maybe (Family t))
-      makeJustFamily = fmap (second Just) . Family.make model (conf ^. familyConfig)
+    selectedFamily <- holdDyn Nothing $ Just <$> onSelectedFamily
 
-      onFamily =  makeJustFamily <$> onSelectedFamily
+    (famMConf, family) <- Family.make model (conf ^. familyConfig) selectedFamily
 
-      -- When there are no families, we have to clear out our current selection.
-      -- In all other cases `selectFamily` will simply pick a new family and we
-      -- stick to what we have, until that succeeded.
-      onNoFamilies =  pure (mempty, Nothing) <$ Account.onFamiliesEmpty model
-
-    initEv <- networkView
-              <=< holdDyn (pure (mempty, Nothing)) $ leftmost [ onFamily
-                                                              , onNoFamilies
-                                                              ]
-
-    famMConf <- flatten $ fst <$> initEv
     subscriberConf <- Subscriber.fromServerRequests $ (:[]) <$> onRequestInvitationIds
-    dynFamily <- holdDyn Nothing $ snd <$> initEv
 
     selectFamConf <- selectFamilyWithStorage model conf ourDevice
 
@@ -130,7 +116,7 @@ makeFamily model conf ourDevice = do
                    , subscriberConf
                    , selectFamConf
                    ]
-         , dynFamily
+         , family
          )
 
 -- | Provide `API.ReqSwitchFamily` messages for switching the family.
@@ -185,7 +171,7 @@ selectFamily model conf ourDevice mInitialId
     ourFamIds = fmap Map.keys <$> model ^. Account.families
 
     famIdentifier :: MDynamic t API.FamilyId
-    famIdentifier = fmap Family._identifier <$> ourFamily
+    famIdentifier = Family._identifier ourFamily
 
     -- A family switch is necessary, if the currently selected one ceases to
     -- exist or a new family was created. In the latter case, we automatically
