@@ -92,6 +92,7 @@ prodMain = do
   predicates <- loadPredicates
   generator <- newTVarIO =<< newGenIO
   gonimoLogFunc <- getGonimoLogFunc
+  liveCodes <- CodeInvitation.makeLiveCodes
   let config = Config {
     _configPool = pool
   , _configMessenger  = messenger
@@ -101,6 +102,7 @@ prodMain = do
   , _configFrontendURL = T.pack frontendURL
   , _configRandom = generator
   , _configLogFunc = gonimoLogFunc
+  , _configLiveCodes = liveCodes
   }
   run port . checkOrigin (T.pack frontendURL) $ serve config
 
