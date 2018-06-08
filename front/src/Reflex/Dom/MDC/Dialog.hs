@@ -61,9 +61,12 @@ type Config t m a = ConfigBase Text t m a
 type Header t m = HeaderBase Text t m
 
 data Dialog t a
-  = Dialog { _dialogOnAccepted :: Event t ()
-           , _dialogOnCanceled :: Event t ()
-           , _dialogResult     :: a
+  = Dialog { _onAccepted :: Event t ()
+           , _onCanceled :: Event t ()
+             -- | Just a forwarded `onOpen` for your convenience.
+           , _onOpened :: Event t ()
+           , _isOpen :: Dynamic t Bool
+           , _result     :: a
            }
 
 make :: forall t m a. MDCConstraint t m => Config t m a -> m (Dialog t a)
@@ -71,10 +74,10 @@ make conf = mdo
     (onAddClass, triggerAddClass)       <- newTriggerEvent
     (onRemoveClass, triggerRemoveClass) <- newTriggerEvent
 
-    (_dialogOnCanceled, triggerCancel) <- newTriggerEvent
-    (_dialogOnAccepted, triggerAccept) <- newTriggerEvent
+    (_onCanceled, triggerCancel) <- newTriggerEvent
+    (_onAccepted, triggerAccept) <- newTriggerEvent
 
-    (dialogTag, (surfaceTag, _dialogResult)) <- html conf dynAttrs
+    (dialogTag, (surfaceTag, _result)) <- html conf dynAttrs
 
     -- make adapter with JS prototype.
     constr  <- liftJSM $ JS.eval ("window.reflexDomMDC.Dialog" :: Text)
@@ -92,6 +95,8 @@ make conf = mdo
       jsClose   = liftJSM . void $ adapter ^. JS.js0 ("close" ::Text)
       jsDestroy = liftJSM . void $ adapter ^. JS.js0 ("destroy" ::Text)
 
+      _onOpened = conf ^. onOpen
+
     performEvent_ $ jsOpen    <$ conf ^. onOpen
     performEvent_ $ jsClose   <$ conf ^. onClose
     performEvent_ $ jsDestroy <$ conf ^. onDestroy
@@ -99,6 +104,10 @@ make conf = mdo
     dynAttrs <- foldDyn id staticAttrs $ leftmost [ addClassAttr <$> onAddClass
                                                   , removeClassAttr <$> onRemoveClass
                                                   ]
+    _isOpen <- holdDyn False $ leftmost [ True <$ conf ^. onOpen
+                                        , False <$ _onCanceled
+                                        , False <$ _onAccepted
+                                        ]
 
     pure $ Dialog {..}
 
@@ -207,29 +216,45 @@ class HasConfigBase a42 where
 instance HasConfigBase ConfigBase where
   configBase = id
 
+
 class HasDialog a42 where
   dialog :: Lens' (a42 t a) (Dialog t a)
 
-  dialogOnAccepted :: Lens' (a42 t a) (Event t ())
-  dialogOnAccepted = dialog . go
+  onAccepted :: Lens' (a42 t a) (Event t ())
+  onAccepted = dialog . go
     where
       go :: Lens' (Dialog t a) (Event t ())
-      go f dialog' = (\dialogOnAccepted' -> dialog' { _dialogOnAccepted = dialogOnAccepted' }) <$> f (_dialogOnAccepted dialog')
+      go f dialog' = (\onAccepted' -> dialog' { _onAccepted = onAccepted' }) <$> f (_onAccepted dialog')
 
 
-  dialogOnCanceled :: Lens' (a42 t a) (Event t ())
-  dialogOnCanceled = dialog . go
+  onCanceled :: Lens' (a42 t a) (Event t ())
+  onCanceled = dialog . go
     where
       go :: Lens' (Dialog t a) (Event t ())
-      go f dialog' = (\dialogOnCanceled' -> dialog' { _dialogOnCanceled = dialogOnCanceled' }) <$> f (_dialogOnCanceled dialog')
+      go f dialog' = (\onCanceled' -> dialog' { _onCanceled = onCanceled' }) <$> f (_onCanceled dialog')
 
 
-  dialogResult :: Lens' (a42 t a) a
-  dialogResult = dialog . go
+  onOpened :: Lens' (a42 t a) (Event t ())
+  onOpened = dialog . go
+    where
+      go :: Lens' (Dialog t a) (Event t ())
+      go f dialog' = (\onOpened' -> dialog' { _onOpened = onOpened' }) <$> f (_onOpened dialog')
+
+
+  isOpen :: Lens' (a42 t a) (Dynamic t Bool)
+  isOpen = dialog . go
+    where
+      go :: Lens' (Dialog t a) (Dynamic t Bool)
+      go f dialog' = (\isOpen' -> dialog' { _isOpen = isOpen' }) <$> f (_isOpen dialog')
+
+
+  result :: Lens' (a42 t a) a
+  result = dialog . go
     where
       go :: Lens' (Dialog t a) a
-      go f dialog' = (\dialogResult' -> dialog' { _dialogResult = dialogResult' }) <$> f (_dialogResult dialog')
+      go f dialog' = (\result' -> dialog' { _result = result' }) <$> f (_result dialog')
 
 
 instance HasDialog Dialog where
   dialog = id
+
