@@ -1,3 +1,4 @@
+{-# LANGUAGE RecursiveDo #-}
 {-|
 Module      : Gonimo.Client.UI.Dialogs.Invite
 Description : Dialogs for showing invitation code and sending invitations.
@@ -10,7 +11,9 @@ import qualified Data.Text                            as T
 import           Data.Time                            (diffUTCTime,
                                                        getCurrentTime)
 import           Reflex.Dom.Core
+import           Reflex.Dom.MDC.Dialog                (Dialog)
 import qualified Reflex.Dom.MDC.Dialog                as Dialog
+import           Reflex.Network
 
 
 import qualified Gonimo.Client.Account                as Account
@@ -38,14 +41,14 @@ data Config t
 
 ui :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m)
   => Config t -> m (mConf t)
-ui conf = do
+ui conf = mdo
   loc <- view Settings.locale
   model <- ask
-  remTime <- showRemainingTime model
-  primaryBarAnimAttrs <- makeAnimationAttrs $ "class" =: "mdc-linear-progress__bar mdc-linear-progress__primary-bar"
-  progressAnimAttrs <- makeAnimationAttrs $ "class" =: "mdc-linear-progress__bar-inner"
-  codeFieldAnimAttrs <- makeAnimationAttrs $ "class" =: "code-field"
-  codeTimeAnimAttrs <- makeAnimationAttrs $ "class" =: "code-time"
+  remTime <- showRemainingTime model dialog
+  primaryBarAnimAttrs <- makeAnimationAttrs dialog $ "class" =: "mdc-linear-progress__bar mdc-linear-progress__primary-bar"
+  progressAnimAttrs   <- makeAnimationAttrs dialog $ "class" =: "mdc-linear-progress__bar-inner"
+  codeFieldAnimAttrs  <- makeAnimationAttrs dialog $ "class" =: "code-field"
+  codeTimeAnimAttrs   <- makeAnimationAttrs dialog $ "class" =: "code-time"
   dialog <- Dialog.make
     $ Dialog.ConfigBase
     { Dialog._onOpen    = _onOpen conf
@@ -78,17 +81,23 @@ ui conf = do
         el "br" blank
     , Dialog._footer    = Dialog.cancelOnlyFooter $ liftA2 i18n loc (pure Cancel)
     }
-  controller dialog conf
+  controller dialog
 
 makeAnimationAttrs :: forall model m t. (HasModel model, GonimoM model t m)
-  => Map Text Text -> m (Dynamic t (Map Text Text))
-makeAnimationAttrs staticAttrs = do
+  => Dialog t () -> Map Text Text -> m (Dynamic t (Map Text Text))
+makeAnimationAttrs dialog staticAttrs = do
     fam <- view Device.selectedFamily
     let
+      isOpen = dialog ^. Dialog.isOpen
+
       onAnimationEvents = updated $ isJust <$> fam ^. Family.activeInvitationCode
 
-      onAnimationStart = ffilter_ id onAnimationEvents
-      onAnimationEnd = ffilter_ not onAnimationEvents
+      onAnimationStart = gate (current isOpen) . ffilter_ id $ onAnimationEvents
+
+      onAnimationEnd = leftmost [ ffilter_ not onAnimationEvents
+                                , dialog ^. Dialog.onAccepted
+                                , dialog ^. Dialog.onCanceled
+                                ]
 
     -- Small delay so the animation starts reliably.
     -- onAnimationStart <- delay 1 $ ffilter_ id onAnimationEvents
@@ -106,18 +115,23 @@ makeAnimationAttrs staticAttrs = do
     animDurationText = (T.pack . show) Family.codeTimeout <> "s"
 
 showRemainingTime :: ( Reflex t, Device.HasDevice model, Settings.HasSettings model
-                     , MonadIO m, PerformEvent t m, MonadIO (Performable m)
-                     , PostBuild t m, TriggerEvent t m, MonadFix m, MonadHold t m
+                     , MonadIO m, PerformEvent t m, MonadIO (Performable m), NotReady t m, Adjustable t m, PostBuild t m
+                     , TriggerEvent t m, MonadFix m, MonadHold t m
                      )
-                  => model t -> m (Dynamic t Text)
-showRemainingTime model = do
-    onPostBuild <- getPostBuild
-    now <- liftIO getCurrentTime
+                  => model t -> Dialog t () -> m (Dynamic t Text)
+showRemainingTime model dialog = do
     let
       fam = model ^. Device.selectedFamily
+      isOpen = dialog ^. Dialog.isOpen
+
       validUntil = current $ fam ^. Family.codeValidUntil
 
-    ticker <- tag validUntil <$> tickLossyFrom 1 now onPostBuild
+    -- Get a tick event that only happens if the dialog is shown:
+    tickEv <- switchHold never <=< networkView $ getTicker <$> isOpen
+    let
+      ticker = tag validUntil $ leftmost [ () <$ tickEv
+                                         , dialog ^. Dialog.onOpened
+                                         ]
 
     onRem <- performEvent $ calcRemTime <$> ticker
     holdDyn "-:--" onRem
@@ -128,6 +142,12 @@ showRemainingTime model = do
 
     fillWithZeros (x:[]) = '0' : x : []
     fillWithZeros xs     = xs
+
+    getTicker False = pure never
+    getTicker True = do
+      now <- liftIO getCurrentTime
+      postBuild <- getPostBuild
+      tickLossyFrom 1 now postBuild
 
 showCode :: (Reflex t, Device.HasDevice model, Settings.HasSettings model)
   => model t -> Dynamic t Text
@@ -143,20 +163,18 @@ showCode model = do
 --
 --   Created a modelconfig based on the current state of affairs.
 controller :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m)
-  => Dialog.Dialog t () -> Config t -> m (mConf t)
-controller dialog conf = do
+  => Dialog.Dialog t () -> m (mConf t)
+controller dialog = do
   model <- ask
-  let fam = model ^. Device.selectedFamily
+  let
+    fam = model ^. Device.selectedFamily
 
-  onCreateFamily     <- Account.ifFamiliesEmpty model $ conf ^. onOpen
-  onCreateInvitation <- Family.ifNoActiveInvitation fam $ conf ^. onOpen
-  onCreateCodeStart  <- Family.withInvitation fam $ conf ^. onOpen
+    isOpen = dialog ^. Dialog.isOpen
+    onOpened = dialog ^. Dialog.onOpened
 
-  isOpen <- hold False $ leftmost [ True <$ conf ^. onOpen
-                                  , False <$ leftmost [ dialog ^. Dialog.dialogOnCanceled
-                                                      , dialog ^. Dialog.dialogOnAccepted
-                                                      ]
-                                  ]
+  onCreateFamily     <- Account.ifFamiliesEmpty model onOpened
+  onCreateInvitation <- Family.ifNoActiveInvitation fam onOpened
+  onCreateCodeStart  <- Family.withInvitation fam onOpened
 
   let
     onCodeInvalid = ffilter_ id
@@ -164,13 +182,16 @@ controller dialog conf = do
                     $ fam ^. Family.activeInvitationCode
 
   onCreateCodeReload <- Family.withInvitation fam
-                        . ffilter_ id . tag isOpen $ onCodeInvalid
+                        . ffilter_ id . tag (current isOpen) $ onCodeInvalid
 
   let
     famConf = mempty & Family.onCreateInvitation .~ onCreateInvitation
                      & Family.onCreateCode .~ leftmost [ onCreateCodeStart
                                                        , onCreateCodeReload
                                                        ]
+                     & Family.onClearCode .~ leftmost [ dialog ^. Dialog.onCanceled
+                                                      , dialog ^. Dialog.onAccepted
+                                                      ]
   pure $ mempty & Account.onCreateFamily .~ onCreateFamily
                 & Device.familyConfig .~ famConf
 
