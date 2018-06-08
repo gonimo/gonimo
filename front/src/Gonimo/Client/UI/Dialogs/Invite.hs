@@ -95,8 +95,7 @@ makeAnimationAttrs dialog staticAttrs = do
       onAnimationStart = gate (current isOpen) . ffilter_ id $ onAnimationEvents
 
       onAnimationEnd = leftmost [ ffilter_ not onAnimationEvents
-                                , dialog ^. Dialog.onAccepted
-                                , dialog ^. Dialog.onCanceled
+                                , dialog ^. Dialog.onClosed
                                 ]
 
     -- Small delay so the animation starts reliably.
@@ -182,16 +181,17 @@ controller dialog = do
                     $ fam ^. Family.activeInvitationCode
 
   onCreateCodeReload <- Family.withInvitation fam
-                        . ffilter_ id . tag (current isOpen) $ onCodeInvalid
+                        . ffilter_ id . attachWith (&&) (current isOpen)
+                        $ leftmost [ False <$  dialog ^. Dialog.onClosed -- Necessary so we won't create a new code on closing.
+                                   , True <$ onCodeInvalid
+                                   ]
 
   let
     famConf = mempty & Family.onCreateInvitation .~ onCreateInvitation
                      & Family.onCreateCode .~ leftmost [ onCreateCodeStart
                                                        , onCreateCodeReload
                                                        ]
-                     & Family.onClearCode .~ leftmost [ dialog ^. Dialog.onCanceled
-                                                      , dialog ^. Dialog.onAccepted
-                                                      ]
+                     & Family.onClearCode .~ dialog ^. Dialog.onClosed
   pure $ mempty & Account.onCreateFamily .~ onCreateFamily
                 & Device.familyConfig .~ famConf
 

@@ -63,6 +63,7 @@ type Header t m = HeaderBase Text t m
 data Dialog t a
   = Dialog { _onAccepted :: Event t ()
            , _onCanceled :: Event t ()
+           , _onClosed :: Event t () -- leftmost of _onAccepted and _onCanceled.
              -- | Just a forwarded `onOpen` for your convenience.
            , _onOpened :: Event t ()
            , _isOpen :: Dynamic t Bool
@@ -96,6 +97,10 @@ make conf = mdo
       jsDestroy = liftJSM . void $ adapter ^. JS.js0 ("destroy" ::Text)
 
       _onOpened = conf ^. onOpen
+
+      _onClosed = leftmost [ _onCanceled
+                           , _onAccepted
+                           ]
 
     performEvent_ $ jsOpen    <$ conf ^. onOpen
     performEvent_ $ jsClose   <$ conf ^. onClose
@@ -217,6 +222,7 @@ instance HasConfigBase ConfigBase where
   configBase = id
 
 
+
 class HasDialog a42 where
   dialog :: Lens' (a42 t a) (Dialog t a)
 
@@ -232,6 +238,13 @@ class HasDialog a42 where
     where
       go :: Lens' (Dialog t a) (Event t ())
       go f dialog' = (\onCanceled' -> dialog' { _onCanceled = onCanceled' }) <$> f (_onCanceled dialog')
+
+
+  onClosed :: Lens' (a42 t a) (Event t ())
+  onClosed = dialog . go
+    where
+      go :: Lens' (Dialog t a) (Event t ())
+      go f dialog' = (\onClosed' -> dialog' { _onClosed = onClosed' }) <$> f (_onClosed dialog')
 
 
   onOpened :: Lens' (a42 t a) (Event t ())
