@@ -41,7 +41,8 @@ ui = do
           elClass "div" "mdc-card mdc-layout-grid__cell mdc-layout-grid__cell--span-12 invite" $ do
             elClass "section" "mdc-card__primary" $ do
               elClass "h1" "mdc-card__title mdc-card__title--large" $ text "Gerätekopplung"
-            elClass "section" "invite-img-wrapper" $ elAttr "img" ("class" =: "invite-img" <> "src" =: "pix/device-coupling.gif") blank
+            elClass "section" "invite-img-wrapper" $ elAttr "video" ( "class" =: "invite-img" <> "autoplay" =: "true" <> "loop" =: "true" <> "playsinline"  =: "true") $ do
+              elAttr "source" ("src" =: "/pix/bear.mp4" <> "type" =: "video/mp4") blank
             elClass "section" "mdc-card__supporting-text" $ text "Erklärung zur Kopplung."
             elClass "section" "mdc-card__actions" $ do
               inviteClicked <-
