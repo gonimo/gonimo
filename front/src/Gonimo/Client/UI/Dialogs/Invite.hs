@@ -125,11 +125,15 @@ showRemainingTime model dialog = do
 
       validUntil = current $ fam ^. Family.codeValidUntil
 
+    -- Get a time update as early as possible.
+    onNewCodeDelayed <- delay 0 $ updated (fam ^. Family.activeInvitationCode)
+
     -- Get a tick event that only happens if the dialog is shown:
     tickEv <- switchHold never <=< networkView $ getTicker <$> isOpen
     let
       ticker = tag validUntil $ leftmost [ () <$ tickEv
                                          , dialog ^. Dialog.onOpened
+                                         , () <$ onNewCodeDelayed
                                          ]
 
     onRem <- performEvent $ calcRemTime <$> ticker
@@ -137,7 +141,11 @@ showRemainingTime model dialog = do
   where
     calcRemTime Nothing = pure "-:--"
     calcRemTime (Just deadLine) = showSeconds . diffUTCTime deadLine <$> liftIO getCurrentTime
-    showSeconds = T.pack . ("0:" ++) . fillWithZeros . takeWhile (/= '.') . show
+    -- Ok this is ugly, but it works ...
+    showSeconds = T.pack . ("0:" ++) . fillWithZeros . show . getRounded . read . takeWhile (/= 's') .show
+
+    getRounded :: Double -> Int
+    getRounded = round
 
     fillWithZeros (x:[]) = '0' : x : []
     fillWithZeros xs     = xs
