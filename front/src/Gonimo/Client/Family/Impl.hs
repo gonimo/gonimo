@@ -76,7 +76,7 @@ make model conf _identifier = mfix $ \ ~(_, family') -> do
     invitationIds <- holdDyn [] onGotInvitationIds
     _openInvitations <- buildBufferedMap (updated . void $ _identifier) invitationIds onGotInvitation
 
-    activeInvitationCodeAndValid <- getInvitationCode model family'
+    activeInvitationCodeAndValid <- getInvitationCode model family' conf
 
     let
       _activeInvitationCode = fmap fst <$> activeInvitationCodeAndValid
@@ -163,13 +163,13 @@ sendServerRequests conf =
 -- | Get the current invitation code from the server.
 --
 --   Also takes care of invalidating it after approximately `codeValidTimeout`.
-getInvitationCode :: forall t m model
+getInvitationCode :: forall t m model c
                      . ( Reflex t, MonadHold t m, MonadFix m, PerformEvent t m
-                       , TriggerEvent t m, MonadIO (Performable m), MonadIO m
+                       , TriggerEvent t m, MonadIO (Performable m), MonadIO m, HasConfig c
                        , HasModel model
                        )
-                  => model t -> Family t -> m (MDynamic t (API.InvitationCode, UTCTime))
-getInvitationCode model family' = do
+                  => model t -> Family t -> c t -> m (MDynamic t (API.InvitationCode, UTCTime))
+getInvitationCode model family' conf = do
   let
     timeout :: NominalDiffTime
     timeout = fromIntegral codeTimeout
@@ -190,11 +190,14 @@ getInvitationCode model family' = do
                                           pure (code, deadLine)
                                       ) <$> onOurCode
   -- Time up:
-  onTimeUp <- delay timeout onOurCode
+  currentCode <- hold Nothing $ Just <$> onOurCode
+  let checkValidTimeUp old new = old == Just new -- Make sure we are resetting the right code!
+  onTimeUp <- ffilter id . attachWith checkValidTimeUp currentCode <$> delay timeout onOurCode
 
   let
-    onInvalidCode = leftmost [ const () <$> onTimeUp
-                             , const () <$> updated (family' ^. activeInvitation)
+    onInvalidCode = leftmost [ () <$ onTimeUp
+                             , () <$ updated (family' ^. activeInvitation)
+                             , conf ^. onClearCode
                              ]
 
   -- Put together:

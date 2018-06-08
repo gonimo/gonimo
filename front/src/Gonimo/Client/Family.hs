@@ -47,6 +47,14 @@ data Config t
              --   would not be ready on the `updated` event.
            , _onCreateCode       :: Event t API.InvitationId
 
+             -- | Get rid of the current invitation code.
+             --
+             --   Can be triggered when user closed the showing dialog for
+             --   example. Currently this is local only - the code is
+             --   technically still valid until the timeout happens or a new
+             --   code is created.
+           , _onClearCode :: Event t ()
+
              -- | Change the name of a device in this family.
            , _onSetDeviceName    :: Event t (API.DeviceId, Text)
            } deriving (Generic)
@@ -173,13 +181,14 @@ instance Reflex t => Semigroup (Config t) where
                                                    , _onCreateInvitation b
                                                    ]
                   , _onCreateCode       = leftmost [_onCreateCode a, _onCreateCode b]
+                  , _onClearCode        = leftmost [_onClearCode a, _onClearCode b]
                   , _onSetDeviceName    = leftmost [ _onSetDeviceName a
                                                    , _onSetDeviceName b
                                                    ]
                   }
 
 instance Reflex t => Monoid (Config t) where
-  mempty = Config never never never never
+  mempty = Config never never never never never
   mappend = (<>)
 
 instance Flattenable Config where
@@ -188,6 +197,7 @@ instance Flattenable Config where
       <$> doSwitch never (_onSetName <$> ev)
       <*> doSwitch never (_onCreateInvitation <$> ev)
       <*> doSwitch never (_onCreateCode <$> ev)
+      <*> doSwitch never (_onClearCode <$> ev)
       <*> doSwitch never (_onSetDeviceName <$> ev)
 
 instance Flattenable Family where
@@ -203,6 +213,7 @@ instance Reflex t => Default (Family t) where
   def = Family (pure Nothing) (pure Nothing) (pure Nothing) (pure Nothing) (pure Nothing)
 
 -- Auto generated lenses:
+
 
 class HasConfig a42 where
   config :: Lens' (a42 t) (Config t)
@@ -226,6 +237,13 @@ class HasConfig a42 where
     where
       go :: Lens' (Config t) (Event t API.InvitationId)
       go f config' = (\onCreateCode' -> config' { _onCreateCode = onCreateCode' }) <$> f (_onCreateCode config')
+
+
+  onClearCode :: Lens' (a42 t) (Event t ())
+  onClearCode = config . go
+    where
+      go :: Lens' (Config t) (Event t ())
+      go f config' = (\onClearCode' -> config' { _onClearCode = onClearCode' }) <$> f (_onClearCode config')
 
 
   onSetDeviceName :: Lens' (a42 t) (Event t (API.DeviceId, Text))
