@@ -179,6 +179,27 @@ mediaVideo stream attrs = do
     traverse_ registerCleanup tracks
     pure ()
 
+-- | Show a video that has the purpose of showing a muted animation.
+--
+animationVideo :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
+              , MonadJSM (Performable m), PerformEvent t m
+              )
+               => Text -- ^ CSS classes
+               -> [(Text, Text)] -- ^ Video source files (file, type), e.g. ("myvideo.mp4", "video/mp4")
+               -> m ()
+animationVideo classes srcs = do
+    (videoTag, _) <- elAttr' "video" ( "class" =: classes <> "autoplay" =: "true" <> "loop" =: "true" <> "playsinline"  =: "true" <> "muted" =: "true") $ traverse makeSource srcs
+    pure ()
+    -- Necessary, because autoplay does not always work ...
+    let
+      rawElement = _element_raw videoTag
+      onClick = domEvent Click videoTag
+    performEvent_ $ (liftJSM . void $ JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])) <$ onClick
+    -- liftJSM $ do
+    --   void $ JS.toJSVal rawElement JS.# ("play" :: Text) $ ([] :: [JS.JSVal])
+  where
+    makeSource (file, fileType) = elAttr "source" ("src" =: file <> "type" =: fileType) blank
+
 -- mediaVideo :: ( DomBuilder t m, MonadJSM m, DomBuilderSpace m ~ GhcjsDomSpace
 --               , PostBuild t m, PerformEvent t m, MonadJSM (Performable m)
 --               )
