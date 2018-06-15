@@ -12,6 +12,7 @@ import           Gonimo.Client.Prelude
 import           Gonimo.Client.Model               (IsConfig)
 import           Gonimo.Client.Reflex.Dom
 import qualified Gonimo.Client.UI.Dialogs.Invite as Invite
+import qualified Gonimo.Client.UI.Dialogs.EnterCode as EnterCode
 
 
 -- type HasModel model = Invite.HasModel model
@@ -21,7 +22,7 @@ type HasModel model = Invite.HasModel model
 
 ui :: forall model mConf m t. (HasModelConfig mConf t, HasModel model, GonimoM model t m) => m (mConf t)
 ui = do
-  (inviteClicked, acceptInviteClicked) <-
+  (inviteClicked, enterCodeClicked) <-
     elClass "main" "container" $ do
     -- elClass "header" "mdc-toolbar mdc-toolbar--fixed" $ do
     --   elClass "div" "mdc-toolbar__row" $ do
@@ -41,19 +42,22 @@ ui = do
           elClass "div" "mdc-card mdc-layout-grid__cell mdc-layout-grid__cell--span-12 invite" $ do
             elClass "section" "mdc-card__primary" $ do
               elClass "h1" "mdc-card__title mdc-card__title--large" $ text "Gerätekopplung"
-            elClass "section" "invite-img-wrapper" $ elAttr "video" ( "class" =: "invite-img" <> "autoplay" =: "true" <> "loop" =: "true" <> "playsinline"  =: "true") $ do
-              elAttr "source" ("src" =: "/pix/bear.mp4" <> "type" =: "video/mp4") blank
+            elClass "section" "invite-img-wrapper" $ animationVideo "invite-img" (reverse [("/pix/Final10000-0150.mp4", "video/mp4")])
             elClass "section" "mdc-card__supporting-text" $ text "Erklärung zur Kopplung."
             elClass "section" "mdc-card__actions" $ do
               inviteClicked <-
                 buttonClass "mdc-button mdc-button--raised mdc-card__action btn" $ do
                   elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "code"
                   text "Code generieren"
-              acceptInviteClicked <-
+              enterCodeClicked <-
                 buttonClass "mdc-button mdc-button--raised mdc-card__action btn" $ do
                   elAttr "i" ("class" =: "material-icons" <> "aria-hidden" =: "true") $ text "input"
                   text "Code eingeben"
-              pure (inviteClicked, acceptInviteClicked)
-  Invite.ui $ Invite.Config { Invite._onOpen = inviteClicked
-                            , Invite._onClose = never
-                            }
+              pure (inviteClicked, enterCodeClicked)
+  inviteConf <- Invite.ui $ Invite.Config { Invite._onOpen = inviteClicked
+                                          , Invite._onClose = never
+                                          }
+  enterCodeConf <- EnterCode.ui $ EnterCode.Config { EnterCode._onOpen = enterCodeClicked
+                                                   , EnterCode._onClose = never
+                                                   }
+  pure $ mconcat [ inviteConf, enterCodeConf ]

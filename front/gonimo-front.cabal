@@ -141,6 +141,8 @@ library
                     , Gonimo.Client.UI.DeviceCoupling
                     , Gonimo.Client.UI.Dialogs.Invite
                     , Gonimo.Client.UI.Dialogs.Invite.I18N
+                    , Gonimo.Client.UI.Dialogs.EnterCode
+                    , Gonimo.Client.UI.Dialogs.EnterCode.I18N
                     , Gonimo.Client.Util
                     , Gonimo.Client.WebRTC.Channel
                     , Gonimo.Client.WebRTC.Channels
