@@ -76,9 +76,9 @@ ui conf = mdo
                 elAttr "li" ("class" =: "mdc-list-item" <> "role" =: "menuitem" <> "tabindex" =: "0") $ do
                   elClass "i" "material-icons" $ text "content_copy"
                   text "Kopieren"
-        el "br" blank
-        Dialog.separator
-        el "br" blank
+        -- el "br" blank
+        -- Dialog.separator
+        -- el "br" blank
     , Dialog._footer    = Dialog.cancelOnlyFooter $ liftA2 i18n loc (pure Cancel)
     }
   controller dialog
