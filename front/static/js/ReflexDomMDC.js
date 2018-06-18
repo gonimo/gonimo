@@ -1,5 +1,7 @@
 window.reflexDomMDC = {};
 
+
+/********************* MDC Dialog *********************/
 // Default adapter with all methods set that can be executed directly in JS.
 window.reflexDomMDC.Dialog = function (root, dialogSurface, acceptButton) {
     this.root_ = root;
@@ -42,3 +44,5 @@ window.reflexDomMDC.Dialog.prototype = {
     });
   }
 };
+
+/********************* MDC Dialog End *********************/
