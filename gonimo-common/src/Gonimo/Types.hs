@@ -21,7 +21,6 @@ import Control.Applicative ((<|>))
 
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Base64 as Base64
-import           Data.Monoid
 import           Data.Text.Encoding     (decodeUtf8, encodeUtf8)
 
 import           GHC.Generics           (Generic)

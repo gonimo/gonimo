@@ -3,8 +3,6 @@ module Gonimo.I18N where
 import Data.Text
 import           Data.Aeson.Types      (FromJSON, ToJSON (..), defaultOptions,
                                         genericToJSON, genericToEncoding)
-
-import Data.Semigroup
 import GHC.Generics
 
 data Locale = DE_DE
