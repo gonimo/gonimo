@@ -56,14 +56,19 @@ library
                     , lifted-base
                     , mtl
                     , reflex
-                    , reflex-dom-core
+                    , reflex-dom
                     , safe
                     , text
                     , time
                     , transformers
-                    , network-uri
                     , filepath
-                    -- , uri-bytestring >= 0.2.3.3 -- Does depend on TH!
+                    , modern-uri
+                    , network-uri
+                    , obelisk-executable-config
+                    , obelisk-frontend
+                    , obelisk-generated-static
+                    , obelisk-route
+                     -- , uri-bytestring >= 0.2.3.3 -- Does depend on TH!
   if !impl(ghcjs)
      build-depends: jsaddle-dom
   if impl(ghcjs)
