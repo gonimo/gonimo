@@ -3,7 +3,6 @@ module Gonimo.Client.Invite.UI.I18N where
 
 import           Gonimo.I18N
 import           Data.Text
-import           Data.Monoid
 
 data Message = Invite_More_Devices
              | Done

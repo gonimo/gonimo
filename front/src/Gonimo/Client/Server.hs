@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecursiveDo #-}
 
 module Gonimo.Client.Server ( Config(..)
@@ -64,7 +66,7 @@ instance Reflex t => Monoid (Config t) where
   mempty = memptydefault
   mappend = mappenddefault
 
-instance Flattenable Config where
+instance Flattenable (Config t) t where
   flattenWith doSwitch ev
     = Config <$> doSwitch never (_onRequest <$> ev)
 

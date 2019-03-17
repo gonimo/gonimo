@@ -1,4 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
 {-|
 Module      : Gonimo.Client.Settings
 Description : Manage user settings.
@@ -28,6 +30,7 @@ import           Data.Default
 import           Data.Maybe
 import           Data.Semigroup
 import           Data.Text                   (Text)
+import qualified Data.Text                   as T
 import           GHC.Generics
 import qualified GHCJS.DOM                   as DOM
 import           GHCJS.DOM.Types             (MonadJSM, liftJSM)
@@ -37,7 +40,6 @@ import qualified Gonimo.Client.Storage.Keys  as GStorage
 import qualified Language.Javascript.JSaddle as JS
 import           Reflex.Class.Extended
 import           Reflex.Dom.Core
-import qualified Data.Text                   as T
 
 import           Gonimo.I18N
 
@@ -104,7 +106,7 @@ instance Reflex t => Monoid (Config t) where
 instance Reflex t => Default (Config t) where
   def = mempty
 
-instance Flattenable Config where
+instance Flattenable (Config t) t where
   flattenWith doSwitch ev = Config <$> doSwitch never (_onSelectLocale <$> ev)
 
 

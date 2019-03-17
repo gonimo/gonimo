@@ -41,7 +41,7 @@ make conf = do
 type Path = String
 
 renderRoute :: Route -> Path
-renderRoute r = "/index" <> ".html" <> -- This artifical split is necessary because of our current filename hashing. Otherwise the route gets replaced with index-hash.html.
+renderRoute r =
   case r of
     RouteHome         -> ""
     RouteBaby         -> "/baby"
@@ -50,7 +50,7 @@ renderRoute r = "/index" <> ".html" <> -- This artifical split is necessary beca
 -- This function is total, because every unknown route will be routed to 'RouteHome'.
 parseRoute :: Path -> Route
 parseRoute p' =
-  let p = case (drop 2 . splitPath) p' of
+  let p = case (drop 1 . splitPath) p' of
             [x] -> x
             _   -> p'
   in

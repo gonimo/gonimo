@@ -1,8 +1,11 @@
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE TypeApplications    #-}
 
 module Gonimo.Client.Parent.Connections where
 
@@ -15,6 +18,8 @@ import qualified GHCJS.DOM.AudioBufferSourceNode   as AudioNode
 import           GHCJS.DOM.Types                   (MediaStream, MonadJSM,
                                                     liftJSM)
 import qualified Language.Javascript.JSaddle.Value as JS
+
+import           Obelisk.Generated.Static
 
 import qualified Gonimo.Client.NavBar              as NavBar
 import           Gonimo.Client.Util                (boostMediaStreamVolume,
@@ -119,7 +124,7 @@ playAlarmOnBrokenConnection :: GonimoM model t m => Channels.Channels t -> m ()
 playAlarmOnBrokenConnection channels' = mdo
     let
       loadAlert :: forall m1. MonadJSM m1 => m1 AudioNode.AudioBufferSourceNode
-      loadAlert = loadSound "/sounds/gonimo_alarm_64kb_long.mp3"
+      loadAlert = loadSound $ static @"sounds/gonimo_alarm_64kb_long.mp3"
     alarmSound <- loadAlert
     newAlertEv <- performEvent $ const loadAlert <$> ffilter not  (updated anyConnectionBroken) -- alarm can only be played once!
     -- AudioNode.start alarmSound 0 0 1000000 -- 0 for duration does not work on Chrome at least! fs

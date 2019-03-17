@@ -12,6 +12,12 @@ library
                , frontend
                , obelisk-backend
                , obelisk-route
+               , snap-core
+               , case-insensitive
+               , monad-logger
+               , persistent-sqlite
+               , persistent-template
+               , gonimo-back
   exposed-modules:
     Backend
   ghc-options: -Wall

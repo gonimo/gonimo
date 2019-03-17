@@ -12,24 +12,24 @@ html, body {
 }
 @font-face {
     font-family: "Raleway-Medium";
-    src: url("/resources/fonts/Raleway-Medium.ttf") format("truetype");
+    src: url("/static/resources/fonts/Raleway-Medium.ttf") format("truetype");
 }
 @font-face {
     font-family: "Raleway-Regular";
-    src: url("/resources/fonts/Raleway-Regular.ttf") format("truetype");
+    src: url("/static/resources/fonts/Raleway-Regular.ttf") format("truetype");
 }
 @font-face {
     font-family: "Raleway-Bold";
-    src: url("/resources/fonts/Raleway-Bold.ttf") format("truetype");
+    src: url("/static/resources/fonts/Raleway-Bold.ttf") format("truetype");
 }
 @font-face {
     font-family: "Raleway-light";
-    src: url("/resources/fonts/Raleway-Light.ttf") format("truetype");
+    src: url("/static/resources/fonts/Raleway-Light.ttf") format("truetype");
 }
 @font-face {
   font-family: 'FontAwesome';
-  src: url('/resources/fonts/fontawesome-webfont.eot?v=4.6.3');
-  src: url('/resources/fonts/fontawesome-webfont.eot?#iefix&v=4.6.3') format('embedded-opentype'), url('/resources/fonts/fontawesome-webfont.woff2?v=4.6.3') format('woff2'), url('/resources/fonts/fontawesome-webfont.woff?v=4.6.3') format('woff'), url('/resources/fonts/fontawesome-webfont.ttf?v=4.6.3') format('truetype'), url('/resources/fonts/fontawesome-webfont.svg?v=4.6.3#fontawesomeregular') format('svg');
+  src: url('/static/resources/fonts/fontawesome-webfont.eot?v=4.6.3');
+  src: url('/static/resources/fonts/fontawesome-webfont.eot?#iefix&v=4.6.3') format('embedded-opentype'), url('/static/resources/fonts/fontawesome-webfont.woff2?v=4.6.3') format('woff2'), url('/static/resources/fonts/fontawesome-webfont.woff?v=4.6.3') format('woff'), url('/static/resources/fonts/fontawesome-webfont.ttf?v=4.6.3') format('truetype'), url('/static/resources/fonts/fontawesome-webfont.svg?v=4.6.3#fontawesomeregular') format('svg');
   font-weight: normal;
   font-style: normal;
 }
@@ -177,17 +177,17 @@ h2{
 .lang-img{
 	display:inline-block;
 	height:50vh;
-	background-image: url("/pix/world-de.svg");
+	background-image: url("/static/pix/world-de.svg");
 	background-size:auto 100%;
 	background-repeat: no-repeat;
     background-position: center;
 	margin: 5% 0%;
 }
 .lang-img.de{
-	background-image: url("/pix/world-de.svg");
+	background-image: url("/static/pix/world-de.svg");
 }
 .lang-img.en{
-	background-image: url("/pix/world-en.svg");
+	background-image: url("/static/pix/world-en.svg");
 }
 .btn-lang{
 	display:inline-block;
@@ -252,7 +252,7 @@ h3{
 
 .start-welcome-img {
   position: relative;
-	background-image: url("/pix/gonimo-Welt-animation_460x460px.gif");
+	background-image: url("/static/pix/gonimo-Welt-animation_460x460px.gif");
 	background-size: 100% 100%;
 	width: 460px;
 	height: 460px;
@@ -816,11 +816,11 @@ span.device-self {
 }
 
 .invite-button.whatsapp > a {
-	background-image: url("/pix/whatsapp.svg");
+	background-image: url("/static/pix/whatsapp.svg");
 }
 
 .invite-button.telegram > a {
-	background-image: url("/pix/telegram.svg");
+	background-image: url("/static/pix/telegram.svg");
 	background-size: 100% 100%;
 }
 
@@ -841,7 +841,7 @@ span.device-self {
 }
 
 .stream-baby.justAudio {
-	  background-image:url("/pix/gonimo-night.svg");
+	  background-image:url("/static/pix/gonimo-night.svg");
 	  background-size:70% 70%;
     background-repeat: no-repeat;
     background-position: center center;
@@ -1010,7 +1010,7 @@ input.volume::-ms-thumb{
 	transform:translateY(-50%);
 	padding-right: 20px; /* Make it easier clickable */
   padding-left: 10px;
-	background-image: url("/pix/camswitch.svg");
+	background-image: url("/static/pix/camswitch.svg");
   background-repeat: no-repeat;
   background-position: center;
 	background-size:100% calc(100% - 25px);
@@ -1031,7 +1031,7 @@ input.volume::-ms-thumb{
 	padding-bottom:50px;
 
 	background-color:black;
-	background-image: url("/pix/gonimo-night.svg");
+	background-image: url("/static/pix/gonimo-night.svg");
 	background-size:50% 50%;
 	background-repeat: no-repeat;
   background-position: 59% 50%;
@@ -1101,7 +1101,7 @@ input.volume::-ms-thumb{
   height: 1.5em;
   width: 1.5em;
 
-	background-image: url("/pix/sun.svg");
+	background-image: url("/static/pix/sun.svg");
 	background-size: 90% 90%;
 	background-repeat: no-repeat;
   background-position: 50% 50%;
@@ -1109,11 +1109,11 @@ input.volume::-ms-thumb{
 
 .baby.day{
 	background-color:white;
-	background-image: url("/pix/gonimo-day.svg");
+	background-image: url("/static/pix/gonimo-day.svg");
 }
 
 .baby.day > .time {
-	background-image: url("/pix/moon.svg");
+	background-image: url("/static/pix/moon.svg");
 }
 
 .welcome-form.baby-form{
@@ -1369,7 +1369,7 @@ canvas {
 }
 
 .btn-close-x {
-	  background-image: url("/pix/ic_expand_close.svg");
+	  background-image: url("/static/pix/ic_expand_close.svg");
     background-color: rgba(255,255,255, 0.3);
 	  background-size:100% 100%;
 	  height:25px;
@@ -1548,10 +1548,10 @@ canvas {
 }
 
 .flag-gb {
-    background-image: url("/resources/pix/flags/gb.svg");
+    background-image: url("/static/resources/pix/flags/gb.svg");
 }
 .flag-de {
-    background-image: url("/resources/pix/flags/de.svg");
+    background-image: url("/static/resources/pix/flags/de.svg");
 }
 
 .flag {

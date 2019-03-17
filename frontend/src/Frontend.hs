@@ -9,7 +9,6 @@ import           Obelisk.Route
 import           Reflex.Dom.Core
 import Control.Monad.IO.Class (liftIO)
 
-import           Common.Api
 import           Common.Route
 import qualified Gonimo.Client.Host.Impl  as Gonimo
 import qualified Gonimo.Client.Main       as Gonimo
@@ -22,6 +21,7 @@ frontend = Frontend
   , _frontend_body = prerender (text "Loading ...") $ do
       conf <- liftIO Gonimo.makeEmptyHostVars
       Gonimo.app conf
+  , _frontend_headRender = HeadRender_Static
   }
 
 

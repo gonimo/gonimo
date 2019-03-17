@@ -1,9 +1,11 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications #-}
 module Gonimo.Client.Family.RoleSelector where
 
 import           Reflex.Dom.Core
+import           Obelisk.Generated.Static
 
 
 import           Gonimo.Client.Reflex.Dom
@@ -20,11 +22,11 @@ roleSelector = do
   elClass "div" "btn-box" $ do
     babyClicked <-
       makeClickable . elAttr' "div" (addBtnAttrs "btn-baby") $ do
-        elAttr "img" ("src" =: "/pix/button-baby.svg") blank
+        elAttr "img" ("src" =: static @"pix/button-baby.svg") blank
         el "span" $ trText Baby
     parentClicked <-
       makeClickable . elAttr' "div" (addBtnAttrs "btn-parent") $ do
-        elAttr "img" ("src" =: "/pix/button-parent.svg") blank
+        elAttr "img" ("src" =: static @"pix/button-parent.svg") blank
         el "span" $ trText Parent
     pure $ leftmost [ const RouteBaby <$> babyClicked
                     , const RouteParent <$> parentClicked

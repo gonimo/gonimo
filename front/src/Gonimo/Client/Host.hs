@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-|
 Module      : Gonimo.Client.Host
@@ -73,7 +75,7 @@ instance Reflex t => Monoid (Config t) where
   mempty = def
   mappend = (<>)
 
-instance Flattenable Config where
+instance Flattenable (Config t) t where
   flattenWith doSwitch ev = do
       _appKillMask <- switcher (pure True) $ _appKillMask <$> ev
       _onKillApp <- doSwitch never (_onKillApp <$> ev)

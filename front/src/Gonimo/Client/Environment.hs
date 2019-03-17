@@ -24,7 +24,7 @@ import qualified GHCJS.DOM.Location          as Location
 import           GHCJS.DOM.Types             (MonadJSM, liftJSM)
 import           Language.Javascript.JSaddle (FromJSVal (..), JSM, JSVal,
                                               fromJSVal, js, jsg)
-import           Text.URI                    (Authority (authHost),
+import           Text.URI                    (Authority (authHost, authPort),
                                               URI (uriAuthority, uriScheme),
                                               mkScheme, mkURI, unRText)
 
@@ -91,6 +91,7 @@ make = liftJSM $ do
     secure = mkScheme "https" == uriScheme uri
     authority = either (error "common/route is invalid!") id $ uriAuthority uri
     _backendHost = unRText $ authHost authority
+    port = fromMaybe (443) $ authPort authority
   _turnConnection <- getCfg "config/frontend/turn/connection"
   _turnUser <- getCfg "config/frontend/turn/user"
   _turnPassword <- getCfg "config/frontend/turn/password"
@@ -99,11 +100,12 @@ make = liftJSM $ do
   _frontendHost <- makeFrontendHostFromBackend _backendHost
   liftIO . T.putStrLn $ "gonimo, backend host: " <> _backendHost
 
-  let _httpProtocol = unRText scheme
+  let _httpProtocol = unRText scheme <> "://"
   let _frontendPath = "/"
 
   let wsPrefix      = if secure then "wss://" else "ws://"
-  let _backendWSURL = wsPrefix <> _backendHost
+  -- TODO: Use actual obelisk route:
+  let _backendWSURL = wsPrefix <> _backendHost <> ":" <> (T.pack . show) port <> "/api/v1"
 
   liftIO . T.putStrLn $ "gonimo, backend ws url: " <> _backendWSURL
 

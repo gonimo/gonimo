@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-|
 Module      : Gonimo.Client.Router
 Description : Gonimo routes.
@@ -53,7 +55,7 @@ instance Reflex t => Monoid (Config t) where
   mempty = Config never never
   mappend = (<>)
 
-instance Flattenable Config where
+instance Flattenable (Config t) t where
   flattenWith doSwitch ev
     = Config
       <$> doSwitch never (_onSetRoute <$> ev)
