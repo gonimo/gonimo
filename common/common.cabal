@@ -13,6 +13,7 @@ cabal-version: >= 1.2
 build-type: Simple
 
 library
+  ghc-options: -O
   hs-source-dirs: src
   build-depends: base
                , obelisk-route

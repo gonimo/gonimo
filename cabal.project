@@ -1,14 +1,2 @@
-packages:
-  common/
-  back/
-  front/
-  front-warp/
-
-package gonimo-back
-  flags: +dev
-package gonimo-common
-  flags: +dev
-package gonimo-front
-  flags: +dev
-package gonimo-front-warp
-  flags: +dev
+optional-packages:
+  *

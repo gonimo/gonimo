@@ -18,14 +18,14 @@ Flag dev
     Default:       False
 
 custom-setup
-    setup-depends: base >=4.8 && <4.10
+    setup-depends: base >=4.8 && <4.13
                  , Cabal >= 1.18 && < 1.25
                  , process
 
 executable gonimo-front-ghcjs
   ghc-options: -optl-fuse-ld=gold
   ld-options:  -fuse-ld=gold
-  if flag(dev) 
+  if flag(dev)
       cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
       ghc-options:   -Wall -threaded
       ghcjs-options: -debug
@@ -51,5 +51,5 @@ executable gonimo-front-ghcjs
 
   build-depends:      base >=4.8 && <5.0
                     , gonimo-front
-                    
+
 

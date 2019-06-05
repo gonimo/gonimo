@@ -25,7 +25,7 @@ import           GHCJS.DOM.Types            (MonadJSM, liftJSM)
 import           Control.Monad.Reader.Class
 import           Gonimo.Client.Settings     as Settings (HasSettings (..),
                                                          trDynText, trText)
-import           Gonimo.Prelude             as GonimoPrelude
+import           Gonimo.Prelude             as GonimoPrelude hiding (mapMaybe)
 import           Reflex
 import           Reflex.Class.Extended
 import           Reflex.Dom.Class           hiding (Alt)

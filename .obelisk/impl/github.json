@@ -1,7 +1,7 @@
 {
-  "owner": "eskimor",
+  "owner": "obsidiansystems",
   "repo": "obelisk",
-  "branch": "rk-vs-static-head-2-xhr-fix",
-  "rev": "6cf8bf1ad9c1fffc76fb3c6eafab2e567affc05a",
-  "sha256": "01j0xq8k0wnlvb4brh7h6vrf3zas6nixvzay09i6rai5vjvdgwid"
+  "branch": "develop",
+  "rev": "2958402736b9bc2e743b56c2ed758995cab6f521",
+  "sha256": "0sa2w5cj3fjhkvc6jfdj6qbrs2qzkrrlzbrklqd0akmffw6nzma1"
 }

@@ -5,23 +5,32 @@ module Frontend where
 
 import qualified Data.Text                as T
 import           Obelisk.Frontend
+import Control.Monad (void)
 import           Obelisk.Route
 import           Reflex.Dom.Core
 import Control.Monad.IO.Class (liftIO)
 
 import           Common.Route
-import qualified Gonimo.Client.Host.Impl  as Gonimo
 import qualified Gonimo.Client.Main       as Gonimo
+import qualified Gonimo.Client.Host.Impl  as Host
 import           Obelisk.Generated.Static
 
+
+makeFrontend :: Host.HostVars -> Frontend (R FrontendRoute)
+makeFrontend hostVars = Frontend
+  { _frontend_head = pageHead
+  , _frontend_body = void $ prerender (text "Loading ...") $
+      Gonimo.app hostVars
+  {- , _frontend_headRender = HeadRender_Static -}
+  }
 
 frontend :: Frontend (R FrontendRoute)
 frontend = Frontend
   { _frontend_head = pageHead
-  , _frontend_body = prerender (text "Loading ...") $ do
-      conf <- liftIO Gonimo.makeEmptyHostVars
-      Gonimo.app conf
-  , _frontend_headRender = HeadRender_Static
+  , _frontend_body = void $ prerender (text "Loading ...") $ do
+      hostVars <- liftIO $ Host.makeEmptyHostVars
+      Gonimo.app hostVars
+  {- , _frontend_headRender = HeadRender_Static -}
   }
 
 

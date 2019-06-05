@@ -17,6 +17,7 @@ module Reflex.Class.Extended ( -- * Re-exported modules
                              , flatten
                              , flattenDynamic
                              , networkViewFlatten
+                             , tagOnPostBuild
                              ) where
 
 
@@ -29,8 +30,12 @@ import           Reflex.NotReady.Class
 import           Reflex.PostBuild.Class
 
 
-
-
+tagOnPostBuild :: PostBuild t m => Dynamic t a -> m (Event t a)
+tagOnPostBuild v = do
+  onPostBuild <- getPostBuild
+  pure $ leftmost [ tag (current v) onPostBuild
+                  , updated v
+                  ]
 
 
 -- | Uses the leftmost event in case of coincidence, but wraps it in a list for

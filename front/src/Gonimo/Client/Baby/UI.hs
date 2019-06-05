@@ -27,6 +27,7 @@ import           Gonimo.Client.EditStringButton   (editStringEl)
 import qualified Gonimo.Client.NavBar             as NavBar
 import           Gonimo.Client.Prelude
 import           Gonimo.Client.Reflex.Dom
+import           Gonimo.Client.Host               (HasHost (..))
 import           Gonimo.Client.Router             (HasRouter (..), Route (..),
                                                    onGoBack, onSetRoute)
 import qualified Gonimo.Client.Router             as Router
@@ -76,10 +77,13 @@ ui appConfig loaded deviceList = mdo
                                 ]
     let stopMonitor = leftmost [ onCleanupRequested
                                , ui'^.uiStopMonitor
+                               , appConfig ^. onKillRequested
                                ]
-    killMask <- hold True $ leftmost [ False <$ startMonitor
-                                     , True <$ stopMonitor
-                                     ]
+    -- Make it more likely we successfully closed the channel, before we might get killed:
+    stoppedMonitor <- delay 0.5 stopMonitor
+    killMask <- holdDyn True $ leftmost [ False <$ startMonitor
+                                        , True <$ stoppedMonitor
+                                        ]
     let ui' = uiSwitchPromptlyDyn uiDyn
 
     (onCleanupRequested, leaveConf) <- askLeaveConfirmation baby'
