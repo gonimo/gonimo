@@ -13,8 +13,8 @@ let
                    then "app.gonimo.com"
                    else "app.alpha.gonimo.com";
 
-  androidVersionCode = "12";
-  androidVersionName = "1.1.0.1";
+  androidVersionCode = "13";
+  androidVersionName = "1.1.0.2";
 
   # androidIsRelease = builtins.pathExists ./release-key.nix;
   androidIsRelease = true;
