@@ -58,23 +58,34 @@ nativeHost = "nativeHost"
 --
 make :: ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
         , TriggerEvent t m, PerformEvent t m, MonadJSM (Performable m)
+        , PostBuild t m
         , HasConfig c
         )
      => HostVars -> c t -> m (Host t)
 make hostConf conf = do
   _onStop      <- mvarToEvent . _onStopVar $ hostConf
   _onStart     <- mvarToEvent . _onStartVar $ hostConf
-  _onNewIntent <- mvarToEvent . _onNewIntentVar $ hostConf
-  let _needsNativeHistory = not . _useBrowserHistory $ hostConf
+  onNewIntent <- mvarToEvent . _onNewIntentVar $ hostConf
+  let
+    onKill = () <$ ffilter (== "killGonimo") onNewIntent
+    _onNewIntent = ffilter (/= "killGonimo") onNewIntent
+    _needsNativeHistory = not . _useBrowserHistory $ hostConf
+    _onKillRequested =
+      fmap (const ()) . ffilter not . tag (current $ conf ^. appKillMask) $ onKill
 
   let host' = Host {..}
 
   quitAppDelayed host' conf
 
   -- Kill on Kill request ...
-  performEvent_ $ quitApp <$ ffilter id (tag (conf ^. appKillMask) (conf ^. onKillApp))
+  killRequested <- hold False $ True <$ onKill
+  let
+    onDirectQuit =
+      ffilter id . tag (current $ conf ^. appKillMask) $ leftmost [conf ^. onKillApp, onKill]
+    onDelayedQuit = gate killRequested . ffilter id $ updated $ conf ^. appKillMask
+  performEvent_ $ quitApp <$ leftmost [onDirectQuit, onDelayedQuit]
 
-  warnOnStopped host' conf
+  setKillable host' conf
   pure host'
 
 -- | Quit the app `onStop` with `quitDelay` if no `onStart` occurred.
@@ -96,7 +107,7 @@ quitAppDelayed host' conf = do
       filterQuitEvent :: UTCTime -> PushM t (Maybe ())
       filterQuitEvent stopTime = do
         startTime <- sample lastStartTime
-        canKill   <- sample $ conf ^. appKillMask
+        canKill   <- sample $ current $ conf ^. appKillMask
         if diffUTCTime stopTime startTime >= quitDelay && canKill
           then pure $ Just ()
           else pure Nothing
@@ -107,23 +118,31 @@ quitAppDelayed host' conf = do
     performEvent_ $ quitApp <$ push filterQuitEvent onDelayedStopWithTime
 
 
-
--- | Warn user when app is stoppedn and something is still running.
---
---   Warn user on stop when `appKillMask` is `False`.
-warnOnStopped :: forall t m c.
+-- | Tell OS whether or not it is a good idea to kill the app.
+setKillable :: forall t m c.
                   ( Reflex t, MonadHold t m, MonadFix m, MonadJSM m
                   , TriggerEvent t m, PerformEvent t m, MonadJSM (Performable m)
+                  , PostBuild t m
                   , MonadIO (Performable m), HasConfig c
                   )
                => Host t -> c t -> m ()
-warnOnStopped host' conf = void . runMaybeT $ do
-  nativeHost' <- getNativeHost
-  let
-    warnUser :: forall m1. MonadJSM m1 => m1 ()
-    warnUser = void . liftJSM $ nativeHost' ^. JS.js0 ("requestStoppedWarning" :: Text)
+setKillable host' conf = do
+  onKillMask <- tagOnPostBuild $ conf ^. appKillMask
 
-  lift . performEvent_ $ warnUser <$ ffilter not (tag (conf ^. appKillMask) (host' ^. onStop))
+  performEvent_ $ avoidKill <$ ffilter not onKillMask
+  performEvent_ $ allowKill <$ ffilter id onKillMask
+
+-- | Call avoidKill on host.
+avoidKill :: forall m. MonadJSM m => m ()
+avoidKill = void . runMaybeT $ do
+  nativeHost' <- getNativeHost
+  liftJSM $ nativeHost' ^. JS.js0 ("avoidKill" :: Text)
+
+-- | Call allowKill on host.
+allowKill :: forall m. MonadJSM m => m ()
+allowKill = void . runMaybeT $ do
+  nativeHost' <- getNativeHost
+  liftJSM $ nativeHost' ^. JS.js0 ("allowKill" :: Text)
 
 -- | Quit the application, if the host supports it:
 quitApp :: forall m. MonadJSM m => m ()

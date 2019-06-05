@@ -28,8 +28,7 @@ import qualified Gonimo.Client.Router           as Router
 import           Gonimo.Client.Server           hiding (Config, HasModel, Model,
                                                  config)
 import qualified Gonimo.Client.Server           as Server
-import           Gonimo.Client.Settings         (HasConfig (onSelectLocale),
-                                                 HasSettings, Settings)
+import           Gonimo.Client.Settings         (HasConfig (onSelectLocale))
 import qualified Gonimo.Client.Storage          as GStorage
 import qualified Gonimo.Client.Storage.Keys     as GStorage
 import qualified Gonimo.Client.Subscriber.Impl  as Subscriber

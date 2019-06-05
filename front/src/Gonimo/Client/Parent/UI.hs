@@ -27,6 +27,7 @@ import           Gonimo.Client.Reflex
 import           Gonimo.Client.Reflex.Dom
 import           Gonimo.Client.Router             (HasRouter (..), Route (..),
                                                    onGoBack, onSetRoute)
+import           Gonimo.Client.Host               (HasHost (..))
 import qualified Gonimo.Client.Router             as Router
 import           Gonimo.Client.Server             hiding (HasModel)
 import qualified Gonimo.Client.Server             as Server
@@ -39,7 +40,7 @@ import           Gonimo.Types                     (_Baby)
 
 
 
-type HasModel model = (Invite.HasModel model, HasServer model, Auth.HasAuth model, HasRouter model)
+type HasModel model = (Invite.HasModel model, HasServer model, Auth.HasAuth model, HasRouter model, HasHost model)
 
 type HasModelConfig c t = (IsConfig c t, Server.HasConfig c, Router.HasConfig c, Host.HasConfig c)
 
@@ -52,6 +53,7 @@ ui loaded deviceList = mdo
                                            , C._configConnectBaby = devicesUI^.DeviceList.uiConnect
                                            , C._configDisconnectAll = leftmost [ onCleanupRequested
                                                                                , viewUI^.C.videoViewDisconnectAll
+                                                                               , model ^. onKillRequested
                                                                                ]
                                            , C._configDisconnectBaby = leftmost [ devicesUI^.DeviceList.uiDisconnect
                                                                                 , viewUI^.C.videoViewDisconnectBaby
@@ -112,7 +114,7 @@ ui loaded deviceList = mdo
                                          <> invite^.Invite.request
                                          <> navBar^.NavBar.request
                                          <> viewUI^.C.videoViewNavBar.NavBar.request
-                   & Host.appKillMask .~ (current $ Map.null <$> connections'^.C.streams)
+                   & Host.appKillMask .~ (Map.null <$> connections'^.C.streams)
   pure $ mconcat [ mConf
                  , leaveConf
                  ]

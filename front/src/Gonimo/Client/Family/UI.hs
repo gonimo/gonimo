@@ -1,12 +1,14 @@
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RecursiveDo         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications  #-}
 module Gonimo.Client.Family.UI where
 
 import           Control.Applicative
 import           Control.Lens
 import           Data.Text                         (Text)
 import           Reflex.Dom.Core
+import           Obelisk.Generated.Static
 
 import qualified Gonimo.Client.App.Types           as App
 import qualified Gonimo.Client.Auth.Impl                as Auth
@@ -91,7 +93,7 @@ ui appConfig loaded familyGotCreated = do
 
     langSelected <- elClass "div" "world-lang" $ do
         l <- langSelector
-        elAttr "img" ("class" =: "welcome-img" <> "src" =: "/pix/world.svg") blank
+        elAttr "img" ("class" =: "welcome-img" <> "src" =: static @"pix/world.svg") blank
         pure l
 
     el "h3" $ trText FamilyText

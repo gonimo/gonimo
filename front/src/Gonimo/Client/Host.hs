@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-|
 Module      : Gonimo.Client.Host
@@ -28,7 +30,7 @@ data Config t
              --   If this flag is `False` we try hard to not get killed, if this
              --   is `True` and `onStop` got triggered we will kill ourself
              --   after sometime to save battery.
-             _appKillMask :: Behavior t Bool
+             _appKillMask :: Dynamic t Bool
 
              -- | Request the app to be killed.
              --
@@ -48,6 +50,10 @@ data Host t
            --
            --   App is in foreground again.
          , _onStart :: Event t ()
+
+           -- | Kill got requested by the user via the host. Free the killMask
+           -- when you receive this event.
+         , _onKillRequested :: Event t ()
 
            -- | A new intent was delivered and should be handled.
          , _onNewIntent :: Event t Intent
@@ -73,9 +79,9 @@ instance Reflex t => Monoid (Config t) where
   mempty = def
   mappend = (<>)
 
-instance Flattenable Config where
+instance Flattenable (Config t) t where
   flattenWith doSwitch ev = do
-      _appKillMask <- switcher (pure True) $ _appKillMask <$> ev
+      _appKillMask <- join <$> holdDyn (pure True) (_appKillMask <$> ev)
       _onKillApp <- doSwitch never (_onKillApp <$> ev)
       pure $ Config {..}
 
@@ -84,10 +90,10 @@ instance Flattenable Config where
 class HasConfig a where
   config :: Lens' (a t) (Config t)
 
-  appKillMask :: Lens' (a t) (Behavior t Bool)
+  appKillMask :: Lens' (a t) (Dynamic t Bool)
   appKillMask = config . go
     where
-      go :: Lens' (Config t) (Behavior t Bool)
+      go :: Lens' (Config t) (Dynamic t Bool)
       go f config' = (\appKillMask' -> config' { _appKillMask = appKillMask' }) <$> f (_appKillMask config')
 
 
@@ -110,6 +116,11 @@ class HasHost a where
       go :: Lens' (Host t) (Event t ())
       go f host' = (\onStop' -> host' { _onStop = onStop' }) <$> f (_onStop host')
 
+  onKillRequested :: Lens' (a t) (Event t ())
+  onKillRequested = host . go
+    where
+      go :: Lens' (Host t) (Event t ())
+      go f host' = (\onKill' -> host' { _onKillRequested = onKill' }) <$> f (_onKillRequested host')
 
   onStart :: Lens' (a t) (Event t ())
   onStart = host . go

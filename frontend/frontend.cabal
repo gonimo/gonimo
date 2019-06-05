@@ -1,0 +1,40 @@
+name: frontend
+version:             1.1.0.0
+cabal-version: >= 1.8
+build-type: Simple
+
+library
+  hs-source-dirs: src
+  build-depends: base
+               , common
+               , obelisk-frontend
+               , obelisk-route
+               , reflex-dom
+               , obelisk-generated-static
+               , text
+               , gonimo-front
+  exposed-modules:
+    Frontend
+  ghc-options: -Wall -O
+
+executable frontend
+  main-is: main.hs
+  hs-source-dirs: src-bin
+  build-depends: base
+               , common
+               , obelisk-frontend
+               , obelisk-route
+               , reflex-dom
+               , obelisk-generated-static
+               , frontend
+               , gonimo-front
+  --TODO: Make these ghc-options optional
+  ghc-options: -threaded -O
+  if os(darwin)
+     ghc-options: -dynamic
+  if os(linux-android)
+    build-depends: android-activity
+                 , data-default
+                 , text
+                 , lens
+    cpp-options: -DANDROID

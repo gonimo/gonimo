@@ -1,5 +1,5 @@
 name:                gonimo-common
-version:             1.0.2.2
+version:             1.1.0.0
 homepage:            gonimo.com
 license:             AGPL-3
 license-file:        LICENSE
@@ -24,7 +24,7 @@ library
       cpp-options:   -DDEVELOPMENT
       ghc-options:   -Wall -fwarn-tabs -O0
   else
-      ghc-options:   -Wall -Werror -fwarn-tabs -O2
+      ghc-options:   -Wall -fwarn-tabs -O2
 
   exposed-modules: Gonimo.SocketAPI
                  , Gonimo.SocketAPI.Types
@@ -44,7 +44,7 @@ library
                     , ScopedTypeVariables
                     , FlexibleContexts
 
-  build-depends:        base >= 4.8 && < 4.11
+  build-depends:        base >= 4.8 && < 4.13
                       , aeson
                       , attoparsec
                       , base64-bytestring

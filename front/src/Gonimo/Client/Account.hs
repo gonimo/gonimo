@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-|
 Module      : Gonimo.Client.Account
 Description : User facing Account API
@@ -52,7 +54,7 @@ instance Reflex t => Monoid (Config t) where
   mempty = memptydefault
   mappend = (<>)
 
-instance Flattenable Config where
+instance Flattenable (Config t) t where
   flattenWith doSwitch ev
     = Config
       <$> doSwitch never (_onClaimInvitation <$> ev)

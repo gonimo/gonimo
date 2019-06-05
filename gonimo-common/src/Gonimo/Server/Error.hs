@@ -30,8 +30,8 @@ data ServerError = InvalidAuthToken
                  | Forbidden
                  | NotFound
                  | TransactionTimeout
-                 | SessionInvalid -- There exists a session for this device, but it does not match
-                 | NoActiveSession -- There is no sessino for this device.
+                 | SessionInvalid -- ^ There exists a session for this device, but it does not match
+                 | NoActiveSession -- ^ There is no sessino for this device.
                  | InternalServerError deriving (Generic, Eq, Show, Typeable)
 
 instance Exception ServerError

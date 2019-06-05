@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards   #-}
 module Gonimo.Client.App.Types where
@@ -148,7 +149,7 @@ instance Router.HasConfig ModelConfig where
 instance Host.HasConfig ModelConfig where
   config = hostConfig
 
-instance Flattenable ModelConfig where
+instance Flattenable (ModelConfig t) t where
   flattenWith doSwitch ev
     = ModelConfig
       <$> flattenWith doSwitch (_accountConfig <$> ev)
@@ -171,7 +172,7 @@ screenSwitchPromptlyDyn ev
            , _screenGoHome = switchPromptlyDyn $ _screenGoHome <$> ev
            }
 
-instance Flattenable App where
+instance Flattenable (App t) t where
   flattenWith doSwitch ev = do
     updatedSubscriptions <- doSwitch never (updated . _subscriptions <$> ev)
     _subscriptions <- holdDyn Set.empty updatedSubscriptions
@@ -180,7 +181,7 @@ instance Flattenable App where
     pure $ App{..}
 
 
-instance Flattenable Screen where
+instance Flattenable (Screen t) t where
   flattenWith doSwitch ev = do
     Screen <$> flattenWith doSwitch (_screenApp <$> ev)
            <*> doSwitch never (_screenGoHome <$> ev)

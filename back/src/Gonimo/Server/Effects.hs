@@ -73,7 +73,7 @@ import           Data.Text (Text)
 import           Control.Concurrent.STM.TVar (readTVar, writeTVar)
 
 secretLength :: Int
-secretLength = 16
+secretLength = 20
 
 class (MonadIO m, MonadBaseControl IO m, MonadLoggerIO m) => MonadServer m where
   atomically :: STM a -> m a

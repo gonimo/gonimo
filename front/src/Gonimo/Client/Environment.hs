@@ -4,9 +4,8 @@ Module      : Gonimo.Client.Environment
 Description : Get configurations from the environment.
 Copyright   : (c) Robert Klotzner, 2018
 
-In index.html a env.js is included which contains various settings needed for
-gonimo to work properly. Like what backend server to use. You can customize the
-variables in that file.
+
+Retrieved Obelisk configuration values..
 -}
 module Gonimo.Client.Environment (
                                -- * Types
@@ -25,8 +24,12 @@ import qualified GHCJS.DOM.Location          as Location
 import           GHCJS.DOM.Types             (MonadJSM, liftJSM)
 import           Language.Javascript.JSaddle (FromJSVal (..), JSM, JSVal,
                                               fromJSVal, js, jsg)
+import           Text.URI                    (Authority (authHost, authPort),
+                                              URI (uriAuthority, uriScheme),
+                                              mkScheme, mkURI, unRText)
 
 import           Gonimo.Client.Prelude
+import           Obelisk.ExecutableConfig    (get)
 
 
 data Environment t -- Dummy `t` for compatibility with other models.
@@ -82,28 +85,32 @@ data Environment t -- Dummy `t` for compatibility with other models.
 --   The environment is loaded from the JavaScript values set in env.js.
 make ::  MonadJSM m => m (Environment t)
 make = liftJSM $ do
-  jsEnv               <- jsg ("gonimoEnv" :: Text)
-  secure              <- fromJSVal' =<< jsEnv ^. js ("secure" :: Text)
-  _backendHost        <- fromJSVal' =<< jsEnv ^. js ("gonimoBackServer" :: Text)
-  _turnConnection     <- fromJSVal' =<< jsEnv ^. js ("gonimoTurnConnection" :: Text)
-  _turnUser           <- fromJSVal' =<< jsEnv ^. js ("gonimoTurnUser" :: Text)
-  _turnPassword       <- fromJSVal' =<< jsEnv ^. js ("gonimoTurnPassword" :: Text)
-  _turnCredentialType <- fromJSVal' =<< jsEnv ^. js ("gonimoTurnCredentialType" :: Text)
+  uri <- mkURI =<< getCfg "config/common/route"
+  let
+    scheme = fromMaybe (error "config/common/route: scheme missing!") $ uriScheme uri
+    secure = mkScheme "https" == uriScheme uri
+    authority = either (error "common/route is invalid!") id $ uriAuthority uri
+    _backendHost = unRText $ authHost authority
+    port = fromMaybe (443) $ authPort authority
+  _turnConnection <- getCfg "config/frontend/turn/connection"
+  _turnUser <- getCfg "config/frontend/turn/user"
+  _turnPassword <- getCfg "config/frontend/turn/password"
+  _turnCredentialType <- getCfg "config/frontend/turn/credential-type"
 
   _frontendHost <- makeFrontendHostFromBackend _backendHost
   liftIO . T.putStrLn $ "gonimo, backend host: " <> _backendHost
 
-  let _httpProtocol = if secure then "https://" else "http://"
-  let _frontendPath = if T.isInfixOf "localhost" _backendHost then "/index.html" else "/"
+  let _httpProtocol = unRText scheme <> "://"
+  let _frontendPath = "/"
 
   let wsPrefix      = if secure then "wss://" else "ws://"
-  let _backendWSURL = wsPrefix <> _backendHost
+  -- TODO: Use actual obelisk route:
+  let _backendWSURL = wsPrefix <> _backendHost <> ":" <> (T.pack . show) port <> "/api/v1"
 
   liftIO . T.putStrLn $ "gonimo, backend ws url: " <> _backendWSURL
 
   pure $ Environment {..}
 
-  where
 
 -- | Calculate the frontend host from the backend url.
 --
@@ -118,10 +125,10 @@ makeFrontendHostFromBackend backend
     else
       pure $ "app" <> T.dropWhile (/= '.') backend
 
-fromJSVal' :: FromJSVal a => JSVal -> JSM a
-fromJSVal' jsVal = do
-  mVal <- fromJSVal jsVal
-  pure $ fromMaybe (error "gonimo: env.js set value of incorrect type!") mVal
+
+getCfg :: MonadIO m => Text -> m Text
+getCfg k =
+  T.strip . fromMaybe (error $ "Fatal: Config '" <> T.unpack k <> "' missing!") <$> liftIO (get k)
 
 -- Auto generated lenses:
 

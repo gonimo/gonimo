@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-|
 Module      : Gonimo.Client.Subscriber
 Description : User facing Subscriber API
@@ -5,10 +7,10 @@ Copyright   : (c) Robert Klotzner, 2018
 -}
 module Gonimo.Client.Subscriber where
 
-import           Data.Set (Set)
+import           Data.Set              (Set)
 
 import           Gonimo.Client.Prelude
-import qualified Gonimo.SocketAPI as API
+import qualified Gonimo.SocketAPI      as API
 
 
 {-# Deprecated SubscriptionsDyn " Use plain 'Subscriber' instead."#-}
@@ -48,5 +50,5 @@ instance HasConfig Config where
   config = id
 
 
-instance Flattenable Config where
+instance Flattenable (Config t) t where
   flattenWith doSwitch ev = Config <$> flattenDynamic doSwitch (_subscriptions <$> ev)

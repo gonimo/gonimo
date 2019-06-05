@@ -1,5 +1,5 @@
 name:                gonimo-front
-version:             1.0.2.2
+version:             1.1.0.0
 homepage:            gonimo.com
 license:             AGPL-3
 license-file:        LICENSE
@@ -20,9 +20,9 @@ Flag dev
 library
   hs-source-dirs:      src
   default-language:    Haskell2010
-  ghc-options: -optl-fuse-ld=gold
-  ld-options:  -fuse-ld=gold
-  if flag(dev) 
+  -- ghc-options: -optl-fuse-ld=gold
+  -- ld-options:  -fuse-ld=gold
+  if flag(dev)
       cpp-options:   -DDEVELOPMENT -DGHCJS_BROWSER
       ghc-options:   -Wall -fwarn-tabs -O0 -debug
   else
@@ -56,14 +56,19 @@ library
                     , lifted-base
                     , mtl
                     , reflex
-                    , reflex-dom-core
+                    , reflex-dom
                     , safe
                     , text
                     , time
                     , transformers
-                    , network-uri
                     , filepath
-                    -- , uri-bytestring >= 0.2.3.3 -- Does depend on TH!
+                    , modern-uri
+                    , network-uri
+                    , obelisk-executable-config
+                    , obelisk-frontend
+                    , obelisk-generated-static
+                    , obelisk-route
+                     -- , uri-bytestring >= 0.2.3.3 -- Does depend on TH!
   if !impl(ghcjs)
      build-depends: jsaddle-dom
   if impl(ghcjs)

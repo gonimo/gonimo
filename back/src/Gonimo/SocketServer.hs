@@ -1,9 +1,9 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell     #-}
 module Gonimo.SocketServer where
 
 import           Control.Concurrent.Async.Lifted  (race_)
@@ -12,23 +12,48 @@ import           Control.Lens
 import           Control.Monad
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.IO.Class           (MonadIO)
-import           Control.Monad.Logger             (LoggingT)
+import           Control.Monad.Logger             (LoggingT, runStdoutLoggingT)
 import           Control.Monad.Logger             (logError)
 import           Control.Monad.Reader.Class       (MonadReader, ask)
-import           Control.Monad.Trans.Reader       (runReaderT)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.Maybe        (runMaybeT, MaybeT(..))
+import           Control.Monad.Trans.Maybe        (MaybeT (..), runMaybeT)
+import           Control.Monad.Trans.Reader       (runReaderT)
 import           Data.Aeson                       (FromJSON)
 import qualified Data.Aeson                       as Aeson
 import qualified Data.ByteString.Lazy             as LB
 import           Data.IORef
 import           Data.Monoid                      ((<>))
+
+import           Control.Applicative              ((<|>))
+import           Control.Exception                (Exception (..),
+                                                   SomeException (..),
+                                                   throwTo)
+import qualified Data.ByteString.Builder          as BSBuilder
+import qualified Data.ByteString.Builder.Extra    as BSBuilder
+import qualified Data.CaseInsensitive             as CI
+import           Data.Typeable                    (cast)
+import           Snap.Core                        as Snap (MonadSnap, Request,
+                                                           escapeHttp,
+                                                           getHeader,
+                                                           getRequest,
+                                                           modifyResponse, pass,
+                                                           rqHeaders,
+                                                           rqIsSecure, rqURI,
+                                                           setResponseStatus)
+import qualified Snap.Types.Headers               as Headers
+import qualified System.IO.Streams                as Streams
+
+
+import           Control.Concurrent
+import           Data.Maybe
 import qualified Data.Set                         as Set
 import qualified Data.Text                        as T
-import           Gonimo.SocketAPI.Types           hiding (AuthData(..), Message(..))
+import           Gonimo.Constants
 import           Gonimo.Server.Auth               (AuthData (..), AuthReader,
                                                    allowedFamilies)
 import qualified Gonimo.Server.Auth               as Auth
+import qualified Gonimo.Server.Db.Account         as Account
+import qualified Gonimo.Server.Db.Device          as Device
 import           Gonimo.Server.Effects            as Server
 import           Gonimo.Server.Error              (ServerError (..),
                                                    fromMaybeErr)
@@ -40,16 +65,15 @@ import           Gonimo.Server.Messenger          (Message (..))
 import qualified Gonimo.Server.Subscriber         as Subscriber
 import qualified Gonimo.Server.Subscriber.Types   as Subscriber
 import           Gonimo.SocketAPI
+import           Gonimo.SocketAPI.Types           hiding (AuthData (..),
+                                                   Message (..))
 import           Gonimo.Types                     (AuthToken (..))
 import qualified Network.HTTP.Types.Status        as Http
 import qualified Network.Wai                      as Wai
 import qualified Network.Wai.Handler.WebSockets   as Wai
 import qualified Network.WebSockets               as WS
-import           Data.Maybe
-import           Control.Concurrent
-import           Gonimo.Constants
-import qualified Gonimo.Server.Db.Device          as Device
-import qualified Gonimo.Server.Db.Account         as Account
+import qualified Network.WebSockets.Connection    as WS
+import qualified Network.WebSockets.Stream        as WS
 
 type AuthDataRef = IORef (Maybe AuthData)
 
@@ -69,6 +93,70 @@ serve runLoggingT config = do
 
   Wai.websocketsOr WS.defaultConnectionOptions handleWSConnection errorApp
 
+-- Stolen from websockets-snap and adjusted, so this code is BSD-3 licensed.
+-- http://hackage.haskell.org/package/websockets-snap-0.10.3.0/docs/src/Network.WebSockets.Snap.html#runWebSocketsSnap
+--
+-- TODO: Should go in its own file.
+
+
+data ServerAppDone = ServerAppDone
+    deriving (Eq, Ord, Show)
+
+instance Exception ServerAppDone where
+    toException ServerAppDone       = SomeException ServerAppDone
+    fromException (SomeException e) = cast e
+
+
+serveSnap :: MonadSnap m => Config -> m ()
+serveSnap config = serveNonWebSocket <|> serveSocket
+  where
+    serveNonWebSocket = do
+      rq <- Snap.getRequest
+      if getHeader (CI.mk "upgrade") rq /= Just "websocket"
+         then modifyResponse $ setResponseStatus 400 "WebSocket Only Server"
+         else pass
+
+    serveSocket = do
+      rq <- Snap.getRequest
+      liftIO $ putStrLn "\n\nSERVING websocket!\n"
+      -- TODO: Error out if request is not a websocket request.
+      Snap.escapeHttp $ \tickle readEnd writeEnd -> do
+        tickleSnap tickle -- Oh my ...
+        thisThread <- myThreadId
+        stream <- WS.makeStream (Streams.read readEnd)
+                  (\v -> do
+                      Streams.write (fmap BSBuilder.lazyByteString v) writeEnd
+                      Streams.write (Just BSBuilder.flush) writeEnd
+                  )
+
+        let
+            pc = WS.PendingConnection
+                   { WS.pendingOptions  = WS.defaultConnectionOptions
+                   , WS.pendingRequest  = fromSnapRequest rq
+                     -- We have our own timeout handling, so just use maxBound here:
+                   , WS.pendingOnAccept = const $ tickle (max 100)
+                   , WS.pendingStream   = stream
+                   }
+        handleWSConnection pc >> throwTo thisThread ServerAppDone
+
+    handleWSConnection pending = do
+      connection <- WS.acceptRequest pending
+      liftIO $ putStrLn "Accepted WS connection!"
+      -- Don't use this - the client won't be able to detect dead connections, which is baaad! (Baby station!)
+      -- WS.forkPingThread connection 28
+      noAuthRef <- newIORef Nothing
+      runServer runStdoutLoggingT config $ serveWebSocket noAuthRef connection
+      liftIO $ putStrLn "Ran server!"
+
+-- | Convert a snap request to a websockets request
+fromSnapRequest :: Snap.Request -> WS.RequestHead
+fromSnapRequest rq = WS.RequestHead
+    { WS.requestPath    = Snap.rqURI rq
+    , WS.requestHeaders = Headers.toList (Snap.rqHeaders rq)
+    , WS.requestSecure  = Snap.rqIsSecure rq
+    }
+
+-- End of BSD-3 licensed code
 
 serveWebSocket :: AuthDataRef -> WS.Connection -> Server ()
 serveWebSocket authRef conn = do
@@ -89,7 +177,7 @@ serveWebSocket authRef conn = do
         liftIO $ modifyIORef' msgCounter (+1)
         let bs = case raw of
                   WS.Binary bs' -> bs'
-                  WS.Text bs' -> bs'
+                  WS.Text bs' _ -> bs'
         respondToRequest =<< decodeLogError bs
 
       respondToRequest :: ServerRequest -> Server ()
@@ -103,7 +191,7 @@ serveWebSocket authRef conn = do
 
       sendWSMessage r = do
         let encoded = Aeson.encode r
-        liftIO . WS.sendDataMessage conn $ WS.Text encoded
+        liftIO . WS.sendDataMessage conn $ WS.Text encoded Nothing
 
       receiver :: Message -> IO ()
       receiver message = wsExceptionToServerError $ case message of
@@ -121,7 +209,7 @@ serveWebSocket authRef conn = do
             $ \e -> case e of
                       WS.CloseRequest _ _ -> throwIO DeviceOffline
                       WS.ConnectionClosed -> throwIO DeviceOffline
-                      _ -> throwIO InternalServerError
+                      _                   -> throwIO InternalServerError
 
       decodeLogError :: forall a. FromJSON a => LB.ByteString -> Server a
       decodeLogError bs = do
@@ -151,7 +239,7 @@ handleServerRequest receiver sub req = errorToResponse $ case req of
       r <- either (ResError req) id <$> try action
       case r of
         ResError _ _ -> $logError ((T.pack. show) r)
-        _ -> pure ()
+        _            -> pure ()
       pure r
 
 
@@ -219,6 +307,11 @@ makeAuthData token = runDb $ do
                       , _authDeviceId = devId
                       , _authDevice = dev
                       }
+
+tickleSnap :: ((Int -> Int) -> IO ()) -> IO ()
+tickleSnap tickle = void . forkIO . forever $ do
+  tickle (max (ceiling serverWatchDogTime))
+  threadDelay $ 20 * 1000000
 
 -- Clean up dead connections after a sensible delay:
 watchDog :: IORef Int -> IO ()
