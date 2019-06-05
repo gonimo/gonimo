@@ -47,7 +47,7 @@ invitationMail invURL famName invDevice =
       out of the box without registration or login. Just take your laptop or
       Android phone or tablet and use it to take care of your children.
 
-      Soon available on Google Play!
+      Now also available on Google Play!
 
     |]
   , [text|
@@ -73,7 +73,7 @@ invitationMail invURL famName invDevice =
             works best) to stream video and/or audio. Working out of the box
             without registration or login. Just take your laptop or Android
             phone or tablet and use it to take care of your children. </p>
-            <p style="padding:2%;text-align:center;"> Soon available on Google
+            <p style="padding:2%;text-align:center;"> Now also available on Google
             Play! </p>
           </div>
         </body>
