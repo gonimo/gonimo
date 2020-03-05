@@ -40,6 +40,7 @@ project ./. ({pkgs, hackGet, ... }:
         version = { code = androidVersionCode;
                     name = androidVersionName;
                   };
+        universalApk = false;
         displayName = "Gonimo";
         resources = ./static/res;
         activityAttributes = ''
