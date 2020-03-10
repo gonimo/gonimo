@@ -321,7 +321,7 @@ getClosedChannels response chanEv userClose =
     remoteClosed = push (\res ->
                               case res of
                                 API.EventMessageReceived fromId secret' API.MsgCloseConnection
-                                  -> pure . Just $ (at (fromId, secret') .~ Nothing)
+                                  -> pure . Just $ (at (fromId, secret') . _Just . Channel.closeRequested .~ True)
                                 _ -> pure Nothing
                         ) response
     connClosed = push (\ev -> do
@@ -331,8 +331,8 @@ getClosedChannels response chanEv userClose =
                             _ -> pure Nothing
                       ) chanEv
     localClosed = push (\ev -> case ev of
-                         AllChannels -> pure . Just $ const mempty
-                         OnlyChannel key -> pure . Just $ (at key .~ Nothing)
+                         AllChannels -> pure . Just $ (over mapped (closeRequested .~ True))
+                         OnlyChannel key -> pure . Just $ (at key . _Just . Channel.closeRequested .~ True)
                        ) userClose
   in
     remoteClosed <> connClosed <> localClosed
