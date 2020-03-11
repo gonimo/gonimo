@@ -10,8 +10,8 @@ import           Gonimo.Client.Prelude
 
 
 
-import           GHCJS.DOM.Enums                (MediaStreamTrackState (..))
-import           GHCJS.DOM.EventM
+import           Control.Concurrent             (forkIO, threadDelay)
+import           GHCJS.DOM.EventM               (addListener, newListener, EventName)
 import           GHCJS.DOM.RTCIceCandidate
 import           GHCJS.DOM.RTCIceCandidateEvent as IceEvent
 -- #ifdef __GHCJS__
@@ -21,7 +21,8 @@ import           GHCJS.DOM.RTCPeerConnection    as RTCPeerConnection
 -- -- import           JSDOM.Generated.RTCPeerConnection  as RTCPeerConnection (addStream)
 -- #endif
 import           GHCJS.DOM.Types                (Dictionary (..), MediaStream,
-                                                 MonadJSM, RTCPeerConnection)
+                                                 MonadJSM, RTCPeerConnection, DOM)
+import qualified GHCJS.DOM.Types                as GHCJS
 import           Gonimo.Client.Environment      (HasEnvironment)
 import qualified Gonimo.Client.Environment      as Env
 import           Gonimo.DOM.Window              (newRTCPeerConnection)
@@ -31,11 +32,14 @@ import qualified Gonimo.SocketAPI.Types         as API
 import           Gonimo.Types                   (Secret)
 
 
-import           GHCJS.DOM.Enums                (RTCIceConnectionState (..))
+import           GHCJS.DOM.Enums                (MediaStreamTrackState (..),
+                                                 RTCIceConnectionState (..),
+                                                 RTCPeerConnectionState (..),
+                                                 RTCSignalingState (..))
 import qualified GHCJS.DOM.MediaStream          as MediaStream
 import           GHCJS.DOM.MediaStreamTrack     (ended, getReadyState)
 import           Language.Javascript.JSaddle    ((<#))
-import qualified Language.Javascript.JSaddle as JS
+import qualified Language.Javascript.JSaddle    as JS
 
 import           Safe                           (fromJustNote)
 
@@ -124,12 +128,31 @@ handleRTCClosedEvent config conn = liftJSM $ do
   let
     triggerCloseEv = config^.configTriggerChannelEvent
                      $ ChannelEvent (config^.configTheirId, config^.configSecret) RTCEventConnectionClosed
-  listener <- newListener $ do
-    state <- liftJSM $ getIceConnectionState conn
-    if state == RTCIceConnectionStateClosed
-      then liftIO $ triggerCloseEv
-      else pure ()
-  addListener conn iceConnectionStateChange listener False
+  -- Close event is no longer triggered....... (yeah wtf).
+  -- https://github.com/w3c/webrtc-pc/issues/1020
+  {- listener <- newListener $ do -}
+  {-   state <- liftJSM $ getConnectionState conn -}
+  {-   iceState <- liftJSM $ getIceConnectionState conn -}
+  {-   liftIO $ putStrLn $ "Connection state changed: " <> show state -}
+  {-   liftIO $ putStrLn $ "ICE Connection state changed: " <> show iceState -}
+  {-   if state == RTCPeerConnectionStateClosed -}
+  {-     then liftIO $ triggerCloseEv -}
+  {-     else pure () -}
+  {- addListener conn (connectionstatechange :: EventName RTCPeerConnection GHCJS.Event) listener False -}
+  {- addListener conn (signalingstatechange :: EventName RTCPeerConnection GHCJS.Event) listener False -}
+  jsm <- JS.askJSM
+  let
+    poll = do
+      iceState <- getIceConnectionState conn
+      state <- getConnectionState conn
+      if state == RTCPeerConnectionStateClosed || iceState == RTCIceConnectionStateClosed
+        then liftIO triggerCloseEv
+        else do
+          liftIO $ threadDelay 1500000
+          poll
+
+  void $ liftIO $ forkIO $
+    void $ JS.runJSM poll jsm
 
 -- Handle receiption of a remote stream (trigger channel event)
 handleReceivedStream :: forall m t. (MonadJSM m)
