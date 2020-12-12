@@ -18,6 +18,11 @@ library
                , persistent-sqlite
                , persistent-template
                , gonimo-back
+               , stm
+               , wai
+               , crypto-api
+               , text
+               , http-types
   exposed-modules:
     Backend
   ghc-options: -Wall
