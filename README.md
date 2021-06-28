@@ -1,5 +1,12 @@
 [![Gitter Chat](https://img.shields.io/gitter/room/gitterHQ/gitter.svg)](https://gitter.im/gonimo/Lobby)
 
+# End Of Life
+
+Gonimo reached its end of life and is no longer maintained. Expect the server to
+be shut down eventually.
+
+Thanks to all our users over the years! It has been a pleasure.
+
 # Gonimo - GOod NIght MOnitor
 
 Welcome to the source code of [Gonimo](https://gonimo.com), the web based baby
